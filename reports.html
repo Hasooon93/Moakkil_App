@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a192f">
+    <title>موكّل | التقارير والإحصائيات</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root { 
+            --navy: #0a192f; 
+            --accent: #64ffda; 
+            --success: #4caf50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --info: #2196f3;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+        }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f5f7fa;
+            padding-bottom: 80px;
+        }
+        
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        .main-content {
+            margin-top: 70px;
+            padding: 15px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--navy);
+            margin-bottom: 10px;
+        }
+        
+        .date-range-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .date-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px solid #e9ecef;
+            background: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .date-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--navy);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent 0%, rgba(100,255,218,0.05) 100%);
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--navy);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .stat-change {
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+        
+        .stat-change.positive {
+            color: var(--success);
+        }
+        
+        .stat-change.negative {
+            color: var(--danger);
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        
+        .chart-header {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--navy);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-export {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-export.pdf {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .btn-export.excel {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-export.print {
+            background: var(--info);
+            color: white;
+        }
+        
+        .table-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+        }
+        
+        .performance-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .performance-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: right;
+            font-weight: 800;
+            color: var(--navy);
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .performance-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .performance-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-nav">
+    <button class="back-btn" onclick="window.location.href='dashboard.html'">
+        <i class="fas fa-arrow-right"></i>
+    </button>
+    <h5 style="margin: 0; font-weight: 800;">
+        <i class="fas fa-chart-line me-2"></i>
+        التقارير والإحصائيات
+    </h5>
+    <div style="width: 40px;"></div>
+</div>
+
+<div class="main-content">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-analytics me-2" style="color: var(--accent);"></i>
+            لوحة التحليلات والأداء
+        </h1>
+        <p class="text-muted mb-3">تحليل شامل لأداء المكتب والإحصائيات المالية</p>
+        
+        <div class="date-range-selector">
+            <button class="date-btn active" onclick="changePeriod('week')">آخر أسبوع</button>
+            <button class="date-btn" onclick="changePeriod('month')">آخر شهر</button>
+            <button class="date-btn" onclick="changePeriod('quarter')">آخر 3 شهور</button>
+            <button class="date-btn" onclick="changePeriod('year')">آخر سنة</button>
+            <button class="date-btn" onclick="changePeriod('all')">الكل</button>
+        </div>
+    </div>
+    
+    <!-- Export Buttons -->
+    <div class="export-buttons">
+        <button class="btn-export pdf" onclick="exportPDF()">
+            <i class="fas fa-file-pdf me-2"></i>
+            تصدير PDF
+        </button>
+        <button class="btn-export excel" onclick="exportExcel()">
+            <i class="fas fa-file-excel me-2"></i>
+            تصدير Excel
+        </button>
+        <button class="btn-export print" onclick="window.print()">
+            <i class="fas fa-print me-2"></i>
+            طباعة
+        </button>
+    </div>
+    
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(100,255,218,0.2); color: var(--accent);">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <div class="stat-value" id="total-cases">0</div>
+            <div class="stat-label">إجمالي القضايا</div>
+            <div class="stat-change positive" id="cases-change">
+                <i class="fas fa-arrow-up me-1"></i>
+                +0% عن الفترة السابقة
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76,175,80,0.2); color: var(--success);">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-value" id="completed-cases">0</div>
+            <div class="stat-label">قضايا منتهية</div>
+            <div class="stat-change positive" id="completed-change">
+                <i class="fas fa-arrow-up me-1"></i>
+                +0%
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33,150,243,0.2); color: var(--info);">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-value" id="total-revenue">0 د.أ</div>
+            <div class="stat-label">إجمالي الإيرادات</div>
+            <div class="stat-change positive" id="revenue-change">
+                <i class="fas fa-arrow-up me-1"></i>
+                +0%
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255,152,0,0.2); color: var(--warning);">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-value" id="pending-fees">0 د.أ</div>
+            <div class="stat-label">أتعاب معلقة</div>
+            <div class="stat-change negative" id="pending-change">
+                <i class="fas fa-arrow-down me-1"></i>
+                0%
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row 1 -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="chart-card">
+                <h3 class="chart-header">
+                    <i class="fas fa-chart-pie"></i>
+                    توزيع القضايا حسب الحالة
+                </h3>
+                <div class="chart-container">
+                    <canvas id="casesStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="chart-card">
+                <h3 class="chart-header">
+                    <i class="fas fa-chart-bar"></i>
+                    القضايا حسب المرحلة
+                </h3>
+                <div class="chart-container">
+                    <canvas id="casesStageChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row 2 -->
+    <div class="chart-card">
+        <h3 class="chart-header">
+            <i class="fas fa-chart-line"></i>
+            الإيرادات الشهرية
+        </h3>
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Performance Table -->
+    <div class="table-card">
+        <h3 class="chart-header">
+            <i class="fas fa-trophy"></i>
+            أداء المحامين
+        </h3>
+        <table class="performance-table">
+            <thead>
+                <tr>
+                    <th>المحامي</th>
+                    <th>عدد القضايا</th>
+                    <th>قضايا منتهية</th>
+                    <th>معدل النجاح</th>
+                    <th>الإيرادات</th>
+                </tr>
+            </thead>
+            <tbody id="performance-tbody">
+                <tr>
+                    <td colspan="5" class="text-center text-muted">جاري تحميل البيانات...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
+    const token = localStorage.getItem('mo_token');
+    
+    let currentPeriod = 'month';
+    let chartsInstances = {};
+    
+    // Initialize
+    window.onload = async () => {
+        if (!token) {
+            location.href = 'login.html';
+            return;
+        }
+        
+        await loadReportsData();
+    };
+    
+    // Load Reports Data
+    async function loadReportsData() {
+        try {
+            const res = await fetch(`${API}/api/analytics?period=${currentPeriod}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!res.ok) throw new Error('Failed to load');
+            
+            const data = await res.json();
+            renderReports(data);
+        } catch (e) {
+            console.error('Error:', e);
+            alert('خطأ في تحميل البيانات');
+        }
+    }
+    
+    // Render Reports
+    function renderReports(data) {
+        // Update Stats
+        document.getElementById('total-cases').innerText = data.totalCases || 0;
+        document.getElementById('completed-cases').innerText = data.closedCases || 0;
+        document.getElementById('total-revenue').innerText = (data.totalCollected || 0).toFixed(0) + ' د.أ';
+        document.getElementById('pending-fees').innerText = (data.totalPending || 0).toFixed(0) + ' د.أ';
+        
+        // Render Charts
+        renderCasesStatusChart(data);
+        renderCasesStageChart(data);
+        renderRevenueChart(data);
+        renderPerformanceTable(data);
+    }
+    
+    // Cases Status Pie Chart
+    function renderCasesStatusChart(data) {
+        const ctx = document.getElementById('casesStatusChart');
+        
+        if (chartsInstances.status) {
+            chartsInstances.status.destroy();
+        }
+        
+        chartsInstances.status = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['نشطة', 'مغلقة', 'معلقة'],
+                datasets: [{
+                    data: [
+                        data.activeCases || 0,
+                        data.closedCases || 0,
+                        data.pendingCases || 0
+                    ],
+                    backgroundColor: ['#4caf50', '#9e9e9e', '#ff9800'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        rtl: true,
+                        labels: {
+                            font: { family: 'Cairo', size: 12, weight: 'bold' },
+                            padding: 15
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Cases Stage Bar Chart
+    function renderCasesStageChart(data) {
+        const ctx = document.getElementById('casesStageChart');
+        
+        if (chartsInstances.stage) {
+            chartsInstances.stage.destroy();
+        }
+        
+        const stages = data.casesByStage || {};
+        
+        chartsInstances.stage = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(stages),
+                datasets: [{
+                    label: 'عدد القضايا',
+                    data: Object.values(stages),
+                    backgroundColor: '#64ffda',
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            font: { family: 'Cairo', weight: 'bold' }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { family: 'Cairo', weight: 'bold' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Revenue Line Chart
+    function renderRevenueChart(data) {
+        const ctx = document.getElementById('revenueChart');
+        
+        if (chartsInstances.revenue) {
+            chartsInstances.revenue.destroy();
+        }
+        
+        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 
+                        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        
+        chartsInstances.revenue = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'الإيرادات (دينار)',
+                    data: data.monthlyRevenue || Array(12).fill(0),
+                    borderColor: '#64ffda',
+                    backgroundColor: 'rgba(100,255,218,0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: { family: 'Cairo', size: 12, weight: 'bold' }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            font: { family: 'Cairo', weight: 'bold' }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: { family: 'Cairo', weight: 'bold' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Performance Table
+    function renderPerformanceTable(data) {
+        const tbody = document.getElementById('performance-tbody');
+        tbody.innerHTML = '';
+        
+        const lawyers = data.lawyersPerformance || [];
+        
+        if (lawyers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">لا توجد بيانات</td></tr>';
+            return;
+        }
+        
+        lawyers.forEach(lawyer => {
+            const successRate = lawyer.totalCases > 0 
+                ? ((lawyer.completedCases / lawyer.totalCases) * 100).toFixed(1)
+                : 0;
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${lawyer.name}</strong></td>
+                    <td>${lawyer.totalCases}</td>
+                    <td>${lawyer.completedCases}</td>
+                    <td><span class="badge bg-success">${successRate}%</span></td>
+                    <td><strong>${lawyer.revenue.toFixed(0)} د.أ</strong></td>
+                </tr>
+            `;
+        });
+    }
+    
+    // Change Period
+    function changePeriod(period) {
+        currentPeriod = period;
+        
+        // Update buttons
+        document.querySelectorAll('.date-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // Reload data
+        loadReportsData();
+    }
+    
+    // Export PDF
+    function exportPDF() {
+        alert('🚧 ميزة التصدير لـ PDF قيد التطوير');
+        // يمكن استخدام jsPDF library
+    }
+    
+    // Export Excel
+    function exportExcel() {
+        alert('🚧 ميزة التصدير لـ Excel قيد التطوير');
+        // يمكن استخدام SheetJS library
+    }
+</script>
+
+</body>
+</html>
