@@ -1,8 +1,8 @@
-const CACHE_NAME = 'moakkil-v1.0.0';
+const CACHE_NAME = 'moakkil-v2.0.0';
 const urlsToCache = [
   '/',
+  '/index.html',
   '/dashboard.html',
-  '/login.html',
   '/client.html',
   '/reports.html',
   '/manifest.json',
@@ -17,21 +17,21 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('✅ Cache opened');
+        console.log('✅ Cache opened - v2.0.0');
         return cache.addAll(urlsToCache);
       })
   );
   self.skipWaiting();
 });
 
-// Activate Service Worker
+// Activate Service Worker & Clean old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ Deleting old cache:', cacheName);
+            console.log('🗑️ Clearing old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -41,23 +41,28 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch Strategy: Network First, fallback to Cache
+// Fetch & Cache Strategy (Network First, falling back to cache)
 self.addEventListener('fetch', event => {
+  // لا تقم بتخزين طلبات الـ API في الكاش لضمان جلب البيانات الحية دائماً
+  if (event.request.url.includes('/api/') || event.request.url.includes('workers.dev')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // Clone response
+        // إذا كان الرد صالحاً، احفظ نسخة جديدة في الكاش
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
         const responseClone = response.clone();
-        
-        // Update cache
         caches.open(CACHE_NAME).then(cache => {
           cache.put(event.request, responseClone);
         });
-        
         return response;
       })
       .catch(() => {
-        // If network fails, try cache
+        // في حال انقطاع الإنترنت، جلب النسخة المخزنة
         return caches.match(event.request);
       })
   );
@@ -68,16 +73,16 @@ self.addEventListener('push', event => {
   const data = event.data ? event.data.json() : {};
   
   const options = {
-    body: data.body || 'لديك تحديث جديد',
+    body: data.body || 'لديك تحديث جديد في النظام',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-96.png',
     vibrate: [200, 100, 200],
-    tag: data.tag || 'default',
+    tag: data.tag || 'moakkil-update',
     data: data.data || {},
     actions: [
       {
         action: 'open',
-        title: 'فتح',
+        title: 'فتح التطبيق',
         icon: '/icons/icon-96.png'
       },
       {
@@ -96,21 +101,21 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   
-  if (event.action === 'open') {
+  if (event.action !== 'close') {
     event.waitUntil(
-      clients.openWindow(event.notification.data.url || '/dashboard.html')
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+        // إذا كان التطبيق مفتوحاً، قم بالتركيز عليه
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url === '/' && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // إذا لم يكن مفتوحاً، افتح نافذة جديدة
+        if (clients.openWindow) {
+          return clients.openWindow(event.notification.data.url || '/dashboard.html');
+        }
+      })
     );
   }
 });
-
-// Background Sync
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-data') {
-    event.waitUntil(syncData());
-  }
-});
-
-async function syncData() {
-  // Sync offline changes when online
-  console.log('🔄 Syncing data...');
-}
