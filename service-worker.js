@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moakkil-v3.0.0';
+const CACHE_NAME = 'moakkil-v3.0.1';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -16,7 +16,6 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('✅ Cache opened - v3.0.0');
         return cache.addAll(urlsToCache);
       })
   );
@@ -29,7 +28,6 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ Clearing old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -40,9 +38,16 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // 1. تجاهل أي طلبات من إضافات المتصفح (Chrome Extensions)
+  if (!event.request.url.startsWith('http')) {
+      return;
+  }
+  
+  // 2. تجاهل تخزين بيانات الـ API لضمان جلب البيانات الحية دائماً
   if (event.request.url.includes('/api/') || event.request.url.includes('workers.dev')) {
     return;
   }
+  
   event.respondWith(
     fetch(event.request)
       .then(response => {
