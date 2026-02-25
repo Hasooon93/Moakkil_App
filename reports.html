@@ -2,12 +2,16 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a192f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="موكّل">
     <title>موكّل | التقارير والإحصائيات</title>
     
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -15,246 +19,53 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <style>
-        :root { 
-            --navy: #0a192f; 
-            --accent: #64ffda; 
-            --success: #4caf50;
-            --danger: #f44336;
-            --warning: #ff9800;
-            --info: #2196f3;
-            --shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }
+        :root { --navy: #0a192f; --accent: #64ffda; --success: #4caf50; --danger: #f44336; --warning: #ff9800; --shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        body { font-family: 'Cairo', sans-serif; background: #f5f7fa; padding-bottom: 40px; min-height: 100dvh; }
         
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background: #f5f7fa;
-            padding-bottom: 40px;
-        }
+        .top-nav { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 1000; box-shadow: var(--shadow); }
+        .top-nav-left { display: flex; align-items: center; gap: 15px; }
+        .back-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; text-decoration: none; }
+        .top-nav h5 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+        .export-btn { background: var(--accent); color: var(--navy); border: none; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
         
-        /* ====== Top Navigation ====== */
-        .top-nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 1000;
-            box-shadow: var(--shadow);
-        }
+        .main-content { margin-top: 80px; padding: 0 15px; max-width: 1200px; margin-left: auto; margin-right: auto; }
         
-        .top-nav-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+        .filters-container { background: white; padding: 15px; border-radius: 15px; box-shadow: var(--shadow); margin-bottom: 20px; display: flex; gap: 10px; overflow-x: auto; white-space: nowrap; }
+        .filter-btn { background: #f8f9fa; border: 1px solid #e9ecef; color: #555; padding: 8px 20px; border-radius: 30px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
+        .filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
         
-        .back-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-        }
-        
-        .back-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .top-nav h5 {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
-
-        .export-btn {
-            background: var(--accent);
-            color: var(--navy);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .export-btn:active {
-            transform: scale(0.95);
-        }
-        
-        /* ====== Main Content ====== */
-        .main-content {
-            margin-top: 80px;
-            padding: 0 15px;
-            max-width: 1200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        /* ====== Filters ====== */
-        .filters-container {
-            background: white;
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-        
-        .filter-btn {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            color: #555;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .filter-btn.active {
-            background: var(--navy);
-            color: white;
-            border-color: var(--navy);
-        }
-        
-        /* ====== Stats Row ====== */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .stats-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px 15px;
-            box-shadow: var(--shadow);
-            text-align: center;
-            border-bottom: 4px solid var(--accent);
-        }
-        
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        @media (max-width: 768px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+        .stat-card { background: white; border-radius: 15px; padding: 20px 15px; box-shadow: var(--shadow); text-align: center; border-bottom: 4px solid var(--accent); }
         .stat-card.revenue { border-bottom-color: var(--success); }
         .stat-card.pending { border-bottom-color: var(--warning); }
+        .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--navy); margin-bottom: 5px; }
+        .stat-label { font-size: 0.85rem; color: #666; font-weight: 700; }
         
-        .stat-value {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: var(--navy);
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 0.85rem;
-            color: #666;
-            font-weight: 700;
-        }
-        
-        /* ====== Chart Cards ====== */
-        .chart-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-        }
-        
-        .chart-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 10px;
-        }
-        
-        .chart-header i {
-            color: var(--navy);
-            font-size: 1.2rem;
-        }
-        
-        .chart-header h6 {
-            margin: 0;
-            font-weight: 800;
-            color: var(--navy);
-        }
-        
-        .chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
-        }
+        .chart-card { background: white; border-radius: 15px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .chart-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        .chart-header h6 { margin: 0; font-weight: 800; color: var(--navy); }
+        .chart-container { position: relative; height: 300px; width: 100%; }
 
-        /* ====== Loading ====== */
-        .loading-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.9);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-    <h5 class="mt-3 text-navy fw-bold">جاري تحليل البيانات...</h5>
-</div>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div><h5 class="mt-3 text-navy fw-bold">جاري التحليل...</h5></div>
 
 <div class="top-nav">
     <div class="top-nav-left">
-        <a href="dashboard.html" class="back-btn">
-            <i class="fas fa-arrow-right"></i>
-        </a>
+        <a href="dashboard.html" class="back-btn"><i class="fas fa-arrow-right"></i></a>
         <h5><i class="fas fa-chart-pie me-2"></i>التقارير</h5>
     </div>
-    <button class="export-btn" onclick="exportToExcel()">
-        <i class="fas fa-file-excel me-1"></i> تصدير Excel
-    </button>
+    <button class="export-btn" onclick="exportToExcel()"><i class="fas fa-file-excel me-1"></i> تصدير Excel</button>
 </div>
 
 <div class="main-content">
-    
     <div class="filters-container">
         <button class="filter-btn active" onclick="applyFilter('all', this)">كل الأوقات</button>
         <button class="filter-btn" onclick="applyFilter('year', this)">هذا العام</button>
@@ -262,361 +73,125 @@
     </div>
     
     <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-value" id="val-total-cases">0</div>
-            <div class="stat-label">الملفات المسجلة</div>
-        </div>
-        <div class="stat-card revenue">
-            <div class="stat-value" id="val-total-revenue">0</div>
-            <div class="stat-label">المقبوضات (د.أ)</div>
-        </div>
-        <div class="stat-card pending">
-            <div class="stat-value" id="val-total-pending">0</div>
-            <div class="stat-label">الأتعاب المعلقة (د.أ)</div>
-        </div>
+        <div class="stat-card"><div class="stat-value" id="val-total-cases">0</div><div class="stat-label">الملفات المسجلة</div></div>
+        <div class="stat-card revenue"><div class="stat-value" id="val-total-revenue">0</div><div class="stat-label">المقبوضات (د.أ)</div></div>
+        <div class="stat-card pending"><div class="stat-value" id="val-total-pending">0</div><div class="stat-label">المعلّق (د.أ)</div></div>
     </div>
     
     <div class="row g-3">
-        
         <div class="col-md-6">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <i class="fas fa-balance-scale"></i>
-                    <h6>توزيع القضايا حسب النوع</h6>
-                </div>
-                <div class="chart-container">
-                    <canvas id="typeChart"></canvas>
-                </div>
-            </div>
+            <div class="chart-card"><div class="chart-header"><i class="fas fa-balance-scale"></i><h6>أنواع القضايا</h6></div><div class="chart-container"><canvas id="typeChart"></canvas></div></div>
         </div>
-        
         <div class="col-md-6">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <i class="fas fa-layer-group"></i>
-                    <h6>القضايا حسب المرحلة القانونية</h6>
-                </div>
-                <div class="chart-container">
-                    <canvas id="stageChart"></canvas>
-                </div>
-            </div>
+            <div class="chart-card"><div class="chart-header"><i class="fas fa-layer-group"></i><h6>المراحل القانونية</h6></div><div class="chart-container"><canvas id="stageChart"></canvas></div></div>
         </div>
-        
         <div class="col-12">
-            <div class="chart-card">
-                <div class="chart-header">
-                    <i class="fas fa-users"></i>
-                    <h6>أداء وتوزيع المحامين</h6>
-                </div>
-                <div class="chart-container">
-                    <canvas id="lawyerChart"></canvas>
-                </div>
-            </div>
+            <div class="chart-card"><div class="chart-header"><i class="fas fa-users"></i><h6>أداء المحامين</h6></div><div class="chart-container"><canvas id="lawyerChart"></canvas></div></div>
         </div>
-        
     </div>
 </div>
 
 <script>
-    // ===== Configuration =====
     const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
     const token = localStorage.getItem('mo_token');
     
-    // ===== Global State =====
-    let allCases = [];
-    let allStaff = [];
-    let filteredCases = [];
-    
-    // Chart Instances
-    let typeChartIns = null;
-    let stageChartIns = null;
-    let lawyerChartIns = null;
+    let allCases = [], allStaff = [], filteredCases = [];
+    let typeChartIns = null, stageChartIns = null, lawyerChartIns = null;
 
-    // Common Chart Options
     Chart.defaults.font.family = "'Cairo', sans-serif";
-    Chart.defaults.color = '#666';
-    
-    const pieOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'bottom', labels: { padding: 20, font: { weight: 'bold' } } }
-        }
-    };
+    const pieOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
 
-    // ===== Initialization =====
     window.onload = async () => {
-        if (!token) {
-            location.href = 'login.html';
-            return;
-        }
-        await loadData();
-    };
-
-    // ===== Load Data from API =====
-    async function loadData() {
+        if (!token) { location.href = 'index.html'; return; }
         try {
-            // Fetch Cases & Staff
             const [casesRes, staffRes] = await Promise.all([
                 fetch(`${API}/api/cases`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${API}/api/staff`, { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
-
-            if (!casesRes.ok || !staffRes.ok) throw new Error('Failed to fetch');
-
             allCases = await casesRes.json();
             allStaff = await staffRes.json();
-            
-            // Default filter (All Time)
             applyFilter('all', document.querySelector('.filter-btn.active'));
-            
             document.getElementById('loadingOverlay').style.display = 'none';
-            
-        } catch (e) {
-            console.error(e);
-            alert('حدث خطأ أثناء تحميل البيانات، يرجى المحاولة لاحقاً.');
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-    }
+        } catch (e) { alert('خطأ في التحميل'); }
+    };
 
-    // ===== Apply Time Filter =====
-    function applyFilter(period, btnElement) {
-        // UI Update
+    function applyFilter(period, btn) {
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btnElement.classList.add('active');
-
-        // Logic Update
-        const now = new Date();
-        let startDate = new Date(0); // Epoch = all time
-
-        if (period === 'month') {
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        } else if (period === 'year') {
-            startDate = new Date(now.getFullYear(), 0, 1);
-        }
-
-        // Filter cases based on creation_date
-        filteredCases = allCases.filter(c => {
-            const caseDate = new Date(c.creation_date);
-            return caseDate >= startDate;
-        });
-
-        updateDashboardStats();
-        updateCharts();
+        btn.classList.add('active');
+        const now = new Date(); let startDate = new Date(0);
+        if (period === 'month') startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        else if (period === 'year') startDate = new Date(now.getFullYear(), 0, 1);
+        filteredCases = allCases.filter(c => new Date(c.creation_date) >= startDate);
+        updateDashboardStats(); updateCharts();
     }
 
-    // ===== Update Top Statistics ======
     function updateDashboardStats() {
-        let totalAgreed = 0;
-        let totalPaid = 0;
-
-        filteredCases.forEach(c => {
-            totalAgreed += parseFloat(c.total_agreed_fees) || 0;
-            totalPaid += parseFloat(c.total_paid) || 0;
-        });
-
-        const pending = totalAgreed - totalPaid;
-
-        // Count Animation helper
-        animateValue('val-total-cases', parseInt(document.getElementById('val-total-cases').innerText), filteredCases.length, 500);
-        animateValue('val-total-revenue', parseInt(document.getElementById('val-total-revenue').innerText), totalPaid, 500);
-        animateValue('val-total-pending', parseInt(document.getElementById('val-total-pending').innerText), pending, 500);
+        let totalAgreed = 0, totalPaid = 0;
+        filteredCases.forEach(c => { totalAgreed += parseFloat(c.total_agreed_fees) || 0; totalPaid += parseFloat(c.total_paid) || 0; });
+        document.getElementById('val-total-cases').innerText = filteredCases.length;
+        document.getElementById('val-total-revenue').innerText = totalPaid;
+        document.getElementById('val-total-pending').innerText = totalAgreed - totalPaid;
     }
 
-    function animateValue(id, start, end, duration) {
-        const obj = document.getElementById(id);
-        if (start === end) {
-            obj.innerText = end.toLocaleString('en-US');
-            return;
-        }
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString('en-US');
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            } else {
-                obj.innerText = end.toLocaleString('en-US');
-            }
-        };
-        window.requestAnimationFrame(step);
-    }
-
-    // ===== Update All Charts =====
     function updateCharts() {
-        renderTypeChart();
-        renderStageChart();
-        renderLawyerChart();
-    }
-
-    // ===== 1. Case Type Chart (Doughnut) =====
-    function renderTypeChart() {
-        const typeCounts = {};
-        filteredCases.forEach(c => {
-            const type = c.case_type || 'غير مصنف';
-            typeCounts[type] = (typeCounts[type] || 0) + 1;
-        });
-
-        const ctx = document.getElementById('typeChart').getContext('2d');
+        // Types
+        const typeCounts = {}; filteredCases.forEach(c => { const t = c.case_type || 'غير مصنف'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
         if (typeChartIns) typeChartIns.destroy();
+        typeChartIns = new Chart(document.getElementById('typeChart'), { type: 'doughnut', data: { labels: Object.keys(typeCounts), datasets: [{ data: Object.values(typeCounts), backgroundColor: ['#0a192f', '#64ffda', '#4caf50', '#2196f3', '#ff9800'] }] }, options: pieOptions });
 
-        typeChartIns = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: Object.keys(typeCounts),
-                datasets: [{
-                    data: Object.values(typeCounts),
-                    backgroundColor: ['#0a192f', '#64ffda', '#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#e9ecef'],
-                    borderWidth: 0
-                }]
-            },
-            options: pieOptions
-        });
-    }
-
-    // ===== 2. Case Stage Chart (Pie) =====
-    function renderStageChart() {
-        const stageCounts = {};
-        filteredCases.forEach(c => {
-            const stage = c.case_stage || 'غير محدد';
-            stageCounts[stage] = (stageCounts[stage] || 0) + 1;
-        });
-
-        const ctx = document.getElementById('stageChart').getContext('2d');
+        // Stages
+        const stageCounts = {}; filteredCases.forEach(c => { const s = c.case_stage || 'غير محدد'; stageCounts[s] = (stageCounts[s] || 0) + 1; });
         if (stageChartIns) stageChartIns.destroy();
+        stageChartIns = new Chart(document.getElementById('stageChart'), { type: 'pie', data: { labels: Object.keys(stageCounts), datasets: [{ data: Object.values(stageCounts), backgroundColor: ['#ff9800', '#2196f3', '#4caf50', '#f44336', '#9c27b0'] }] }, options: pieOptions });
 
-        stageChartIns = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: Object.keys(stageCounts),
-                datasets: [{
-                    data: Object.values(stageCounts),
-                    backgroundColor: ['#ff9800', '#2196f3', '#4caf50', '#f44336', '#9c27b0', '#0a192f', '#64ffda'],
-                    borderWidth: 0
-                }]
-            },
-            options: pieOptions
-        });
-    }
-
-    // ===== 3. Lawyers Performance Chart (Bar) =====
-    function renderLawyerChart() {
-        // Map staff IDs to names
-        const staffMap = {};
-        allStaff.forEach(s => { staffMap[s.id] = s.full_name; });
-
+        // Lawyers
         const lawyerStats = {};
-        
         filteredCases.forEach(c => {
-            const lawyerName = c.assigned_lawyer_id ? (staffMap[c.assigned_lawyer_id] || 'محامي محذوف') : 'غير مسند';
-            
-            if (!lawyerStats[lawyerName]) {
-                lawyerStats[lawyerName] = { cases: 0, revenue: 0 };
-            }
-            
-            lawyerStats[lawyerName].cases += 1;
-            lawyerStats[lawyerName].revenue += parseFloat(c.total_paid) || 0;
+            const name = c.assigned_lawyer_id ? (allStaff.find(s=>s.id===c.assigned_lawyer_id)?.full_name || 'محذوف') : 'غير مسند';
+            if (!lawyerStats[name]) lawyerStats[name] = { cases: 0, revenue: 0 };
+            lawyerStats[name].cases += 1; lawyerStats[name].revenue += parseFloat(c.total_paid) || 0;
         });
-
-        const labels = Object.keys(lawyerStats);
-        const casesData = labels.map(l => lawyerStats[l].cases);
-        const revenueData = labels.map(l => lawyerStats[l].revenue);
-
-        const ctx = document.getElementById('lawyerChart').getContext('2d');
         if (lawyerChartIns) lawyerChartIns.destroy();
-
-        lawyerChartIns = new Chart(ctx, {
+        lawyerChartIns = new Chart(document.getElementById('lawyerChart'), {
             type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'عدد القضايا',
-                        data: casesData,
-                        backgroundColor: '#0a192f',
-                        borderRadius: 5,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'المقبوضات (د.أ)',
-                        data: revenueData,
-                        backgroundColor: '#64ffda',
-                        borderRadius: 5,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { position: 'top', labels: { font: { weight: 'bold' } } }
-                },
-                scales: {
-                    y: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'العدد' } },
-                    y1: { type: 'linear', display: true, position: 'left', grid: { drawOnChartArea: false }, title: { display: true, text: 'المبلغ' } }
-                }
-            }
+            data: { labels: Object.keys(lawyerStats), datasets: [
+                { label: 'عدد القضايا', data: Object.values(lawyerStats).map(l=>l.cases), backgroundColor: '#0a192f', yAxisID: 'y' },
+                { label: 'المقبوضات', data: Object.values(lawyerStats).map(l=>l.revenue), backgroundColor: '#64ffda', yAxisID: 'y1' }
+            ]},
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { position: 'right' }, y1: { position: 'left' } } }
         });
     }
 
-    // ===== Export to Excel (CSV Format) =====
     function exportToExcel() {
-        if(filteredCases.length === 0) {
-            alert('لا توجد بيانات لتصديرها في الفترة المحددة.');
-            return;
-        }
-
-        // Create mapping for staff names
-        const staffMap = {};
-        allStaff.forEach(s => { staffMap[s.id] = s.full_name; });
-
-        // Build CSV Header
-        let csvContent = '\uFEFF'; // BOM for Arabic support in Excel
-        csvContent += 'رقم الملف الداخلي,تاريخ الإضافة,اسم الموكل,هاتف الموكل,نوع الدعوى,الخصم,المحكمة,القاضي,المرحلة,المحامي المسؤول,الأتعاب المتفق عليها,المبلغ المدفوع,المبلغ المتبقي,حالة الملف\n';
-
-        // Build Rows
+        let csv = '\uFEFFرقم الملف,الموكل,الهاتف,نوع الدعوى,قيمة المطالبة,المحكمة,القاضي,المحامي,الأتعاب,المدفوع,المتبقي,الحالة\n';
         filteredCases.forEach(c => {
-            const date = new Date(c.creation_date).toLocaleDateString('ar-JO');
-            const type = c.case_type || 'غير محدد';
-            const court = c.current_court || 'غير محدد';
-            const judge = c.current_judge || 'غير محدد';
-            const opponent = c.opponent_name || 'غير محدد';
-            const lawyer = c.assigned_lawyer_id ? (staffMap[c.assigned_lawyer_id] || 'غير معروف') : 'غير مسند';
-            
-            const agreed = parseFloat(c.total_agreed_fees) || 0;
-            const paid = parseFloat(c.total_paid) || 0;
-            const remaining = agreed - paid;
-            
-            const status = c.case_status === 'active' ? 'نشط' : (c.case_status === 'closed' ? 'مغلق' : 'معلق');
-
-            // Escape fields containing commas by wrapping in quotes
-            const row = [
-                `"${c.case_internal_id}"`, `"${date}"`, `"${c.client_name}"`, `"${c.client_phone}"`,
-                `"${type}"`, `"${opponent}"`, `"${court}"`, `"${judge}"`, `"${c.case_stage || ''}"`,
-                `"${lawyer}"`, agreed, paid, remaining, `"${status}"`
-            ].join(',');
-
-            csvContent += row + '\n';
+            const lawyer = c.assigned_lawyer_id ? (allStaff.find(s=>s.id===c.assigned_lawyer_id)?.full_name || '') : '';
+            const agreed = parseFloat(c.total_agreed_fees) || 0; const paid = parseFloat(c.total_paid) || 0;
+            csv += `"${c.case_internal_id}","${c.client_name}","${c.client_phone}","${c.case_type||''}","${c.claim_amount||0}","${c.current_court||''}","${c.current_judge||''}","${lawyer}",${agreed},${paid},${agreed-paid},"${c.case_status}"\n`;
         });
-
-        // Trigger Download
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        // Dynamic file name based on active filter
-        const activeFilterText = document.querySelector('.filter-btn.active').innerText.replace(/\s+/g, '_');
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', `تقرير_موكّل_${activeFilterText}.csv`);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        link.download = `Reports_${new Date().toISOString().split('T')[0]}.csv`;
         link.click();
-        document.body.removeChild(link);
+    }
+</script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('✅ Service Worker Registered'))
+                .catch(err => console.log('❌ Service Worker Error:', err));
+        });
+    }
+</script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('✅ Service Worker Registered'))
+                .catch(err => console.log('❌ Service Worker Error:', err));
+        });
     }
 </script>
 </body>

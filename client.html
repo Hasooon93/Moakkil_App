@@ -2,14 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a192f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>موكّل | متابعة قضيتي</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
         :root { 
             --navy: #0a192f; 
@@ -21,12 +26,19 @@
             --shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
         
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
         body { 
             font-family: 'Cairo', sans-serif; 
             background: #f5f7fa;
-            min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
+            margin: 0;
+            padding: 0;
         }
 
         /* ====== Header ====== */
@@ -77,8 +89,8 @@
         .form-control {
             border: 2px solid #e9ecef;
             border-radius: 12px;
-            padding: 12px 15px;
-            font-size: 1rem;
+            padding: 14px 15px;
+            font-size: 16px; /* لمنع تقريب سفاري التلقائي */
             margin-bottom: 15px;
             transition: all 0.3s;
             text-align: center;
@@ -95,7 +107,7 @@
             color: var(--navy);
             border: none;
             border-radius: 12px;
-            padding: 12px;
+            padding: 14px;
             font-weight: 800;
             font-size: 1.1rem;
             width: 100%;
@@ -114,20 +126,18 @@
             box-shadow: var(--shadow);
             margin-bottom: 20px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
             border-top: 5px solid var(--accent);
         }
 
         .case-title {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #666;
             margin-bottom: 5px;
             font-weight: 600;
         }
 
         .client-name {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             color: var(--navy);
             font-weight: 800;
             margin-bottom: 20px;
@@ -148,9 +158,7 @@
             border: 1px solid #e9ecef;
         }
 
-        .info-box.full-width {
-            grid-column: span 2;
-        }
+        .info-box.full-width { grid-column: span 2; }
 
         .info-label {
             font-size: 0.8rem;
@@ -161,15 +169,33 @@
             gap: 6px;
         }
 
-        .info-value {
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--navy);
+        .info-value { font-size: 1rem; font-weight: 700; color: var(--navy); }
+        .info-value.highlight { color: var(--danger); font-size: 1.1rem; }
+
+        /* ====== Installments Section ====== */
+        .installments-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
         }
 
-        .info-value.highlight {
-            color: var(--danger);
-            font-size: 1.1rem;
+        .installment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 12px;
+            background: #fffcf5;
+            border: 1px solid #ffecb3;
+            margin-bottom: 10px;
+        }
+
+        .installment-item.paid {
+            background: #f5fff5;
+            border-color: #c8e6c9;
+            opacity: 0.8;
         }
 
         /* ====== Timeline ====== */
@@ -199,10 +225,7 @@
             border-right: 2px solid #e9ecef;
         }
 
-        .timeline-item:last-child {
-            border-right: none;
-            padding-bottom: 0;
-        }
+        .timeline-item:last-child { border-right: none; padding-bottom: 0; }
 
         .timeline-icon {
             position: absolute;
@@ -226,58 +249,15 @@
             border: 1px solid #e9ecef;
         }
 
-        .log-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 8px;
-        }
+        .log-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+        .log-title { font-weight: 800; color: var(--navy); font-size: 1.05rem; }
+        .log-date { font-size: 0.8rem; color: #999; font-weight: 600; }
+        .log-details { font-size: 0.9rem; color: #555; line-height: 1.6; }
 
-        .log-title {
-            font-weight: 800;
-            color: var(--navy);
-            font-size: 1.05rem;
-        }
-
-        .log-date {
-            font-size: 0.8rem;
-            color: #999;
-            font-weight: 600;
-        }
-
-        .log-details {
-            font-size: 0.9rem;
-            color: #555;
-            line-height: 1.6;
-        }
-
-        .log-financial {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
-        }
-
-        /* ====== Utilities ====== */
         .d-none { display: none !important; }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 1.5rem;
-            height: 1.5rem;
-            border: 3px solid rgba(10, 25, 47, 0.3);
-            border-radius: 50%;
-            border-top-color: var(--navy);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .loading-spinner { display: inline-block; width: 1.5rem; height: 1.5rem; border: 3px solid rgba(10, 25, 47, 0.3); border-radius: 50%; border-top-color: var(--navy); animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -292,18 +272,14 @@
         <div id="alertBox" class="alert d-none text-center" style="border-radius: 12px; font-weight: 700;"></div>
 
         <div id="loginStep" class="login-card">
-            <div class="login-icon">
-                <i class="fas fa-search-location"></i>
-            </div>
+            <div class="login-icon"><i class="fas fa-search-location"></i></div>
             <h3 class="mb-2 fw-bold" style="color: var(--navy);">استعلام عن قضية</h3>
-            <p class="text-muted mb-4 small">أدخل رقم الملف والرمز السري (PIN) الخاص بك للوصول إلى التحديثات</p>
+            <p class="text-muted mb-4 small">أدخل رقم الملف والرمز السري (PIN)</p>
             
-            <form id="accessForm" onsubmit="event.preventDefault(); fetchCaseData();">
-                <input type="text" id="caseId" class="form-control" placeholder="رقم الملف (مثال: 123/2026)" required>
-                <input type="password" id="accessPin" class="form-control" placeholder="الرمز السري (PIN)" pattern="[0-9]*" inputmode="numeric" required>
-                <button type="submit" class="btn btn-primary mt-2" id="submitBtn">
-                    <span>عرض التفاصيل</span>
-                </button>
+            <form onsubmit="event.preventDefault(); fetchCaseData();">
+                <input type="text" id="caseId" class="form-control" placeholder="رقم الملف الداخلي" required>
+                <input type="password" id="accessPin" class="form-control" placeholder="الرمز السري (PIN)" inputmode="numeric" required>
+                <button type="submit" class="btn btn-primary mt-2" id="submitBtn">عرض التفاصيل</button>
             </form>
         </div>
 
@@ -339,16 +315,16 @@
                         <div class="info-value highlight" id="v_next_hearing"></div>
                     </div>
                 </div>
-                
-                <button class="btn btn-outline-secondary btn-sm mt-3 w-100 rounded-pill fw-bold" onclick="logout()">
-                    <i class="fas fa-sign-out-alt me-1"></i> خروج
-                </button>
+                <button class="btn btn-outline-secondary btn-sm mt-3 w-100 rounded-pill fw-bold" onclick="logout()"><i class="fas fa-sign-out-alt me-1"></i> خروج</button>
+            </div>
+
+            <div id="installmentsContainer" class="installments-container d-none">
+                <div class="timeline-title mb-3 border-0 pb-0"><i class="fas fa-money-check-alt text-warning"></i> الدفعات المستحقة</div>
+                <div id="installmentsList"></div>
             </div>
 
             <div class="timeline-container">
-                <div class="timeline-title">
-                    <i class="fas fa-history text-accent"></i> السجل الإجرائي
-                </div>
+                <div class="timeline-title"><i class="fas fa-history text-accent"></i> السجل الإجرائي</div>
                 <div id="timelineList"></div>
             </div>
 
@@ -358,21 +334,14 @@
     <script>
         const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
 
-        // Auto-fill from URL parameters if available
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const cid = urlParams.get('id');
-            const pin = urlParams.get('pin');
-            
+            const cid = urlParams.get('id'); const pin = urlParams.get('pin');
             if (cid) document.getElementById('caseId').value = cid;
             if (pin) document.getElementById('accessPin').value = pin;
-            
-            if (cid && pin) {
-                fetchCaseData();
-            }
+            if (cid && pin) fetchCaseData();
         };
 
-        // ===== Fetch Case Data =====
         async function fetchCaseData() {
             const caseId = document.getElementById('caseId').value.trim();
             const pin = document.getElementById('accessPin').value.trim();
@@ -381,47 +350,32 @@
 
             if (!caseId || !pin) return;
 
-            // Loading state
-            btn.innerHTML = '<div class="loading-spinner"></div>';
-            btn.disabled = true;
-            hideAlert();
+            btn.innerHTML = '<div class="loading-spinner"></div>'; btn.disabled = true; hideAlert();
 
             try {
                 const res = await fetch(`${API}/client/access`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ case_id: caseId, pin: pin })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ case_id: caseId, pin: pin })
                 });
 
                 if (res.ok) {
                     const data = await res.json();
-                    renderCaseDetails(data.case, data.updates);
+                    renderCaseDetails(data.case, data.updates, data.installments);
                 } else {
                     showAlert('رقم الملف أو الرمز السري غير صحيح.', 'danger');
                 }
-            } catch (e) {
-                showAlert('حدث خطأ في الاتصال بالسيرفر. حاول مرة أخرى.', 'danger');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+            } catch (e) { showAlert('حدث خطأ في الاتصال بالسيرفر.', 'danger'); } 
+            finally { btn.innerHTML = originalText; btn.disabled = false; }
         }
 
-        // ===== Render Data =====
-        function renderCaseDetails(caseData, updates) {
-            // Hide login, show details
+        function renderCaseDetails(caseData, updates, installments) {
             document.getElementById('loginStep').classList.add('d-none');
             document.getElementById('detailsStep').classList.remove('d-none');
             window.scrollTo(0, 0);
 
-            // Populate Info
             document.getElementById('v_case_id').innerText = caseData.case_internal_id;
             document.getElementById('v_client_name').innerText = caseData.client_name;
-            
-            // Status translation
             const statusMap = { 'active': 'نشط', 'closed': 'مغلق', 'pending': 'معلق' };
             document.getElementById('v_status').innerText = statusMap[caseData.case_status] || caseData.case_status;
-            
             document.getElementById('v_stage').innerText = caseData.case_stage || 'قيد المتابعة';
             document.getElementById('v_type').innerText = caseData.case_type || 'غير مصنف';
             document.getElementById('v_court').innerText = caseData.current_court || 'غير محدد';
@@ -432,7 +386,29 @@
             } else {
                 document.getElementById('v_next_hearing').innerText = 'غير محدد حالياً';
                 document.getElementById('v_next_hearing').classList.remove('highlight');
-                document.getElementById('v_next_hearing').style.color = '#666';
+            }
+
+            // Render Installments
+            const instContainer = document.getElementById('installmentsContainer');
+            const instList = document.getElementById('installmentsList');
+            instList.innerHTML = '';
+            
+            if (installments && installments.length > 0) {
+                instContainer.classList.remove('d-none');
+                installments.forEach(inst => {
+                    const isPaid = inst.status === 'paid';
+                    instList.innerHTML += `
+                        <div class="installment-item ${isPaid ? 'paid' : ''}">
+                            <div>
+                                <div class="fw-bold text-navy fs-5">${inst.amount} د.أ</div>
+                                <div class="small text-muted"><i class="fas fa-calendar-alt me-1"></i> الاستحقاق: ${formatDate(inst.due_date)}</div>
+                            </div>
+                            <span class="badge ${isPaid ? 'bg-success' : 'bg-warning text-dark'}">${isPaid ? 'مسددة' : 'معلقة'}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                instContainer.classList.add('d-none');
             }
 
             // Render Timeline
@@ -440,90 +416,38 @@
             timelineContainer.innerHTML = '';
 
             if (!updates || updates.length === 0) {
-                timelineContainer.innerHTML = '<p class="text-center text-muted py-4">لا توجد تحديثات مسجلة حتى الآن.</p>';
-                return;
+                timelineContainer.innerHTML = '<p class="text-center text-muted py-4">لا توجد تحديثات مسجلة.</p>'; return;
             }
 
             updates.forEach(log => {
-                // Determine icon and color based on type
-                let icon = 'fa-check';
-                let color = 'var(--navy)';
-                let bgClass = '';
+                let icon = 'fa-check'; let color = 'var(--navy)';
+                if (log.update_type === 'hearing') { icon = 'fa-gavel'; color = 'var(--info)'; } 
+                else if (log.update_type === 'admin') { icon = 'fa-file-alt'; color = 'var(--warning)'; } 
+                else if (log.update_type === 'payment_in') { icon = 'fa-money-bill-wave'; color = 'var(--success)'; }
 
-                if (log.update_type === 'hearing') {
-                    icon = 'fa-gavel'; color = 'var(--info)';
-                } else if (log.update_type === 'admin') {
-                    icon = 'fa-file-alt'; color = 'var(--warning)';
-                } else if (log.update_type === 'payment_in') {
-                    icon = 'fa-money-bill-wave'; color = 'var(--success)'; bgClass = 'bg-success text-white';
-                } else if (log.update_type === 'payment_out') {
-                    icon = 'fa-file-invoice-dollar'; color = 'var(--danger)'; bgClass = 'bg-danger text-white';
-                }
-
-                // Format Details (Smart Updates Support)
                 const formattedDetails = log.details ? log.details.replace(/\n/g, '<br>') : '';
-
-                // Build HTML
-                let html = `
-                    <div class="timeline-item">
-                        <div class="timeline-icon" style="background-color: ${color};">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="log-header">
-                                <div class="log-title">${log.title || 'تحديث'}</div>
-                                <div class="log-date">${formatDateTime(log.timestamp)}</div>
-                            </div>
-                            ${formattedDetails ? `<div class="log-details mt-2">${formattedDetails}</div>` : ''}
-                `;
-
-                // Add Financial Badges if exist
-                if (log.financial_in > 0 || log.financial_out > 0) {
-                    html += `<div class="log-financial">`;
-                    if (log.financial_in > 0) html += `<span class="badge bg-success px-2 py-1">دفعة مقبوضة: ${log.financial_in}</span>`;
-                    if (log.financial_out > 0) html += `<span class="badge bg-danger px-2 py-1">رسوم مدفوعة: ${log.financial_out}</span>`;
-                    html += `</div>`;
-                }
-
-                html += `</div></div>`;
+                let html = `<div class="timeline-item"><div class="timeline-icon" style="background-color: ${color};"><i class="fas ${icon}"></i></div><div class="timeline-content"><div class="log-header"><div class="log-title">${log.title || 'تحديث'}</div><div class="log-date">${formatDateTime(log.timestamp)}</div></div>${formattedDetails ? `<div class="log-details mt-2">${formattedDetails}</div>` : ''}</div></div>`;
                 timelineContainer.innerHTML += html;
             });
         }
 
-        // ===== Utilities =====
         function showAlert(msg, type) {
             const alertBox = document.getElementById('alertBox');
-            alertBox.className = `alert alert-${type} mt-3`;
-            alertBox.innerText = msg;
-            alertBox.classList.remove('d-none');
+            alertBox.className = `alert alert-${type} mt-3`; alertBox.innerText = msg; alertBox.classList.remove('d-none');
         }
-
-        function hideAlert() {
-            document.getElementById('alertBox').classList.add('d-none');
-        }
-
+        function hideAlert() { document.getElementById('alertBox').classList.add('d-none'); }
         function logout() {
-            // Reset form and UI
-            document.getElementById('caseId').value = '';
-            document.getElementById('accessPin').value = '';
-            document.getElementById('detailsStep').classList.add('d-none');
-            document.getElementById('loginStep').classList.remove('d-none');
-            hideAlert();
-            
-            // Remove URL params cleanly
-            window.history.replaceState({}, document.title, window.location.pathname);
+            document.getElementById('caseId').value = ''; document.getElementById('accessPin').value = '';
+            document.getElementById('detailsStep').classList.add('d-none'); document.getElementById('loginStep').classList.remove('d-none');
+            hideAlert(); window.history.replaceState({}, document.title, window.location.pathname);
         }
-
         function formatDate(dateStr) {
             if (!dateStr) return '';
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return new Date(dateStr).toLocaleDateString('ar-JO', options);
+            return new Date(dateStr).toLocaleDateString('ar-JO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }
-
         function formatDateTime(dateStr) {
             if (!dateStr) return '';
-            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-            return new Date(dateStr).toLocaleDateString('ar-JO', options);
+            return new Date(dateStr).toLocaleDateString('ar-JO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
     </script>
 </body>

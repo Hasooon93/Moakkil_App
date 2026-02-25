@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moakkil-v2.0.0';
+const CACHE_NAME = 'moakkil-v3.0.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -12,19 +12,17 @@ const urlsToCache = [
   'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap'
 ];
 
-// Install Service Worker
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('✅ Cache opened - v2.0.0');
+        console.log('✅ Cache opened - v3.0.0');
         return cache.addAll(urlsToCache);
       })
   );
   self.skipWaiting();
 });
 
-// Activate Service Worker & Clean old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -41,17 +39,13 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch & Cache Strategy (Network First, falling back to cache)
 self.addEventListener('fetch', event => {
-  // لا تقم بتخزين طلبات الـ API في الكاش لضمان جلب البيانات الحية دائماً
   if (event.request.url.includes('/api/') || event.request.url.includes('workers.dev')) {
     return;
   }
-
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        // إذا كان الرد صالحاً، احفظ نسخة جديدة في الكاش
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
@@ -62,60 +56,7 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(() => {
-        // في حال انقطاع الإنترنت، جلب النسخة المخزنة
         return caches.match(event.request);
       })
   );
-});
-
-// Push Notifications
-self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : {};
-  
-  const options = {
-    body: data.body || 'لديك تحديث جديد في النظام',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-96.png',
-    vibrate: [200, 100, 200],
-    tag: data.tag || 'moakkil-update',
-    data: data.data || {},
-    actions: [
-      {
-        action: 'open',
-        title: 'فتح التطبيق',
-        icon: '/icons/icon-96.png'
-      },
-      {
-        action: 'close',
-        title: 'إغلاق'
-      }
-    ]
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'موكّل', options)
-  );
-});
-
-// Notification Click
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  
-  if (event.action !== 'close') {
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-        // إذا كان التطبيق مفتوحاً، قم بالتركيز عليه
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          if (client.url === '/' && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        // إذا لم يكن مفتوحاً، افتح نافذة جديدة
-        if (clients.openWindow) {
-          return clients.openWindow(event.notification.data.url || '/dashboard.html');
-        }
-      })
-    );
-  }
 });
