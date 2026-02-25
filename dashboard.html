@@ -2,822 +2,121 @@
 <html lang="ar" dir="rtl">
 <head>
 <link rel="manifest" href="/manifest.json">
-
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="موكّل">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
-
 <meta name="mobile-web-app-capable" content="yes">
-   
- <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <meta name="theme-color" content="#0a192f">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>موكّل | نظام إدارة القضايا</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root { 
-            --navy: #0a192f; 
-            --accent: #64ffda; 
-            --success: #4caf50;
-            --danger: #f44336;
-            --warning: #ff9800;
-            --info: #2196f3;
-            --purple: #9c27b0;
-            --shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background: #f5f7fa;
-            padding-bottom: 80px;
-            overflow-x: hidden;
-        }
-        
-        /* ====== Top Navigation ====== */
-        .top-nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 1000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-        
-        .top-nav-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .back-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .back-btn.show {
-            display: flex;
-        }
-        
-        .back-btn:active {
-            transform: scale(0.95);
-            background: rgba(255,255,255,0.2);
-        }
-        
-        .top-nav h5 {
-            margin: 0;
-            font-size: 1.3rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .notification-badge {
-            position: relative;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-        }
-        
-        .notification-badge:active {
-            transform: scale(0.95);
-        }
-        
-        .notification-badge .badge {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            font-size: 0.65rem;
-            padding: 3px 6px;
-            min-width: 18px;
-        }
-        
-        .user-avatar {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            color: var(--navy);
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid rgba(255,255,255,0.3);
-        }
-        
-        .user-avatar:active {
-            transform: scale(0.95);
-        }
-        
-        /* ====== Main Content ====== */
-        .main-content {
-            margin-top: 70px;
-            padding: 15px;
-            animation: fadeIn 0.4s;
-        }
-        
-        /* ====== Stats Cards ====== */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 18px;
-            box-shadow: var(--shadow);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, transparent 0%, rgba(100,255,218,0.05) 100%);
-            pointer-events: none;
-        }
-        
-        .stat-card:active {
-            transform: scale(0.98);
-        }
-        
-        .stat-card .icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            margin-bottom: 5px;
-        }
-        
-        .stat-card .value {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: var(--navy);
-            line-height: 1;
-        }
-        
-        .stat-card .label {
-            font-size: 0.9rem;
-            color: #666;
-            font-weight: 600;
-        }
-        
-        /* ====== Section Cards ====== */
-        .section-card {
-            background: white;
-            border-radius: 15px;
-            padding: 18px;
-            margin-bottom: 15px;
-            box-shadow: var(--shadow);
-        }
-        
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
-        .section-header h6 {
-            margin: 0;
-            font-weight: 700;
-            color: var(--navy);
-            font-size: 1.1rem;
-        }
-        
-        .section-header .btn-link {
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        
-        /* ====== Case Card ====== */
-        .case-card {
-            background: white;
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 12px;
-            border-right: 4px solid var(--accent);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .case-card:active {
-            transform: translateX(-5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
-        }
-        
-        .case-card.status-closed {
-            border-right-color: #999;
-            opacity: 0.75;
-        }
-        
-        .case-card.urgent {
-            border-right-color: var(--danger);
-            background: #fff5f5;
-        }
-        
-        .case-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 12px;
-        }
-        
-        .case-number {
-            font-weight: 800;
-            font-size: 1.15rem;
-            color: var(--navy);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .case-info {
-            display: flex;
-            flex-direction: column;
-            gap: 7px;
-            font-size: 0.9rem;
-        }
-        
-        .info-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #555;
-        }
-        
-        .info-row i {
-            width: 18px;
-            color: #999;
-            font-size: 0.9rem;
-        }
-        
-        .info-row strong {
-            color: var(--navy);
-        }
-        
-        /* ====== Financial Summary ====== */
-        .financial-summary {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 15px 0;
-        }
-        
-        .fin-item {
-            text-align: center;
-            padding: 12px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-            border-radius: 10px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .fin-item .amount {
-            font-size: 1.2rem;
-            font-weight: 800;
-            display: block;
-            line-height: 1.2;
-        }
-        
-        .fin-item .label {
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 5px;
-            font-weight: 600;
-        }
-        
-        /* ====== Task Card ====== */
-        .task-card {
-            background: white;
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 10px;
-            border-right: 3px solid var(--info);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .task-card:active {
-            transform: translateX(-3px);
-        }
-        
-        .task-card.priority-high {
-            border-right-color: var(--danger);
-            background: #fff9f9;
-        }
-        
-        .task-card.completed {
-            opacity: 0.6;
-        }
-        
-        .task-card.completed .task-title {
-            text-decoration: line-through;
-        }
-        
-        .task-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 10px;
-        }
-        
-        .task-title {
-            font-weight: 700;
-            color: var(--navy);
-            font-size: 1rem;
-        }
-        
-        .task-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        
-        .task-actions button {
-            font-size: 0.75rem;
-            padding: 4px 12px;
-        }
-        
-        /* ====== Badges ====== */
-        .badge-custom {
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        /* ====== Bottom Navigation ====== */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 70px;
-            background: white;
-            border-top: 1px solid #e0e0e0;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 1000;
-            box-shadow: 0 -3px 15px rgba(0,0,0,0.08);
-        }
-        
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            color: #999;
-            text-decoration: none;
-            font-size: 0.7rem;
-            padding: 10px 14px;
-            border-radius: 10px;
-            transition: all 0.3s;
-            font-weight: 600;
-        }
-        
-        .nav-item i {
-            font-size: 1.4rem;
-            transition: all 0.3s;
-        }
-        
-        .nav-item.active {
-            color: var(--accent);
-            background: rgba(100, 255, 218, 0.15);
-        }
-        
-        .nav-item.active i {
-            transform: scale(1.1);
-        }
-        
-        /* ====== Floating Action Button ====== */
-        .fab {
-            position: fixed;
-            bottom: 85px;
-            left: 20px;
-            width: 62px;
-            height: 62px;
-            background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.6rem;
-            color: var(--navy);
-            box-shadow: 0 6px 20px rgba(100, 255, 218, 0.5);
-            cursor: pointer;
-            z-index: 999;
-            border: none;
-            transition: all 0.3s;
-        }
-        
-        .fab:active {
-            transform: scale(0.95);
-        }
-        
-        /* ====== View Sections ====== */
-        .view {
-            display: none;
-        }
-        
-        .view.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* ====== Search Bar ====== */
-        .search-bar {
-            position: relative;
-            margin-bottom: 15px;
-        }
-        
-        .search-bar input {
-            width: 100%;
-            padding: 14px 18px 14px 50px;
-            border: 2px solid #e9ecef;
-            border-radius: 30px;
-            font-size: 0.95rem;
-            transition: all 0.3s;
-        }
-        
-        .search-bar input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(100,255,218,0.1);
-        }
-        
-        .search-bar i {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #999;
-            font-size: 1.1rem;
-        }
-        
-        /* ====== Modals ====== */
-        .modal-content {
-            border-radius: 20px;
-            border: none;
-            overflow: hidden;
-        }
-        
-        .modal-header {
-            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
-            color: white;
-            padding: 20px 25px;
-        }
-        
-        .modal-header .modal-title {
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-        
-        .modal-body {
-            padding: 25px;
-        }
-        
-        .btn-close-white {
-            filter: brightness(0) invert(1);
-        }
-        
-        /* ====== Quick Actions Menu ====== */
-        .quick-actions {
-            display: none;
-            position: fixed;
-            bottom: 155px;
-            left: 20px;
-            flex-direction: column;
-            gap: 12px;
-            z-index: 998;
-        }
-        
-        .quick-actions.show {
-            display: flex;
-            animation: slideUp 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-        
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        .quick-action-btn {
-            background: white;
-            border: none;
-            padding: 14px 22px;
-            border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 700;
-            color: var(--navy);
-            white-space: nowrap;
-            transition: all 0.3s;
-        }
-        
-        .quick-action-btn:active {
-            transform: translateX(-5px);
-        }
-        
-        .quick-action-btn i {
-            font-size: 1.2rem;
-        }
-        
-        /* ====== Alert Notifications ====== */
-        .alert-container {
-            position: fixed;
-            top: 75px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            width: 90%;
-            max-width: 400px;
-        }
-        
-        .alert-custom {
-            background: white;
-            border-radius: 15px;
-            padding: 16px 18px;
-            margin-bottom: 10px;
-            box-shadow: 0 6px 25px rgba(0,0,0,0.2);
-            animation: slideDown 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        @keyframes slideDown {
-            from { transform: translateY(-30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        
-        .alert-custom i {
-            font-size: 1.3rem;
-        }
-        
-        /* ====== Loading Spinner ====== */
-        .loading {
-            text-align: center;
-            padding: 40px;
-        }
-        
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--accent);
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* ====== Empty State ====== */
-        .empty-state {
-            text-align: center;
-            padding: 50px 20px;
-            color: #999;
-        }
-        
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.4;
-        }
-        
-        .empty-state p {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-        
-        /* ====== Timeline Item ====== */
-        .timeline-item {
-            position: relative;
-            padding-right: 35px;
-            padding-bottom: 25px;
-            border-right: 2px solid #e9ecef;
-        }
-        
-        .timeline-item:last-child {
-            border-right: none;
-            padding-bottom: 0;
-        }
-        
-        .timeline-icon {
-            position: absolute;
-            right: -12px;
-            top: 0;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--navy);
-            font-size: 0.7rem;
-            box-shadow: 0 0 0 4px white;
-        }
-        
-        .timeline-content {
-            background: #f8f9fa;
-            padding: 14px;
-            border-radius: 10px;
-        }
-        
-        .timeline-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 8px;
-        }
-        
-        .timeline-title {
-            font-weight: 700;
-            color: var(--navy);
-            font-size: 0.95rem;
-        }
-        
-        .timeline-date {
-            font-size: 0.75rem;
-            color: #999;
-        }
-        
-        /* ====== Form Enhancements ====== */
-        .form-label {
-            font-weight: 700;
-            color: var(--navy);
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .form-control, .form-select {
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 0.95rem;
-            transition: all 0.3s;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(100,255,218,0.1);
-        }
-        
-        /* ====== Button Enhancements ====== */
-        .btn {
-            border-radius: 10px;
-            padding: 10px 20px;
-            font-weight: 700;
-            transition: all 0.3s;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%);
-            border: none;
-            color: var(--navy);
-        }
-        
-        .btn-primary:active {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(100,255,218,0.4);
-        }
-        
-        /* ====== Progress Bar ====== */
-        .progress-bar-custom {
-            height: 8px;
-            background: #e9ecef;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--success) 0%, #66bb6a 100%);
-            border-radius: 10px;
-            transition: width 0.6s ease;
-        }
-        
-        /* ====== Desktop Responsive ====== */
-        @media (min-width: 768px) {
-            .main-content {
-                max-width: 1200px;
-                margin-left: auto;
-                margin-right: auto;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-            
-            .bottom-nav {
-                display: none;
-            }
-            
-            .fab {
-                bottom: 30px;
-            }
-            
-            .quick-actions {
-                bottom: 100px;
-            }
-        }
-        
-        /* ====== Print Styles ====== */
-        @media print {
-            .top-nav, .bottom-nav, .fab, .quick-actions {
-                display: none !important;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="theme-color" content="#0a192f">
+<title>موكّل | نظام إدارة القضايا</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root { --navy: #0a192f; --accent: #64ffda; --success: #4caf50; --danger: #f44336; --warning: #ff9800; --info: #2196f3; --shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Cairo', sans-serif; background: #f5f7fa; padding-bottom: 80px; overflow-x: hidden; }
+    
+    /* Top Nav */
+    .top-nav { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    .top-nav-left { display: flex; align-items: center; gap: 15px; }
+    .back-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: all 0.3s; }
+    .back-btn.show { display: flex; }
+    .top-nav h5 { margin: 0; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .user-menu { display: flex; align-items: center; gap: 12px; }
+    .notification-badge { position: relative; cursor: pointer; width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .notification-badge .badge { position: absolute; top: 5px; right: 5px; font-size: 0.65rem; padding: 3px 6px; }
+    .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--navy); font-size: 1.1rem; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); }
+    
+    /* Main Content */
+    .main-content { margin-top: 70px; padding: 15px; animation: fadeIn 0.4s; }
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: white; border-radius: 15px; padding: 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+    .stat-card .icon { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin-bottom: 5px; }
+    .stat-card .value { font-size: 1.8rem; font-weight: 800; color: var(--navy); line-height: 1; }
+    .stat-card .label { font-size: 0.9rem; color: #666; font-weight: 600; }
+    .section-card { background: white; border-radius: 15px; padding: 18px; margin-bottom: 15px; box-shadow: var(--shadow); }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    .section-header h6 { margin: 0; font-weight: 700; color: var(--navy); font-size: 1.1rem; }
+    .section-header .btn-link { text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+    
+    /* Cards (Cases, Tasks, Clients) */
+    .case-card, .client-card, .task-card, .appt-card { background: white; border-radius: 12px; padding: 14px; margin-bottom: 12px; border-right: 4px solid var(--accent); box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.3s; }
+    .case-card:active, .client-card:active, .task-card:active, .appt-card:active { transform: translateX(-5px); box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+    .case-card.status-closed { border-right-color: #999; opacity: 0.75; }
+    .case-card.urgent { border-right-color: var(--danger); background: #fff5f5; }
+    .client-card { border-right-color: var(--info); }
+    .appt-card { border-right-color: var(--warning); }
+    .case-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
+    .case-number { font-weight: 800; font-size: 1.15rem; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+    .info-row { display: flex; align-items: center; gap: 10px; color: #555; margin-bottom: 7px; font-size: 0.9rem; }
+    .info-row i { width: 18px; color: #999; font-size: 0.9rem; }
+    .info-row strong { color: var(--navy); }
+    .badge-custom { padding: 5px 12px; border-radius: 15px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    
+    /* Financial */
+    .financial-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 15px 0; }
+    .fin-item { text-align: center; padding: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-radius: 10px; border: 1px solid #e9ecef; }
+    .fin-item .amount { font-size: 1.2rem; font-weight: 800; display: block; line-height: 1.2; }
+    .fin-item .label { font-size: 0.75rem; color: #666; margin-top: 5px; font-weight: 600; }
+    .progress-bar-custom { height: 8px; background: #e9ecef; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--success) 0%, #66bb6a 100%); transition: width 0.6s ease; }
+    
+    /* Bottom Nav */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: white; border-top: 1px solid #e0e0e0; display: flex; justify-content: space-between; padding: 0 10px; align-items: center; z-index: 1000; box-shadow: 0 -3px 15px rgba(0,0,0,0.08); }
+    .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; color: #999; text-decoration: none; font-size: 0.65rem; padding: 10px 8px; border-radius: 10px; transition: all 0.3s; font-weight: 600; flex: 1; }
+    .nav-item i { font-size: 1.3rem; transition: all 0.3s; }
+    .nav-item.active { color: var(--accent); background: rgba(100, 255, 218, 0.15); }
+    .nav-item.active i { transform: scale(1.1); }
+    
+    /* FAB */
+    .fab { position: fixed; bottom: 85px; left: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; color: var(--navy); box-shadow: 0 6px 20px rgba(100, 255, 218, 0.5); cursor: pointer; z-index: 999; border: none; transition: all 0.3s; }
+    .quick-actions { display: none; position: fixed; bottom: 155px; left: 20px; flex-direction: column; gap: 12px; z-index: 998; }
+    .quick-actions.show { display: flex; animation: slideUp 0.3s; }
+    .quick-action-btn { background: white; border: none; padding: 14px 22px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 12px; font-weight: 700; color: var(--navy); white-space: nowrap; transition: all 0.3s; }
+    
+    /* Views & Modals */
+    .view { display: none; }
+    .view.active { display: block; animation: fadeIn 0.3s; }
+    .search-bar { position: relative; margin-bottom: 15px; }
+    .search-bar input { width: 100%; padding: 14px 18px 14px 50px; border: 2px solid #e9ecef; border-radius: 30px; font-size: 0.95rem; }
+    .search-bar input:focus { outline: none; border-color: var(--accent); }
+    .search-bar i { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1.1rem; }
+    .modal-content { border-radius: 20px; border: none; overflow: hidden; }
+    .modal-header { background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; padding: 20px 25px; }
+    .form-control, .form-select { border: 2px solid #e9ecef; border-radius: 10px; padding: 10px 14px; font-size: 0.95rem; }
+    .form-control:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+    .btn { border-radius: 10px; padding: 10px 20px; font-weight: 700; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%); border: none; color: var(--navy); }
+    
+    /* Timeline (Agenda & History) */
+    .timeline-item { position: relative; padding-right: 35px; padding-bottom: 25px; border-right: 2px solid #e9ecef; }
+    .timeline-item:last-child { border-right: none; padding-bottom: 0; }
+    .timeline-icon { position: absolute; right: -12px; top: 0; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; box-shadow: 0 0 0 4px white; }
+    .timeline-content { background: #f8f9fa; padding: 14px; border-radius: 10px; }
+    .timeline-title { font-weight: 700; color: var(--navy); font-size: 0.95rem; margin-bottom: 5px; }
+    .timeline-date { font-size: 0.75rem; color: #999; }
+    
+    @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    .loading { text-align: center; padding: 40px; }
+    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 0.8s linear infinite; margin: 0 auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 50px 20px; color: #999; }
+    .empty-state i { font-size: 4rem; margin-bottom: 20px; opacity: 0.4; }
+    
+    .alert-container { position: fixed; top: 75px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; }
+    .alert-custom { background: white; border-radius: 15px; padding: 16px; margin-bottom: 10px; box-shadow: 0 6px 25px rgba(0,0,0,0.2); animation: slideDown 0.4s; display: flex; align-items: center; gap: 12px; }
+    @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
 </head>
 <body>
 
 <div class="top-nav">
     <div class="top-nav-left">
-        <button class="back-btn" id="backBtn" onclick="goBack()">
-            <i class="fas fa-arrow-right"></i>
-        </button>
+        <button class="back-btn" id="backBtn" onclick="goBack()"><i class="fas fa-arrow-right"></i></button>
         <h5 id="pageTitle">⚖️ موكّل</h5>
     </div>
     <div class="user-menu">
@@ -834,41 +133,29 @@
 <div class="main-content">
     
     <div id="home-view" class="view active">
-        
         <div class="section-card" style="background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; margin-bottom: 20px;">
             <h6 class="mb-2" style="color: var(--accent); font-size: 0.9rem;">مرحباً،</h6>
-            <h4 class="mb-0" id="welcome-name" style="font-weight: 800;">المستخدم</h4>
+            <h4 class="mb-0" id="welcome-name" style="font-weight: 800;">...</h4>
         </div>
         
         <div class="stats-grid">
             <div class="stat-card" onclick="switchView('cases')">
-                <div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);">
-                    <i class="fas fa-folder-open"></i>
-                </div>
+                <div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);"><i class="fas fa-folder-open"></i></div>
                 <div class="value" id="stat-total-cases">0</div>
-                <div class="label">إجمالي القضايا</div>
+                <div class="label">القضايا</div>
             </div>
-            
-            <div class="stat-card" onclick="switchView('cases')">
-                <div class="icon" style="background: rgba(76,175,80,0.2); color: var(--success);">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="value" id="stat-active-cases">0</div>
-                <div class="label">قضايا نشطة</div>
+            <div class="stat-card" onclick="switchView('clients')">
+                <div class="icon" style="background: rgba(33,150,243,0.2); color: var(--info);"><i class="fas fa-users"></i></div>
+                <div class="value" id="stat-total-clients">0</div>
+                <div class="label">الموكلين</div>
             </div>
-            
-            <div class="stat-card">
-                <div class="icon" style="background: rgba(255,152,0,0.2); color: var(--warning);">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
+            <div class="stat-card" onclick="switchView('agenda')">
+                <div class="icon" style="background: rgba(255,152,0,0.2); color: var(--warning);"><i class="fas fa-calendar-alt"></i></div>
                 <div class="value" id="stat-upcoming-hearings">0</div>
                 <div class="label">جلسات قادمة</div>
             </div>
-            
             <div class="stat-card" onclick="switchView('tasks')">
-                <div class="icon" style="background: rgba(33,150,243,0.2); color: var(--info);">
-                    <i class="fas fa-tasks"></i>
-                </div>
+                <div class="icon" style="background: rgba(76,175,80,0.2); color: var(--success);"><i class="fas fa-tasks"></i></div>
                 <div class="value" id="stat-pending-tasks">0</div>
                 <div class="label">مهام معلقة</div>
             </div>
@@ -876,78 +163,69 @@
         
         <div class="section-card">
             <div class="section-header">
-                <h6><i class="fas fa-chart-line me-2"></i>الملخص المالي</h6>
+                <h6><i class="fas fa-chart-line me-2"></i>الملخص المالي العام</h6>
                 <span class="badge bg-success" id="collection-rate">0%</span>
             </div>
             <div class="financial-summary">
-                <div class="fin-item">
-                    <span class="amount text-primary" id="total-agreed">0</span>
-                    <span class="label">الأتعاب المتفق عليها</span>
-                </div>
-                <div class="fin-item">
-                    <span class="amount text-success" id="total-collected">0</span>
-                    <span class="label">المحصّل</span>
-                </div>
-                <div class="fin-item">
-                    <span class="amount text-danger" id="total-pending">0</span>
-                    <span class="label">المعلّق</span>
-                </div>
+                <div class="fin-item"><span class="amount text-primary" id="total-agreed">0</span><span class="label">الأتعاب</span></div>
+                <div class="fin-item"><span class="amount text-success" id="total-collected">0</span><span class="label">المحصّل</span></div>
+                <div class="fin-item"><span class="amount text-danger" id="total-pending">0</span><span class="label">المعلّق</span></div>
             </div>
-            <div class="progress-bar-custom">
-                <div class="progress-fill" id="collection-progress" style="width: 0%"></div>
-            </div>
+            <div class="progress-bar-custom"><div class="progress-fill" id="collection-progress" style="width: 0%"></div></div>
         </div>
-        
-        <div class="section-card">
-            <div class="section-header">
-                <h6><i class="fas fa-gavel me-2"></i>الجلسات القادمة</h6>
-                <a href="#" onclick="switchView('cases'); return false;" class="btn-link">
-                    عرض الكل <i class="fas fa-arrow-left ms-1"></i>
-                </a>
-            </div>
-            <div id="upcoming-hearings-list"></div>
-        </div>
-        
-        <div class="section-card">
-            <div class="section-header">
-                <h6><i class="fas fa-clipboard-list me-2"></i>المهام العاجلة</h6>
-                <a href="#" onclick="switchView('tasks'); return false;" class="btn-link">
-                    عرض الكل <i class="fas fa-arrow-left ms-1"></i>
-                </a>
-            </div>
-            <div id="recent-tasks-list"></div>
-        </div>
-        
     </div>
     
     <div id="cases-view" class="view">
         <div class="search-bar">
-            <input type="text" id="search-cases" placeholder="ابحث باسم الموكل، الخصم، رقم الملف، المحكمة، أو القاضي..." onkeyup="filterCases()">
+            <input type="text" id="search-cases" placeholder="بحث برقم الملف، الموكل، الخصم، القاضي..." onkeyup="filterCases()">
             <i class="fas fa-search"></i>
         </div>
-        
         <div class="section-card">
             <div class="section-header">
-                <h6>سجل القضايا (<span id="cases-count">0</span>)</h6>
+                <h6>القضايا (<span id="cases-count">0</span>)</h6>
                 <select class="form-select form-select-sm" style="width: auto; border-radius: 20px;" onchange="filterCasesByStatus(this.value)">
-                    <option value="all">جميع الحالات</option>
-                    <option value="active">نشطة</option>
-                    <option value="closed">مغلقة</option>
-                    <option value="pending">معلقة</option>
+                    <option value="all">الكل</option><option value="active">نشطة</option><option value="closed">مغلقة</option>
                 </select>
             </div>
             <div id="cases-list"></div>
         </div>
     </div>
-    
+
+    <div id="clients-view" class="view">
+        <div class="search-bar">
+            <input type="text" id="search-clients" placeholder="ابحث باسم الموكل أو الهاتف..." onkeyup="filterClients()">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="section-card">
+            <div class="section-header">
+                <h6>سجل الموكلين (<span id="clients-count">0</span>)</h6>
+            </div>
+            <div id="clients-list"></div>
+        </div>
+    </div>
+
+    <div id="agenda-view" class="view">
+        <div class="section-card" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <button class="btn btn-outline-primary btn-sm" onclick="changeAgendaDate(-1)"><i class="fas fa-chevron-right"></i> السابق</button>
+                <div class="text-center">
+                    <h5 id="agenda-date-display" class="mb-0 fw-bold text-navy">اليوم</h5>
+                    <small id="agenda-date-sub" class="text-muted"></small>
+                </div>
+                <button class="btn btn-outline-primary btn-sm" onclick="changeAgendaDate(1)">التالي <i class="fas fa-chevron-left"></i></button>
+            </div>
+            <div id="agenda-timeline">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
     <div id="tasks-view" class="view">
         <div class="section-card">
             <div class="section-header">
-                <h6>قائمة المهام (<span id="tasks-count">0</span>)</h6>
+                <h6>المهام (<span id="tasks-count">0</span>)</h6>
                 <select class="form-select form-select-sm" style="width: auto; border-radius: 20px;" onchange="filterTasksByStatus(this.value)">
-                    <option value="all">الكل</option>
-                    <option value="pending">معلقة</option>
-                    <option value="completed">مكتملة</option>
+                    <option value="pending">معلقة</option><option value="completed">مكتملة</option><option value="all">الكل</option>
                 </select>
             </div>
             <div id="tasks-list"></div>
@@ -962,40 +240,12 @@
         </div>
         
         <div class="section-card">
-            <h6 class="mb-3" style="color: var(--navy); font-weight: 800;">إحصائيات الأداء</h6>
-            <div class="row g-2">
-                <div class="col-6">
-                    <div class="fin-item">
-                        <span class="amount text-primary" id="user-cases-count">0</span>
-                        <span class="label">قضايا مسندة</span>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="fin-item">
-                        <span class="amount text-success" id="user-completed-tasks">0</span>
-                        <span class="label">مهام منجزة</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="section-card">
             <div class="list-group list-group-flush">
                 <a href="reports.html" class="list-group-item list-group-item-action border-0 py-3">
-                    <i class="fas fa-chart-line me-3 text-warning"></i> 
-                    <strong>التقارير والإحصائيات</strong>
-                </a>
-                <a href="#" class="list-group-item list-group-item-action border-0 py-3" onclick="exportData(); return false;">
-                    <i class="fas fa-download me-3 text-primary"></i> 
-                    <strong>تصدير البيانات</strong>
-                </a>
-                <a href="#" class="list-group-item list-group-item-action border-0 py-3" onclick="refreshData(); return false;">
-                    <i class="fas fa-sync me-3 text-info"></i> 
-                    <strong>تحديث البيانات</strong>
+                    <i class="fas fa-chart-line me-3 text-warning"></i> <strong>التقارير والإحصائيات</strong>
                 </a>
                 <a href="#" class="list-group-item list-group-item-action border-0 py-3 text-danger" onclick="logout(); return false;">
-                    <i class="fas fa-sign-out-alt me-3"></i> 
-                    <strong>تسجيل الخروج</strong>
+                    <i class="fas fa-sign-out-alt me-3"></i> <strong>تسجيل الخروج</strong>
                 </a>
             </div>
         </div>
@@ -1003,242 +253,150 @@
 
 </div>
 
-<button class="fab" id="fabBtn" onclick="toggleQuickActions()">
-    <i class="fas fa-plus" id="fabIcon"></i>
-</button>
-
+<button class="fab" id="fabBtn" onclick="toggleQuickActions()"><i class="fas fa-plus" id="fabIcon"></i></button>
 <div class="quick-actions" id="quickActions">
-    <button class="quick-action-btn" onclick="openNewCaseModal()">
-        <i class="fas fa-folder-plus"></i>
-        <span>ملف جديد</span>
-    </button>
-    <button class="quick-action-btn" onclick="openNewTaskModal()">
-        <i class="fas fa-tasks"></i>
-        <span>مهمة جديدة</span>
-    </button>
-    <button class="quick-action-btn" onclick="openQuickPaymentModal()">
-        <i class="fas fa-money-bill-wave"></i>
-        <span>إضافة دفعة</span>
-    </button>
+    <button class="quick-action-btn" onclick="openNewCaseModal()"><i class="fas fa-folder-plus text-primary"></i><span>ملف جديد</span></button>
+    <button class="quick-action-btn" onclick="openNewAppointmentModal()"><i class="fas fa-calendar-plus text-warning"></i><span>موعد جديد</span></button>
+    <button class="quick-action-btn" onclick="openNewTaskModal()"><i class="fas fa-tasks text-info"></i><span>مهمة جديدة</span></button>
 </div>
 
 <div class="bottom-nav">
-    <a href="#" class="nav-item active" onclick="switchView('home'); return false;">
-        <i class="fas fa-home"></i>
-        <span>الرئيسية</span>
-    </a>
-    <a href="#" class="nav-item" onclick="switchView('cases'); return false;">
-        <i class="fas fa-folder-open"></i>
-        <span>القضايا</span>
-    </a>
-    <a href="#" class="nav-item" onclick="switchView('tasks'); return false;">
-        <i class="fas fa-clipboard-list"></i>
-        <span>المهام</span>
-    </a>
-    <a href="#" class="nav-item" onclick="switchView('profile'); return false;">
-        <i class="fas fa-user"></i>
-        <span>الملف</span>
-    </a>
+    <a href="#" class="nav-item active" onclick="switchView('home'); return false;"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+    <a href="#" class="nav-item" onclick="switchView('cases'); return false;"><i class="fas fa-folder-open"></i><span>القضايا</span></a>
+    <a href="#" class="nav-item" onclick="switchView('agenda'); return false;"><i class="fas fa-calendar-day"></i><span>الأجندة</span></a>
+    <a href="#" class="nav-item" onclick="switchView('clients'); return false;"><i class="fas fa-users"></i><span>الموكلين</span></a>
+    <a href="#" class="nav-item" onclick="switchView('profile'); return false;"><i class="fas fa-user"></i><span>الملف</span></a>
 </div>
 
 <div class="modal fade" id="newCaseModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-folder-plus me-2"></i>فتح ملف جديد (موسع)</h5>
+                <h5 class="modal-title"><i class="fas fa-folder-plus me-2"></i>فتح ملف جديد</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="newCaseForm">
-                    <h6 class="mb-3 text-primary border-bottom pb-2">المعلومات الأساسية</h6>
+                    <h6 class="mb-3 text-primary border-bottom pb-2">بيانات الموكل (ارتباط ذكي)</h6>
+                    <div class="mb-3">
+                        <label class="form-label">هاتف الموكل *</label>
+                        <input type="tel" name="client_phone" id="client_phone_input" class="form-control" placeholder="07XXXXXXXX" list="clientsPhoneList" onchange="autoFillClient()" required>
+                        <datalist id="clientsPhoneList"></datalist>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">اسم الموكل *</label>
+                        <input type="text" name="client_name" id="client_name_input" class="form-control" placeholder="سيتم جلبه تلقائياً أو أدخل اسماً جديداً" required>
+                    </div>
+
+                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">المعلومات الأساسية والقانونية</h6>
                     <div class="mb-3">
                         <label class="form-label">رقم الملف الداخلي *</label>
                         <input type="text" name="case_internal_id" class="form-control" placeholder="مثال: 123/2026" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">اسم الموكل *</label>
-                        <input type="text" name="client_name" class="form-control" placeholder="الاسم الكامل" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">هاتف الموكل *</label>
-                        <input type="tel" name="client_phone" class="form-control" placeholder="07XXXXXXXX" required>
-                    </div>
-
-                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">التفاصيل القانونية</h6>
                     <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">نوع الدعوى</label>
-                            <input type="text" name="case_type" class="form-control" placeholder="مثال: صلح حقوق">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">قيمة المطالبة (دينار)</label>
-                            <input type="number" name="claim_amount" class="form-control" value="0" step="0.01" min="0">
-                        </div>
+                        <div class="col-6"><label class="form-label">نوع الدعوى</label><input type="text" name="case_type" class="form-control"></div>
+                        <div class="col-6"><label class="form-label">المحكمة</label><input type="text" name="current_court" class="form-control"></div>
                     </div>
                     <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">رقم الوكالة</label>
-                            <input type="text" name="poa_number" class="form-control" placeholder="رقم الوكالة العامة/الخاصة">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">تاريخ الوكالة</label>
-                            <input type="date" name="poa_date" class="form-control">
-                        </div>
+                        <div class="col-6"><label class="form-label">اسم الخصم</label><input type="text" name="opponent_name" class="form-control"></div>
+                        <div class="col-6"><label class="form-label">القاضي</label><input type="text" name="current_judge" class="form-control"></div>
                     </div>
                     
-                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">بيانات المحكمة والخصوم</h6>
+                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">المالية والمتابعة</h6>
                     <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">اسم الخصم</label>
-                            <input type="text" name="opponent_name" class="form-control">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">محامي الخصم</label>
-                            <input type="text" name="opponent_lawyer" class="form-control">
-                        </div>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">المحكمة</label>
-                            <input type="text" name="current_court" class="form-control" placeholder="مثال: صلح عمان">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">القاضي</label>
-                            <input type="text" name="current_judge" class="form-control">
-                        </div>
-                    </div>
-                    
-                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">المتابعة والمالية</h6>
-                    <div class="mb-3">
-                        <label class="form-label">مرحلة القضية</label>
-                        <select name="case_stage" class="form-select">
-                            <option value="">اختر...</option>
-                            <option value="جديد">جديد</option>
-                            <option value="قيد النظر">قيد النظر</option>
-                            <option value="مرافعات">مرافعات</option>
-                            <option value="حكم">حكم</option>
-                            <option value="استئناف">استئناف</option>
-                            <option value="تمييز">تمييز</option>
-                            <option value="تنفيذ">تنفيذ</option>
-                        </select>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">الأتعاب الكلية (دينار) *</label>
-                            <input type="number" name="total_agreed_fees" class="form-control" value="0" step="0.01" min="0">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">أول جلسة</label>
-                            <input type="date" name="next_hearing_date" class="form-control">
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">مكان الملف الورقي</label>
-                        <input type="text" name="file_location" class="form-control" placeholder="مثال: درج 3، أرشيف 2026">
+                        <div class="col-6"><label class="form-label">الأتعاب الكلية *</label><input type="number" name="total_agreed_fees" class="form-control" value="0" required></div>
+                        <div class="col-6"><label class="form-label">أول جلسة</label><input type="date" name="next_hearing_date" class="form-control"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">المحامي المسؤول</label>
-                        <select name="assigned_lawyer_id" class="form-select" id="lawyerSelect">
-                            <option value="">اختر المحامي</option>
-                        </select>
+                        <select name="assigned_lawyer_id" class="form-select" id="lawyerSelect"><option value="">اختر</option></select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="saveCase()">
-                    <i class="fas fa-save me-1"></i> حفظ الملف
-                </button>
+                <button type="button" class="btn btn-primary" onclick="saveCase()">حفظ الملف</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="newTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-scrollable">
+<div class="modal fade" id="newApptModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-tasks me-2"></i>مهمة جديدة</h5>
+                <h5 class="modal-title"><i class="fas fa-calendar-plus me-2"></i>موعد جديد</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="newTaskForm">
+                <form id="newApptForm">
                     <div class="mb-3">
-                        <label class="form-label">عنوان المهمة *</label>
-                        <input type="text" id="task_title" class="form-control" placeholder="مثال: مراجعة المحكمة" required>
+                        <label class="form-label">هاتف الموكل / المراجع *</label>
+                        <input type="tel" id="appt_client_phone" class="form-control" list="clientsPhoneList" onchange="autoFillApptClient()" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">إسناد إلى</label>
-                        <select id="task_assign" class="form-select">
-                            <option value="">اختر الموظف</option>
-                        </select>
+                        <label class="form-label">اسم الشخص *</label>
+                        <input type="text" id="appt_client_name" class="form-control" required>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label">تاريخ الاستحقاق</label>
-                            <input type="date" id="task_due_date" class="form-control">
+                            <label class="form-label">تاريخ ووقت الموعد *</label>
+                            <input type="datetime-local" id="appt_date" class="form-control" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label">الأولوية</label>
-                            <select id="task_priority" class="form-select">
-                                <option value="normal">عادية</option>
-                                <option value="high">عالية ⚠️</option>
+                            <label class="form-label">نوع الموعد</label>
+                            <select id="appt_type" class="form-select">
+                                <option value="استشارة قانونية">استشارة قانونية</option>
+                                <option value="اجتماع موكل">اجتماع موكل</option>
+                                <option value="توقيع اتفاقية">توقيع اتفاقية</option>
+                                <option value="أخرى">أخرى</option>
                             </select>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">تفاصيل</label>
-                        <textarea id="task_notes" class="form-control" rows="4" placeholder="أي ملاحظات إضافية..."></textarea>
+                        <label class="form-label">ملاحظات التحضير</label>
+                        <textarea id="appt_notes" class="form-control" rows="2"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" onclick="saveTask()">
-                    <i class="fas fa-check me-1"></i> حفظ المهمة
-                </button>
+                <button type="button" class="btn btn-primary" onclick="saveAppointment()">تأكيد الموعد</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="quickPaymentModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="clientDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-money-bill-wave me-2"></i>إضافة دفعة سريعة</h5>
+                <h5 class="modal-title"><i class="fas fa-user-circle me-2"></i>ملف الموكل</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <form id="quickPaymentForm">
-                    <div class="mb-3">
-                        <label class="form-label">اختر القضية *</label>
-                        <select id="payment_case_id" class="form-select" required>
-                            <option value="">اختر من القائمة</option>
-                        </select>
+            <div class="modal-body bg-light">
+                <div class="section-card text-center mb-3">
+                    <h4 id="cd_name" class="fw-bold text-navy mb-1"></h4>
+                    <p id="cd_phone" class="text-muted mb-3"></p>
+                    <div class="financial-summary mb-0">
+                        <div class="fin-item"><span class="amount text-primary" id="cd_total">0</span><span class="label">إجمالي المطالبات</span></div>
+                        <div class="fin-item"><span class="amount text-success" id="cd_paid">0</span><span class="label">إجمالي المدفوع</span></div>
+                        <div class="fin-item"><span class="amount text-danger" id="cd_rem">0</span><span class="label">الرصيد المتبقي</span></div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">نوع الدفعة *</label>
-                        <select id="payment_type" class="form-select" required onchange="togglePaymentFields()">
-                            <option value="in">💰 قبض أتعاب من الموكل</option>
-                            <option value="out">💸 دفع رسوم/مصاريف</option>
-                        </select>
+                </div>
+                
+                <h6 class="fw-bold mb-2 ps-1 text-navy"><i class="fas fa-folder-open me-2"></i>قضايا الموكل</h6>
+                <div id="cd_cases_list" class="mb-4"></div>
+                
+                <h6 class="fw-bold mb-2 ps-1 text-navy"><i class="fas fa-file-archive me-2"></i>المحفظة الرقمية (هويات ووكالات)</h6>
+                <div class="section-card border-warning">
+                    <div class="input-group mb-3">
+                        <input type="text" id="cd_file_name" class="form-control" placeholder="اسم المستند">
+                        <input type="url" id="cd_file_url" class="form-control" placeholder="الرابط (Drive)">
+                        <button class="btn btn-success" onclick="uploadClientDoc()"><i class="fas fa-upload"></i></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">المبلغ (دينار) *</label>
-                        <input type="number" id="payment_amount" class="form-control" placeholder="0.00" step="0.01" min="0" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">ملاحظات</label>
-                        <textarea id="payment_notes" class="form-control" rows="2" placeholder="مثال: دفعة أولى، رسوم محكمة..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-success" onclick="saveQuickPayment()">
-                    <i class="fas fa-check me-1"></i> تسجيل الدفعة
-                </button>
+                    <div id="cd_docs_list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1248,1639 +406,288 @@
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-folder-open me-2"></i>
-                    إدارة الملف: <span id="modal_case_id"></span>
-                </h5>
+                <h5 class="modal-title"><i class="fas fa-folder-open me-2"></i>الملف: <span id="modal_case_id"></span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" style="overflow-y: auto; padding: 20px;">
-                
+            <div class="modal-body" style="background:#f5f7fa;">
                 <div class="section-card">
                     <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>معلومات الملف</h6>
                     <div id="modal_case_details"></div>
                 </div>
-                
                 <div class="section-card">
-                    <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>الملخص المالي</h6>
+                    <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>المالية</h6>
                     <div class="financial-summary" id="modal_financial"></div>
                 </div>
                 
-                <div class="section-card">
-                    <h6 class="mb-3"><i class="fas fa-link me-2"></i>رابط الموكل</h6>
-                    <div class="input-group">
-                        <input type="text" id="modal_client_link" class="form-control" readonly>
-                        <button class="btn btn-outline-secondary" onclick="copyClientLink()">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                        <button class="btn btn-primary" onclick="shareClientLink()">
-                            <i class="fas fa-share-alt me-1"></i> مشاركة
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="section-card" style="border: 2px solid var(--accent);">
-                    <h6 class="mb-3"><i class="fas fa-magic me-2 text-primary"></i>تحديث ذكي للملف</h6>
+                <div class="section-card border border-primary">
+                    <h6 class="mb-3"><i class="fas fa-magic me-2 text-primary"></i>تحديث ذكي</h6>
                     <input type="hidden" id="update_case_id">
-                    <div class="row g-2">
-                        <div class="col-12">
-                            <select id="update_type" class="form-select" onchange="toggleFinancialInputs()">
-                                <option value="hearing">📋 جلسة محكمة / إجراء قانوني</option>
-                                <option value="admin">📄 إجراء إداري داخلي</option>
-                                <option value="payment_in">💰 قبض أتعاب</option>
-                                <option value="payment_out">💸 دفع رسوم/مصاريف</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <input type="text" id="update_title" class="form-control" placeholder="عنوان التحديث (مثال: حضور الجلسة وتأجيلها)">
-                        </div>
-                        
-                        <div class="col-6" id="court_field">
-                            <input type="text" id="update_court" class="form-control" placeholder="المحكمة (اتركه فارغاً إن لم تتغير)">
-                        </div>
-                        <div class="col-6" id="judge_field">
-                            <input type="text" id="update_judge" class="form-control" placeholder="القاضي (اتركه فارغاً إن لم يتغير)">
-                        </div>
-                        <div class="col-6" id="next_hearing_field">
-                            <input type="date" id="update_next_hearing" class="form-control" title="تاريخ الجلسة القادمة">
-                        </div>
-                        <div class="col-6" id="stage_field">
-                            <select id="update_stage" class="form-select">
-                                <option value="">المرحلة (اتركها إن لم تتغير)</option>
-                                <option value="قيد النظر">قيد النظر</option>
-                                <option value="مرافعات">مرافعات</option>
-                                <option value="حكم">حكم</option>
-                                <option value="استئناف">استئناف</option>
-                                <option value="تمييز">تمييز</option>
-                                <option value="تنفيذ">تنفيذ</option>
-                                <option value="مغلق">مغلق</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-6" id="payment_in_field" style="display: none;">
-                            <input type="number" id="update_in" class="form-control" placeholder="💰 مقبوض (دينار)" step="0.01" min="0">
-                        </div>
-                        <div class="col-6" id="payment_out_field" style="display: none;">
-                            <input type="number" id="update_out" class="form-control" placeholder="💸 مدفوع (دينار)" step="0.01" min="0">
-                        </div>
-                        
-                        <div class="col-12">
-                            <textarea id="update_details" class="form-control" rows="3" placeholder="ملاحظات وتفاصيل التحديث... (سيقوم النظام بدمج التغييرات الذكية هنا تلقائياً)"></textarea>
-                        </div>
-                        <div class="col-12">
-                            <button class="btn btn-primary w-100" onclick="saveUpdate()">
-                                <i class="fas fa-save me-1"></i> حفظ التحديث
-                            </button>
+                    <select id="update_type" class="form-select mb-2" onchange="toggleFinancialInputs()">
+                        <option value="hearing">📋 جلسة / إجراء</option><option value="admin">📄 إداري</option>
+                        <option value="payment_in">💰 قبض أتعاب</option><option value="payment_out">💸 دفع رسوم</option>
+                    </select>
+                    <input type="text" id="update_title" class="form-control mb-2" placeholder="العنوان">
+                    <div class="row g-2 mb-2" id="smart_fields">
+                        <div class="col-6"><input type="date" id="update_next_hearing" class="form-control" title="الجلسة القادمة"></div>
+                        <div class="col-6">
+                            <select id="update_stage" class="form-select"><option value="">المرحلة (إن تغيرت)</option>
+                            <option value="قيد النظر">قيد النظر</option><option value="حكم">حكم</option><option value="مغلق">مغلق</option></select>
                         </div>
                     </div>
-                </div>
-                
-                <div class="section-card">
-                    <h6 class="mb-3"><i class="fas fa-history me-2"></i>سجل الأحداث والتحديثات</h6>
-                    <div id="modal_timeline"></div>
-                </div>
-                
-                <div class="section-card">
-                    <h6 class="mb-3"><i class="fas fa-file-archive me-2"></i>الأرشيف الرقمي</h6>
-                    <div class="row g-2 mb-3">
-                        <div class="col-12">
-                            <input type="text" id="file_name" class="form-control" placeholder="اسم المستند (مثال: صحيفة الدعوى)">
-                        </div>
-                        <div class="col-8">
-                            <input type="url" id="file_url" class="form-control" placeholder="رابط Google Drive أو أي رابط آخر">
-                        </div>
-                        <div class="col-4">
-                            <button class="btn btn-success w-100" onclick="addFile()">
-                                <i class="fas fa-upload me-1"></i> رفع
-                            </button>
-                        </div>
+                    <div class="row g-2 mb-2" id="financial_fields" style="display:none;">
+                        <div class="col-12"><input type="number" id="update_amount" class="form-control" placeholder="المبلغ" step="0.01"></div>
                     </div>
-                    <div id="modal_files_list"></div>
+                    <textarea id="update_details" class="form-control mb-2" rows="2" placeholder="ملاحظات..."></textarea>
+                    <button class="btn btn-primary w-100" onclick="saveUpdate()"><i class="fas fa-save me-1"></i> حفظ</button>
                 </div>
                 
+                <div class="section-card"><h6 class="mb-3"><i class="fas fa-history me-2"></i>السجل</h6><div id="modal_timeline"></div></div>
             </div>
         </div>
     </div>
 </div>
 
+<div class="modal fade" id="newTaskModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal-header"><h5 class="modal-title">مهمة جديدة</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+<div class="modal-body"><input type="text" id="task_title" class="form-control mb-2" placeholder="المهمة"><input type="date" id="task_due_date" class="form-control mb-2"><select id="task_assign" class="form-select mb-2"></select></div>
+<div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveTask()">حفظ</button></div>
+</div></div></div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // ===== Configuration =====
     const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
     const token = localStorage.getItem('mo_token');
     
-    // ===== Global State =====
-    let allCases = [];
-    let allTasks = [];
-    let allStaff = [];
-    let currentUser = null;
-    let currentView = 'home';
-    let currentCaseId = null;
-    let filteredCases = [];
-    let viewHistory = ['home'];
-    
-    // ===== Initialization =====
+    let allCases = [], allTasks = [], allStaff = [], allClients = [];
+    let currentUser = null, currentView = 'home', viewHistory = ['home'];
+    let currentAgendaDate = new Date();
+
     window.onload = async () => {
-        if (!token) {
-            location.href = 'login.html';
-            return;
+        if (!token) { location.href = 'login.html'; return; }
+        currentUser = JSON.parse(localStorage.getItem('mo_user'));
+        if (currentUser) {
+            document.getElementById('userAvatar').innerText = currentUser.full_name.charAt(0);
+            document.getElementById('profileAvatar').innerText = currentUser.full_name.charAt(0);
+            document.getElementById('profile-name').innerText = currentUser.full_name;
+            document.getElementById('welcome-name').innerText = currentUser.full_name;
         }
-        
-        try {
-            currentUser = JSON.parse(localStorage.getItem('mo_user'));
-            if (currentUser) {
-                const initial = currentUser.full_name.charAt(0).toUpperCase();
-                document.getElementById('userAvatar').innerText = initial;
-                document.getElementById('profileAvatar').innerText = initial;
-                document.getElementById('profile-name').innerText = currentUser.full_name;
-                document.getElementById('profile-role').innerText = getRoleText(currentUser.role);
-                document.getElementById('welcome-name').innerText = currentUser.full_name;
-            }
-        } catch (e) {
-            console.error('Error loading user:', e);
-        }
-        
         await loadAll();
     };
-    
-    // ===== Load All Data =====
+
     async function loadAll() {
         showAlert('جاري تحميل البيانات...', 'info');
-        
         try {
-            await Promise.all([
-                loadCases(),
-                loadTasks(),
-                loadStaff()
-            ]);
+            const reqs = [
+                fetch(`${API}/api/cases`, {headers: {'Authorization': `Bearer ${token}`}}).then(r=>r.json()),
+                fetch(`${API}/api/tasks`, {headers: {'Authorization': `Bearer ${token}`}}).then(r=>r.json()),
+                fetch(`${API}/api/staff`, {headers: {'Authorization': `Bearer ${token}`}}).then(r=>r.json()),
+                fetch(`${API}/api/clients`, {headers: {'Authorization': `Bearer ${token}`}}).then(r=>r.json())
+            ];
+            const [c, t, s, cl] = await Promise.all(reqs);
+            allCases = c; allTasks = t; allStaff = s; allClients = cl;
+            
+            populateSelects();
+            renderCases(); renderTasks(); renderClients();
             updateDashboard();
-        } catch (e) {
-            showAlert('خطأ في تحميل البيانات', 'error');
-        } finally {
-            hideAlert();
-        }
+            loadAgenda(currentAgendaDate);
+        } catch(e) { showAlert('خطأ في التحميل', 'error'); }
+        hideAlert();
     }
-    
-    // ===== Load Cases =====
-    async function loadCases() {
-        try {
-            const res = await fetch(`${API}/api/cases`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (res.status === 401) {
-                logout();
-                return;
-            }
-            
-            allCases = await res.json();
-            filteredCases = allCases;
-            renderCases();
-        } catch (e) {
-            console.error('Error loading cases:', e);
-            throw e;
-        }
-    }
-    
-    // ===== Render Cases =====
-    function renderCases(filter = 'all') {
-        const container = document.getElementById('cases-list');
-        container.innerHTML = '';
-        
-        let cases = filter === 'all' ? filteredCases : filteredCases.filter(c => c.case_status === filter);
-        
-        document.getElementById('cases-count').innerText = cases.length;
-        
-        if (cases.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-folder-open"></i>
-                    <p>لا توجد قضايا</p>
-                    ${filter === 'all' ? `<button class="btn btn-primary" onclick="openNewCaseModal()">
-                        <i class="fas fa-plus me-1"></i> أضف أول قضية
-                    </button>` : ''}
-                </div>`;
-            return;
-        }
-        
-        cases.forEach(c => {
-            const remaining = (parseFloat(c.total_agreed_fees) || 0) - (parseFloat(c.total_paid) || 0);
-            const lawyerName = allStaff.find(s => s.id === c.assigned_lawyer_id)?.full_name || 'غير مسند';
-            
-            // Check if urgent (hearing within 7 days)
-            let isUrgent = false;
-            if (c.next_hearing_date) {
-                const hearingDate = new Date(c.next_hearing_date);
-                const today = new Date();
-                const diffDays = Math.ceil((hearingDate - today) / (1000 * 60 * 60 * 24));
-                isUrgent = diffDays <= 7 && diffDays >= 0;
-            }
-            
-            container.innerHTML += `
-                <div class="case-card ${c.case_status === 'closed' ? 'status-closed' : ''} ${isUrgent ? 'urgent' : ''}" 
-                     onclick="openCaseDetails('${c.id}')">
-                    <div class="case-card-header">
-                        <div>
-                            <div class="case-number">
-                                ${c.case_internal_id}
-                                ${isUrgent ? '<i class="fas fa-exclamation-triangle text-danger ms-1"></i>' : ''}
-                            </div>
-                            <small class="text-muted">PIN: ${c.access_pin}</small>
-                        </div>
-                        <span class="badge-custom ${c.case_status === 'active' ? 'bg-success' : 'bg-secondary'}">
-                            ${c.case_status === 'active' ? 'نشط' : c.case_status || 'نشط'}
-                        </span>
-                    </div>
-                    <div class="case-info">
-                        <div class="info-row">
-                            <i class="fas fa-user"></i>
-                            <strong>${c.client_name}</strong>
-                        </div>
-                        ${c.case_type ? `
-                        <div class="info-row">
-                            <i class="fas fa-tags"></i>
-                            <span>${c.case_type}</span>
-                        </div>` : ''}
-                        <div class="info-row">
-                            <i class="fas fa-phone"></i>
-                            <span>${c.client_phone}</span>
-                        </div>
-                        ${c.opponent_name ? `
-                        <div class="info-row">
-                            <i class="fas fa-user-times"></i>
-                            <span>الخصم: ${c.opponent_name}</span>
-                        </div>` : ''}
-                        ${c.current_court ? `
-                        <div class="info-row">
-                            <i class="fas fa-landmark"></i>
-                            <span>${c.current_court}</span>
-                        </div>` : ''}
-                        ${c.next_hearing_date ? `
-                        <div class="info-row">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span class="${isUrgent ? 'text-danger fw-bold' : 'text-warning'}">
-                                الجلسة: ${formatDate(c.next_hearing_date)}
-                            </span>
-                        </div>` : ''}
-                        <div class="info-row">
-                            <i class="fas fa-user-tie"></i>
-                            <span>${lawyerName}</span>
-                        </div>
-                        ${remaining > 0 ? `
-                        <div class="info-row">
-                            <i class="fas fa-money-bill-wave"></i>
-                            <span class="text-warning fw-bold">متبقي: ${remaining.toFixed(2)} د.أ</span>
-                        </div>` : ''}
-                    </div>
-                </div>`;
-        });
-    }
-    
-    // ===== Load Tasks =====
-    async function loadTasks() {
-        try {
-            const res = await fetch(`${API}/api/tasks`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            allTasks = await res.json();
-            renderTasks();
-        } catch (e) {
-            console.error('Error loading tasks:', e);
-            throw e;
-        }
-    }
-    
-    // ===== Render Tasks =====
-    function renderTasks(filter = 'all') {
-        const container = document.getElementById('tasks-list');
-        const recentContainer = document.getElementById('recent-tasks-list');
-        
-        container.innerHTML = '';
-        recentContainer.innerHTML = '';
-        
-        let tasks = filter === 'all' ? allTasks : allTasks.filter(t => t.status === filter);
-        
-        document.getElementById('tasks-count').innerText = tasks.length;
-        
-        if (tasks.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-tasks"></i>
-                    <p>لا توجد مهام</p>
-                </div>`;
-            recentContainer.innerHTML = '<p class="text-muted text-center small">لا توجد مهام عاجلة</p>';
-            return;
-        }
-        
-        // Show only pending and high priority in recent
-        const urgentTasks = allTasks.filter(t => t.status === 'pending' && t.priority === 'high').slice(0, 3);
-        
-        tasks.forEach((t) => {
-            const assignedTo = t.mo_staff ? t.mo_staff.full_name : 'غير مسند';
-            const isOverdue = t.due_date && new Date(t.due_date) < new Date();
-            
-            const taskHTML = `
-                <div class="task-card ${t.priority === 'high' ? 'priority-high' : ''} ${t.status === 'completed' ? 'completed' : ''}" 
-                     onclick="event.stopPropagation();">
-                    <div class="task-header">
-                        <div class="task-title">${t.task_title}</div>
-                        <span class="badge-custom ${t.priority === 'high' ? 'bg-danger' : 'bg-primary'}">
-                            ${t.priority === 'high' ? '⚠️ عاجل' : 'عادي'}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <i class="fas fa-user"></i>
-                        <span>${assignedTo}</span>
-                    </div>
-                    ${t.due_date ? `
-                    <div class="info-row">
-                        <i class="fas fa-calendar"></i>
-                        <span class="${isOverdue ? 'text-danger fw-bold' : ''}">${formatDate(t.due_date)}</span>
-                    </div>` : ''}
-                    ${t.notes ? `
-                    <p class="small text-muted mt-2 mb-2">${t.notes}</p>` : ''}
-                    <div class="task-actions">
-                        ${t.status !== 'completed' ? `
-                        <button class="btn btn-sm btn-success" onclick="completeTask('${t.task_id}')">
-                            <i class="fas fa-check me-1"></i> إكمال
-                        </button>` : ''}
-                    </div>
-                </div>`;
-            
-            container.innerHTML += taskHTML;
-            
-            if (urgentTasks.includes(t)) {
-                recentContainer.innerHTML += taskHTML;
-            }
-        });
-        
-        if (urgentTasks.length === 0) {
-            recentContainer.innerHTML = '<p class="text-muted text-center small">✅ لا توجد مهام عاجلة</p>';
-        }
-    }
-    
-    // ===== Complete Task =====
-    async function completeTask(taskId) {
-        if (!confirm('هل تريد تعليم هذه المهمة كمكتملة؟')) return;
-        
-        showAlert('جاري التحديث...', 'info');
-        
-        try {
-            const res = await fetch(`${API}/api/tasks/${taskId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status: 'completed' })
-            });
-            
-            if (res.ok) {
-                showAlert('تم إكمال المهمة ✅', 'success');
-                await loadTasks();
-                updateDashboard();
-            } else {
-                showAlert('فشل تحديث المهمة', 'error');
-            }
-        } catch (e) {
-            showAlert('خطأ في الاتصال', 'error');
-        }
-    }
-    
-    // ===== Load Staff =====
-    async function loadStaff() {
-        try {
-            const res = await fetch(`${API}/api/staff`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            allStaff = await res.json();
-            populateStaffSelects();
-        } catch (e) {
-            console.error('Error loading staff:', e);
-            throw e;
-        }
-    }
-    
-    // ===== Populate Staff Selects =====
-    function populateStaffSelects() {
+
+    function populateSelects() {
         const lawyerSelect = document.getElementById('lawyerSelect');
-        const taskAssignSelect = document.getElementById('task_assign');
+        const taskAssign = document.getElementById('task_assign');
+        const dl = document.getElementById('clientsPhoneList');
         
-        if (lawyerSelect) {
-            lawyerSelect.innerHTML = '<option value="">اختر المحامي</option>';
-            allStaff.filter(s => s.role === 'lawyer' || s.role === 'admin').forEach(s => {
-                lawyerSelect.innerHTML += `<option value="${s.id}">${s.full_name}</option>`;
-            });
-        }
+        lawyerSelect.innerHTML = '<option value="">اختر</option>';
+        taskAssign.innerHTML = '<option value="">الموظف</option>';
+        dl.innerHTML = '';
         
-        if (taskAssignSelect) {
-            taskAssignSelect.innerHTML = '<option value="">اختر الموظف</option>';
-            allStaff.forEach(s => {
-                taskAssignSelect.innerHTML += `<option value="${s.id}">${s.full_name} (${getRoleText(s.role)})</option>`;
-            });
-        }
+        allStaff.forEach(s => {
+            if(s.role === 'lawyer' || s.role === 'admin') lawyerSelect.innerHTML += `<option value="${s.id}">${s.full_name}</option>`;
+            taskAssign.innerHTML += `<option value="${s.id}">${s.full_name}</option>`;
+        });
+        
+        allClients.forEach(c => {
+            dl.innerHTML += `<option value="${c.phone}">${c.full_name}</option>`;
+        });
     }
-    
-    // ===== Update Dashboard =====
-    async function updateDashboard() {
-        try {
-            // Use Analytics API for accurate stats
-            const res = await fetch(`${API}/api/analytics`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (res.ok) {
-                const stats = await res.json();
-                
-                document.getElementById('stat-total-cases').innerText = stats.totalCases;
-                document.getElementById('stat-active-cases').innerText = stats.activeCases;
-                document.getElementById('stat-upcoming-hearings').innerText = stats.upcomingHearingsCount;
-                document.getElementById('stat-pending-tasks').innerText = stats.pendingTasksCount;
-                
-                document.getElementById('total-agreed').innerText = stats.totalAgreed.toFixed(0) + ' د.أ';
-                document.getElementById('total-collected').innerText = stats.totalCollected.toFixed(0) + ' د.أ';
-                document.getElementById('total-pending').innerText = stats.totalPending.toFixed(0) + ' د.أ';
-                document.getElementById('collection-rate').innerText = stats.collectionRate + '%';
-                document.getElementById('collection-progress').style.width = stats.collectionRate + '%';
-                
-                // Check notifications
-                checkNotifications();
-            } else {
-                throw new Error('Analytics API failed');
-            }
-        } catch (e) {
-            console.error('Using manual calculation:', e);
-            // Fallback to manual calculation
-            manualDashboardUpdate();
-        }
-        
-        // Upcoming Hearings
-        renderUpcomingHearings();
-        
-        // User Stats
-        updateUserStats();
+
+    // AutoFill for Case & Appt
+    function autoFillClient() {
+        const phone = document.getElementById('client_phone_input').value;
+        const c = allClients.find(x => x.phone === phone);
+        if(c) document.getElementById('client_name_input').value = c.full_name;
     }
-    
-    // ===== Manual Dashboard Update (Fallback) =====
-    function manualDashboardUpdate() {
+    function autoFillApptClient() {
+        const phone = document.getElementById('appt_client_phone').value;
+        const c = allClients.find(x => x.phone === phone);
+        if(c) document.getElementById('appt_client_name').value = c.full_name;
+    }
+
+    function updateDashboard() {
         document.getElementById('stat-total-cases').innerText = allCases.length;
-        document.getElementById('stat-active-cases').innerText = allCases.filter(c => c.case_status === 'active').length;
-        document.getElementById('stat-pending-tasks').innerText = allTasks.filter(t => t.status === 'pending').length;
+        document.getElementById('stat-total-clients').innerText = allClients.length;
+        document.getElementById('stat-upcoming-hearings').innerText = allCases.filter(c=>c.next_hearing_date && new Date(c.next_hearing_date)>=new Date()).length;
+        document.getElementById('stat-pending-tasks').innerText = allTasks.filter(t=>t.status==='pending').length;
         
-        const upcomingHearings = allCases.filter(c => c.next_hearing_date && new Date(c.next_hearing_date) >= new Date()).length;
-        document.getElementById('stat-upcoming-hearings').innerText = upcomingHearings;
-        
-        const totalAgreed = allCases.reduce((sum, c) => sum + (parseFloat(c.total_agreed_fees) || 0), 0);
-        const totalPaid = allCases.reduce((sum, c) => sum + (parseFloat(c.total_paid) || 0), 0);
-        const totalPending = totalAgreed - totalPaid;
-        
-        document.getElementById('total-agreed').innerText = totalAgreed.toFixed(0) + ' د.أ';
-        document.getElementById('total-collected').innerText = totalPaid.toFixed(0) + ' د.أ';
-        document.getElementById('total-pending').innerText = totalPending.toFixed(0) + ' د.أ';
-        
-        const collectionRate = totalAgreed > 0 ? ((totalPaid / totalAgreed) * 100).toFixed(0) : 0;
-        document.getElementById('collection-rate').innerText = collectionRate + '%';
-        document.getElementById('collection-progress').style.width = collectionRate + '%';
-        
-        // Check notifications
-        checkNotifications();
+        let agreed = 0, paid = 0;
+        allCases.forEach(c => { agreed += Number(c.total_agreed_fees)||0; paid += Number(c.total_paid)||0; });
+        document.getElementById('total-agreed').innerText = agreed.toFixed(0);
+        document.getElementById('total-collected').innerText = paid.toFixed(0);
+        document.getElementById('total-pending').innerText = (agreed-paid).toFixed(0);
     }
-    
-    // ===== Check Notifications =====
-    function checkNotifications() {
-        // Count urgent items
-        let urgentCount = 0;
+
+    // ===== RENDER VIEWS =====
+    function renderCases(filter = 'all') {
+        const list = document.getElementById('cases-list'); list.innerHTML = '';
+        let filtered = filter === 'all' ? allCases : allCases.filter(c=>c.case_status === filter);
+        document.getElementById('cases-count').innerText = filtered.length;
         
-        // Urgent hearings (within 3 days)
-        const urgentHearings = allCases.filter(c => {
-            if (!c.next_hearing_date) return false;
-            const diff = Math.ceil((new Date(c.next_hearing_date) - new Date()) / (1000 * 60 * 60 * 24));
-            return diff <= 3 && diff >= 0;
-        }).length;
-        
-        // High priority pending tasks
-        const urgentTasks = allTasks.filter(t => t.status === 'pending' && t.priority === 'high').length;
-        
-        urgentCount = urgentHearings + urgentTasks;
-        
-        const badge = document.getElementById('notif-count');
-        if (urgentCount > 0) {
-            badge.innerText = urgentCount;
-            badge.classList.remove('d-none');
-        } else {
-            badge.classList.add('d-none');
-        }
+        filtered.forEach(c => {
+            const rem = (c.total_agreed_fees||0) - (c.total_paid||0);
+            list.innerHTML += `
+            <div class="case-card" onclick="openCaseDetails('${c.id}')">
+                <div class="case-card-header"><div class="case-number">${c.case_internal_id}</div><span class="badge bg-light text-dark">${c.case_status}</span></div>
+                <div class="info-row"><i class="fas fa-user"></i><strong>${c.client_name}</strong></div>
+                ${c.current_court ? `<div class="info-row"><i class="fas fa-landmark"></i>${c.current_court}</div>`:''}
+                ${c.next_hearing_date ? `<div class="info-row"><i class="fas fa-calendar"></i><span class="text-danger fw-bold">${c.next_hearing_date}</span></div>`:''}
+                ${rem>0 ? `<div class="info-row text-warning fw-bold"><i class="fas fa-money-bill"></i>متبقي: ${rem}</div>`:''}
+            </div>`;
+        });
     }
-    
-    // ===== Render Upcoming Hearings =====
-    function renderUpcomingHearings() {
-        const container = document.getElementById('upcoming-hearings-list');
-        container.innerHTML = '';
+
+    function renderClients() {
+        const list = document.getElementById('clients-list'); list.innerHTML = '';
+        document.getElementById('clients-count').innerText = allClients.length;
+        allClients.forEach(c => {
+            list.innerHTML += `
+            <div class="client-card" onclick="openClientProfile('${c.id}')">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><h6 class="fw-bold text-navy mb-1">${c.full_name}</h6><div class="text-muted small"><i class="fas fa-phone me-1"></i>${c.phone}</div></div>
+                    <i class="fas fa-chevron-left text-muted"></i>
+                </div>
+            </div>`;
+        });
+    }
+
+    function renderTasks(filter = 'pending') {
+        const list = document.getElementById('tasks-list'); list.innerHTML = '';
+        let f = filter === 'all' ? allTasks : allTasks.filter(t=>t.status===filter);
+        document.getElementById('tasks-count').innerText = f.length;
+        f.forEach(t => {
+            list.innerHTML += `<div class="task-card ${t.status==='completed'?'opacity-50':''}"><div class="fw-bold">${t.task_title}</div><div class="small text-muted mt-1"><i class="fas fa-clock me-1"></i>${t.due_date||'--'}</div></div>`;
+        });
+    }
+
+    // ===== AGENDA (Unified Timeline) =====
+    async function loadAgenda(dateObj) {
+        const dateStr = dateObj.toISOString().split('T')[0];
+        document.getElementById('agenda-date-display').innerText = dateStr === new Date().toISOString().split('T')[0] ? 'اليوم' : dateStr;
         
-        const upcomingHearings = allCases
-            .filter(c => c.next_hearing_date && new Date(c.next_hearing_date) >= new Date())
-            .sort((a, b) => new Date(a.next_hearing_date) - new Date(b.next_hearing_date))
-            .slice(0, 5);
-        
-        if (upcomingHearings.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center small">✅ لا توجد جلسات قادمة</p>';
-            return;
-        }
-        
-        upcomingHearings.forEach(c => {
-            const daysUntil = Math.ceil((new Date(c.next_hearing_date) - new Date()) / (1000 * 60 * 60 * 24));
-            const isUrgent = daysUntil <= 7;
+        const tl = document.getElementById('agenda-timeline');
+        tl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+        try {
+            const res = await fetch(`${API}/api/agenda?date=${dateStr}`, {headers: {'Authorization': `Bearer ${token}`}});
+            const data = await res.json();
+            tl.innerHTML = '';
             
-            container.innerHTML += `
-                <div class="case-card ${isUrgent ? 'urgent' : ''}" onclick="openCaseDetails('${c.id}')">
-                    <div class="case-card-header">
-                        <div class="case-number">
-                            ${c.case_internal_id}
-                            ${isUrgent ? '<i class="fas fa-exclamation-triangle text-danger ms-1"></i>' : ''}
-                        </div>
-                        <span class="badge-custom bg-danger">${formatDate(c.next_hearing_date)}</span>
-                    </div>
-                    <div class="info-row">
-                        <i class="fas fa-user"></i>
-                        <strong>${c.client_name}</strong>
-                    </div>
-                    ${c.current_court ? `
-                    <div class="info-row">
-                        <i class="fas fa-landmark"></i>
-                        <span>${c.current_court}</span>
-                    </div>` : ''}
-                    <div class="info-row">
-                        <i class="fas fa-clock"></i>
-                        <span class="${isUrgent ? 'text-danger fw-bold' : 'text-warning'}">
-                            ${daysUntil === 0 ? 'اليوم!' : daysUntil === 1 ? 'غداً' : `بعد ${daysUntil} يوم`}
-                        </span>
-                    </div>
-                </div>`;
-        });
+            if(!data.hearings.length && !data.tasks.length && !data.appointments.length) {
+                tl.innerHTML = '<div class="empty-state"><i class="fas fa-mug-hot"></i><p>لا يوجد جدول لهذا اليوم</p></div>'; return;
+            }
+
+            // Combine and render (Simple for now, sorted roughly)
+            data.hearings.forEach(h => {
+                tl.innerHTML += `<div class="timeline-item"><div class="timeline-icon bg-danger"><i class="fas fa-gavel"></i></div>
+                <div class="timeline-content border border-danger"><div class="fw-bold text-navy">جلسة محكمة: ${h.case_internal_id}</div><div class="small">${h.client_name} - ${h.current_court||''}</div></div></div>`;
+            });
+            data.appointments.forEach(a => {
+                const time = new Date(a.appointment_date).toLocaleTimeString('ar-JO', {hour:'2-digit', minute:'2-digit'});
+                tl.innerHTML += `<div class="timeline-item"><div class="timeline-icon bg-warning"><i class="fas fa-handshake"></i></div>
+                <div class="timeline-content border border-warning"><div class="fw-bold text-navy">${time} | ${a.appointment_type}</div><div class="small">${a.client_name} (${a.client_phone})</div></div></div>`;
+            });
+            data.tasks.forEach(t => {
+                tl.innerHTML += `<div class="timeline-item"><div class="timeline-icon bg-info"><i class="fas fa-tasks"></i></div>
+                <div class="timeline-content border border-info"><div class="fw-bold text-navy">مهمة: ${t.task_title}</div></div></div>`;
+            });
+
+        } catch(e) { tl.innerHTML = '<p class="text-center text-danger">خطأ</p>'; }
     }
-    
-    // ===== Update User Stats =====
-    function updateUserStats() {
-        if (!currentUser) return;
-        
-        const userCases = allCases.filter(c => c.assigned_lawyer_id === currentUser.id);
-        document.getElementById('user-cases-count').innerText = userCases.length;
-        
-        const userCompletedTasks = allTasks.filter(t => t.assigned_to === currentUser.id && t.status === 'completed');
-        document.getElementById('user-completed-tasks').innerText = userCompletedTasks.length;
+
+    function changeAgendaDate(offset) {
+        currentAgendaDate.setDate(currentAgendaDate.getDate() + offset);
+        loadAgenda(currentAgendaDate);
     }
-    
-    // ===== Switch View =====
-    function switchView(viewName) {
-        // Add to history
-        if (viewName !== currentView) {
-            viewHistory.push(viewName);
-        }
-        
-        // Update UI
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById(viewName + '-view').classList.add('active');
-        
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        const navItems = document.querySelectorAll('.nav-item');
-        const viewIndex = ['home', 'cases', 'tasks', 'profile'].indexOf(viewName);
-        if (navItems[viewIndex]) navItems[viewIndex].classList.add('active');
-        
-        currentView = viewName;
-        
-        // Update page title and back button
-        const titles = {
-            'home': '⚖️ موكّل',
-            'cases': '📂 القضايا',
-            'tasks': '📋 المهام',
-            'profile': '👤 الملف الشخصي'
-        };
-        
-        document.getElementById('pageTitle').innerText = titles[viewName] || '⚖️ موكّل';
-        
-        // Show/hide back button
-        const backBtn = document.getElementById('backBtn');
-        if (viewName === 'home') {
-            backBtn.classList.remove('show');
-        } else {
-            backBtn.classList.add('show');
-        }
-        
+
+    // ===== MODALS & ACTIONS =====
+    function switchView(v) {
+        if(v !== currentView) viewHistory.push(v);
+        document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
+        document.getElementById(v+'-view').classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+        const idx = ['home','cases','agenda','clients','profile'].indexOf(v);
+        if(idx>=0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+        currentView = v;
+        document.getElementById('backBtn').classList.toggle('show', v!=='home');
         closeQuickActions();
     }
+    function goBack() { if(viewHistory.length>1){ viewHistory.pop(); switchView(viewHistory.pop()); } else switchView('home'); }
+    function toggleQuickActions() { document.getElementById('quickActions').classList.toggle('show'); }
+    function closeQuickActions() { document.getElementById('quickActions').classList.remove('show'); }
     
-    // ===== Go Back =====
-    function goBack() {
-        if (viewHistory.length > 1) {
-            viewHistory.pop(); // Remove current
-            const previousView = viewHistory.pop(); // Get previous
-            switchView(previousView);
-        } else {
-            switchView('home');
-        }
-    }
-    
-    // ===== Toggle Quick Actions =====
-    function toggleQuickActions() {
-        const menu = document.getElementById('quickActions');
-        const icon = document.getElementById('fabIcon');
-        
-        if (menu.classList.contains('show')) {
-            closeQuickActions();
-        } else {
-            menu.classList.add('show');
-            icon.className = 'fas fa-times';
-        }
-    }
-    
-    function closeQuickActions() {
-        document.getElementById('quickActions').classList.remove('show');
-        document.getElementById('fabIcon').className = 'fas fa-plus';
-    }
-    
-    // ===== Open Modals =====
-    function openNewCaseModal() {
-        closeQuickActions();
-        new bootstrap.Modal(document.getElementById('newCaseModal')).show();
-    }
-    
-    function openNewTaskModal() {
-        closeQuickActions();
-        new bootstrap.Modal(document.getElementById('newTaskModal')).show();
-    }
-    
-    function openQuickPaymentModal() {
-        closeQuickActions();
-        
-        // Populate cases dropdown
-        const select = document.getElementById('payment_case_id');
-        select.innerHTML = '<option value="">اختر من القائمة</option>';
-        
-        allCases.filter(c => c.case_status === 'active').forEach(c => {
-            const remaining = (parseFloat(c.total_agreed_fees) || 0) - (parseFloat(c.total_paid) || 0);
-            select.innerHTML += `<option value="${c.id}">${c.case_internal_id} - ${c.client_name} (متبقي: ${remaining.toFixed(2)})</option>`;
-        });
-        
-        new bootstrap.Modal(document.getElementById('quickPaymentModal')).show();
-    }
-    
-    // ===== Toggle Payment Fields =====
-    function togglePaymentFields() {
-        // Not needed for quick payment, handled in modal
-    }
-    
-    // ===== Save Case =====
+    function openNewCaseModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newCaseModal')).show(); }
+    function openNewAppointmentModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newApptModal')).show(); }
+    function openNewTaskModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newTaskModal')).show(); }
+
     async function saveCase() {
-        const form = document.getElementById('newCaseForm');
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        
-        // Validate
-        if (!data.case_internal_id || !data.client_name || !data.client_phone) {
-            showAlert('يرجى ملء الحقول المطلوبة الأساسية', 'warning');
-            return;
-        }
-        
-        // Clean data
-        data.total_agreed_fees = parseFloat(data.total_agreed_fees) || 0;
-        data.claim_amount = parseFloat(data.claim_amount) || 0;
-        if (!data.next_hearing_date) data.next_hearing_date = null;
-        if (!data.poa_date) data.poa_date = null;
-        if (!data.assigned_lawyer_id) data.assigned_lawyer_id = null;
-        if (!data.opponent_name) data.opponent_name = null;
-        if (!data.opponent_lawyer) data.opponent_lawyer = null;
-        if (!data.current_court) data.current_court = null;
-        if (!data.current_judge) data.current_judge = null;
-        if (!data.case_type) data.case_type = null;
-        if (!data.poa_number) data.poa_number = null;
-        if (!data.file_location) data.file_location = null;
-        if (!data.case_stage) data.case_stage = 'جديد';
-        
-        showAlert('جاري حفظ الملف...', 'info');
-        
-        try {
-            const res = await fetch(`${API}/api/cases`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
-                const newCase = await res.json();
-                showAlert('✅ تم فتح الملف بنجاح! رقم PIN: ' + newCase.access_pin, 'success');
-                bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide();
-                form.reset();
-                await loadCases();
-                updateDashboard();
-            } else {
-                const error = await res.text();
-                showAlert('فشل حفظ الملف: ' + error, 'error');
-            }
-        } catch (e) {
-            showAlert('خطأ في الاتصال', 'error');
-        }
+        const d = Object.fromEntries(new FormData(document.getElementById('newCaseForm')).entries());
+        showAlert('جاري الحفظ...', 'info');
+        const res = await fetch(`${API}/api/cases`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
+        if(res.ok){ showAlert('تم الحفظ', 'success'); bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide(); loadAll(); }
     }
-    
-    // ===== Save Task =====
-    async function saveTask() {
-        const data = {
-            task_title: document.getElementById('task_title').value.trim(),
-            assigned_to: document.getElementById('task_assign').value || null,
-            due_date: document.getElementById('task_due_date').value || null,
-            priority: document.getElementById('task_priority').value,
-            notes: document.getElementById('task_notes').value.trim()
-        };
-        
-        if (!data.task_title) {
-            showAlert('يرجى إدخال عنوان المهمة', 'warning');
-            return;
-        }
-        
-        showAlert('جاري حفظ المهمة...', 'info');
-        
-        try {
-            const res = await fetch(`${API}/api/tasks`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
-                showAlert('✅ تم حفظ المهمة بنجاح!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide();
-                document.getElementById('newTaskForm').reset();
-                await loadTasks();
-                updateDashboard();
-            } else {
-                showAlert('فشل حفظ المهمة', 'error');
-            }
-        } catch (e) {
-            showAlert('خطأ في الاتصال', 'error');
-        }
-    }
-    
-    // ===== Save Quick Payment =====
-    async function saveQuickPayment() {
-        const caseId = document.getElementById('payment_case_id').value;
-        const paymentType = document.getElementById('payment_type').value;
-        const amount = parseFloat(document.getElementById('payment_amount').value);
-        const notes = document.getElementById('payment_notes').value.trim();
-        
-        if (!caseId) {
-            showAlert('يرجى اختيار القضية', 'warning');
-            return;
-        }
-        
-        if (!amount || amount <= 0) {
-            showAlert('يرجى إدخال المبلغ', 'warning');
-            return;
-        }
-        
-        const data = {
-            case_id: caseId,
-            update_type: paymentType === 'in' ? 'payment_in' : 'payment_out',
-            title: paymentType === 'in' ? `قبض أتعاب: ${amount} د.أ` : `دفع رسوم: ${amount} د.أ`,
-            details: notes || '',
-            financial_in: paymentType === 'in' ? amount : 0,
-            financial_out: paymentType === 'out' ? amount : 0
-        };
-        
-        showAlert('جاري تسجيل الدفعة...', 'info');
-        
-        try {
-            const res = await fetch(`${API}/api/logs`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
-                showAlert('✅ تم تسجيل الدفعة بنجاح!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('quickPaymentModal')).hide();
-                document.getElementById('quickPaymentForm').reset();
-                await loadCases();
-                updateDashboard();
-            } else {
-                showAlert('فشل تسجيل الدفعة', 'error');
-            }
-        } catch (e) {
-            showAlert('خطأ في الاتصال', 'error');
-        }
-    }
-    
-    // ===== Open Case Details =====
-    async function openCaseDetails(caseId) {
-        currentCaseId = caseId;
-        const caseData = allCases.find(c => c.id === caseId);
-        if (!caseData) return;
-        
-        document.getElementById('modal_case_id').innerText = caseData.case_internal_id;
-        document.getElementById('update_case_id').value = caseId;
-        
-        // Case Details
-        const lawyerName = allStaff.find(s => s.id === caseData.assigned_lawyer_id)?.full_name || 'غير مسند';
-        document.getElementById('modal_case_details').innerHTML = `
-            <div class="row g-3">
-                <div class="col-6">
-                    <strong class="d-block text-muted small">الموكل</strong>
-                    <div class="fw-bold">${caseData.client_name}</div>
-                </div>
-                <div class="col-6">
-                    <strong class="d-block text-muted small">الهاتف</strong>
-                    <div>${caseData.client_phone}</div>
-                </div>
-                ${caseData.case_type ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">نوع الدعوى</strong>
-                    <div><span class="badge bg-secondary">${caseData.case_type}</span></div>
-                </div>` : ''}
-                ${caseData.claim_amount > 0 ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">قيمة المطالبة</strong>
-                    <div class="text-danger fw-bold">${caseData.claim_amount} د.أ</div>
-                </div>` : ''}
-                ${caseData.poa_number ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">رقم وتاريخ الوكالة</strong>
-                    <div>${caseData.poa_number} ${caseData.poa_date ? `(${formatDate(caseData.poa_date)})` : ''}</div>
-                </div>` : ''}
-                ${caseData.opponent_name ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">الخصم</strong>
-                    <div>${caseData.opponent_name}</div>
-                </div>` : ''}
-                ${caseData.opponent_lawyer ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">محامي الخصم</strong>
-                    <div>${caseData.opponent_lawyer}</div>
-                </div>` : ''}
-                ${caseData.current_court ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">المحكمة</strong>
-                    <div>${caseData.current_court}</div>
-                </div>` : ''}
-                ${caseData.current_judge ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">القاضي</strong>
-                    <div>${caseData.current_judge}</div>
-                </div>` : ''}
-                ${caseData.case_stage ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">المرحلة</strong>
-                    <div><span class="badge bg-primary">${caseData.case_stage}</span></div>
-                </div>` : ''}
-                <div class="col-6">
-                    <strong class="d-block text-muted small">المحامي المسؤول</strong>
-                    <div>${lawyerName}</div>
-                </div>
-                ${caseData.file_location ? `
-                <div class="col-6">
-                    <strong class="d-block text-muted small">مكان الملف الورقي</strong>
-                    <div><i class="fas fa-archive me-1 text-warning"></i>${caseData.file_location}</div>
-                </div>` : ''}
-                ${caseData.next_hearing_date ? `
-                <div class="col-12 mt-3 p-2 bg-light rounded border border-warning">
-                    <strong class="d-block text-muted small">الجلسة القادمة</strong>
-                    <div class="text-danger fw-bold"><i class="fas fa-calendar-alt me-2"></i>${formatDate(caseData.next_hearing_date)}</div>
-                </div>` : ''}
-            </div>
-        `;
-        
-        // Financial
-        const remaining = (parseFloat(caseData.total_agreed_fees) || 0) - (parseFloat(caseData.total_paid) || 0);
-        document.getElementById('modal_financial').innerHTML = `
-            <div class="fin-item">
-                <span class="amount text-primary">${(caseData.total_agreed_fees || 0).toFixed(2)}</span>
-                <span class="label">المتفق عليه</span>
-            </div>
-            <div class="fin-item">
-                <span class="amount text-success">${(caseData.total_paid || 0).toFixed(2)}</span>
-                <span class="label">المدفوع</span>
-            </div>
-            <div class="fin-item">
-                <span class="amount text-danger">${remaining.toFixed(2)}</span>
-                <span class="label">المتبقي</span>
-            </div>
-        `;
-        
-        // Client Link
-        const clientLink = `${window.location.origin}/client.html?id=${encodeURIComponent(caseData.case_internal_id)}&pin=${caseData.access_pin}`;
-        document.getElementById('modal_client_link').value = clientLink;
-        
-        // Load Timeline & Files
-        await Promise.all([
-            loadTimeline(caseId),
-            loadFiles(caseId)
-        ]);
-        
-        // Show Modal
-        new bootstrap.Modal(document.getElementById('caseDetailsModal')).show();
-    }
-    
-    // ===== Toggle Financial Inputs =====
-    function toggleFinancialInputs() {
-        const updateType = document.getElementById('update_type').value;
-        
-        document.getElementById('payment_in_field').style.display = updateType === 'payment_in' ? 'block' : 'none';
-        document.getElementById('payment_out_field').style.display = updateType === 'payment_out' ? 'block' : 'none';
-        
-        const isHearingOrAdmin = updateType === 'hearing' || updateType === 'admin';
-        document.getElementById('next_hearing_field').style.display = isHearingOrAdmin ? 'block' : 'none';
-        document.getElementById('stage_field').style.display = isHearingOrAdmin ? 'block' : 'none';
-        document.getElementById('court_field').style.display = isHearingOrAdmin ? 'block' : 'none';
-        document.getElementById('judge_field').style.display = isHearingOrAdmin ? 'block' : 'none';
-    }
-    
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', () => {
-        toggleFinancialInputs();
-    });
-    
-    // ===== Load Timeline =====
-    async function loadTimeline(caseId) {
-        const container = document.getElementById('modal_timeline');
-        container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-        
-        try {
-            const res = await fetch(`${API}/api/logs?case_id=${caseId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const logs = await res.json();
-            
-            container.innerHTML = '';
-            
-            if (logs.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center">لا توجد تحديثات بعد</p>';
-                return;
-            }
-            
-            logs.forEach(log => {
-                let icon = 'fa-circle';
-                let iconColor = 'var(--navy)';
-                
-                if (log.update_type === 'hearing') {
-                    icon = 'fa-gavel';
-                    iconColor = 'var(--info)';
-                } else if (log.update_type === 'payment_in') {
-                    icon = 'fa-arrow-down';
-                    iconColor = 'var(--success)';
-                } else if (log.update_type === 'payment_out') {
-                    icon = 'fa-arrow-up';
-                    iconColor = 'var(--danger)';
-                } else if (log.update_type === 'admin') {
-                    icon = 'fa-file-alt';
-                    iconColor = 'var(--warning)';
-                }
-                
-                // تنسيق التفاصيل لدعم الأسطر المتعددة بشكل جميل (للتحديثات الذكية)
-                const formattedDetails = log.details ? log.details.replace(/\n/g, '<br>') : '';
-                
-                container.innerHTML += `
-                    <div class="timeline-item">
-                        <div class="timeline-icon" style="background: ${iconColor};">
-                            <i class="fas ${icon}" style="color: white;"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-header">
-                                <h6 class="timeline-title mb-1">${log.title || log.update_type}</h6>
-                                <span class="timeline-date">${formatDateTime(log.timestamp)}</span>
-                            </div>
-                            ${formattedDetails ? `<p class="small text-muted mb-2">${formattedDetails}</p>` : ''}
-                            <div class="d-flex gap-2 flex-wrap">
-                                ${log.financial_in > 0 ? `<span class="badge bg-success">💰 قبض: ${log.financial_in} د.أ</span>` : ''}
-                                ${log.financial_out > 0 ? `<span class="badge bg-danger">💸 دفع: ${log.financial_out} د.أ</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        } catch (e) {
-            container.innerHTML = '<p class="text-danger text-center">خطأ في تحميل السجل</p>';
-        }
-    }
-    
-    // ===== Load Files =====
-    async function loadFiles(caseId) {
-        const container = document.getElementById('modal_files_list');
-        container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-        
-        try {
-            const res = await fetch(`${API}/api/files?case_id=${caseId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const files = await res.json();
-            
-            container.innerHTML = '';
-            
-            if (files.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center">لا توجد ملفات</p>';
-                return;
-            }
-            
-            files.forEach(file => {
-                container.innerHTML += `
-                    <a href="${file.drive_url}" target="_blank" class="case-card mb-2 text-decoration-none" style="display: block;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <i class="fas fa-file-alt text-warning me-2" style="font-size: 1.3rem;"></i>
-                                <strong>${file.file_type}</strong>
-                            </div>
-                            <i class="fas fa-external-link-alt text-muted"></i>
-                        </div>
-                        <small class="text-muted d-block mt-2">
-                            <i class="fas fa-clock me-1"></i>${formatDateTime(file.upload_date)}
-                        </small>
-                    </a>
-                `;
-            });
-        } catch (e) {
-            container.innerHTML = '<p class="text-danger text-center">خطأ في تحميل الملفات</p>';
-        }
-    }
-    
-    // ===== Save Update (Smart Update Logic) =====
-    async function saveUpdate() {
-        const caseId = document.getElementById('update_case_id').value;
-        const updateType = document.getElementById('update_type').value;
-        
-        const data = {
-            case_id: caseId,
-            update_type: updateType,
-            title: document.getElementById('update_title').value.trim() || getDefaultTitle(updateType),
-            details: document.getElementById('update_details').value.trim(),
-            financial_in: parseFloat(document.getElementById('update_in').value) || 0,
-            financial_out: parseFloat(document.getElementById('update_out').value) || 0
-        };
-        
-        // Add smart update fields if applicable
-        const nextHearing = document.getElementById('update_next_hearing').value;
-        if (nextHearing) data.next_hearing_date = nextHearing;
-        
-        const stageUpdate = document.getElementById('update_stage').value;
-        if (stageUpdate) data.status_update = stageUpdate;
 
-        const currentCourt = document.getElementById('update_court').value.trim();
-        if (currentCourt) data.current_court = currentCourt;
+    async function saveAppointment() {
+        const d = {
+            client_phone: document.getElementById('appt_client_phone').value,
+            client_name: document.getElementById('appt_client_name').value,
+            appointment_date: new Date(document.getElementById('appt_date').value).toISOString(),
+            appointment_type: document.getElementById('appt_type').value,
+            notes: document.getElementById('appt_notes').value
+        };
+        showAlert('جاري الحفظ...', 'info');
+        const res = await fetch(`${API}/api/appointments`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
+        if(res.ok){ showAlert('تم الحفظ', 'success'); bootstrap.Modal.getInstance(document.getElementById('newApptModal')).hide(); loadAgenda(currentAgendaDate); }
+    }
 
-        const currentJudge = document.getElementById('update_judge').value.trim();
-        if (currentJudge) data.current_judge = currentJudge;
+    // Client Profile CRM
+    function openClientProfile(cid) {
+        const c = allClients.find(x=>x.id===cid);
+        if(!c) return;
+        document.getElementById('cd_name').innerText = c.full_name;
+        document.getElementById('cd_phone').innerText = c.phone;
         
-        showAlert('جاري حفظ التحديث...', 'info');
-        
-        try {
-            const res = await fetch(`${API}/api/logs`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-            
-            if (res.ok) {
-                showAlert('✅ تم حفظ التحديث بنجاح!', 'success');
-                
-                // Clear form
-                document.getElementById('update_title').value = '';
-                document.getElementById('update_details').value = '';
-                document.getElementById('update_in').value = '';
-                document.getElementById('update_out').value = '';
-                document.getElementById('update_next_hearing').value = '';
-                document.getElementById('update_stage').value = '';
-                document.getElementById('update_court').value = '';
-                document.getElementById('update_judge').value = '';
-                
-                // Reload data
-                await Promise.all([
-                    loadTimeline(caseId),
-                    loadCases()
-                ]);
-                updateDashboard();
-            } else {
-                const error = await res.text();
-                showAlert('فشل الحفظ: ' + error, 'error');
-            }
-        } catch (e) {
-            showAlert('خطأ في الاتصال', 'error');
-        }
-    }
-    
-    function getDefaultTitle(updateType) {
-        const titles = {
-            'hearing': 'تحديث جلسة / إجراء',
-            'admin': 'إجراء إداري',
-            'payment_in': 'قبض أتعاب',
-            'payment_out': 'دفع رسوم'
-        };
-        return titles[updateType] || 'تحديث';
-    }
-    
-    // ===== Add File =====
-    async function addFile() {
-        const caseId = document.getElementById('update_case_id').value;
-        const fileName = document.getElementById('file_name').value.trim();
-        const fileUrl = document.getElementById('file_url').value.trim();
-        
-        if (!fileName || !fileUrl) {
-            showAlert('يرجى إدخال اسم الملف والرابط', 'warning');
-            return;
-        }
-        
-        showAlert('جاري الرفع...', 'info');
-        
-        try {
-            const res = await fetch(`${API}/api/files`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    case_id: caseId,
-                    file_type: fileName,
-                    drive_url: fileUrl
-                })
-            });
-            
-            if (res.ok) {
-                showAlert('✅ تم رفع الملف بنجاح!', 'success');
-                document.getElementById('file_name').value = '';
-                document.getElementById('file_url').value = '';
-                await loadFiles(caseId);
-            } else {
-                showAlert('فشل رفع الملف', 'error');
-            }
-        } catch (e) {
-            showAlert('خطأ في الاتصال', 'error');
-        }
-    }
-    
-    // ===== Copy & Share Client Link =====
-    function copyClientLink() {
-        const input = document.getElementById('modal_client_link');
-        input.select();
-        input.setSelectionRange(0, 99999);
-        
-        try {
-            navigator.clipboard.writeText(input.value).then(() => {
-                showAlert('✅ تم نسخ الرابط!', 'success');
-            }).catch(() => {
-                document.execCommand('copy');
-                showAlert('✅ تم نسخ الرابط!', 'success');
-            });
-        } catch (e) {
-            showAlert('❌ فشل نسخ الرابط', 'error');
-        }
-    }
-    
-    function shareClientLink() {
-        const link = document.getElementById('modal_client_link').value;
-        const caseId = document.getElementById('modal_case_id').innerText;
-        
-        if (navigator.share) {
-            navigator.share({
-                title: `رابط متابعة القضية ${caseId}`,
-                text: 'استخدم هذا الرابط لمتابعة قضيتك والاطلاع على آخر التحديثات',
-                url: link
-            }).catch(() => {
-                copyClientLink();
-            });
-        } else {
-            copyClientLink();
-        }
-    }
-    
-    // ===== Filter Functions (البحث الخارق) =====
-    function filterCases() {
-        const searchTerm = document.getElementById('search-cases').value.toLowerCase().trim();
-        
-        if (!searchTerm) {
-            filteredCases = allCases;
-            renderCases();
-            return;
-        }
-        
-        filteredCases = allCases.filter(c => 
-            (c.case_internal_id && c.case_internal_id.toLowerCase().includes(searchTerm)) ||
-            (c.client_name && c.client_name.toLowerCase().includes(searchTerm)) ||
-            (c.client_phone && c.client_phone.includes(searchTerm)) ||
-            (c.opponent_name && c.opponent_name.toLowerCase().includes(searchTerm)) ||
-            (c.current_court && c.current_court.toLowerCase().includes(searchTerm)) ||
-            (c.current_judge && c.current_judge.toLowerCase().includes(searchTerm)) ||
-            (c.case_type && c.case_type.toLowerCase().includes(searchTerm))
-        );
-        
-        renderCases();
-    }
-    
-    function filterCasesByStatus(status) {
-        renderCases(status);
-    }
-    
-    function filterTasksByStatus(status) {
-        renderTasks(status);
-    }
-    
-    // ===== Profile Functions =====
-    function exportData() {
-        showAlert('جاري تحضير البيانات للتصدير...', 'info');
-        
-        // Create CSV (Updated with new fields)
-        let csv = 'رقم الملف,الموكل,الهاتف,نوع الدعوى,المحكمة,القاضي,الخصم,الأتعاب,المدفوع,المتبقي,الحالة\n';
-        allCases.forEach(c => {
-            const remaining = (c.total_agreed_fees || 0) - (c.total_paid || 0);
-            csv += `"${c.case_internal_id}","${c.client_name}","${c.client_phone}","${c.case_type || ''}","${c.current_court || ''}","${c.current_judge || ''}","${c.opponent_name || ''}",${c.total_agreed_fees || 0},${c.total_paid || 0},${remaining},"${c.case_status}"\n`;
+        const cCases = allCases.filter(x=>x.client_id === cid || x.client_phone === c.phone);
+        let tot=0, paid=0;
+        const list = document.getElementById('cd_cases_list'); list.innerHTML='';
+        cCases.forEach(cc => {
+            tot += Number(cc.total_agreed_fees)||0; paid += Number(cc.total_paid)||0;
+            list.innerHTML += `<div class="case-card py-2 px-3" onclick="openCaseDetails('${cc.id}')"><div class="fw-bold">${cc.case_internal_id} <span class="badge bg-light text-dark float-end">${cc.case_status}</span></div></div>`;
         });
+        document.getElementById('cd_total').innerText = tot;
+        document.getElementById('cd_paid').innerText = paid;
+        document.getElementById('cd_rem').innerText = tot-paid;
         
-        // Download
-        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `moakkil_cases_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
-        
-        showAlert('✅ تم تصدير البيانات!', 'success');
+        new bootstrap.Modal(document.getElementById('clientDetailsModal')).show();
     }
-    
-    function refreshData() {
-        loadAll();
+
+    // Utilities
+    function showAlert(msg, type='info') {
+        const b = document.getElementById('alertContainer');
+        b.innerHTML = `<div class="alert-custom border-${type}"><i class="fas fa-info-circle text-${type}"></i> ${msg}</div>`;
+        setTimeout(()=>b.innerHTML='', 3000);
     }
-    
-    // ===== Logout =====
-    function logout() {
-        if (confirm('هل تريد تسجيل الخروج؟')) {
-            localStorage.clear();
-            location.href = 'login.html';
-        }
-    }
-    
-    // ===== Utilities =====
-    function formatDate(dateString) {
-        if (!dateString) return '--';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ar-JO', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-    }
-    
-    function formatDateTime(dateString) {
-        if (!dateString) return '--';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ar-JO', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-    
-    function getRoleText(role) {
-        const roles = {
-            'admin': '👨‍💼 مدير',
-            'lawyer': '⚖️ محامي',
-            'secretary': '📝 سكرتير'
-        };
-        return roles[role] || role;
-    }
-    
-    // ===== Alert System =====
-    function showAlert(message, type = 'info') {
-        const container = document.getElementById('alertContainer');
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
-        const colors = {
-            success: 'var(--success)',
-            error: 'var(--danger)',
-            warning: 'var(--warning)',
-            info: 'var(--info)'
-        };
-        
-        const alert = document.createElement('div');
-        alert.className = 'alert-custom';
-        alert.style.borderRight = `4px solid ${colors[type]}`;
-        alert.innerHTML = `
-            <i class="fas ${icons[type]}" style="color: ${colors[type]};"></i>
-            <span style="flex: 1;">${message}</span>
-        `;
-        
-        container.appendChild(alert);
-        
-        setTimeout(() => {
-            alert.style.opacity = '0';
-            alert.style.transform = 'translateY(-20px)';
-            setTimeout(() => alert.remove(), 300);
-        }, 4000);
-    }
-    
-    function hideAlert() {
-        document.getElementById('alertContainer').innerHTML = '';
-    }
+    function hideAlert() { document.getElementById('alertContainer').innerHTML=''; }
+    function logout() { localStorage.clear(); location.href='login.html'; }
 </script>
-<button class="pwa-install-btn d-none" id="pwaInstallBtn">
-    <i class="fas fa-download me-2"></i>
-    <span>تثبيت التطبيق</span>
-</button>
-
-<style>
-    .pwa-install-btn {
-        position: fixed;
-        bottom: 85px;
-        right: 20px;
-        background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%);
-        color: var(--navy);
-        border: none;
-        padding: 12px 24px;
-        border-radius: 30px;
-        font-weight: 800;
-        font-size: 0.9rem;
-        box-shadow: 0 6px 20px rgba(100, 255, 218, 0.5);
-        cursor: pointer;
-        z-index: 998;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .pwa-install-btn:active {
-        transform: scale(0.95);
-    }
-</style>
-
-<script>
-    // ===== PWA Service Worker =====
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(reg => console.log('✅ SW registered'))
-                .catch(err => console.log('❌ SW failed:', err));
-        });
-    }
-    
-    // ===== PWA Install Prompt =====
-    let deferredPrompt;
-    const installBtn = document.getElementById('pwaInstallBtn');
-    
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        installBtn.classList.remove('d-none');
-    });
-    
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            showAlert('تم تثبيت التطبيق بنجاح! 🎉', 'success');
-        }
-        deferredPrompt = null;
-        installBtn.classList.add('d-none');
-    });
-    
-    // ===== Request Notification Permission =====
-    setTimeout(async () => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                showAlert('تم تفعيل الإشعارات! 🔔', 'success');
-            }
-        }
-    }, 5000);
-</script>
-
-<div class="notifications-panel" id="notificationsPanel">
-    <div class="notifications-header">
-        <h6><i class="fas fa-bell me-2"></i>الإشعارات</h6>
-        <button class="btn-close-notif" onclick="closeNotificationsPanel()">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    <div class="notifications-list" id="notificationsList">
-        <div class="loading"><div class="spinner"></div></div>
-    </div>
-</div>
-
-<div class="notifications-overlay" id="notificationsOverlay" onclick="closeNotificationsPanel()"></div>
-
-<style>
-    .notifications-panel {
-        position: fixed;
-        top: 60px;
-        left: -100%;
-        width: 90%;
-        max-width: 400px;
-        height: calc(100vh - 60px);
-        background: white;
-        box-shadow: -4px 0 20px rgba(0,0,0,0.2);
-        z-index: 9999;
-        transition: left 0.3s ease;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .notifications-panel.open { left: 0; }
-    
-    .notifications-header {
-        padding: 20px;
-        border-bottom: 2px solid #f0f0f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
-        color: white;
-    }
-    
-    .notifications-header h6 { margin: 0; font-weight: 800; font-size: 1.1rem; }
-    
-    .btn-close-notif {
-        background: rgba(255,255,255,0.1);
-        border: none;
-        color: white;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-    }
-    
-    .notifications-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 15px;
-    }
-    
-    .notification-item {
-        background: white;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 12px;
-        border-right: 4px solid var(--info);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    
-    .notification-item:active { transform: translateX(-3px); }
-    .notification-item.unread { background: #f0f9ff; border-right-color: var(--accent); }
-    .notification-item.hearing { border-right-color: var(--warning); }
-    .notification-item.task { border-right-color: var(--info); }
-    .notification-item.payment { border-right-color: var(--success); }
-    
-    .notification-title {
-        font-weight: 800;
-        color: var(--navy);
-        margin-bottom: 5px;
-        font-size: 0.95rem;
-    }
-    
-    .notification-body {
-        color: #666;
-        font-size: 0.85rem;
-        line-height: 1.5;
-        margin-bottom: 8px;
-    }
-    
-    .notification-time {
-        font-size: 0.75rem;
-        color: #999;
-        font-weight: 600;
-    }
-    
-    .notifications-empty {
-        text-align: center;
-        padding: 50px 20px;
-        color: #999;
-    }
-    
-    .notifications-empty i {
-        font-size: 3rem;
-        margin-bottom: 15px;
-        opacity: 0.3;
-    }
-    
-    .notifications-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 9998;
-        display: none;
-    }
-    
-    .notifications-overlay.show { display: block; }
-</style>
-
-<script>
-    // ===== In-App Notifications System =====
-    
-    async function showNotifications() {
-        document.getElementById('notificationsPanel').classList.add('open');
-        document.getElementById('notificationsOverlay').classList.add('show');
-        await loadNotifications();
-    }
-    
-    function closeNotificationsPanel() {
-        document.getElementById('notificationsPanel').classList.remove('open');
-        document.getElementById('notificationsOverlay').classList.remove('show');
-    }
-    
-    async function loadNotifications() {
-        const container = document.getElementById('notificationsList');
-        container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-        
-        try {
-            const res = await fetch(`${API}/api/notifications`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (!res.ok) throw new Error('Failed');
-            
-            const notifications = await res.json();
-            renderNotifications(notifications);
-        } catch (e) {
-            container.innerHTML = '<p class="text-center text-danger mt-4">خطأ في تحميل الإشعارات</p>';
-        }
-    }
-    
-    function renderNotifications(notifications) {
-        const container = document.getElementById('notificationsList');
-        container.innerHTML = '';
-        
-        if (notifications.length === 0) {
-            container.innerHTML = `
-                <div class="notifications-empty">
-                    <i class="fas fa-bell-slash"></i>
-                    <p>لا توجد إشعارات</p>
-                </div>
-            `;
-            return;
-        }
-        
-        notifications.forEach(notif => {
-            const timeAgo = getTimeAgo(notif.created_at);
-            
-            const item = document.createElement('div');
-            item.className = `notification-item ${notif.type} ${!notif.is_read ? 'unread' : ''}`;
-            item.onclick = () => handleNotificationClick(notif);
-            
-            item.innerHTML = `
-                <div class="notification-title">${notif.title}</div>
-                <div class="notification-body">${notif.body}</div>
-                <div class="notification-time">
-                    <i class="fas fa-clock me-1"></i>${timeAgo}
-                </div>
-            `;
-            
-            container.appendChild(item);
-        });
-    }
-    
-    async function handleNotificationClick(notif) {
-        if (!notif.is_read) {
-            await fetch(`${API}/api/notifications/${notif.id}/read`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        }
-        
-        if (notif.url) window.location.href = notif.url;
-        closeNotificationsPanel();
-    }
-    
-    function getTimeAgo(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = Math.floor((now - date) / 1000);
-        
-        if (diff < 60) return 'الآن';
-        if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
-        if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
-        if (diff < 604800) return `منذ ${Math.floor(diff / 86400)} يوم`;
-        
-        return date.toLocaleDateString('ar-JO', { month: 'short', day: 'numeric' });
-    }
-</script>
-
 </body>
 </html>
