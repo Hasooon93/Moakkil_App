@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0a192f">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="موكّل">
@@ -24,7 +25,11 @@
     
     /* Top Nav & Omnibar */
     .top-nav { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-    .omnibar-container { flex: 1; margin: 0 15px; position: relative; }
+    .top-nav-left { display: flex; align-items: center; }
+    .back-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; transition: all 0.3s; margin-left: 10px; }
+    .back-btn.show { display: flex; }
+    
+    .omnibar-container { flex: 1; margin: 0 10px; position: relative; }
     .omnibar { width: 100%; border: none; border-radius: 20px; padding: 6px 15px 6px 35px; font-size: 0.9rem; background: rgba(255,255,255,0.15); color: white; outline: none; transition: all 0.3s; }
     .omnibar::placeholder { color: rgba(255,255,255,0.7); }
     .omnibar:focus { background: white; color: var(--navy); }
@@ -104,11 +109,12 @@
     .loading { text-align: center; padding: 30px; }
     .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin: 0 auto; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 50px 20px; color: #999; }
     
     .alert-container { position: fixed; top: 65px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; }
     .alert-custom { background: white; border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); font-weight: 700; font-size: 0.85rem;}
     
-    /* Print Styles for Timeline */
+    /* Print Styles */
     @media print {
         body * { visibility: hidden; }
         .print-area, .print-area * { visibility: visible; }
@@ -122,8 +128,9 @@
 <body>
 
 <div class="top-nav">
-    <div class="d-flex align-items-center">
-        <i class="fas fa-balance-scale fs-4"></i>
+    <div class="top-nav-left">
+        <button class="back-btn" id="backBtn" onclick="goBack()"><i class="fas fa-arrow-right"></i></button>
+        <i class="fas fa-balance-scale fs-4" id="logoIcon"></i>
     </div>
     <div class="omnibar-container">
         <input type="text" class="omnibar" id="omnibarInput" placeholder="بحث ذكي شامل..." onkeyup="performGlobalSearch()">
@@ -140,6 +147,11 @@
 <div class="main-content">
     
     <div id="home-view" class="view active">
+        <div class="section-card" style="background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; margin-bottom: 20px;">
+            <h6 class="mb-1" style="color: var(--accent); font-size: 0.9rem;">مرحباً،</h6>
+            <h4 class="mb-0" id="welcome-name" style="font-weight: 800;">...</h4>
+        </div>
+        
         <div class="stats-grid">
             <div class="stat-card" onclick="switchView('cases')">
                 <div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);"><i class="fas fa-folder-open"></i></div>
@@ -416,18 +428,30 @@
     let currentView='home', viewHistory=['home'], currentAgendaDate=new Date();
     let qrCode = null;
 
-    // ===== INIT =====
+    // ===== INIT & SAFE CHECKS =====
     window.onload = async () => {
         if (!token) { location.href = 'index.html'; return; }
         currentUser = JSON.parse(localStorage.getItem('mo_user'));
+        
         if (currentUser) {
-            document.getElementById('userAvatar').innerText = currentUser.full_name.charAt(0);
-            document.getElementById('profileAvatar').innerText = currentUser.full_name.charAt(0);
-            document.getElementById('profile-name').innerText = currentUser.full_name;
-            document.getElementById('welcome-name').innerText = currentUser.full_name;
+            // Safe checks to avoid innerText on null elements
+            const uAvatar = document.getElementById('userAvatar');
+            const pAvatar = document.getElementById('profileAvatar');
+            const pName = document.getElementById('profile-name');
+            const wName = document.getElementById('welcome-name');
+            const pRole = document.getElementById('profile-role');
+            
+            if (uAvatar) uAvatar.innerText = currentUser.full_name.charAt(0);
+            if (pAvatar) pAvatar.innerText = currentUser.full_name.charAt(0);
+            if (pName) pName.innerText = currentUser.full_name;
+            if (wName) wName.innerText = currentUser.full_name;
+            if (pRole) pRole.innerText = currentUser.role === 'admin' ? 'مدير النظام' : 'محامي';
+            
             if(currentUser.role === 'admin') {
-                document.getElementById('admin-staff-card').classList.remove('d-none');
-                document.getElementById('appt_lawyer').style.display = 'block';
+                const adminStaffCard = document.getElementById('admin-staff-card');
+                const apptLawyer = document.getElementById('appt_lawyer');
+                if (adminStaffCard) adminStaffCard.classList.remove('d-none');
+                if (apptLawyer) apptLawyer.style.display = 'block';
             }
         }
         await loadAll();
@@ -444,34 +468,45 @@
             ]);
             allCases=c; allTasks=t; allStaff=s; allClients=cl;
             populateSelects(); renderCases(); renderClients(); renderStaffView(); updateDashboard(); loadAgenda(currentAgendaDate);
-        } catch(e) {} hideAlert();
+        } catch(e) {
+            console.error(e);
+            showAlert('حدث خطأ في تحميل بعض البيانات', 'error');
+        } 
+        hideAlert();
     }
 
     function populateSelects() {
         let lSel='', tSel='', aSel='', cList='';
-        aSel = `<option value="${currentUser.id}">أنا (${currentUser.full_name})</option>`;
+        if (currentUser) aSel = `<option value="${currentUser.id}">أنا (${currentUser.full_name})</option>`;
+        
         allStaff.forEach(s => {
-            if(s.role==='lawyer'||s.role==='admin') { lSel+=`<option value="${s.id}">${s.full_name}</option>`; if(s.id!==currentUser.id) aSel+=`<option value="${s.id}">${s.full_name}</option>`;}
+            if(s.role==='lawyer'||s.role==='admin') { 
+                lSel+=`<option value="${s.id}">${s.full_name}</option>`; 
+                if(currentUser && s.id!==currentUser.id) aSel+=`<option value="${s.id}">${s.full_name}</option>`;
+            }
             tSel+=`<option value="${s.id}">${s.full_name}</option>`;
         });
         allClients.forEach(c => { cList+=`<option value="${c.phone}">${c.full_name}</option>`; });
         
-        document.getElementById('lawyerSelect').innerHTML = '<option value="">المحامي المسؤول</option>' + lSel;
-        document.getElementById('task_assign').innerHTML = '<option value="">إسناد إلى</option>' + tSel;
-        document.getElementById('appt_lawyer').innerHTML = aSel;
-        document.getElementById('clientsPhoneList').innerHTML = cList;
+        if(document.getElementById('lawyerSelect')) document.getElementById('lawyerSelect').innerHTML = '<option value="">المحامي المسؤول</option>' + lSel;
+        if(document.getElementById('task_assign')) document.getElementById('task_assign').innerHTML = '<option value="">إسناد إلى</option>' + tSel;
+        if(document.getElementById('appt_lawyer')) document.getElementById('appt_lawyer').innerHTML = aSel;
+        if(document.getElementById('clientsPhoneList')) document.getElementById('clientsPhoneList').innerHTML = cList;
     }
 
     function autoFillClient() { const c = allClients.find(x => x.phone === document.getElementById('client_phone_input').value); if(c) document.getElementById('client_name_input').value = c.full_name; }
     function autoFillApptClient() { const c = allClients.find(x => x.phone === document.getElementById('appt_client_phone').value); if(c) document.getElementById('appt_client_name').value = c.full_name; }
 
     function updateDashboard() {
-        document.getElementById('stat-total-cases').innerText = allCases.length;
-        document.getElementById('stat-total-clients').innerText = allClients.length;
-        document.getElementById('stat-staff-count').innerText = allStaff.length;
-        document.getElementById('stat-upcoming-hearings').innerText = allCases.filter(c=>c.next_hearing_date && new Date(c.next_hearing_date)>=new Date()).length;
+        if(document.getElementById('stat-total-cases')) document.getElementById('stat-total-cases').innerText = allCases.length;
+        if(document.getElementById('stat-total-clients')) document.getElementById('stat-total-clients').innerText = allClients.length;
+        if(document.getElementById('stat-staff-count')) document.getElementById('stat-staff-count').innerText = allStaff.length;
+        if(document.getElementById('stat-upcoming-hearings')) document.getElementById('stat-upcoming-hearings').innerText = allCases.filter(c=>c.next_hearing_date && new Date(c.next_hearing_date)>=new Date()).length;
+        
         let agreed=0, paid=0; allCases.forEach(c => { agreed+=Number(c.total_agreed_fees)||0; paid+=Number(c.total_paid)||0; });
-        document.getElementById('total-agreed').innerText = agreed.toFixed(0); document.getElementById('total-collected').innerText = paid.toFixed(0); document.getElementById('total-pending').innerText = (agreed-paid).toFixed(0);
+        if(document.getElementById('total-agreed')) document.getElementById('total-agreed').innerText = agreed.toFixed(0); 
+        if(document.getElementById('total-collected')) document.getElementById('total-collected').innerText = paid.toFixed(0); 
+        if(document.getElementById('total-pending')) document.getElementById('total-pending').innerText = (agreed-paid).toFixed(0);
     }
 
     // ===== GLOBAL SEARCH (Omnibar) =====
@@ -496,20 +531,28 @@
 
     // ===== RENDERS =====
     function renderCases(filter='all') {
-        const list = document.getElementById('cases-list'); list.innerHTML='';
-        let f = filter==='all' ? allCases : allCases.filter(c=>c.case_status===filter); document.getElementById('cases-count').innerText=f.length;
+        const list = document.getElementById('cases-list'); 
+        if(!list) return;
+        list.innerHTML='';
+        let f = filter==='all' ? allCases : allCases.filter(c=>c.case_status===filter); 
+        if(document.getElementById('cases-count')) document.getElementById('cases-count').innerText=f.length;
         f.forEach(c => {
             list.innerHTML += `<div class="case-card" onclick="openCaseDetails('${c.id}')"><div class="case-card-header"><div class="case-number">${c.case_internal_id}</div><span class="badge bg-light text-dark">${c.case_status}</span></div><div class="info-row"><i class="fas fa-user"></i><strong>${c.client_name}</strong></div>${c.current_court?`<div class="info-row"><i class="fas fa-landmark"></i>${c.current_court}</div>`:''}${c.next_hearing_date?`<div class="info-row"><i class="fas fa-calendar text-danger"></i><span class="text-danger fw-bold">${c.next_hearing_date}</span></div>`:''}</div>`;
         });
     }
 
     function renderClients() {
-        const list = document.getElementById('clients-list'); list.innerHTML=''; document.getElementById('clients-count').innerText=allClients.length;
+        const list = document.getElementById('clients-list'); 
+        if(!list) return;
+        list.innerHTML=''; 
+        if(document.getElementById('clients-count')) document.getElementById('clients-count').innerText=allClients.length;
         allClients.forEach(c => { list.innerHTML += `<div class="client-card" onclick="openClientProfile('${c.id}')"><div class="fw-bold text-navy mb-1">${c.full_name}</div><div class="text-muted small"><i class="fas fa-phone me-1"></i>${c.phone}</div></div>`; });
     }
 
     function renderStaffView() {
-        const list = document.getElementById('staff-list'); list.innerHTML='';
+        const list = document.getElementById('staff-list'); 
+        if(!list) return;
+        list.innerHTML='';
         allStaff.forEach(s => {
             const sc = allCases.filter(c=>c.assigned_lawyer_id===s.id);
             list.innerHTML += `
@@ -521,8 +564,11 @@
     }
 
     async function loadAgenda(d) {
-        const ds = d.toISOString().split('T')[0]; document.getElementById('agenda-date-display').innerText = ds===new Date().toISOString().split('T')[0]?'اليوم':ds;
-        const tl = document.getElementById('agenda-timeline'); tl.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+        const ds = d.toISOString().split('T')[0]; 
+        if(document.getElementById('agenda-date-display')) document.getElementById('agenda-date-display').innerText = ds===new Date().toISOString().split('T')[0]?'اليوم':ds;
+        const tl = document.getElementById('agenda-timeline'); 
+        if(!tl) return;
+        tl.innerHTML='<div class="loading"><div class="spinner"></div></div>';
         try{
             const res = await fetch(`${API}/api/agenda?date=${ds}`, {headers:{'Authorization':`Bearer ${token}`}}); const data = await res.json(); tl.innerHTML='';
             if(!data.hearings.length&&!data.tasks.length&&!data.appointments.length){ tl.innerHTML='<div class="empty-state"><p>لا يوجد جدول</p></div>'; return; }
@@ -534,17 +580,38 @@
     function changeAgendaDate(off) { currentAgendaDate.setDate(currentAgendaDate.getDate()+off); loadAgenda(currentAgendaDate); }
 
     // ===== MODALS & ROUTING =====
-    function switchView(v) { if(v!==currentView) viewHistory.push(v); document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); document.getElementById(v+'-view').classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); const idx=['home','cases','agenda','clients','profile'].indexOf(v); if(idx>=0) document.querySelectorAll('.nav-item')[idx].classList.add('active'); currentView=v; document.getElementById('backBtn').classList.toggle('show',v!=='home'); closeQuickActions(); }
+    function switchView(v) { 
+        if(v!==currentView) viewHistory.push(v); 
+        document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
+        
+        const viewElem = document.getElementById(v+'-view');
+        if(viewElem) viewElem.classList.add('active'); 
+        
+        document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); 
+        const idx=['home','cases','agenda','clients','profile'].indexOf(v); 
+        if(idx>=0 && document.querySelectorAll('.nav-item')[idx]) document.querySelectorAll('.nav-item')[idx].classList.add('active'); 
+        
+        currentView=v; 
+        
+        const backBtn = document.getElementById('backBtn');
+        const logoIcon = document.getElementById('logoIcon');
+        if(backBtn) backBtn.classList.toggle('show',v!=='home'); 
+        if(logoIcon) logoIcon.classList.toggle('d-none', v!=='home');
+        
+        closeQuickActions(); 
+    }
     function goBack() { if(viewHistory.length>1){ viewHistory.pop(); switchView(viewHistory.pop()); } else switchView('home'); }
-    function toggleQuickActions() { document.getElementById('quickActions').classList.toggle('show'); }
-    function closeQuickActions() { document.getElementById('quickActions').classList.remove('show'); }
+    function toggleQuickActions() { const q = document.getElementById('quickActions'); if(q) q.classList.toggle('show'); }
+    function closeQuickActions() { const q = document.getElementById('quickActions'); if(q) q.classList.remove('show'); }
 
     function openNewCaseModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newCaseModal')).show(); }
     function openNewAppointmentModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newApptModal')).show(); }
     function openNewTaskModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newTaskModal')).show(); }
 
     async function saveCase() {
-        const d = Object.fromEntries(new FormData(document.getElementById('newCaseForm')).entries());
+        const form = document.getElementById('newCaseForm');
+        if(!form) return;
+        const d = Object.fromEntries(new FormData(form).entries());
         showAlert('جاري الحفظ...', 'info');
         const res = await fetch(`${API}/api/cases`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
         if(res.ok){ showAlert('تم الحفظ', 'success'); bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide(); loadAll(); }
@@ -657,7 +724,7 @@
     // ===== PRINT TIMELINE & QR CODE =====
     function printTimeline() {
         document.getElementById('printHeader').innerText = `سجل القضية: ${document.getElementById('modal_case_id').innerText}`;
-        window.print(); // يعتمد على CSS @media print
+        window.print(); 
     }
 
     function generateQR() {
@@ -697,7 +764,7 @@
     }
 
     function showAlert(msg, t='info') { const b=document.getElementById('alertContainer'); b.innerHTML=`<div class="alert-custom border-${t}"><i class="fas fa-info-circle text-${t}"></i> ${msg}</div>`; setTimeout(()=>b.innerHTML='',3000); }
-    function hideAlert() { document.getElementById('alertContainer').innerHTML=''; }
+    function hideAlert() { const b = document.getElementById('alertContainer'); if(b) b.innerHTML=''; }
     function logout() { localStorage.clear(); location.href='index.html'; }
 </script>
 
