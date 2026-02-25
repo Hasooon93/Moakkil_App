@@ -18,193 +18,169 @@
             --danger: #f44336;
             --warning: #ff9800;
             --info: #2196f3;
-            --shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+            --shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
         
         body { 
             font-family: 'Cairo', sans-serif; 
             background: #f5f7fa;
-            padding-bottom: 40px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        
+
         /* ====== Header ====== */
-        .header-section {
+        .client-header {
             background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
             color: white;
-            padding: 40px 20px 60px 20px;
-            border-radius: 0 0 35px 35px;
+            padding: 20px;
             text-align: center;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            position: relative;
-            overflow: hidden;
+            box-shadow: var(--shadow);
+            border-bottom: 4px solid var(--accent);
         }
-        
-        .header-section::before {
-            content: '';
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(100,255,218,0.1) 0%, transparent 70%);
-            top: -50%;
-            left: -50%;
-            animation: pulse 15s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        
-        .header-content {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .logo-client {
-            font-size: 2rem;
+
+        .client-header h1 {
             font-weight: 800;
-            margin-bottom: 8px;
+            font-size: 1.5rem;
+            margin: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
         }
-        
-        .logo-client i {
-            color: var(--accent);
-            font-size: 2.2rem;
+
+        /* ====== Main Content ====== */
+        .main-content {
+            flex: 1;
+            padding: 20px 15px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
         }
-        
-        .header-subtitle {
-            color: rgba(255,255,255,0.9);
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
-        
-        /* ====== Main Container ====== */
-        .main-container {
-            padding: 0 15px;
-            margin-top: -40px;
-            position: relative;
-            z-index: 10;
-        }
-        
-        /* ====== Case Card ====== */
-        .case-info-card {
+
+        /* ====== Login Step ====== */
+        .login-card {
             background: white;
             border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            animation: fadeIn 0.5s;
+        }
+
+        .login-icon {
+            font-size: 3.5rem;
+            color: var(--navy);
             margin-bottom: 20px;
+        }
+
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 12px 15px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(100,255,218,0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%);
+            color: var(--navy);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        /* ====== Case View Step ====== */
+        .case-header-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            text-align: center;
             position: relative;
             overflow: hidden;
+            border-top: 5px solid var(--accent);
         }
-        
-        .case-info-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, var(--accent) 0%, #52e5b8 100%);
-        }
-        
-        .case-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        
-        .case-number {
-            font-size: 0.85rem;
-            color: #999;
+
+        .case-title {
+            font-size: 1.2rem;
+            color: #666;
             margin-bottom: 5px;
             font-weight: 600;
         }
-        
-        .case-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--navy);
-            margin-bottom: 5px;
-        }
-        
+
         .client-name {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #555;
-        }
-        
-        .status-badge {
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            color: #2e7d32;
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 1.6rem;
+            color: var(--navy);
             font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin-bottom: 20px;
         }
-        
-        .status-badge.closed {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
-            color: #757575;
-        }
-        
-        .case-info-grid {
+
+        /* ====== Info Grid ====== */
+        .info-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            text-align: right;
         }
-        
-        .info-item {
-            text-align: center;
-            padding: 15px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 12px;
             border-radius: 12px;
             border: 1px solid #e9ecef;
         }
-        
+
+        .info-box.full-width {
+            grid-column: span 2;
+        }
+
         .info-label {
-            font-size: 0.75rem;
-            color: #999;
-            margin-bottom: 8px;
-            font-weight: 600;
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        
+
         .info-value {
-            font-size: 0.95rem;
-            font-weight: 800;
+            font-size: 1rem;
+            font-weight: 700;
             color: var(--navy);
-            word-break: break-word;
         }
-        
+
         .info-value.highlight {
             color: var(--danger);
+            font-size: 1.1rem;
         }
-        
-        /* ====== Section Card ====== */
-        .section-card {
+
+        /* ====== Timeline ====== */
+        .timeline-container {
             background: white;
             border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 20px;
+            padding: 25px 20px;
             box-shadow: var(--shadow);
         }
-        
-        .section-header {
+
+        .timeline-title {
             font-size: 1.2rem;
             font-weight: 800;
             color: var(--navy);
@@ -212,502 +188,343 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
         }
-        
-        .section-header i {
-            color: var(--accent);
-            font-size: 1.3rem;
-        }
-        
-        /* ====== Timeline ====== */
-        .timeline {
-            position: relative;
-        }
-        
+
         .timeline-item {
             position: relative;
-            padding-right: 35px;
-            padding-bottom: 30px;
-            border-right: 3px solid #e9ecef;
+            padding-right: 30px;
+            padding-bottom: 20px;
+            border-right: 2px solid #e9ecef;
         }
-        
+
         .timeline-item:last-child {
             border-right: none;
             padding-bottom: 0;
         }
-        
+
         .timeline-icon {
             position: absolute;
-            right: -14px;
+            right: -16px;
             top: 0;
-            width: 26px;
-            height: 26px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            background: var(--accent);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--navy);
-            font-size: 0.7rem;
-            box-shadow: 0 0 0 5px white;
-            font-weight: 800;
-        }
-        
-        .timeline-icon.hearing {
-            background: var(--info);
             color: white;
+            font-size: 0.9rem;
+            box-shadow: 0 0 0 4px white;
         }
-        
-        .timeline-icon.payment {
-            background: var(--success);
-            color: white;
-        }
-        
-        .timeline-icon.admin {
-            background: var(--warning);
-            color: white;
-        }
-        
+
         .timeline-content {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 12px;
-            position: relative;
+            border: 1px solid #e9ecef;
         }
-        
-        .timeline-date {
-            font-size: 0.75rem;
-            color: #999;
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
             margin-bottom: 8px;
-            font-weight: 600;
         }
-        
-        .timeline-title {
-            font-size: 1rem;
+
+        .log-title {
             font-weight: 800;
             color: var(--navy);
-            margin-bottom: 8px;
+            font-size: 1.05rem;
         }
-        
-        .timeline-details {
+
+        .log-date {
+            font-size: 0.8rem;
+            color: #999;
+            font-weight: 600;
+        }
+
+        .log-details {
             font-size: 0.9rem;
-            color: #666;
+            color: #555;
             line-height: 1.6;
         }
-        
-        /* ====== Empty State ====== */
-        .empty-state {
-            text-align: center;
-            padding: 50px 20px;
-            color: #999;
-        }
-        
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.3;
-        }
-        
-        .empty-state p {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        /* ====== Loading ====== */
-        .loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
+
+        .log-financial {
+            margin-top: 10px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
+            gap: 10px;
         }
+
+        /* ====== Utilities ====== */
+        .d-none { display: none !important; }
         
-        .loading-logo {
-            color: var(--accent);
-            font-size: 3rem;
-            margin-bottom: 30px;
-            animation: bounce 1.5s ease-in-out infinite;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
-        
-        .spinner {
-            border: 4px solid rgba(100,255,218,0.2);
-            border-top: 4px solid var(--accent);
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(10, 25, 47, 0.3);
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
+            border-top-color: var(--navy);
+            animation: spin 1s ease-in-out infinite;
         }
-        
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .loading-text {
-            color: white;
-            margin-top: 20px;
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
-        
-        /* ====== Error State ====== */
-        .error-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
-        }
-        
-        .error-card {
-            background: white;
-            padding: 40px 30px;
-            border-radius: 20px;
-            text-align: center;
-            max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        
-        .error-icon {
-            font-size: 4rem;
-            color: var(--danger);
-            margin-bottom: 20px;
-        }
-        
-        .error-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--navy);
-            margin-bottom: 15px;
-        }
-        
-        .error-message {
-            font-size: 0.95rem;
-            color: #666;
-            line-height: 1.6;
-        }
-        
-        /* ====== Footer ====== */
-        .footer {
-            text-align: center;
-            padding: 30px 20px;
-            color: #999;
-            font-size: 0.85rem;
-        }
-        
-        .footer-logo {
-            font-weight: 800;
-            color: var(--navy);
-            margin-bottom: 5px;
-        }
-        
-        /* ====== Responsive ====== */
-        @media (max-width: 576px) {
-            .case-info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .info-item {
-                text-align: right;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .info-label {
-                margin-bottom: 0;
-            }
-        }
-        
-        @media (min-width: 768px) {
-            .main-container {
-                max-width: 800px;
-                margin-left: auto;
-                margin-right: auto;
-            }
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
 
-<!-- Loading Screen -->
-<div id="loading" class="loading-screen">
-    <div class="loading-logo">
-        <i class="fas fa-balance-scale"></i>
+    <div class="client-header">
+        <h1><i class="fas fa-balance-scale"></i> موكّل</h1>
+        <p class="mb-0 mt-2" style="font-size: 0.9rem; opacity: 0.9;">بوابة متابعة القضايا للموكلين</p>
     </div>
-    <div class="spinner"></div>
-    <p class="loading-text">جاري تحميل بيانات القضية...</p>
-</div>
 
-<!-- Main Content -->
-<div id="content" class="d-none">
-    <!-- Header -->
-    <div class="header-section">
-        <div class="header-content">
-            <div class="logo-client">
-                <i class="fas fa-balance-scale"></i>
-                موكّل
-            </div>
-            <p class="header-subtitle">بوابة الموكل الآمنة</p>
-        </div>
-    </div>
-    
-    <!-- Main Container -->
-    <div class="main-container">
+    <div class="main-content">
         
-        <!-- Case Info Card -->
-        <div class="case-info-card">
-            <div class="case-header">
-                <div>
-                    <div class="case-number">رقم الملف</div>
-                    <h1 class="case-title" id="caseId">...</h1>
-                    <div class="client-name" id="clientName">...</div>
-                </div>
-                <div>
-                    <div class="status-badge" id="statusBadge">نشطة</div>
-                </div>
-            </div>
-            
-            <div class="case-info-grid">
-                <div class="info-item">
-                    <div class="info-label">المحكمة</div>
-                    <div class="info-value" id="courtName">...</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">المرحلة</div>
-                    <div class="info-value" id="caseStage">...</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">الجلسة القادمة</div>
-                    <div class="info-value highlight" id="nextDate">...</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Timeline Section -->
-        <div class="section-card">
-            <h2 class="section-header">
-                <i class="fas fa-history"></i>
-                سجل التحديثات والأحداث
-            </h2>
-            <div id="timeline" class="timeline"></div>
-        </div>
-        
-    </div>
-    
-    <!-- Footer -->
-    <div class="footer">
-        <div class="footer-logo">موكّل</div>
-        <div>نظام إدارة مكاتب المحاماة © 2026</div>
-        <div class="mt-2">
-            <i class="fas fa-shield-alt text-success me-1"></i>
-            نظام آمن ومشفّر
-        </div>
-    </div>
-</div>
+        <div id="alertBox" class="alert d-none text-center" style="border-radius: 12px; font-weight: 700;"></div>
 
-<script>
-    const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
-    
-    // ===== Initialize =====
-    window.onload = async () => {
-        // Get parameters from URL
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        const pin = params.get('pin');
-        
-        // Validate parameters
-        if (!id || !pin) {
-            showError(
-                'رابط غير صالح',
-                'يرجى طلب الرابط الصحيح من المحامي المسؤول عن قضيتك.'
-            );
-            return;
-        }
-        
-        try {
-            // Fetch case data
-            const res = await fetch(`${API}/client/access`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    case_id: id, 
-                    pin: pin 
-                })
-            });
+        <div id="loginStep" class="login-card">
+            <div class="login-icon">
+                <i class="fas fa-search-location"></i>
+            </div>
+            <h3 class="mb-2 fw-bold" style="color: var(--navy);">استعلام عن قضية</h3>
+            <p class="text-muted mb-4 small">أدخل رقم الملف والرمز السري (PIN) الخاص بك للوصول إلى التحديثات</p>
             
-            if (!res.ok) {
-                throw new Error('بيانات الدخول غير صحيحة');
-            }
+            <form id="accessForm" onsubmit="event.preventDefault(); fetchCaseData();">
+                <input type="text" id="caseId" class="form-control" placeholder="رقم الملف (مثال: 123/2026)" required>
+                <input type="password" id="accessPin" class="form-control" placeholder="الرمز السري (PIN)" pattern="[0-9]*" inputmode="numeric" required>
+                <button type="submit" class="btn btn-primary mt-2" id="submitBtn">
+                    <span>عرض التفاصيل</span>
+                </button>
+            </form>
+        </div>
+
+        <div id="detailsStep" class="d-none">
             
-            const data = await res.json();
-            
-            // Render page
-            renderPage(data.case, data.updates);
-            
-        } catch (e) {
-            console.error('Error:', e);
-            showError(
-                'عذراً، لا يمكن الوصول للملف',
-                'تأكد من صحة الرابط أو تواصل مع المكتب. قد يكون الرابط منتهي الصلاحية أو غير صحيح.'
-            );
-        }
-    };
-    
-    // ===== Render Page =====
-    function renderPage(caseData, updates) {
-        // Hide loading
-        document.getElementById('loading').classList.add('d-none');
-        document.getElementById('content').classList.remove('d-none');
-        
-        // Case Info
-        document.getElementById('caseId').innerText = caseData.case_internal_id;
-        document.getElementById('clientName').innerText = caseData.client_name;
-        
-        // Status Badge
-        const statusBadge = document.getElementById('statusBadge');
-        if (caseData.case_status === 'active') {
-            statusBadge.innerText = '✓ قيد المتابعة';
-            statusBadge.classList.remove('closed');
-        } else if (caseData.case_status === 'closed') {
-            statusBadge.innerText = '✓ مغلقة';
-            statusBadge.classList.add('closed');
-        } else {
-            statusBadge.innerText = caseData.case_status || 'نشطة';
-        }
-        
-        // Case Details
-        document.getElementById('courtName').innerText = caseData.current_court || 'غير محدد';
-        document.getElementById('caseStage').innerText = caseData.case_stage || 'جديد';
-        
-        // Next Hearing
-        if (caseData.next_hearing_date) {
-            const hearingDate = new Date(caseData.next_hearing_date);
-            document.getElementById('nextDate').innerText = formatDate(hearingDate);
-        } else {
-            document.getElementById('nextDate').innerText = 'سيحدد لاحقاً';
-            document.getElementById('nextDate').classList.remove('highlight');
-        }
-        
-        // Timeline
-        renderTimeline(updates);
-    }
-    
-    // ===== Render Timeline =====
-    function renderTimeline(updates) {
-        const timeline = document.getElementById('timeline');
-        timeline.innerHTML = '';
-        
-        if (updates.length === 0) {
-            timeline.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <p>لا توجد تحديثات مسجلة بعد</p>
-                    <small class="text-muted">سيتم إضافة التحديثات تلقائياً عند حدوثها</small>
-                </div>
-            `;
-            return;
-        }
-        
-        updates.forEach(update => {
-            // Determine icon type
-            let iconClass = 'fas fa-circle';
-            let iconType = '';
-            
-            if (update.update_type === 'hearing') {
-                iconClass = 'fas fa-gavel';
-                iconType = 'hearing';
-            } else if (update.update_type === 'payment_in') {
-                iconClass = 'fas fa-money-bill-wave';
-                iconType = 'payment';
-            } else if (update.update_type === 'admin') {
-                iconClass = 'fas fa-file-alt';
-                iconType = 'admin';
-            }
-            
-            // Get title
-            const title = update.title || getTitleByType(update.update_type);
-            
-            // Create timeline item
-            const item = document.createElement('div');
-            item.className = 'timeline-item';
-            item.innerHTML = `
-                <div class="timeline-icon ${iconType}">
-                    <i class="${iconClass}"></i>
-                </div>
-                <div class="timeline-content">
-                    <div class="timeline-date">${formatDateTime(update.timestamp)}</div>
-                    <div class="timeline-title">${title}</div>
-                    ${update.details ? `<div class="timeline-details">${update.details}</div>` : ''}
-                </div>
-            `;
-            
-            timeline.appendChild(item);
-        });
-    }
-    
-    // ===== Get Title By Type =====
-    function getTitleByType(type) {
-        const titles = {
-            'hearing': '📋 جلسة محكمة',
-            'admin': '📄 إجراء إداري',
-            'payment_in': '💰 دفعة مالية',
-            'payment_out': '💸 رسوم ومصاريف'
-        };
-        return titles[type] || 'تحديث';
-    }
-    
-    // ===== Show Error =====
-    function showError(title, message) {
-        document.getElementById('loading').classList.add('d-none');
-        document.body.innerHTML = `
-            <div class="error-container">
-                <div class="error-card">
-                    <div class="error-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
+            <div class="case-header-card">
+                <div class="case-title">ملف رقم: <span id="v_case_id" class="text-primary fw-bold"></span></div>
+                <div class="client-name" id="v_client_name"></div>
+                
+                <div class="info-grid">
+                    <div class="info-box">
+                        <div class="info-label"><i class="fas fa-info-circle text-info"></i> حالة الملف</div>
+                        <div class="info-value" id="v_status"></div>
                     </div>
-                    <h2 class="error-title">${title}</h2>
-                    <p class="error-message">${message}</p>
+                    <div class="info-box">
+                        <div class="info-label"><i class="fas fa-layer-group text-warning"></i> المرحلة الحالية</div>
+                        <div class="info-value" id="v_stage"></div>
+                    </div>
+                    <div class="info-box full-width">
+                        <div class="info-label"><i class="fas fa-tags text-secondary"></i> نوع الدعوى</div>
+                        <div class="info-value" id="v_type"></div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label"><i class="fas fa-landmark text-primary"></i> المحكمة</div>
+                        <div class="info-value" id="v_court"></div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label"><i class="fas fa-gavel text-navy"></i> القاضي</div>
+                        <div class="info-value" id="v_judge"></div>
+                    </div>
+                    <div class="info-box full-width" style="background: #fff5f5; border-color: #ffdce0;">
+                        <div class="info-label"><i class="fas fa-calendar-alt text-danger"></i> موعد الجلسة القادمة</div>
+                        <div class="info-value highlight" id="v_next_hearing"></div>
+                    </div>
                 </div>
+                
+                <button class="btn btn-outline-secondary btn-sm mt-3 w-100 rounded-pill fw-bold" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-1"></i> خروج
+                </button>
             </div>
-        `;
-    }
-    
-    // ===== Format Date =====
-    function formatDate(date) {
-        return date.toLocaleDateString('ar-JO', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    }
-    
-    // ===== Format DateTime =====
-    function formatDateTime(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ar-JO', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-</script>
 
+            <div class="timeline-container">
+                <div class="timeline-title">
+                    <i class="fas fa-history text-accent"></i> السجل الإجرائي
+                </div>
+                <div id="timelineList"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
+
+        // Auto-fill from URL parameters if available
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cid = urlParams.get('id');
+            const pin = urlParams.get('pin');
+            
+            if (cid) document.getElementById('caseId').value = cid;
+            if (pin) document.getElementById('accessPin').value = pin;
+            
+            if (cid && pin) {
+                fetchCaseData();
+            }
+        };
+
+        // ===== Fetch Case Data =====
+        async function fetchCaseData() {
+            const caseId = document.getElementById('caseId').value.trim();
+            const pin = document.getElementById('accessPin').value.trim();
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerHTML;
+
+            if (!caseId || !pin) return;
+
+            // Loading state
+            btn.innerHTML = '<div class="loading-spinner"></div>';
+            btn.disabled = true;
+            hideAlert();
+
+            try {
+                const res = await fetch(`${API}/client/access`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ case_id: caseId, pin: pin })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    renderCaseDetails(data.case, data.updates);
+                } else {
+                    showAlert('رقم الملف أو الرمز السري غير صحيح.', 'danger');
+                }
+            } catch (e) {
+                showAlert('حدث خطأ في الاتصال بالسيرفر. حاول مرة أخرى.', 'danger');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // ===== Render Data =====
+        function renderCaseDetails(caseData, updates) {
+            // Hide login, show details
+            document.getElementById('loginStep').classList.add('d-none');
+            document.getElementById('detailsStep').classList.remove('d-none');
+            window.scrollTo(0, 0);
+
+            // Populate Info
+            document.getElementById('v_case_id').innerText = caseData.case_internal_id;
+            document.getElementById('v_client_name').innerText = caseData.client_name;
+            
+            // Status translation
+            const statusMap = { 'active': 'نشط', 'closed': 'مغلق', 'pending': 'معلق' };
+            document.getElementById('v_status').innerText = statusMap[caseData.case_status] || caseData.case_status;
+            
+            document.getElementById('v_stage').innerText = caseData.case_stage || 'قيد المتابعة';
+            document.getElementById('v_type').innerText = caseData.case_type || 'غير مصنف';
+            document.getElementById('v_court').innerText = caseData.current_court || 'غير محدد';
+            document.getElementById('v_judge').innerText = caseData.current_judge || 'غير محدد';
+            
+            if (caseData.next_hearing_date) {
+                document.getElementById('v_next_hearing').innerText = formatDate(caseData.next_hearing_date);
+            } else {
+                document.getElementById('v_next_hearing').innerText = 'غير محدد حالياً';
+                document.getElementById('v_next_hearing').classList.remove('highlight');
+                document.getElementById('v_next_hearing').style.color = '#666';
+            }
+
+            // Render Timeline
+            const timelineContainer = document.getElementById('timelineList');
+            timelineContainer.innerHTML = '';
+
+            if (!updates || updates.length === 0) {
+                timelineContainer.innerHTML = '<p class="text-center text-muted py-4">لا توجد تحديثات مسجلة حتى الآن.</p>';
+                return;
+            }
+
+            updates.forEach(log => {
+                // Determine icon and color based on type
+                let icon = 'fa-check';
+                let color = 'var(--navy)';
+                let bgClass = '';
+
+                if (log.update_type === 'hearing') {
+                    icon = 'fa-gavel'; color = 'var(--info)';
+                } else if (log.update_type === 'admin') {
+                    icon = 'fa-file-alt'; color = 'var(--warning)';
+                } else if (log.update_type === 'payment_in') {
+                    icon = 'fa-money-bill-wave'; color = 'var(--success)'; bgClass = 'bg-success text-white';
+                } else if (log.update_type === 'payment_out') {
+                    icon = 'fa-file-invoice-dollar'; color = 'var(--danger)'; bgClass = 'bg-danger text-white';
+                }
+
+                // Format Details (Smart Updates Support)
+                const formattedDetails = log.details ? log.details.replace(/\n/g, '<br>') : '';
+
+                // Build HTML
+                let html = `
+                    <div class="timeline-item">
+                        <div class="timeline-icon" style="background-color: ${color};">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="log-header">
+                                <div class="log-title">${log.title || 'تحديث'}</div>
+                                <div class="log-date">${formatDateTime(log.timestamp)}</div>
+                            </div>
+                            ${formattedDetails ? `<div class="log-details mt-2">${formattedDetails}</div>` : ''}
+                `;
+
+                // Add Financial Badges if exist
+                if (log.financial_in > 0 || log.financial_out > 0) {
+                    html += `<div class="log-financial">`;
+                    if (log.financial_in > 0) html += `<span class="badge bg-success px-2 py-1">دفعة مقبوضة: ${log.financial_in}</span>`;
+                    if (log.financial_out > 0) html += `<span class="badge bg-danger px-2 py-1">رسوم مدفوعة: ${log.financial_out}</span>`;
+                    html += `</div>`;
+                }
+
+                html += `</div></div>`;
+                timelineContainer.innerHTML += html;
+            });
+        }
+
+        // ===== Utilities =====
+        function showAlert(msg, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = `alert alert-${type} mt-3`;
+            alertBox.innerText = msg;
+            alertBox.classList.remove('d-none');
+        }
+
+        function hideAlert() {
+            document.getElementById('alertBox').classList.add('d-none');
+        }
+
+        function logout() {
+            // Reset form and UI
+            document.getElementById('caseId').value = '';
+            document.getElementById('accessPin').value = '';
+            document.getElementById('detailsStep').classList.add('d-none');
+            document.getElementById('loginStep').classList.remove('d-none');
+            hideAlert();
+            
+            // Remove URL params cleanly
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('ar-JO', options);
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '';
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateStr).toLocaleDateString('ar-JO', options);
+        }
+    </script>
 </body>
 </html>

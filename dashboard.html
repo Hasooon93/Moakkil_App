@@ -1,16 +1,13 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<!-- PWA Manifest -->
 <link rel="manifest" href="/manifest.json">
 
-<!-- iOS PWA Support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="موكّل">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 
-<!-- Android PWA Support -->
 <meta name="mobile-web-app-capable" content="yes">
    
  <meta charset="UTF-8">
@@ -816,7 +813,6 @@
 </head>
 <body>
 
-<!-- Top Navigation -->
 <div class="top-nav">
     <div class="top-nav-left">
         <button class="back-btn" id="backBtn" onclick="goBack()">
@@ -833,22 +829,17 @@
     </div>
 </div>
 
-<!-- Alert Container -->
 <div class="alert-container" id="alertContainer"></div>
 
-<!-- Main Content -->
 <div class="main-content">
     
-    <!-- ========== HOME VIEW ========== -->
     <div id="home-view" class="view active">
         
-        <!-- Welcome Section -->
         <div class="section-card" style="background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; margin-bottom: 20px;">
             <h6 class="mb-2" style="color: var(--accent); font-size: 0.9rem;">مرحباً،</h6>
             <h4 class="mb-0" id="welcome-name" style="font-weight: 800;">المستخدم</h4>
         </div>
         
-        <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card" onclick="switchView('cases')">
                 <div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);">
@@ -883,7 +874,6 @@
             </div>
         </div>
         
-        <!-- Financial Summary -->
         <div class="section-card">
             <div class="section-header">
                 <h6><i class="fas fa-chart-line me-2"></i>الملخص المالي</h6>
@@ -908,7 +898,6 @@
             </div>
         </div>
         
-        <!-- Upcoming Hearings -->
         <div class="section-card">
             <div class="section-header">
                 <h6><i class="fas fa-gavel me-2"></i>الجلسات القادمة</h6>
@@ -919,7 +908,6 @@
             <div id="upcoming-hearings-list"></div>
         </div>
         
-        <!-- Recent Tasks -->
         <div class="section-card">
             <div class="section-header">
                 <h6><i class="fas fa-clipboard-list me-2"></i>المهام العاجلة</h6>
@@ -932,10 +920,9 @@
         
     </div>
     
-    <!-- ========== CASES VIEW ========== -->
     <div id="cases-view" class="view">
         <div class="search-bar">
-            <input type="text" id="search-cases" placeholder="ابحث عن قضية برقم الملف أو اسم الموكل..." onkeyup="filterCases()">
+            <input type="text" id="search-cases" placeholder="ابحث باسم الموكل، الخصم، رقم الملف، المحكمة، أو القاضي..." onkeyup="filterCases()">
             <i class="fas fa-search"></i>
         </div>
         
@@ -953,7 +940,6 @@
         </div>
     </div>
     
-    <!-- ========== TASKS VIEW ========== -->
     <div id="tasks-view" class="view">
         <div class="section-card">
             <div class="section-header">
@@ -968,7 +954,6 @@
         </div>
     </div>
     
-    <!-- ========== PROFILE VIEW ========== -->
     <div id="profile-view" class="view">
         <div class="section-card text-center" style="background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white;">
             <div class="user-avatar mx-auto mb-3" style="width: 90px; height: 90px; font-size: 2.5rem;" id="profileAvatar">A</div>
@@ -996,6 +981,10 @@
         
         <div class="section-card">
             <div class="list-group list-group-flush">
+                <a href="reports.html" class="list-group-item list-group-item-action border-0 py-3">
+                    <i class="fas fa-chart-line me-3 text-warning"></i> 
+                    <strong>التقارير والإحصائيات</strong>
+                </a>
                 <a href="#" class="list-group-item list-group-item-action border-0 py-3" onclick="exportData(); return false;">
                     <i class="fas fa-download me-3 text-primary"></i> 
                     <strong>تصدير البيانات</strong>
@@ -1014,12 +1003,10 @@
 
 </div>
 
-<!-- Floating Action Button -->
 <button class="fab" id="fabBtn" onclick="toggleQuickActions()">
     <i class="fas fa-plus" id="fabIcon"></i>
 </button>
 
-<!-- Quick Actions Menu -->
 <div class="quick-actions" id="quickActions">
     <button class="quick-action-btn" onclick="openNewCaseModal()">
         <i class="fas fa-folder-plus"></i>
@@ -1035,7 +1022,6 @@
     </button>
 </div>
 
-<!-- Bottom Navigation -->
 <div class="bottom-nav">
     <a href="#" class="nav-item active" onclick="switchView('home'); return false;">
         <i class="fas fa-home"></i>
@@ -1055,20 +1041,18 @@
     </a>
 </div>
 
-<!-- ========== MODALS ========== -->
-
-<!-- New Case Modal -->
 <div class="modal fade" id="newCaseModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-folder-plus me-2"></i>فتح ملف جديد</h5>
+                <h5 class="modal-title"><i class="fas fa-folder-plus me-2"></i>فتح ملف جديد (موسع)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="newCaseForm">
+                    <h6 class="mb-3 text-primary border-bottom pb-2">المعلومات الأساسية</h6>
                     <div class="mb-3">
-                        <label class="form-label">رقم الملف *</label>
+                        <label class="form-label">رقم الملف الداخلي *</label>
                         <input type="text" name="case_internal_id" class="form-control" placeholder="مثال: 123/2026" required>
                     </div>
                     <div class="mb-3">
@@ -1079,6 +1063,30 @@
                         <label class="form-label">هاتف الموكل *</label>
                         <input type="tel" name="client_phone" class="form-control" placeholder="07XXXXXXXX" required>
                     </div>
+
+                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">التفاصيل القانونية</h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">نوع الدعوى</label>
+                            <input type="text" name="case_type" class="form-control" placeholder="مثال: صلح حقوق">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">قيمة المطالبة (دينار)</label>
+                            <input type="number" name="claim_amount" class="form-control" value="0" step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">رقم الوكالة</label>
+                            <input type="text" name="poa_number" class="form-control" placeholder="رقم الوكالة العامة/الخاصة">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">تاريخ الوكالة</label>
+                            <input type="date" name="poa_date" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">بيانات المحكمة والخصوم</h6>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label class="form-label">اسم الخصم</label>
@@ -1099,6 +1107,8 @@
                             <input type="text" name="current_judge" class="form-control">
                         </div>
                     </div>
+                    
+                    <h6 class="mb-3 mt-4 text-primary border-bottom pb-2">المتابعة والمالية</h6>
                     <div class="mb-3">
                         <label class="form-label">مرحلة القضية</label>
                         <select name="case_stage" class="form-select">
@@ -1114,13 +1124,17 @@
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label">الأتعاب (دينار) *</label>
+                            <label class="form-label">الأتعاب الكلية (دينار) *</label>
                             <input type="number" name="total_agreed_fees" class="form-control" value="0" step="0.01" min="0">
                         </div>
                         <div class="col-6">
                             <label class="form-label">أول جلسة</label>
                             <input type="date" name="next_hearing_date" class="form-control">
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">مكان الملف الورقي</label>
+                        <input type="text" name="file_location" class="form-control" placeholder="مثال: درج 3، أرشيف 2026">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">المحامي المسؤول</label>
@@ -1140,7 +1154,6 @@
     </div>
 </div>
 
-<!-- New Task Modal -->
 <div class="modal fade" id="newTaskModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
@@ -1189,7 +1202,6 @@
     </div>
 </div>
 
-<!-- Quick Payment Modal -->
 <div class="modal fade" id="quickPaymentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1232,7 +1244,6 @@
     </div>
 </div>
 
-<!-- Case Details Modal -->
 <div class="modal fade" id="caseDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
@@ -1245,19 +1256,16 @@
             </div>
             <div class="modal-body" style="overflow-y: auto; padding: 20px;">
                 
-                <!-- Case Info -->
                 <div class="section-card">
                     <h6 class="mb-3"><i class="fas fa-info-circle me-2"></i>معلومات الملف</h6>
                     <div id="modal_case_details"></div>
                 </div>
                 
-                <!-- Financial Summary -->
                 <div class="section-card">
                     <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>الملخص المالي</h6>
                     <div class="financial-summary" id="modal_financial"></div>
                 </div>
                 
-                <!-- Client Link -->
                 <div class="section-card">
                     <h6 class="mb-3"><i class="fas fa-link me-2"></i>رابط الموكل</h6>
                     <div class="input-group">
@@ -1271,37 +1279,34 @@
                     </div>
                 </div>
                 
-                <!-- Add Update Form -->
-                <div class="section-card">
-                    <h6 class="mb-3"><i class="fas fa-plus-circle me-2"></i>إضافة تحديث جديد</h6>
+                <div class="section-card" style="border: 2px solid var(--accent);">
+                    <h6 class="mb-3"><i class="fas fa-magic me-2 text-primary"></i>تحديث ذكي للملف</h6>
                     <input type="hidden" id="update_case_id">
                     <div class="row g-2">
                         <div class="col-12">
                             <select id="update_type" class="form-select" onchange="toggleFinancialInputs()">
-                                <option value="hearing">📋 جلسة محكمة</option>
-                                <option value="admin">📄 إجراء إداري</option>
+                                <option value="hearing">📋 جلسة محكمة / إجراء قانوني</option>
+                                <option value="admin">📄 إجراء إداري داخلي</option>
                                 <option value="payment_in">💰 قبض أتعاب</option>
                                 <option value="payment_out">💸 دفع رسوم/مصاريف</option>
                             </select>
                         </div>
                         <div class="col-12">
-                            <input type="text" id="update_title" class="form-control" placeholder="عنوان التحديث (مثال: جلسة 15/2/2026)">
+                            <input type="text" id="update_title" class="form-control" placeholder="عنوان التحديث (مثال: حضور الجلسة وتأجيلها)">
                         </div>
-                        <div class="col-12">
-                            <textarea id="update_details" class="form-control" rows="3" placeholder="تفاصيل التحديث..."></textarea>
+                        
+                        <div class="col-6" id="court_field">
+                            <input type="text" id="update_court" class="form-control" placeholder="المحكمة (اتركه فارغاً إن لم تتغير)">
                         </div>
-                        <div class="col-6" id="payment_in_field" style="display: none;">
-                            <input type="number" id="update_in" class="form-control" placeholder="💰 مقبوض (دينار)" step="0.01" min="0">
+                        <div class="col-6" id="judge_field">
+                            <input type="text" id="update_judge" class="form-control" placeholder="القاضي (اتركه فارغاً إن لم يتغير)">
                         </div>
-                        <div class="col-6" id="payment_out_field" style="display: none;">
-                            <input type="number" id="update_out" class="form-control" placeholder="💸 مدفوع (دينار)" step="0.01" min="0">
+                        <div class="col-6" id="next_hearing_field">
+                            <input type="date" id="update_next_hearing" class="form-control" title="تاريخ الجلسة القادمة">
                         </div>
-                        <div class="col-6" id="next_hearing_field" style="display: none;">
-                            <input type="date" id="update_next_hearing" class="form-control" placeholder="تاريخ الجلسة القادمة">
-                        </div>
-                        <div class="col-6" id="stage_field" style="display: none;">
+                        <div class="col-6" id="stage_field">
                             <select id="update_stage" class="form-select">
-                                <option value="">تحديث المرحلة</option>
+                                <option value="">المرحلة (اتركها إن لم تتغير)</option>
                                 <option value="قيد النظر">قيد النظر</option>
                                 <option value="مرافعات">مرافعات</option>
                                 <option value="حكم">حكم</option>
@@ -1311,6 +1316,17 @@
                                 <option value="مغلق">مغلق</option>
                             </select>
                         </div>
+                        
+                        <div class="col-6" id="payment_in_field" style="display: none;">
+                            <input type="number" id="update_in" class="form-control" placeholder="💰 مقبوض (دينار)" step="0.01" min="0">
+                        </div>
+                        <div class="col-6" id="payment_out_field" style="display: none;">
+                            <input type="number" id="update_out" class="form-control" placeholder="💸 مدفوع (دينار)" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="col-12">
+                            <textarea id="update_details" class="form-control" rows="3" placeholder="ملاحظات وتفاصيل التحديث... (سيقوم النظام بدمج التغييرات الذكية هنا تلقائياً)"></textarea>
+                        </div>
                         <div class="col-12">
                             <button class="btn btn-primary w-100" onclick="saveUpdate()">
                                 <i class="fas fa-save me-1"></i> حفظ التحديث
@@ -1319,13 +1335,11 @@
                     </div>
                 </div>
                 
-                <!-- Timeline -->
                 <div class="section-card">
                     <h6 class="mb-3"><i class="fas fa-history me-2"></i>سجل الأحداث والتحديثات</h6>
                     <div id="modal_timeline"></div>
                 </div>
                 
-                <!-- Files Archive -->
                 <div class="section-card">
                     <h6 class="mb-3"><i class="fas fa-file-archive me-2"></i>الأرشيف الرقمي</h6>
                     <div class="row g-2 mb-3">
@@ -1482,6 +1496,11 @@
                             <i class="fas fa-user"></i>
                             <strong>${c.client_name}</strong>
                         </div>
+                        ${c.case_type ? `
+                        <div class="info-row">
+                            <i class="fas fa-tags"></i>
+                            <span>${c.case_type}</span>
+                        </div>` : ''}
                         <div class="info-row">
                             <i class="fas fa-phone"></i>
                             <span>${c.client_phone}</span>
@@ -1495,11 +1514,6 @@
                         <div class="info-row">
                             <i class="fas fa-landmark"></i>
                             <span>${c.current_court}</span>
-                        </div>` : ''}
-                        ${c.case_stage ? `
-                        <div class="info-row">
-                            <i class="fas fa-layer-group"></i>
-                            <span>${c.case_stage}</span>
                         </div>` : ''}
                         ${c.next_hearing_date ? `
                         <div class="info-row">
@@ -1912,7 +1926,7 @@
     
     // ===== Toggle Payment Fields =====
     function togglePaymentFields() {
-        // This function is intentionally empty - fields are always shown in quick payment
+        // Not needed for quick payment, handled in modal
     }
     
     // ===== Save Case =====
@@ -1923,18 +1937,23 @@
         
         // Validate
         if (!data.case_internal_id || !data.client_name || !data.client_phone) {
-            showAlert('يرجى ملء الحقول المطلوبة', 'warning');
+            showAlert('يرجى ملء الحقول المطلوبة الأساسية', 'warning');
             return;
         }
         
         // Clean data
         data.total_agreed_fees = parseFloat(data.total_agreed_fees) || 0;
+        data.claim_amount = parseFloat(data.claim_amount) || 0;
         if (!data.next_hearing_date) data.next_hearing_date = null;
+        if (!data.poa_date) data.poa_date = null;
         if (!data.assigned_lawyer_id) data.assigned_lawyer_id = null;
         if (!data.opponent_name) data.opponent_name = null;
         if (!data.opponent_lawyer) data.opponent_lawyer = null;
         if (!data.current_court) data.current_court = null;
         if (!data.current_judge) data.current_judge = null;
+        if (!data.case_type) data.case_type = null;
+        if (!data.poa_number) data.poa_number = null;
+        if (!data.file_location) data.file_location = null;
         if (!data.case_stage) data.case_stage = 'جديد';
         
         showAlert('جاري حفظ الملف...', 'info');
@@ -2070,15 +2089,30 @@
         // Case Details
         const lawyerName = allStaff.find(s => s.id === caseData.assigned_lawyer_id)?.full_name || 'غير مسند';
         document.getElementById('modal_case_details').innerHTML = `
-            <div class="row g-2">
+            <div class="row g-3">
                 <div class="col-6">
                     <strong class="d-block text-muted small">الموكل</strong>
-                    <div>${caseData.client_name}</div>
+                    <div class="fw-bold">${caseData.client_name}</div>
                 </div>
                 <div class="col-6">
                     <strong class="d-block text-muted small">الهاتف</strong>
                     <div>${caseData.client_phone}</div>
                 </div>
+                ${caseData.case_type ? `
+                <div class="col-6">
+                    <strong class="d-block text-muted small">نوع الدعوى</strong>
+                    <div><span class="badge bg-secondary">${caseData.case_type}</span></div>
+                </div>` : ''}
+                ${caseData.claim_amount > 0 ? `
+                <div class="col-6">
+                    <strong class="d-block text-muted small">قيمة المطالبة</strong>
+                    <div class="text-danger fw-bold">${caseData.claim_amount} د.أ</div>
+                </div>` : ''}
+                ${caseData.poa_number ? `
+                <div class="col-6">
+                    <strong class="d-block text-muted small">رقم وتاريخ الوكالة</strong>
+                    <div>${caseData.poa_number} ${caseData.poa_date ? `(${formatDate(caseData.poa_date)})` : ''}</div>
+                </div>` : ''}
                 ${caseData.opponent_name ? `
                 <div class="col-6">
                     <strong class="d-block text-muted small">الخصم</strong>
@@ -2108,10 +2142,15 @@
                     <strong class="d-block text-muted small">المحامي المسؤول</strong>
                     <div>${lawyerName}</div>
                 </div>
+                ${caseData.file_location ? `
+                <div class="col-6">
+                    <strong class="d-block text-muted small">مكان الملف الورقي</strong>
+                    <div><i class="fas fa-archive me-1 text-warning"></i>${caseData.file_location}</div>
+                </div>` : ''}
                 ${caseData.next_hearing_date ? `
-                <div class="col-12">
+                <div class="col-12 mt-3 p-2 bg-light rounded border border-warning">
                     <strong class="d-block text-muted small">الجلسة القادمة</strong>
-                    <div class="text-danger fw-bold"><i class="fas fa-calendar-alt me-1"></i>${formatDate(caseData.next_hearing_date)}</div>
+                    <div class="text-danger fw-bold"><i class="fas fa-calendar-alt me-2"></i>${formatDate(caseData.next_hearing_date)}</div>
                 </div>` : ''}
             </div>
         `;
@@ -2153,8 +2192,12 @@
         
         document.getElementById('payment_in_field').style.display = updateType === 'payment_in' ? 'block' : 'none';
         document.getElementById('payment_out_field').style.display = updateType === 'payment_out' ? 'block' : 'none';
-        document.getElementById('next_hearing_field').style.display = updateType === 'hearing' ? 'block' : 'none';
-        document.getElementById('stage_field').style.display = updateType === 'hearing' ? 'block' : 'none';
+        
+        const isHearingOrAdmin = updateType === 'hearing' || updateType === 'admin';
+        document.getElementById('next_hearing_field').style.display = isHearingOrAdmin ? 'block' : 'none';
+        document.getElementById('stage_field').style.display = isHearingOrAdmin ? 'block' : 'none';
+        document.getElementById('court_field').style.display = isHearingOrAdmin ? 'block' : 'none';
+        document.getElementById('judge_field').style.display = isHearingOrAdmin ? 'block' : 'none';
     }
     
     // Initialize on page load
@@ -2198,6 +2241,9 @@
                     iconColor = 'var(--warning)';
                 }
                 
+                // تنسيق التفاصيل لدعم الأسطر المتعددة بشكل جميل (للتحديثات الذكية)
+                const formattedDetails = log.details ? log.details.replace(/\n/g, '<br>') : '';
+                
                 container.innerHTML += `
                     <div class="timeline-item">
                         <div class="timeline-icon" style="background: ${iconColor};">
@@ -2208,7 +2254,7 @@
                                 <h6 class="timeline-title mb-1">${log.title || log.update_type}</h6>
                                 <span class="timeline-date">${formatDateTime(log.timestamp)}</span>
                             </div>
-                            ${log.details ? `<p class="small text-muted mb-2">${log.details}</p>` : ''}
+                            ${formattedDetails ? `<p class="small text-muted mb-2">${formattedDetails}</p>` : ''}
                             <div class="d-flex gap-2 flex-wrap">
                                 ${log.financial_in > 0 ? `<span class="badge bg-success">💰 قبض: ${log.financial_in} د.أ</span>` : ''}
                                 ${log.financial_out > 0 ? `<span class="badge bg-danger">💸 دفع: ${log.financial_out} د.أ</span>` : ''}
@@ -2261,7 +2307,7 @@
         }
     }
     
-    // ===== Save Update =====
+    // ===== Save Update (Smart Update Logic) =====
     async function saveUpdate() {
         const caseId = document.getElementById('update_case_id').value;
         const updateType = document.getElementById('update_type').value;
@@ -2275,17 +2321,18 @@
             financial_out: parseFloat(document.getElementById('update_out').value) || 0
         };
         
-        // Add next hearing if applicable
+        // Add smart update fields if applicable
         const nextHearing = document.getElementById('update_next_hearing').value;
-        if (nextHearing) {
-            data.next_hearing_date = nextHearing;
-        }
+        if (nextHearing) data.next_hearing_date = nextHearing;
         
-        // Add stage update if applicable
         const stageUpdate = document.getElementById('update_stage').value;
-        if (stageUpdate) {
-            data.status_update = stageUpdate;
-        }
+        if (stageUpdate) data.status_update = stageUpdate;
+
+        const currentCourt = document.getElementById('update_court').value.trim();
+        if (currentCourt) data.current_court = currentCourt;
+
+        const currentJudge = document.getElementById('update_judge').value.trim();
+        if (currentJudge) data.current_judge = currentJudge;
         
         showAlert('جاري حفظ التحديث...', 'info');
         
@@ -2309,6 +2356,8 @@
                 document.getElementById('update_out').value = '';
                 document.getElementById('update_next_hearing').value = '';
                 document.getElementById('update_stage').value = '';
+                document.getElementById('update_court').value = '';
+                document.getElementById('update_judge').value = '';
                 
                 // Reload data
                 await Promise.all([
@@ -2327,7 +2376,7 @@
     
     function getDefaultTitle(updateType) {
         const titles = {
-            'hearing': 'جلسة محكمة',
+            'hearing': 'تحديث جلسة / إجراء',
             'admin': 'إجراء إداري',
             'payment_in': 'قبض أتعاب',
             'payment_out': 'دفع رسوم'
@@ -2410,9 +2459,9 @@
         }
     }
     
-    // ===== Filter Functions =====
+    // ===== Filter Functions (البحث الخارق) =====
     function filterCases() {
-        const searchTerm = document.getElementById('search-cases').value.toLowerCase();
+        const searchTerm = document.getElementById('search-cases').value.toLowerCase().trim();
         
         if (!searchTerm) {
             filteredCases = allCases;
@@ -2421,10 +2470,13 @@
         }
         
         filteredCases = allCases.filter(c => 
-            c.case_internal_id.toLowerCase().includes(searchTerm) ||
-            c.client_name.toLowerCase().includes(searchTerm) ||
-            c.client_phone.includes(searchTerm) ||
-            (c.opponent_name && c.opponent_name.toLowerCase().includes(searchTerm))
+            (c.case_internal_id && c.case_internal_id.toLowerCase().includes(searchTerm)) ||
+            (c.client_name && c.client_name.toLowerCase().includes(searchTerm)) ||
+            (c.client_phone && c.client_phone.includes(searchTerm)) ||
+            (c.opponent_name && c.opponent_name.toLowerCase().includes(searchTerm)) ||
+            (c.current_court && c.current_court.toLowerCase().includes(searchTerm)) ||
+            (c.current_judge && c.current_judge.toLowerCase().includes(searchTerm)) ||
+            (c.case_type && c.case_type.toLowerCase().includes(searchTerm))
         );
         
         renderCases();
@@ -2442,11 +2494,11 @@
     function exportData() {
         showAlert('جاري تحضير البيانات للتصدير...', 'info');
         
-        // Create CSV
-        let csv = 'رقم الملف,الموكل,الهاتف,المحكمة,الأتعاب,المدفوع,المتبقي,الحالة\n';
+        // Create CSV (Updated with new fields)
+        let csv = 'رقم الملف,الموكل,الهاتف,نوع الدعوى,المحكمة,القاضي,الخصم,الأتعاب,المدفوع,المتبقي,الحالة\n';
         allCases.forEach(c => {
             const remaining = (c.total_agreed_fees || 0) - (c.total_paid || 0);
-            csv += `"${c.case_internal_id}","${c.client_name}","${c.client_phone}","${c.current_court || ''}",${c.total_agreed_fees || 0},${c.total_paid || 0},${remaining},"${c.case_status}"\n`;
+            csv += `"${c.case_internal_id}","${c.client_name}","${c.client_phone}","${c.case_type || ''}","${c.current_court || ''}","${c.current_judge || ''}","${c.opponent_name || ''}",${c.total_agreed_fees || 0},${c.total_paid || 0},${remaining},"${c.case_status}"\n`;
         });
         
         // Download
@@ -2540,7 +2592,6 @@
         document.getElementById('alertContainer').innerHTML = '';
     }
 </script>
-<!-- ========== PWA Installation ========== -->
 <button class="pwa-install-btn d-none" id="pwaInstallBtn">
     <i class="fas fa-download me-2"></i>
     <span>تثبيت التطبيق</span>
@@ -2614,7 +2665,6 @@
     }, 5000);
 </script>
 
-<!-- ========== In-App Notifications ========== -->
 <div class="notifications-panel" id="notificationsPanel">
     <div class="notifications-header">
         <h6><i class="fas fa-bell me-2"></i>الإشعارات</h6>
