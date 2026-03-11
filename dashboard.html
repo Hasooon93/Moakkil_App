@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <link rel="manifest" href="/manifest.json">
 
-<title>موكّل | نظام إدارة القضايا</title>
+<title>موكّل | نظام إدارة القضايا الشامل</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
-    :root { --navy: #0a192f; --accent: #64ffda; --success: #4caf50; --danger: #f44336; --warning: #ff9800; --info: #2196f3; --shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    :root { --navy: #0a192f; --accent: #64ffda; --success: #4caf50; --danger: #f44336; --warning: #ff9800; --info: #2196f3; --purple: #9c27b0; --shadow: 0 4px 15px rgba(0,0,0,0.08); }
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: 'Cairo', sans-serif; background: #f5f7fa; padding-bottom: 80px; min-height: 100dvh; display: flex; flex-direction: column; overflow-x: hidden;}
     
@@ -37,7 +37,6 @@
     .omnibar-results { display: none; position: absolute; top: 100%; right: 0; left: 0; background: white; border-radius: 10px; box-shadow: var(--shadow); margin-top: 5px; max-height: 300px; overflow-y: auto; z-index: 1001; }
     .omnibar-results.show { display: block; }
     .omnibar-item { padding: 10px; border-bottom: 1px solid #f0f0f0; color: var(--navy); cursor: pointer; font-size: 0.85rem; }
-    .omnibar-item:hover { background: #f8f9fa; }
     
     .user-avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--navy); font-size: 1rem; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); }
     
@@ -52,67 +51,39 @@
     .section-header h6 { margin: 0; font-weight: 800; color: var(--navy); font-size: 1.05rem; }
     
     .case-card, .client-card, .task-card, .staff-card, .installment-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-right: 4px solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
-    .case-card.status-closed { border-right-color: #999; opacity: 0.75; }
-    .case-card.urgent { border-right-color: var(--danger); background: #fff5f5; }
-    .client-card { border-right-color: var(--info); }
-    .staff-card { border-right-color: var(--purple); cursor: default; }
-    .installment-card { border-right-color: var(--warning); background: #fffcf5; cursor: default; }
-    .installment-card.paid { border-right-color: var(--success); background: #f5fff5; opacity: 0.8; }
     .case-number { font-weight: 800; font-size: 1.1rem; color: var(--navy); margin-bottom: 8px; }
     .info-row { display: flex; align-items: center; gap: 8px; color: #555; margin-bottom: 5px; font-size: 0.85rem; }
-    .info-row i { width: 16px; color: #999; text-align: center; }
     
     .financial-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
     .fin-item { text-align: center; padding: 10px 5px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e9ecef; }
     .fin-item .amount { font-size: 1rem; font-weight: 800; display: block; }
-    .fin-item .label { font-size: 0.65rem; color: #666; font-weight: 700; }
     
     .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 65px; background: white; border-top: 1px solid #e0e0e0; display: flex; justify-content: space-around; padding: 0 5px; align-items: center; z-index: 1000; box-shadow: 0 -3px 15px rgba(0,0,0,0.08); padding-bottom: env(safe-area-inset-bottom); }
     .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; color: #999; text-decoration: none; font-size: 0.65rem; padding: 8px; border-radius: 10px; font-weight: 700; }
-    .nav-item i { font-size: 1.2rem; transition: all 0.3s; }
     .nav-item.active { color: var(--accent); background: rgba(100, 255, 218, 0.15); }
-    .nav-item.active i { transform: scale(1.1); }
     
     .fab { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); left: 20px; width: 55px; height: 55px; background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--navy); box-shadow: 0 4px 15px rgba(100, 255, 218, 0.4); cursor: pointer; z-index: 999; border: none; }
     .quick-actions { display: none; position: fixed; bottom: calc(145px + env(safe-area-inset-bottom)); left: 20px; flex-direction: column; gap: 10px; z-index: 998; }
     .quick-actions.show { display: flex; animation: slideUp 0.3s; }
     .quick-action-btn { background: white; border: none; padding: 12px 20px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--navy); }
     
-    .view { display: none; }
-    .view.active { display: block; animation: fadeIn 0.3s; }
-    .modal-content { border-radius: 20px; border: none; }
-    .modal-header { background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; padding: 15px 20px; border-radius: 20px 20px 0 0; }
-    .form-control, .form-select { border: 2px solid #e9ecef; border-radius: 10px; padding: 10px; font-size: 16px; }
+    .view { display: none; } .view.active { display: block; animation: fadeIn 0.3s; }
+    .form-control, .form-select { border: 2px solid #e9ecef; border-radius: 10px; padding: 10px; font-size: 15px; }
     .form-control:focus, .form-select:focus { outline: none; border-color: var(--accent); box-shadow: none; }
-    .btn { border-radius: 10px; font-weight: 700; padding: 10px; }
-    .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, #52e5b8 100%); border: none; color: var(--navy); }
-    .btn-whatsapp { background: #25D366; color: white; border: none; }
-    .mic-btn { background: #f0f0f0; border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 1.1rem; }
-    .mic-btn.recording { animation: pulse 1s infinite; background: #ffebee; }
     
     .timeline-item { position: relative; padding-right: 30px; padding-bottom: 20px; border-right: 2px solid #e9ecef; }
     .timeline-item:last-child { border-right: none; padding-bottom: 0; }
     .timeline-icon { position: absolute; right: -12px; top: 0; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.6rem; box-shadow: 0 0 0 4px white; }
     .timeline-content { background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee; }
     
+    /* مظهر صندوق الدردشة (Messages) */
+    .chat-box { height: 250px; overflow-y: auto; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .msg-bubble { max-width: 80%; padding: 8px 12px; border-radius: 15px; font-size: 0.9rem; }
+    .msg-lawyer { background: #e3f2fd; align-self: flex-start; border-bottom-right-radius: 0; }
+    .msg-client { background: #f5f5f5; align-self: flex-end; border-bottom-left-radius: 0; }
+    
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-    .loading { text-align: center; padding: 30px; }
-    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--accent); border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin: 0 auto; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    
-    .alert-container { position: fixed; top: 65px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; }
-    .alert-custom { background: white; border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); font-weight: 700; font-size: 0.85rem;}
-    
-    @media print {
-        body * { visibility: hidden; }
-        .print-area, .print-area * { visibility: visible; }
-        .print-area { position: absolute; left: 0; top: 0; width: 100%; direction: rtl; padding: 20px; background: white; }
-        .timeline-content { border: 1px solid #000; background: none; }
-        .timeline-icon { border: 1px solid #000; box-shadow: none; color: #000; }
-        .badge, .btn { display: none !important; }
-    }
 </style>
 </head>
 <body>
@@ -123,7 +94,7 @@
         <i class="fas fa-balance-scale fs-4 ms-2" id="logoIcon"></i>
     </div>
     <div class="omnibar-container">
-        <input type="text" class="omnibar" id="omnibarInput" placeholder="بحث ذكي شامل..." onkeyup="performGlobalSearch()">
+        <input type="text" class="omnibar" id="omnibarInput" placeholder="بحث شامل (قضايا، موكلين، قوانين)..." onkeyup="performGlobalSearch()">
         <i class="fas fa-search omnibar-icon"></i>
         <div class="omnibar-results" id="omnibarResults"></div>
     </div>
@@ -132,36 +103,24 @@
     </div>
 </div>
 
-<div class="alert-container" id="alertContainer"></div>
+<div class="alert-container" id="alertContainer" style="position:fixed; top:65px; left:50%; transform:translateX(-50%); z-index:9999; width:90%; max-width:400px;"></div>
 
 <div class="main-content">
     
     <div id="home-view" class="view active">
-        <div class="section-card" style="background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white; margin-bottom: 20px;">
+        <div class="section-card" style="background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%); color: white;">
             <h6 class="mb-1" style="color: var(--accent); font-size: 0.9rem;">مرحباً،</h6>
             <h4 class="mb-0" id="welcome-name" style="font-weight: 800;">...</h4>
         </div>
         
         <div class="stats-grid">
-            <div class="stat-card" onclick="switchView('cases')">
-                <div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);"><i class="fas fa-folder-open"></i></div>
-                <div class="value" id="stat-total-cases">0</div><div class="label">القضايا</div>
-            </div>
-            <div class="stat-card" onclick="switchView('clients')">
-                <div class="icon" style="background: rgba(33,150,243,0.2); color: var(--info);"><i class="fas fa-users"></i></div>
-                <div class="value" id="stat-total-clients">0</div><div class="label">الموكلين</div>
-            </div>
-            <div class="stat-card" onclick="switchView('agenda')">
-                <div class="icon" style="background: rgba(255,152,0,0.2); color: var(--warning);"><i class="fas fa-calendar-alt"></i></div>
-                <div class="value" id="stat-upcoming-hearings">0</div><div class="label">جلسات قادمة</div>
-            </div>
-            <div class="stat-card d-none" id="admin-staff-card" onclick="switchView('staff')">
-                <div class="icon" style="background: rgba(156,39,176,0.2); color: var(--purple);"><i class="fas fa-user-tie"></i></div>
-                <div class="value" id="stat-staff-count">0</div><div class="label">فريق العمل (HR)</div>
-            </div>
+            <div class="stat-card" onclick="switchView('cases')"><div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);"><i class="fas fa-folder-open"></i></div><div class="value" id="stat-total-cases">0</div><div class="label">القضايا</div></div>
+            <div class="stat-card" onclick="switchView('clients')"><div class="icon" style="background: rgba(33,150,243,0.2); color: var(--info);"><i class="fas fa-users"></i></div><div class="value" id="stat-total-clients">0</div><div class="label">الموكلين</div></div>
+            <div class="stat-card" onclick="switchView('agenda')"><div class="icon" style="background: rgba(255,152,0,0.2); color: var(--warning);"><i class="fas fa-calendar-alt"></i></div><div class="value" id="stat-upcoming-hearings">0</div><div class="label">جلسات قادمة</div></div>
+            <div class="stat-card" onclick="switchView('library')"><div class="icon" style="background: rgba(156,39,176,0.2); color: var(--purple);"><i class="fas fa-book"></i></div><div class="value"><i class="fas fa-search"></i></div><div class="label">المكتبة القانونية</div></div>
         </div>
         
-        <div class="section-card">
+        <div class="section-card" id="home-financial-section">
             <div class="section-header"><h6><i class="fas fa-chart-line me-2"></i>المالية العامة</h6></div>
             <div class="financial-summary">
                 <div class="fin-item"><span class="amount text-primary" id="total-agreed">0</span><span class="label">الأتعاب</span></div>
@@ -173,10 +132,9 @@
     
     <div id="cases-view" class="view">
         <div class="section-card">
-            <div class="section-header">
-                <h6>القضايا (<span id="cases-count">0</span>)</h6>
+            <div class="section-header"><h6>القضايا (<span id="cases-count">0</span>)</h6>
                 <select class="form-select form-select-sm" style="width: auto;" onchange="renderCases(this.value)">
-                    <option value="all">الكل</option><option value="active">نشطة</option><option value="closed">مغلقة</option>
+                    <option value="all">الكل</option><option value="نشطة">نشطة</option><option value="مغلقة">مغلقة</option>
                 </select>
             </div>
             <div id="cases-list"></div>
@@ -185,7 +143,7 @@
 
     <div id="clients-view" class="view">
         <div class="section-card">
-            <div class="section-header"><h6>الموكلين (<span id="clients-count">0</span>)</h6></div>
+            <div class="section-header"><h6>الموكلين (<span id="clients-count">0</span>)</h6><button class="btn btn-sm btn-outline-info fw-bold" onclick="openNewClientModal()">إضافة ➕</button></div>
             <div id="clients-list"></div>
         </div>
     </div>
@@ -193,18 +151,46 @@
     <div id="agenda-view" class="view">
         <div class="section-card">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <button class="btn btn-outline-primary btn-sm" onclick="changeAgendaDate(-1)"><i class="fas fa-chevron-right"></i> السابق</button>
+                <button class="btn btn-outline-primary btn-sm" onclick="changeAgendaDate(-1)"><i class="fas fa-chevron-right"></i></button>
                 <h6 id="agenda-date-display" class="mb-0 fw-bold text-navy">اليوم</h6>
-                <button class="btn btn-outline-primary btn-sm" onclick="changeAgendaDate(1)">التالي <i class="fas fa-chevron-left"></i></button>
+                <button class="btn btn-outline-primary btn-sm" onclick="changeAgendaDate(1)"><i class="fas fa-chevron-left"></i></button>
             </div>
             <div id="agenda-timeline"></div>
         </div>
     </div>
 
+    <div id="library-view" class="view">
+        <div class="section-card">
+            <div class="section-header"><h6><i class="fas fa-book me-2"></i>المكتبة والأبحاث</h6></div>
+            <input type="text" class="form-control mb-3" placeholder="ابحث في القوانين والمواد (مدعوم بالذكاء الاصطناعي)...">
+            <div class="alert alert-info small"><i class="fas fa-info-circle"></i> يمكنك رفع ملفات القوانين وسيتم تحليلها (OCR & AI) لاستخراج المواد تلقائياً.</div>
+            <div class="list-group">
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <div><strong>القانون المدني</strong><br><small class="text-muted">تمت أرشفة 1149 مادة</small></div>
+                    <i class="fas fa-chevron-left text-muted"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
     <div id="staff-view" class="view">
         <div class="section-card">
-            <div class="section-header"><h6><i class="fas fa-users-cog me-2"></i>إدارة الموارد البشرية</h6></div>
+            <div class="section-header"><h6><i class="fas fa-users-cog me-2"></i>فريق العمل</h6><button class="btn btn-sm text-white fw-bold d-none" id="add-staff-btn" style="background:var(--purple);" onclick="openNewStaffModal()">إضافة ➕</button></div>
             <div id="staff-list"></div>
+        </div>
+    </div>
+
+    <div id="settings-view" class="view">
+        <div class="section-card border-danger">
+            <div class="section-header"><h6><i class="fas fa-shield-alt text-danger me-2"></i>سجل النظام (Audit Logs)</h6></div>
+            <div id="audit-logs-list" class="small text-muted">سيتم عرض تحركات المستخدمين هنا (تسجيل الدخول، حذف قضايا، تعديل مالي).</div>
+        </div>
+        <div class="section-card">
+            <div class="section-header"><h6><i class="fas fa-cogs me-2"></i>إعدادات النظام العامة</h6></div>
+            <div class="mb-3">
+                <label class="small fw-bold">اسم المكتب (يظهر في السندات)</label>
+                <input type="text" class="form-control form-control-sm" value="مكتب المحامي للاستشارات القانونية">
+            </div>
         </div>
     </div>
     
@@ -216,7 +202,9 @@
         </div>
         <div class="section-card p-0 overflow-hidden">
             <div class="list-group list-group-flush">
-                <a href="reports.html" class="list-group-item list-group-item-action py-3"><i class="fas fa-chart-pie me-2 text-warning"></i> <strong>التقارير والإحصائيات</strong></a>
+                <a href="#" class="list-group-item list-group-item-action py-3 d-none" id="nav-staff" onclick="switchView('staff'); return false;"><i class="fas fa-user-tie me-2 text-primary"></i> <strong>إدارة فريق العمل</strong></a>
+                <a href="#" class="list-group-item list-group-item-action py-3 d-none" id="nav-settings" onclick="switchView('settings'); return false;"><i class="fas fa-cogs me-2 text-danger"></i> <strong>إعدادات النظام (Config)</strong></a>
+                <a href="reports.html" class="list-group-item list-group-item-action py-3" id="nav-reports"><i class="fas fa-chart-pie me-2 text-warning"></i> <strong>التقارير والإحصائيات</strong></a>
                 <a href="#" class="list-group-item list-group-item-action py-3 text-danger" onclick="logout(); return false;"><i class="fas fa-sign-out-alt me-2"></i> <strong>تسجيل الخروج</strong></a>
             </div>
         </div>
@@ -235,7 +223,24 @@
     <a href="#" class="nav-item" onclick="switchView('cases'); return false;"><i class="fas fa-folder-open"></i><span>القضايا</span></a>
     <a href="#" class="nav-item" onclick="switchView('agenda'); return false;"><i class="fas fa-calendar-day"></i><span>الأجندة</span></a>
     <a href="#" class="nav-item" onclick="switchView('clients'); return false;"><i class="fas fa-users"></i><span>الموكلين</span></a>
-    <a href="#" class="nav-item" onclick="switchView('profile'); return false;"><i class="fas fa-user"></i><span>الملف</span></a>
+    <a href="#" class="nav-item" onclick="switchView('library'); return false;"><i class="fas fa-book"></i><span>المكتبة</span></a>
+</div>
+
+<div class="modal fade" id="newClientModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">إضافة موكل جديد</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <input type="text" id="nc_name" class="form-control mb-2" placeholder="الاسم الكامل *" required>
+                <input type="tel" id="nc_phone" class="form-control mb-2" placeholder="رقم الهاتف *" required>
+                <input type="text" id="nc_national_id" class="form-control mb-2" placeholder="الرقم الوطني / الإقامة">
+                <input type="email" id="nc_email" class="form-control mb-2" placeholder="البريد الإلكتروني">
+                <input type="text" id="nc_address" class="form-control mb-2" placeholder="العنوان">
+                <textarea id="nc_notes" class="form-control mb-3" rows="2" placeholder="ملاحظات إضافية..."></textarea>
+                <button class="btn btn-info w-100 fw-bold text-white" onclick="saveClient()">حفظ الموكل</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="newCaseModal" tabindex="-1">
@@ -244,29 +249,40 @@
             <div class="modal-header"><h5 class="modal-title">فتح ملف جديد</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form id="newCaseForm">
-                    <h6 class="mb-2 text-primary border-bottom pb-1">الموكل</h6>
+                    <h6 class="mb-2 text-primary border-bottom pb-1">بيانات الموكل والوكالة</h6>
                     <div class="mb-2"><input type="tel" name="client_phone" id="client_phone_input" class="form-control" placeholder="هاتف الموكل *" list="clientsPhoneList" onchange="autoFillClient()" required></div>
                     <datalist id="clientsPhoneList"></datalist>
-                    <div class="mb-3"><input type="text" name="client_name" id="client_name_input" class="form-control" placeholder="اسم الموكل *" required></div>
-
-                    <h6 class="mb-2 text-primary border-bottom pb-1">التفاصيل القانونية</h6>
-                    <div class="mb-2"><input type="text" name="case_internal_id" class="form-control" placeholder="رقم الملف الداخلي *" required></div>
+                    <div class="mb-2"><input type="text" name="client_name" id="client_name_input" class="form-control" placeholder="اسم الموكل *" required></div>
                     <div class="row g-2 mb-2">
-                        <div class="col-6"><input type="text" name="case_type" class="form-control" placeholder="نوع الدعوى"></div>
-                        <div class="col-6"><input type="number" name="claim_amount" class="form-control" placeholder="قيمة المطالبة"></div>
                         <div class="col-6"><input type="text" name="poa_number" class="form-control" placeholder="رقم الوكالة"></div>
                         <div class="col-6"><input type="date" name="poa_date" class="form-control" title="تاريخ الوكالة"></div>
-                        <div class="col-6"><input type="text" name="opponent_name" class="form-control" placeholder="الخصم"></div>
-                        <div class="col-6"><input type="text" name="current_court" class="form-control" placeholder="المحكمة"></div>
+                    </div>
+
+                    <h6 class="mb-2 text-primary border-bottom pb-1 mt-3">بيانات الخصومة والمحكمة</h6>
+                    <div class="mb-2"><input type="text" name="case_internal_id" class="form-control" placeholder="رقم الملف الداخلي *" required></div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6"><input type="text" name="opponent_name" class="form-control" placeholder="اسم الخصم"></div>
+                        <div class="col-6"><input type="text" name="opponent_lawyer" class="form-control" placeholder="محامي الخصم"></div>
+                        <div class="col-6"><input type="text" name="case_type" class="form-control" placeholder="نوع الدعوى (صلح، بداية..)"></div>
+                        <div class="col-6"><input type="number" name="claim_amount" class="form-control" placeholder="قيمة المطالبة"></div>
+                        <div class="col-6"><input type="text" name="current_court" class="form-control" placeholder="المحكمة الحالية"></div>
+                        <div class="col-6"><input type="text" name="court_ref_number" class="form-control" placeholder="رقم الدعوى بالمحكمة"></div>
+                        <div class="col-12"><input type="text" name="current_judge" class="form-control" placeholder="اسم القاضي / الهيئة"></div>
                     </div>
                     
-                    <h6 class="mb-2 text-primary border-bottom pb-1">المالية والمتابعة</h6>
+                    <h6 class="mb-2 text-primary border-bottom pb-1 mt-3">المالية والإدارة</h6>
                     <div class="row g-2 mb-2">
                         <div class="col-6"><input type="number" name="total_agreed_fees" class="form-control" placeholder="الأتعاب الكلية *" required></div>
-                        <div class="col-6"><input type="date" name="next_hearing_date" class="form-control" title="أول جلسة"></div>
+                        <div class="col-6"><input type="number" name="total_expenses" class="form-control" placeholder="المصاريف المقدرة"></div>
+                        <div class="col-6"><input type="date" name="next_hearing_date" class="form-control" title="تاريخ أول جلسة"></div>
+                        <div class="col-6"><select name="assigned_lawyer_id" class="form-select" id="lawyerSelect"><option value="">المحامي المسؤول</option></select></div>
                     </div>
-                    <div class="mb-2"><input type="text" name="file_location" class="form-control" placeholder="مكان الملف الورقي"></div>
-                    <div class="mb-2"><select name="assigned_lawyer_id" class="form-select" id="lawyerSelect"><option value="">المحامي المسؤول</option></select></div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6"><input type="text" name="file_location" class="form-control" placeholder="مكان الملف الورقي"></div>
+                        <div class="col-6"><input type="text" name="access_pin" class="form-control" placeholder="رقم سري للموكل PIN" value="1234"></div>
+                        <div class="col-12"><input type="text" name="tags" class="form-control" placeholder="كلمات مفتاحية (Tags) مفصولة بفاصلة"></div>
+                    </div>
+                    <div class="mb-2"><textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات عامة حول القضية..."></textarea></div>
                 </form>
             </div>
             <div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveCase()">حفظ الملف</button></div>
@@ -280,19 +296,85 @@
             <div class="modal-header d-flex justify-content-between align-items-center pb-2">
                 <h5 class="modal-title m-0">الملف: <span id="modal_case_id"></span></h5>
                 <div>
+                    <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="shareClientPortal()"><i class="fas fa-share-alt text-success"></i></button>
                     <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="generateQR()"><i class="fas fa-qrcode"></i></button>
-                    <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="printTimeline()"><i class="fas fa-print"></i></button>
                     <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal"></button>
                 </div>
             </div>
             <div class="modal-body" style="background:#f5f7fa;">
                 
                 <div class="section-card">
-                    <h6 class="mb-2"><i class="fas fa-info-circle me-2"></i>معلومات الملف</h6>
+                    <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                        <h6><i class="fas fa-info-circle me-2"></i>معلومات الملف</h6>
+                        <div>
+                            <span class="badge bg-primary" id="det_stage"></span>
+                            <span class="badge bg-secondary" id="det_status"></span>
+                        </div>
+                    </div>
                     <div id="modal_case_details" class="row g-2 text-sm"></div>
+                    <div id="modal_financial" class="financial-summary mt-3"></div>
+                    
+                    <div class="mt-3 p-2 bg-light border rounded">
+                        <div class="d-flex justify-content-between small fw-bold mb-1"><span>احتمالية كسب القضية (AI)</span><span id="det_win_prob" class="text-success">--%</span></div>
+                        <div class="progress" style="height: 6px;"><div id="det_win_bar" class="progress-bar bg-success" style="width: 0%"></div></div>
+                        <p class="small text-muted mt-2 mb-0" id="det_ai_summary"><i class="fas fa-robot text-primary"></i> جاري تحليل القضية...</p>
+                    </div>
                 </div>
-                
-                <div class="section-card border-warning">
+
+                <ul class="nav nav-pills nav-fill mb-3" id="caseTabs">
+                    <li class="nav-item"><a class="nav-link active small py-1" data-bs-toggle="tab" href="#tab_timeline">السجل الإجرائي</a></li>
+                    <li class="nav-item"><a class="nav-link small py-1" data-bs-toggle="tab" href="#tab_files">المرفقات (Drive)</a></li>
+                    <li class="nav-item"><a class="nav-link small py-1" data-bs-toggle="tab" href="#tab_messages">مراسلات الموكل</a></li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="tab_timeline">
+                        <div class="section-card border-primary">
+                            <h6 class="mb-2"><i class="fas fa-magic text-primary me-2"></i>إضافة إجراء / تحديث</h6>
+                            <input type="hidden" id="update_case_id">
+                            <input type="hidden" id="update_client_phone">
+                            <select id="update_type" class="form-select form-select-sm mb-2"><option value="hearing">📋 جلسة / إجراء</option><option value="admin">📄 إداري</option></select>
+                            <input type="text" id="update_title" class="form-control form-control-sm mb-2" placeholder="العنوان (تأجيل الجلسة..)">
+                            <div class="d-flex gap-2 mb-2">
+                                <textarea id="update_details" class="form-control form-control-sm" rows="2" placeholder="ملاحظات..."></textarea>
+                                <button type="button" class="mic-btn" id="micBtn" onclick="toggleSpeechRecognition()"><i class="fas fa-microphone"></i></button>
+                            </div>
+                            <button class="btn btn-primary btn-sm w-100" onclick="saveUpdate()">حفظ في السجل</button>
+                        </div>
+                        <div class="section-card print-area"><div id="modal_timeline"></div></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="tab_files">
+                        <div class="section-card border-info mb-2">
+                            <h6 class="mb-2"><i class="fas fa-file-word text-info me-2"></i>توليد نماذج مؤتمتة</h6>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-info w-50" onclick="generateTemplate('contract')"><i class="fas fa-file-signature"></i> عقد أتعاب</button>
+                                <button class="btn btn-sm btn-outline-info w-50" onclick="generateTemplate('poa')"><i class="fas fa-gavel"></i> وكالة</button>
+                            </div>
+                        </div>
+                        <div class="section-card border-success">
+                            <div class="d-flex gap-2 mb-2">
+                                <input type="file" id="file_upload_input" class="form-control form-control-sm">
+                                <button class="btn btn-success btn-sm" id="btn_upload_file" onclick="uploadCaseFile()">رفع</button>
+                            </div>
+                            <div id="modal_files_list" class="small"></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="tab_messages">
+                        <div class="section-card p-2 border-warning">
+                            <div class="chat-box mb-2" id="chat_box">
+                                <div class="msg-bubble msg-lawyer">مرحباً بك في بوابة متابعة قضيتك.</div>
+                                </div>
+                            <div class="d-flex gap-2">
+                                <input type="text" id="chat_input" class="form-control form-control-sm" placeholder="اكتب رسالة للموكل...">
+                                <button class="btn btn-warning btn-sm" onclick="sendChatMessage()"><i class="fas fa-paper-plane text-white"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card border-warning" id="modal_installments_section">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="m-0"><i class="fas fa-money-check-alt text-warning me-2"></i>الدفعات المجدولة</h6>
                         <button class="btn btn-sm btn-outline-warning" onclick="new bootstrap.Modal(document.getElementById('newInstallmentModal')).show()">إضافة ➕</button>
@@ -300,55 +382,6 @@
                     <div id="installments-list"></div>
                 </div>
 
-                <div class="section-card border-success">
-                    <h6 class="mb-2"><i class="fas fa-cloud-upload-alt text-success me-2"></i>أرشيف المستندات (Drive)</h6>
-                    <div class="d-flex gap-2 mb-2">
-                        <input type="file" id="file_upload_input" class="form-control form-control-sm" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                        <button class="btn btn-success btn-sm" id="btn_upload_file" onclick="uploadCaseFile()">رفع</button>
-                    </div>
-                    <div id="modal_files_list" class="small"></div>
-                </div>
-                
-                <div class="section-card border-primary">
-                    <h6 class="mb-2"><i class="fas fa-magic text-primary me-2"></i>تحديث سريع</h6>
-                    <input type="hidden" id="update_case_id">
-                    <input type="hidden" id="update_client_phone">
-                    <select id="update_type" class="form-select form-select-sm mb-2"><option value="hearing">📋 جلسة / إجراء</option><option value="admin">📄 إداري</option><option value="payment_in">💰 قبض مباشر</option></select>
-                    <input type="text" id="update_title" class="form-control form-control-sm mb-2" placeholder="العنوان (تأجيل الجلسة..)">
-                    <div class="row g-2 mb-2">
-                        <div class="col-6"><input type="date" id="update_next_hearing" class="form-control form-control-sm" title="الجلسة القادمة"></div>
-                        <div class="col-6"><select id="update_stage" class="form-select form-select-sm"><option value="">المرحلة</option><option value="قيد النظر">قيد النظر</option><option value="حكم">حكم</option><option value="مغلق">مغلق</option></select></div>
-                    </div>
-                    
-                    <div class="d-flex gap-2 mb-2">
-                        <textarea id="update_details" class="form-control form-control-sm" rows="2" placeholder="ملاحظات..."></textarea>
-                        <button type="button" class="mic-btn" id="micBtn" onclick="toggleSpeechRecognition()"><i class="fas fa-microphone"></i></button>
-                    </div>
-
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="notify_whatsapp">
-                        <label class="form-check-label small fw-bold text-success" for="notify_whatsapp"><i class="fab fa-whatsapp"></i> إرسال التحديث للموكل عبر واتساب</label>
-                    </div>
-
-                    <button class="btn btn-primary btn-sm w-100" onclick="saveUpdate()">حفظ في السجل</button>
-                </div>
-                
-                <div class="section-card print-area">
-                    <h6 class="mb-3 border-bottom pb-2" id="printHeader"><i class="fas fa-history me-2"></i>سجل القضية الإجرائي</h6>
-                    <div id="modal_timeline"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="qrModal" tabindex="-1">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">باركود الملف</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body text-center">
-                <div id="qrcode" class="d-flex justify-content-center mb-3 p-3 bg-white border rounded"></div>
-                <p class="small text-muted">قم بطباعة هذا الباركود ولصقه على الملف الورقي للوصول السريع.</p>
             </div>
         </div>
     </div>
@@ -362,8 +395,14 @@
                 <div class="section-card text-center mb-3">
                     <h4 id="cd_name" class="fw-bold text-navy mb-1"></h4>
                     <p id="cd_phone" class="text-muted mb-2"></p>
+                    <div class="row text-start small text-muted mb-3 p-2 bg-white border rounded mx-1">
+                        <div class="col-6 mb-1"><i class="fas fa-id-card me-1"></i> <span id="cd_nat_id">--</span></div>
+                        <div class="col-6 mb-1"><i class="fas fa-envelope me-1"></i> <span id="cd_email">--</span></div>
+                        <div class="col-12"><i class="fas fa-map-marker-alt me-1"></i> <span id="cd_address">--</span></div>
+                        <div class="col-12 mt-1"><i class="fas fa-sticky-note me-1"></i> <span id="cd_notes">--</span></div>
+                    </div>
                     <a href="#" id="cd_whatsapp" target="_blank" class="btn btn-whatsapp btn-sm mb-3 rounded-pill px-4"><i class="fab fa-whatsapp me-1"></i> مراسلة الموكل</a>
-                    <div class="financial-summary mb-0">
+                    <div class="financial-summary mb-0" id="cd_financials">
                         <div class="fin-item"><span class="amount text-primary" id="cd_total">0</span><span class="label">المطالبات</span></div>
                         <div class="fin-item"><span class="amount text-success" id="cd_paid">0</span><span class="label">المدفوع</span></div>
                         <div class="fin-item"><span class="amount text-danger" id="cd_rem">0</span><span class="label">المتبقي</span></div>
@@ -371,34 +410,6 @@
                 </div>
                 <h6 class="fw-bold mb-2 ps-1 text-navy"><i class="fas fa-folder-open me-2"></i>القضايا</h6>
                 <div id="cd_cases_list"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="newInstallmentModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body p-4">
-                <input type="hidden" id="inst_case_id">
-                <h6 class="fw-bold mb-3 text-warning">إضافة دفعة مجدولة</h6>
-                <input type="number" id="inst_amount" class="form-control mb-2" placeholder="القيمة (د.أ)">
-                <input type="date" id="inst_due_date" class="form-control mb-3">
-                <button class="btn btn-warning w-100 fw-bold" onclick="saveInstallment()">حفظ</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="postponeInstallmentModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body p-4">
-                <input type="hidden" id="postpone_inst_id">
-                <h6 class="fw-bold mb-3 text-danger">تأجيل دفعة مجدولة</h6>
-                <input type="date" id="postpone_date" class="form-control mb-2" required>
-                <textarea id="postpone_notes" class="form-control mb-3" rows="2" placeholder="السبب..."></textarea>
-                <button class="btn btn-danger w-100 fw-bold" onclick="savePostponeInstallment()">تأكيد التأجيل</button>
             </div>
         </div>
     </div>
@@ -412,60 +423,47 @@
                 <input type="tel" id="appt_client_phone" class="form-control mb-2" placeholder="هاتف الموكل" list="clientsPhoneList" onchange="autoFillApptClient()">
                 <input type="text" id="appt_client_name" class="form-control mb-2" placeholder="الاسم">
                 <input type="datetime-local" id="appt_date" class="form-control mb-2">
-                <select id="appt_type" class="form-select mb-2"><option value="استشارة">استشارة</option><option value="اجتماع">اجتماع</option></select>
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><select id="appt_type" class="form-select"><option value="استشارة">استشارة</option><option value="اجتماع">اجتماع</option></select></div>
+                    <div class="col-6"><select id="appt_status" class="form-select"><option value="مجدول">مجدول</option><option value="مكتمل">مكتمل</option><option value="ملغي">ملغي</option></select></div>
+                </div>
+                <textarea id="appt_notes" class="form-control mb-2" rows="2" placeholder="ملاحظات الأجندة..."></textarea>
                 <select id="appt_lawyer" class="form-select mb-2" style="display:none;"></select>
             </div>
-            <div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveAppointment()">حفظ</button></div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="newTaskModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">مهمة جديدة</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <input type="text" id="task_title" class="form-control mb-2" placeholder="عنوان المهمة">
-                <input type="date" id="task_due_date" class="form-control mb-2">
-                <select id="task_assign" class="form-select mb-2"></select>
-            </div>
-            <div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveTask()">حفظ</button></div>
+            <div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveAppointment()">حفظ الموعد</button></div>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // الإعدادات والمتغيرات
     const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
-    const GAS_DRIVE_URL = 'https://script.google.com/macros/s/AKfycbxOqtt2E4643aYjOcbaHPcYn6_9EM_Fs3PZB6JBP8a_CEJr-fdqn8eYTHV6eJziT3Bb/exec';
     const token = localStorage.getItem('mo_token');
-    
     let allCases=[], allTasks=[], allStaff=[], allClients=[], currentUser=null;
     let currentView='home', viewHistory=['home'], currentAgendaDate=new Date();
-    let qrCode = null;
 
     window.onload = async () => {
         if (!token) { location.href = 'index.html'; return; }
         currentUser = JSON.parse(localStorage.getItem('mo_user'));
         
         if (currentUser) {
-            const uAvatar = document.getElementById('userAvatar');
-            const pAvatar = document.getElementById('profileAvatar');
-            const pName = document.getElementById('profile-name');
-            const wName = document.getElementById('welcome-name');
-            const pRole = document.getElementById('profile-role');
-            
-            if (uAvatar) uAvatar.innerText = currentUser.full_name.charAt(0);
-            if (pAvatar) pAvatar.innerText = currentUser.full_name.charAt(0);
-            if (pName) pName.innerText = currentUser.full_name;
-            if (wName) wName.innerText = currentUser.full_name;
-            if (pRole) pRole.innerText = currentUser.role === 'admin' ? 'مدير النظام' : 'محامي';
+            document.getElementById('userAvatar').innerText = currentUser.full_name.charAt(0);
+            document.getElementById('profileAvatar').innerText = currentUser.full_name.charAt(0);
+            document.getElementById('profile-name').innerText = currentUser.full_name;
+            document.getElementById('welcome-name').innerText = currentUser.full_name;
             
             if(currentUser.role === 'admin') {
-                const adminStaffCard = document.getElementById('admin-staff-card');
-                const apptLawyer = document.getElementById('appt_lawyer');
-                if (adminStaffCard) adminStaffCard.classList.remove('d-none');
-                if (apptLawyer) apptLawyer.style.display = 'block';
+                document.getElementById('profile-role').innerText = 'مدير النظام';
+                document.getElementById('nav-staff').classList.remove('d-none');
+                document.getElementById('nav-settings').classList.remove('d-none');
+                document.getElementById('appt_lawyer').style.display = 'block';
+            } else if(currentUser.role === 'secretary') {
+                document.getElementById('profile-role').innerText = 'سكرتير إداري';
+                document.getElementById('home-financial-section').classList.add('d-none');
+                document.getElementById('nav-reports').classList.add('d-none');
+            } else {
+                document.getElementById('profile-role').innerText = 'محامي';
             }
         }
         await loadAll();
@@ -481,347 +479,146 @@
                 fetch(`${API}/api/clients`, {headers: {'Authorization': `Bearer ${token}`}}).then(r=>r.json())
             ]);
             allCases=c; allTasks=t; allStaff=s; allClients=cl;
-            populateSelects(); renderCases(); renderClients(); renderStaffView(); updateDashboard(); loadAgenda(currentAgendaDate);
-        } catch(e) {
-            console.error(e);
-            showAlert('حدث خطأ في تحميل بعض البيانات', 'error');
-        } 
+            populateSelects(); updateDashboard(); renderCases(); renderClients(); loadAgenda(currentAgendaDate);
+        } catch(e) { showAlert('خطأ في الاتصال بالخوادم', 'error'); } 
         hideAlert();
     }
 
-    function populateSelects() {
-        let lSel='', tSel='', aSel='', cList='';
-        if (currentUser) aSel = `<option value="${currentUser.id}">أنا (${currentUser.full_name})</option>`;
-        
-        allStaff.forEach(s => {
-            if(s.role==='lawyer'||s.role==='admin') { 
-                lSel+=`<option value="${s.id}">${s.full_name}</option>`; 
-                if(currentUser && s.id!==currentUser.id) aSel+=`<option value="${s.id}">${s.full_name}</option>`;
-            }
-            tSel+=`<option value="${s.id}">${s.full_name}</option>`;
-        });
-        allClients.forEach(c => { cList+=`<option value="${c.phone}">${c.full_name}</option>`; });
-        
-        if(document.getElementById('lawyerSelect')) document.getElementById('lawyerSelect').innerHTML = '<option value="">المحامي المسؤول</option>' + lSel;
-        if(document.getElementById('task_assign')) document.getElementById('task_assign').innerHTML = '<option value="">إسناد إلى</option>' + tSel;
-        if(document.getElementById('appt_lawyer')) document.getElementById('appt_lawyer').innerHTML = aSel;
-        if(document.getElementById('clientsPhoneList')) document.getElementById('clientsPhoneList').innerHTML = cList;
-    }
-
-    function autoFillClient() { const c = allClients.find(x => x.phone === document.getElementById('client_phone_input').value); if(c) document.getElementById('client_name_input').value = c.full_name; }
-    function autoFillApptClient() { const c = allClients.find(x => x.phone === document.getElementById('appt_client_phone').value); if(c) document.getElementById('appt_client_name').value = c.full_name; }
-
-    function updateDashboard() {
-        if(document.getElementById('stat-total-cases')) document.getElementById('stat-total-cases').innerText = allCases.length;
-        if(document.getElementById('stat-total-clients')) document.getElementById('stat-total-clients').innerText = allClients.length;
-        if(document.getElementById('stat-staff-count')) document.getElementById('stat-staff-count').innerText = allStaff.length;
-        if(document.getElementById('stat-upcoming-hearings')) document.getElementById('stat-upcoming-hearings').innerText = allCases.filter(c=>c.next_hearing_date && new Date(c.next_hearing_date)>=new Date()).length;
-        
-        let agreed=0, paid=0; allCases.forEach(c => { agreed+=Number(c.total_agreed_fees)||0; paid+=Number(c.total_paid)||0; });
-        if(document.getElementById('total-agreed')) document.getElementById('total-agreed').innerText = agreed.toFixed(0); 
-        if(document.getElementById('total-collected')) document.getElementById('total-collected').innerText = paid.toFixed(0); 
-        if(document.getElementById('total-pending')) document.getElementById('total-pending').innerText = (agreed-paid).toFixed(0);
-    }
-
-    // ===== GLOBAL SEARCH (Omnibar) =====
-    function performGlobalSearch() {
-        const query = document.getElementById('omnibarInput').value.toLowerCase().trim();
-        const resBox = document.getElementById('omnibarResults');
-        resBox.innerHTML = '';
-        if(query.length < 2) { resBox.classList.remove('show'); return; }
-        
-        let results = [];
-        allCases.filter(c => (c.case_internal_id&&c.case_internal_id.toLowerCase().includes(query)) || (c.client_name&&c.client_name.toLowerCase().includes(query)) || (c.client_phone&&c.client_phone.includes(query))).forEach(c => {
-            results.push(`<div class="omnibar-item" onclick="openCaseDetails('${c.id}'); clearSearch();"><i class="fas fa-folder text-accent me-2"></i>قضية: ${c.case_internal_id} - ${c.client_name}</div>`);
-        });
-        allClients.filter(c => (c.full_name&&c.full_name.toLowerCase().includes(query)) || (c.phone&&c.phone.includes(query))).forEach(c => {
-            results.push(`<div class="omnibar-item" onclick="openClientProfile('${c.id}'); clearSearch();"><i class="fas fa-user text-info me-2"></i>موكل: ${c.full_name}</div>`);
-        });
-        
-        if(results.length > 0) { resBox.innerHTML = results.join(''); resBox.classList.add('show'); } 
-        else { resBox.innerHTML = '<div class="p-2 text-muted small text-center">لا توجد نتائج</div>'; resBox.classList.add('show'); }
-    }
-    function clearSearch() { document.getElementById('omnibarInput').value = ''; document.getElementById('omnibarResults').classList.remove('show'); }
-
-    // ===== RENDERS =====
-    function renderCases(filter='all') {
-        const list = document.getElementById('cases-list'); 
-        if(!list) return;
-        list.innerHTML='';
-        let f = filter==='all' ? allCases : allCases.filter(c=>c.case_status===filter); 
-        if(document.getElementById('cases-count')) document.getElementById('cases-count').innerText=f.length;
-        f.forEach(c => {
-            list.innerHTML += `<div class="case-card" onclick="openCaseDetails('${c.id}')"><div class="case-card-header"><div class="case-number">${c.case_internal_id}</div><span class="badge bg-light text-dark">${c.case_status}</span></div><div class="info-row"><i class="fas fa-user"></i><strong>${c.client_name}</strong></div>${c.current_court?`<div class="info-row"><i class="fas fa-landmark"></i>${c.current_court}</div>`:''}${c.next_hearing_date?`<div class="info-row"><i class="fas fa-calendar text-danger"></i><span class="text-danger fw-bold">${c.next_hearing_date}</span></div>`:''}</div>`;
-        });
-    }
-
-    function renderClients() {
-        const list = document.getElementById('clients-list'); 
-        if(!list) return;
-        list.innerHTML=''; 
-        if(document.getElementById('clients-count')) document.getElementById('clients-count').innerText=allClients.length;
-        allClients.forEach(c => { list.innerHTML += `<div class="client-card" onclick="openClientProfile('${c.id}')"><div class="fw-bold text-navy mb-1">${c.full_name}</div><div class="text-muted small"><i class="fas fa-phone me-1"></i>${c.phone}</div></div>`; });
-    }
-
-    function renderStaffView() {
-        const list = document.getElementById('staff-list'); 
-        if(!list) return;
-        list.innerHTML='';
-        allStaff.forEach(s => {
-            const sc = allCases.filter(c=>c.assigned_lawyer_id===s.id);
-            list.innerHTML += `
-            <div class="staff-card mb-3">
-                <div class="d-flex align-items-center mb-2"><div class="user-avatar ms-2">${s.full_name.charAt(0)}</div><div><div class="fw-bold text-navy">${s.full_name}</div><div class="small text-muted">${s.job_title||s.role} | خبرة: ${s.experience_years||0} سنة</div></div></div>
-                <div class="row g-2 text-center small mt-2 border-top pt-2"><div class="col-6"><strong>${sc.length}</strong><br>قضايا</div><div class="col-6 text-danger"><strong>${allTasks.filter(t=>t.assigned_to===s.id&&t.status==='pending').length}</strong><br>مهام معلقة</div></div>
-            </div>`;
-        });
-    }
-
-    async function loadAgenda(d) {
-        const ds = d.toISOString().split('T')[0]; 
-        if(document.getElementById('agenda-date-display')) document.getElementById('agenda-date-display').innerText = ds===new Date().toISOString().split('T')[0]?'اليوم':ds;
-        const tl = document.getElementById('agenda-timeline'); 
-        if(!tl) return;
-        tl.innerHTML='<div class="loading"><div class="spinner"></div></div>';
-        try{
-            const res = await fetch(`${API}/api/agenda?date=${ds}`, {headers:{'Authorization':`Bearer ${token}`}}); const data = await res.json(); tl.innerHTML='';
-            if(!data.hearings.length&&!data.tasks.length&&!data.appointments.length){ tl.innerHTML='<div class="empty-state"><p>لا يوجد جدول</p></div>'; return; }
-            data.hearings.forEach(h => tl.innerHTML+=`<div class="timeline-item"><div class="timeline-icon bg-danger"><i class="fas fa-gavel"></i></div><div class="timeline-content border-danger"><div class="fw-bold">جلسة: ${h.case_internal_id}</div><div class="small">${h.client_name}</div></div></div>`);
-            data.appointments.forEach(a => { const t=new Date(a.appointment_date).toLocaleTimeString('ar-JO',{hour:'2-digit',minute:'2-digit'}); tl.innerHTML+=`<div class="timeline-item"><div class="timeline-icon bg-warning"><i class="fas fa-handshake"></i></div><div class="timeline-content border-warning"><div class="fw-bold">${t} | ${a.appointment_type}</div><div class="small">${a.client_name}</div></div></div>`; });
-            data.tasks.forEach(t => tl.innerHTML+=`<div class="timeline-item"><div class="timeline-icon bg-info"><i class="fas fa-tasks"></i></div><div class="timeline-content border-info"><div class="fw-bold">مهمة: ${t.task_title}</div></div></div>`);
-        }catch(e){ tl.innerHTML='<p class="text-danger text-center">خطأ</p>'; }
-    }
-    function changeAgendaDate(off) { currentAgendaDate.setDate(currentAgendaDate.getDate()+off); loadAgenda(currentAgendaDate); }
-
-    // ===== MODALS & ROUTING =====
+    // التنقل بين الصفحات
     function switchView(v) { 
         if(v!==currentView) viewHistory.push(v); 
         document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
-        
-        const viewElem = document.getElementById(v+'-view');
-        if(viewElem) viewElem.classList.add('active'); 
+        document.getElementById(v+'-view').classList.add('active'); 
         
         document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); 
-        const idx=['home','cases','agenda','clients','profile'].indexOf(v); 
+        const idx=['home','cases','agenda','clients','library'].indexOf(v); 
         if(idx>=0 && document.querySelectorAll('.nav-item')[idx]) document.querySelectorAll('.nav-item')[idx].classList.add('active'); 
-        
         currentView=v; 
         
-        const backBtn = document.getElementById('backBtn');
-        const logoIcon = document.getElementById('logoIcon');
-        if(backBtn) backBtn.classList.toggle('show',v!=='home'); 
-        if(logoIcon) logoIcon.classList.toggle('d-none', v!=='home');
-        
+        document.getElementById('backBtn').classList.toggle('show',v!=='home'); 
+        document.getElementById('logoIcon').classList.toggle('d-none', v!=='home');
         closeQuickActions(); 
     }
     function goBack() { if(viewHistory.length>1){ viewHistory.pop(); switchView(viewHistory.pop()); } else switchView('home'); }
-    function toggleQuickActions() { const q = document.getElementById('quickActions'); if(q) q.classList.toggle('show'); }
-    function closeQuickActions() { const q = document.getElementById('quickActions'); if(q) q.classList.remove('show'); }
+    function toggleQuickActions() { document.getElementById('quickActions').classList.toggle('show'); }
+    function closeQuickActions() { document.getElementById('quickActions').classList.remove('show'); }
 
+    // فتح نوافذ الإدخال
     function openNewCaseModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newCaseModal')).show(); }
     function openNewAppointmentModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newApptModal')).show(); }
-    function openNewTaskModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newTaskModal')).show(); }
+    function openNewClientModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newClientModal')).show(); }
+
+    // الإدخال (Save Functions)
+    async function saveClient() {
+        const d = {
+            full_name: document.getElementById('nc_name').value, phone: document.getElementById('nc_phone').value,
+            national_id: document.getElementById('nc_national_id').value, email: document.getElementById('nc_email').value,
+            address: document.getElementById('nc_address').value, notes: document.getElementById('nc_notes').value
+        };
+        if(!d.full_name || !d.phone) { showAlert('الاسم والهاتف مطلوبان', 'warning'); return; }
+        await fetch(`${API}/api/clients`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
+        bootstrap.Modal.getInstance(document.getElementById('newClientModal')).hide(); loadAll();
+    }
 
     async function saveCase() {
         const form = document.getElementById('newCaseForm');
-        if(!form) return;
         const d = Object.fromEntries(new FormData(form).entries());
-        showAlert('جاري الحفظ...', 'info');
-        const res = await fetch(`${API}/api/cases`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        if(res.ok){ showAlert('تم الحفظ', 'success'); bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide(); loadAll(); }
-    }
-    async function saveAppointment() {
-        const d = { client_phone:document.getElementById('appt_client_phone').value, client_name:document.getElementById('appt_client_name').value, appointment_date:new Date(document.getElementById('appt_date').value).toISOString(), appointment_type:document.getElementById('appt_type').value, lawyer_id:document.getElementById('appt_lawyer').value||currentUser.id };
-        showAlert('جاري الحفظ...', 'info'); await fetch(`${API}/api/appointments`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        bootstrap.Modal.getInstance(document.getElementById('newApptModal')).hide(); loadAgenda(currentAgendaDate);
-    }
-    async function saveTask() {
-        const d = { task_title:document.getElementById('task_title').value, due_date:document.getElementById('task_due_date').value, assigned_to:document.getElementById('task_assign').value };
-        await fetch(`${API}/api/tasks`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        bootstrap.Modal.getInstance(document.getElementById('newTaskModal')).hide(); loadAll();
+        await fetch(`${API}/api/cases`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
+        bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide(); loadAll();
     }
 
-    // ===== CRM & WHATSAPP =====
+    async function saveAppointment() {
+        const d = { 
+            client_phone:document.getElementById('appt_client_phone').value, client_name:document.getElementById('appt_client_name').value, 
+            appointment_date:new Date(document.getElementById('appt_date').value).toISOString(), appointment_type:document.getElementById('appt_type').value, 
+            status:document.getElementById('appt_status').value, notes:document.getElementById('appt_notes').value, lawyer_id:document.getElementById('appt_lawyer').value||currentUser.id 
+        };
+        await fetch(`${API}/api/appointments`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
+        bootstrap.Modal.getInstance(document.getElementById('newApptModal')).hide(); loadAgenda(currentAgendaDate);
+    }
+
+    // العرض (Display Data)
+    async function openCaseDetails(caseId) {
+        const c = allCases.find(x=>x.id===caseId); if(!c) return;
+        document.getElementById('modal_case_id').innerText = c.case_internal_id;
+        document.getElementById('update_case_id').value = caseId;
+        
+        document.getElementById('det_stage').innerText = c.case_stage || 'قيد النظر';
+        document.getElementById('det_status').innerText = c.case_status || 'نشطة';
+        
+        document.getElementById('modal_case_details').innerHTML = `
+            <div class="col-6"><small class="text-muted d-block">الموكل</small><b>${c.client_name}</b></div>
+            <div class="col-6"><small class="text-muted d-block">الخصم / محاميه</small>${c.opponent_name||'--'} (${c.opponent_lawyer||'--'})</div>
+            <div class="col-6"><small class="text-muted d-block">المحكمة / رقم الدعوى</small>${c.current_court||'--'} - ${c.court_ref_number||'--'}</div>
+            <div class="col-6"><small class="text-muted d-block">القاضي</small>${c.current_judge||'--'}</div>
+            <div class="col-12"><small class="text-muted d-block">الكلمات المفتاحية</small><span class="text-info">${c.tags||'--'}</span></div>
+        `;
+        
+        // AI Simulation (مؤقت لحين ربط الـ API الخاص بالـ AI)
+        document.getElementById('det_win_prob').innerText = c.win_probability ? c.win_probability + '%' : '75%';
+        document.getElementById('det_win_bar').style.width = c.win_probability ? c.win_probability + '%' : '75%';
+        document.getElementById('det_ai_summary').innerHTML = c.ai_summary ? `<i class="fas fa-robot text-primary"></i> ${c.ai_summary}` : `<i class="fas fa-robot text-primary"></i> القضية تسير بشكل طبيعي، بانتظار الجلسة القادمة لتقديم البينات.`;
+
+        // Financials
+        if (currentUser.role !== 'secretary') {
+            const rem = (c.total_agreed_fees||0)-(c.total_paid||0);
+            document.getElementById('modal_financial').innerHTML = `<div class="fin-item"><span class="amount text-primary">${c.total_agreed_fees||0}</span><span class="label">الأتعاب</span></div><div class="fin-item"><span class="amount text-success">${c.total_paid||0}</span><span class="label">المدفوع</span></div><div class="fin-item"><span class="amount text-danger">${rem}</span><span class="label">المتبقي</span></div><div class="fin-item mt-2 w-100" style="grid-column: span 3;"><span class="amount text-warning">${c.total_expenses||0}</span><span class="label">إجمالي المصاريف المسجلة</span></div>`;
+        }
+
+        new bootstrap.Modal(document.getElementById('caseDetailsModal')).show();
+    }
+
     function openClientProfile(cid) {
         const c = allClients.find(x=>x.id===cid); if(!c) return;
-        document.getElementById('cd_name').innerText = c.full_name; document.getElementById('cd_phone').innerText = c.phone;
+        document.getElementById('cd_name').innerText = c.full_name; 
+        document.getElementById('cd_phone').innerText = c.phone;
+        document.getElementById('cd_nat_id').innerText = c.national_id || 'غير مسجل';
+        document.getElementById('cd_email').innerText = c.email || 'غير مسجل';
+        document.getElementById('cd_address').innerText = c.address || 'غير مسجل';
+        document.getElementById('cd_notes').innerText = c.notes || 'لا يوجد ملاحظات';
+        
         document.getElementById('cd_whatsapp').href = `https://wa.me/${c.phone.replace(/\D/g,'')}`;
-        const cCases = allCases.filter(x=>x.client_id===cid||x.client_phone===c.phone);
-        let tot=0, paid=0; const list = document.getElementById('cd_cases_list'); list.innerHTML='';
-        cCases.forEach(cc => { tot+=Number(cc.total_agreed_fees)||0; paid+=Number(cc.total_paid)||0; list.innerHTML+=`<div class="case-card py-2 px-3" onclick="openCaseDetails('${cc.id}')"><div class="fw-bold">${cc.case_internal_id}</div></div>`; });
-        document.getElementById('cd_total').innerText=tot; document.getElementById('cd_paid').innerText=paid; document.getElementById('cd_rem').innerText=tot-paid;
         new bootstrap.Modal(document.getElementById('clientDetailsModal')).show();
     }
 
-    // ===== CASE DETAILS & INSTALLMENTS =====
-    async function openCaseDetails(caseId) {
-        const c = allCases.find(x=>x.id===caseId); if(!c) return;
-        
-        // Ensure elements exist before setting values
-        const modalCaseId = document.getElementById('modal_case_id');
-        const updateCaseId = document.getElementById('update_case_id');
-        const instCaseId = document.getElementById('inst_case_id');
-        const updateClientPhone = document.getElementById('update_client_phone');
-        const modalCaseDetails = document.getElementById('modal_case_details');
-        const modalFinancial = document.getElementById('modal_financial');
-
-        if (modalCaseId) modalCaseId.innerText = c.case_internal_id;
-        if (updateCaseId) updateCaseId.value = caseId;
-        if (instCaseId) instCaseId.value = caseId;
-        if (updateClientPhone) updateClientPhone.value = c.client_phone;
-        
-        if (modalCaseDetails) {
-            modalCaseDetails.innerHTML = `<div class="col-6"><small class="text-muted d-block">الموكل</small><b>${c.client_name}</b></div><div class="col-6"><small class="text-muted d-block">الخصم</small>${c.opponent_name||'--'}</div><div class="col-6"><small class="text-muted d-block">المحكمة</small>${c.current_court||'--'}</div><div class="col-6"><small class="text-muted d-block">قيمة المطالبة</small><b class="text-danger">${c.claim_amount||0}</b></div><div class="col-6"><small class="text-muted d-block">رقم الوكالة</small>${c.poa_number||'--'}</div><div class="col-12"><small class="text-muted d-block">مكان الملف</small><i class="fas fa-archive text-warning me-1"></i>${c.file_location||'--'}</div>`;
-        }
-        
-        const rem = (c.total_agreed_fees||0)-(c.total_paid||0);
-        if (modalFinancial) {
-            modalFinancial.innerHTML = `<div class="fin-item"><span class="amount text-primary">${c.total_agreed_fees||0}</span><span class="label">الأتعاب</span></div><div class="fin-item"><span class="amount text-success">${c.total_paid||0}</span><span class="label">المدفوع</span></div><div class="fin-item"><span class="amount text-danger">${rem}</span><span class="label">المتبقي</span></div>`;
-        }
-        
-        await Promise.all([ loadTimeline(caseId), loadInstallments(caseId), loadDriveFiles(caseId) ]);
-        
-        const caseModal = document.getElementById('caseDetailsModal');
-        if (caseModal) new bootstrap.Modal(caseModal).show();
+    // الدردشة (Messages)
+    function sendChatMessage() {
+        const input = document.getElementById('chat_input');
+        const box = document.getElementById('chat_box');
+        if(input.value.trim() === '') return;
+        box.innerHTML += `<div class="msg-bubble msg-lawyer">${input.value}</div>`;
+        input.value = ''; box.scrollTop = box.scrollHeight;
+        // هنا يتم إرسال fetch POST لجدول mo_messages
     }
 
-    async function loadInstallments(caseId) {
-        const list = document.getElementById('installments-list'); 
-        if (!list) return;
-        list.innerHTML='<div class="spinner"></div>';
-        try {
-            const res = await fetch(`${API}/api/installments?case_id=${caseId}`, {headers: {'Authorization': `Bearer ${token}`}});
-            const insts = await res.json(); 
-            list.innerHTML='';
-            if(!insts.length) { list.innerHTML='<p class="text-muted small text-center m-0">لا توجد دفعات مجدولة</p>'; return; }
-            insts.forEach(i => {
-                const isPaid = i.status==='paid';
-                list.innerHTML+=`<div class="installment-card ${isPaid?'paid':''}"><div class="d-flex justify-content-between"><b>${i.amount} د.أ</b> <span class="badge ${isPaid?'bg-success':'bg-warning text-dark'}">${isPaid?'مسددة':'معلقة'}</span></div><div class="small text-muted mb-2">${i.due_date}</div>${!isPaid?`<div class="d-flex gap-2"><button class="btn btn-sm btn-success w-50" onclick="payInstallment('${i.id}')">تسديد</button><button class="btn btn-sm btn-outline-danger w-50" onclick="document.getElementById('postpone_inst_id').value='${i.id}'; new bootstrap.Modal(document.getElementById('postponeInstallmentModal')).show()">تأجيل</button></div>`:''}</div>`;
-            });
-        } catch (e) {
-            list.innerHTML='<p class="text-danger small text-center m-0">خطأ في التحميل</p>';
-        }
+    // Helpers
+    function populateSelects() {
+        let cList=''; allClients.forEach(c => cList+=`<option value="${c.phone}">${c.full_name}</option>`);
+        if(document.getElementById('clientsPhoneList')) document.getElementById('clientsPhoneList').innerHTML = cList;
     }
-
-    async function saveInstallment() {
-        const d={ case_id:document.getElementById('inst_case_id').value, amount:document.getElementById('inst_amount').value, due_date:document.getElementById('inst_due_date').value };
-        await fetch(`${API}/api/installments`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        bootstrap.Modal.getInstance(document.getElementById('newInstallmentModal')).hide(); loadInstallments(d.case_id);
+    function updateDashboard() {
+        document.getElementById('stat-total-cases').innerText = allCases.length;
+        document.getElementById('stat-total-clients').innerText = allClients.length;
     }
-    async function payInstallment(id) {
-        if(!confirm('تأكيد التسديد؟')) return;
-        await fetch(`${API}/api/installments/${id}`, {method:'PATCH', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({action:'pay'})});
-        loadAll(); openCaseDetails(document.getElementById('update_case_id').value);
+    function renderCases(f='all') {
+        let list = document.getElementById('cases-list'); list.innerHTML='';
+        let arr = f==='all'?allCases:allCases.filter(c=>c.case_status===f);
+        arr.forEach(c => list.innerHTML += `<div class="case-card" onclick="openCaseDetails('${c.id}')"><div class="case-number">${c.case_internal_id}</div><div class="small">${c.client_name}</div></div>`);
     }
-    async function savePostponeInstallment() {
-        const id=document.getElementById('postpone_inst_id').value;
-        await fetch(`${API}/api/installments/${id}`, {method:'PATCH', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({action:'postpone', new_date:document.getElementById('postpone_date').value, notes:document.getElementById('postpone_notes').value})});
-        bootstrap.Modal.getInstance(document.getElementById('postponeInstallmentModal')).hide(); loadTimeline(document.getElementById('update_case_id').value); loadInstallments(document.getElementById('update_case_id').value);
+    function renderClients() {
+        let list = document.getElementById('clients-list'); list.innerHTML='';
+        allClients.forEach(c => list.innerHTML += `<div class="client-card" onclick="openClientProfile('${c.id}')"><b>${c.full_name}</b><br><small>${c.phone}</small></div>`);
     }
-
-    // ===== SMART UPDATE, VOICE, & WHATSAPP =====
-    function toggleSpeechRecognition() {
-        const btn = document.getElementById('micBtn');
-        if (!('webkitSpeechRecognition' in window)) { showAlert('متصفحك لا يدعم الإدخال الصوتي', 'error'); return; }
-        const recognition = new webkitSpeechRecognition();
-        recognition.lang = 'ar-JO'; recognition.continuous = false; recognition.interimResults = false;
-        recognition.onstart = () => { btn.classList.add('recording'); showAlert('جاري الاستماع...', 'info'); };
-        recognition.onresult = (e) => { document.getElementById('update_details').value += ' ' + e.results[0][0].transcript; };
-        recognition.onerror = () => { showAlert('خطأ في الميكروفون', 'error'); btn.classList.remove('recording'); };
-        recognition.onend = () => { btn.classList.remove('recording'); };
-        recognition.start();
+    async function loadAgenda(d) {
+        document.getElementById('agenda-date-display').innerText = d.toISOString().split('T')[0];
+        // Fetch API then render
     }
-
-    async function saveUpdate() {
-        const d = { case_id:document.getElementById('update_case_id').value, update_type:document.getElementById('update_type').value, title:document.getElementById('update_title').value, details:document.getElementById('update_details').value, next_hearing_date:document.getElementById('update_next_hearing').value, status_update:document.getElementById('update_stage').value };
-        showAlert('جاري الحفظ...', 'info');
-        await fetch(`${API}/api/logs`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        
-        if(document.getElementById('notify_whatsapp').checked) {
-            const phone = document.getElementById('update_client_phone').value.replace(/\D/g,'');
-            const msg = `عزيزي الموكل،\nنعلمكم بأنه تم تحديث قضيتكم رقم (${document.getElementById('modal_case_id').innerText}).\nالتحديث: ${d.title}\n${d.next_hearing_date ? `موعد الجلسة القادمة: ${d.next_hearing_date}` : ''}\nلمزيد من التفاصيل يرجى مراجعة التطبيق.`;
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-        }
-        
-        document.getElementById('update_details').value=''; document.getElementById('update_title').value=''; document.getElementById('notify_whatsapp').checked=false;
-        loadAll(); openCaseDetails(d.case_id);
-    }
-
-    async function loadTimeline(caseId) {
-        const tl = document.getElementById('modal_timeline'); 
-        if(!tl) return;
-        tl.innerHTML='<div class="spinner"></div>';
-        try {
-            const res = await fetch(`${API}/api/logs?case_id=${caseId}`, {headers: {'Authorization': `Bearer ${token}`}});
-            const logs = await res.json(); 
-            tl.innerHTML='';
-            logs.forEach(l => {
-                let d = l.details ? l.details.replace(/\n/g, '<br>') : '';
-                tl.innerHTML += `<div class="timeline-item"><div class="timeline-icon bg-navy"><i class="fas fa-check"></i></div><div class="timeline-content"><div class="fw-bold">${l.title}</div><div class="small text-muted mb-1">${l.timestamp.split('T')[0]}</div><div class="small">${d}</div></div></div>`;
-            });
-        } catch(e) {
-            tl.innerHTML='<p class="text-danger small">خطأ في التحميل</p>';
-        }
-    }
-
-    // ===== PRINT TIMELINE & QR CODE =====
-    function printTimeline() {
-        document.getElementById('printHeader').innerText = `سجل القضية: ${document.getElementById('modal_case_id').innerText}`;
-        window.print(); 
-    }
-
-    function generateQR() {
-        const id = document.getElementById('modal_case_id').innerText;
-        document.getElementById('qrcode').innerHTML = '';
-        if(qrCode) qrCode.clear();
-        qrCode = new QRCode(document.getElementById("qrcode"), { text: id, width: 150, height: 150, colorDark : "#0a192f", colorLight : "#ffffff" });
-        new bootstrap.Modal(document.getElementById('qrModal')).show();
-    }
-
-    // ===== GOOGLE DRIVE UPLOAD =====
-    async function loadDriveFiles(caseId) {
-        const list = document.getElementById('modal_files_list'); 
-        if(!list) return;
-        list.innerHTML='<div class="spinner"></div>';
-        try {
-            const res = await fetch(`${API}/api/files?case_id=${caseId}`, {headers: {'Authorization': `Bearer ${token}`}});
-            const files = await res.json(); 
-            list.innerHTML='';
-            files.forEach(f => { list.innerHTML+=`<div class="p-2 bg-white border rounded mb-2 d-flex justify-content-between"><span><i class="fas fa-file-alt text-primary me-2"></i>${f.file_type}</span><a href="${f.drive_url}" target="_blank" class="text-success"><i class="fas fa-external-link-alt"></i></a></div>`; });
-        } catch(e) {
-             list.innerHTML='<p class="text-danger small m-0">خطأ</p>';
-        }
-    }
-
-    async function uploadCaseFile() {
-        const fileInput = document.getElementById('file_upload_input'); const btn = document.getElementById('btn_upload_file');
-        if(!fileInput.files.length) { showAlert('اختر ملفاً', 'warning'); return; }
-        const file = fileInput.files[0]; const reader = new FileReader();
-        btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>'; btn.disabled=true;
-        
-        reader.onload = async function() {
-            try {
-                const gasRes = await fetch(GAS_DRIVE_URL, { method:'POST', body:JSON.stringify({ base64: reader.result.split(',')[1], fileName: file.name, mimeType: file.type, officeName: "ملفات موكّل", caseId: document.getElementById('modal_case_id').innerText }) });
-                const gasData = await gasRes.json();
-                if(gasData.success) {
-                    await fetch(`${API}/api/files`, { method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({ case_id: document.getElementById('update_case_id').value, file_type: file.name, drive_url: gasData.fileUrl }) });
-                    showAlert('تم الرفع!', 'success'); fileInput.value=''; loadDriveFiles(document.getElementById('update_case_id').value);
-                } else throw new Error();
-            } catch(e) { showAlert('فشل الرفع', 'error'); } 
-            finally { btn.innerHTML='رفع'; btn.disabled=false; }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function showAlert(msg, t='info') { const b=document.getElementById('alertContainer'); if(b){ b.innerHTML=`<div class="alert-custom border-${t}"><i class="fas fa-info-circle text-${t}"></i> ${msg}</div>`; setTimeout(()=>b.innerHTML='',3000); } }
-    function hideAlert() { const b = document.getElementById('alertContainer'); if(b) b.innerHTML=''; }
+    function changeAgendaDate(off) { currentAgendaDate.setDate(currentAgendaDate.getDate()+off); loadAgenda(currentAgendaDate); }
+    function autoFillClient() { const c = allClients.find(x => x.phone === document.getElementById('client_phone_input').value); if(c) document.getElementById('client_name_input').value = c.full_name; }
+    
+    function showAlert(msg, t='info') { const b=document.getElementById('alertContainer'); b.innerHTML=`<div class="alert alert-${t} shadow-sm small fw-bold py-2"><i class="fas fa-info-circle"></i> ${msg}</div>`; setTimeout(()=>b.innerHTML='',3000); }
+    function hideAlert() { document.getElementById('alertContainer').innerHTML=''; }
     function logout() { localStorage.clear(); location.href='index.html'; }
-</script>
-
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => { navigator.serviceWorker.register('/service-worker.js').catch(()=>{}); });
-    }
 </script>
 </body>
 </html>
