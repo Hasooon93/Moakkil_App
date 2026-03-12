@@ -6,9 +6,6 @@
     <meta name="theme-color" content="#0a192f">
     <title>موكّل | بوابة الدخول</title>
     
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -59,7 +56,7 @@
         }
         .logo-circle i { font-size: 35px; color: var(--accent); }
         
-        /* أزرار التبديل الأنيقة (Toggle) */
+        /* أزرار التبديل الأنيقة */
         .role-toggle { 
             background: var(--bg-input); 
             border-radius: 12px; 
@@ -90,7 +87,6 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 1; 
         }
-        /* دعم الاتجاه العربي (RTL) للـ Slider */
         .role-toggle[data-active="admin"] .toggle-slider { transform: translateX(0); right: 4px; }
         .role-toggle[data-active="staff"] .toggle-slider { transform: translateX(-100%); right: 4px; }
 
@@ -114,7 +110,6 @@
         }
         .form-control:focus + i, .form-control:focus ~ i { color: var(--navy); }
         
-        /* حقل الـ OTP المميز */
         #adminOtp { 
             letter-spacing: 12px; 
             text-align: center; 
@@ -149,8 +144,8 @@
         .alert-custom { background: white; border-right: 5px solid var(--info); padding: 15px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 10px; font-weight: 700; animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--navy); }
         .alert-success-custom { border-right-color: var(--success); }
         .alert-danger-custom { border-right-color: var(--danger); }
+        .alert-warning-custom { border-right-color: var(--warning); }
 
-        /* حركات الأنيميشن */
         @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeInUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
@@ -220,6 +215,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
+    
     <script>
         // دالة تحريك الـ Toggle بسلاسة
         function switchTab(role) {
