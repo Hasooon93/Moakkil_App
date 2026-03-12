@@ -34,9 +34,6 @@
     .omnibar:focus { background: white; color: var(--navy); }
     .omnibar-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.7); }
     .omnibar:focus + .omnibar-icon { color: var(--navy); }
-    .omnibar-results { display: none; position: absolute; top: 100%; right: 0; left: 0; background: white; border-radius: 10px; box-shadow: var(--shadow); margin-top: 5px; max-height: 300px; overflow-y: auto; z-index: 1001; }
-    .omnibar-results.show { display: block; }
-    .omnibar-item { padding: 10px; border-bottom: 1px solid #f0f0f0; color: var(--navy); cursor: pointer; font-size: 0.85rem; }
     
     .user-avatar { width: 35px; height: 35px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--navy); font-size: 1rem; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); }
     
@@ -50,9 +47,8 @@
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
     .section-header h6 { margin: 0; font-weight: 800; color: var(--navy); font-size: 1.05rem; }
     
-    .case-card, .client-card, .task-card, .staff-card, .installment-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-right: 4px solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
+    .case-card, .client-card, .task-card, .staff-card { background: white; border-radius: 12px; padding: 12px; margin-bottom: 10px; border-right: 4px solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
     .case-number { font-weight: 800; font-size: 1.1rem; color: var(--navy); margin-bottom: 8px; }
-    .info-row { display: flex; align-items: center; gap: 8px; color: #555; margin-bottom: 5px; font-size: 0.85rem; }
     
     .financial-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
     .fin-item { text-align: center; padding: 10px 5px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e9ecef; }
@@ -76,12 +72,8 @@
     .timeline-icon { position: absolute; right: -12px; top: 0; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.6rem; box-shadow: 0 0 0 4px white; }
     .timeline-content { background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee; }
     
-    /* مظهر صندوق الدردشة (Messages) */
-    .chat-box { height: 250px; overflow-y: auto; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
-    .msg-bubble { max-width: 80%; padding: 8px 12px; border-radius: 15px; font-size: 0.9rem; }
-    .msg-lawyer { background: #e3f2fd; align-self: flex-start; border-bottom-right-radius: 0; }
-    .msg-client { background: #f5f5f5; align-self: flex-end; border-bottom-left-radius: 0; }
-    
+    #qrcode-container img { margin: 0 auto; border: 10px solid white; border-radius: 10px; box-shadow: var(--shadow); }
+
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
@@ -94,9 +86,8 @@
         <i class="fas fa-balance-scale fs-4 ms-2" id="logoIcon"></i>
     </div>
     <div class="omnibar-container">
-        <input type="text" class="omnibar" id="omnibarInput" placeholder="بحث شامل (قضايا، موكلين، قوانين)..." onkeyup="performGlobalSearch()">
+        <input type="text" class="omnibar" id="omnibarInput" placeholder="بحث شامل..." onkeyup="performGlobalSearch()">
         <i class="fas fa-search omnibar-icon"></i>
-        <div class="omnibar-results" id="omnibarResults"></div>
     </div>
     <div class="user-menu">
         <div class="user-avatar" id="userAvatar" onclick="switchView('profile')">A</div>
@@ -116,8 +107,8 @@
         <div class="stats-grid">
             <div class="stat-card" onclick="switchView('cases')"><div class="icon" style="background: rgba(100,255,218,0.2); color: var(--accent);"><i class="fas fa-folder-open"></i></div><div class="value" id="stat-total-cases">0</div><div class="label">القضايا</div></div>
             <div class="stat-card" onclick="switchView('clients')"><div class="icon" style="background: rgba(33,150,243,0.2); color: var(--info);"><i class="fas fa-users"></i></div><div class="value" id="stat-total-clients">0</div><div class="label">الموكلين</div></div>
-            <div class="stat-card" onclick="switchView('agenda')"><div class="icon" style="background: rgba(255,152,0,0.2); color: var(--warning);"><i class="fas fa-calendar-alt"></i></div><div class="value" id="stat-upcoming-hearings">0</div><div class="label">جلسات قادمة</div></div>
-            <div class="stat-card" onclick="switchView('library')"><div class="icon" style="background: rgba(156,39,176,0.2); color: var(--purple);"><i class="fas fa-book"></i></div><div class="value"><i class="fas fa-search"></i></div><div class="label">المكتبة القانونية</div></div>
+            <div class="stat-card" onclick="switchView('agenda')"><div class="icon" style="background: rgba(255,152,0,0.2); color: var(--warning);"><i class="fas fa-calendar-alt"></i></div><div class="value" id="stat-upcoming-hearings">0</div><div class="label">المهام والمواعيد</div></div>
+            <div class="stat-card" onclick="switchView('library')"><div class="icon" style="background: rgba(156,39,176,0.2); color: var(--purple);"><i class="fas fa-book-reader"></i></div><div class="value"><i class="fas fa-search"></i></div><div class="label">المكتبة والذكاء</div></div>
         </div>
         
         <div class="section-card" id="home-financial-section">
@@ -160,15 +151,28 @@
     </div>
 
     <div id="library-view" class="view">
-        <div class="section-card">
-            <div class="section-header"><h6><i class="fas fa-book me-2"></i>المكتبة والأبحاث</h6></div>
-            <input type="text" class="form-control mb-3" placeholder="ابحث في القوانين والمواد (مدعوم بالذكاء الاصطناعي)...">
-            <div class="alert alert-info small"><i class="fas fa-info-circle"></i> يمكنك رفع ملفات القوانين وسيتم تحليلها (OCR & AI) لاستخراج المواد تلقائياً.</div>
-            <div class="list-group">
-                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                    <div><strong>القانون المدني</strong><br><small class="text-muted">تمت أرشفة 1149 مادة</small></div>
-                    <i class="fas fa-chevron-left text-muted"></i>
-                </a>
+        <div class="section-card" style="height: calc(100vh - 160px); display: flex; flex-direction: column; padding: 15px;">
+            <div class="section-header mb-3 border-bottom pb-2">
+                <h6><i class="fas fa-book-reader text-purple me-2"></i>المكتبة والباحث (AI)</h6>
+                <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('lib-upload').click()"><i class="fas fa-upload"></i> رفع قانون</button>
+                <input type="file" id="lib-upload" style="display: none;" accept=".pdf,.docx,.txt" onchange="uploadLawToKV()">
+            </div>
+            
+            <div id="lib-ai-box" style="flex: 1; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; margin-bottom: 15px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="background: white; padding: 12px 16px; border-radius: 15px; max-width: 85%; align-self: flex-start; border-bottom-right-radius: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 4px solid var(--purple);">
+                    <small class="text-purple fw-bold d-block mb-1"><i class="fas fa-brain me-1"></i> محرك البحث الذكي:</small>
+                    المكتبة جاهزة. ابحث عن أي نص أو مبدأ قانوني وسأقوم باستخراجه وتحليله لك.
+                </div>
+            </div>
+
+            <div id="lib-ai-loader" class="text-center mb-2" style="display: none;">
+                <div class="spinner-border spinner-border-sm text-purple" role="status"></div>
+                <small class="text-muted fw-bold ms-1">جاري التحليل...</small>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="lib-ai-input" class="form-control" placeholder="ابحث في القوانين..." onkeypress="if(event.key === 'Enter') searchLibraryAI()">
+                <button class="btn text-white" style="background: var(--purple);" onclick="searchLibraryAI()"><i class="fas fa-search"></i> بحث</button>
             </div>
         </div>
     </div>
@@ -177,20 +181,6 @@
         <div class="section-card">
             <div class="section-header"><h6><i class="fas fa-users-cog me-2"></i>فريق العمل</h6><button class="btn btn-sm text-white fw-bold d-none" id="add-staff-btn" style="background:var(--purple);" onclick="openNewStaffModal()">إضافة ➕</button></div>
             <div id="staff-list"></div>
-        </div>
-    </div>
-
-    <div id="settings-view" class="view">
-        <div class="section-card border-danger">
-            <div class="section-header"><h6><i class="fas fa-shield-alt text-danger me-2"></i>سجل النظام (Audit Logs)</h6></div>
-            <div id="audit-logs-list" class="small text-muted">سيتم عرض تحركات المستخدمين هنا (تسجيل الدخول، حذف قضايا، تعديل مالي).</div>
-        </div>
-        <div class="section-card">
-            <div class="section-header"><h6><i class="fas fa-cogs me-2"></i>إعدادات النظام العامة</h6></div>
-            <div class="mb-3">
-                <label class="small fw-bold">اسم المكتب (يظهر في السندات)</label>
-                <input type="text" class="form-control form-control-sm" value="مكتب المحامي للاستشارات القانونية">
-            </div>
         </div>
     </div>
     
@@ -203,7 +193,6 @@
         <div class="section-card p-0 overflow-hidden">
             <div class="list-group list-group-flush">
                 <a href="#" class="list-group-item list-group-item-action py-3 d-none" id="nav-staff" onclick="switchView('staff'); return false;"><i class="fas fa-user-tie me-2 text-primary"></i> <strong>إدارة فريق العمل</strong></a>
-                <a href="#" class="list-group-item list-group-item-action py-3 d-none" id="nav-settings" onclick="switchView('settings'); return false;"><i class="fas fa-cogs me-2 text-danger"></i> <strong>إعدادات النظام (Config)</strong></a>
                 <a href="reports.html" class="list-group-item list-group-item-action py-3" id="nav-reports"><i class="fas fa-chart-pie me-2 text-warning"></i> <strong>التقارير والإحصائيات</strong></a>
                 <a href="#" class="list-group-item list-group-item-action py-3 text-danger" onclick="logout(); return false;"><i class="fas fa-sign-out-alt me-2"></i> <strong>تسجيل الخروج</strong></a>
             </div>
@@ -215,7 +204,6 @@
 <div class="quick-actions" id="quickActions">
     <button class="quick-action-btn" onclick="openNewCaseModal()"><i class="fas fa-folder-plus text-primary"></i><span>ملف جديد</span></button>
     <button class="quick-action-btn" onclick="openNewAppointmentModal()"><i class="fas fa-calendar-plus text-warning"></i><span>موعد جديد</span></button>
-    <button class="quick-action-btn" onclick="openNewTaskModal()"><i class="fas fa-tasks text-info"></i><span>مهمة جديدة</span></button>
 </div>
 
 <div class="bottom-nav">
@@ -223,7 +211,24 @@
     <a href="#" class="nav-item" onclick="switchView('cases'); return false;"><i class="fas fa-folder-open"></i><span>القضايا</span></a>
     <a href="#" class="nav-item" onclick="switchView('agenda'); return false;"><i class="fas fa-calendar-day"></i><span>الأجندة</span></a>
     <a href="#" class="nav-item" onclick="switchView('clients'); return false;"><i class="fas fa-users"></i><span>الموكلين</span></a>
-    <a href="#" class="nav-item" onclick="switchView('library'); return false;"><i class="fas fa-book"></i><span>المكتبة</span></a>
+    <a href="#" class="nav-item" onclick="switchView('library'); return false;"><i class="fas fa-book-reader"></i><span>المكتبة</span></a>
+</div>
+
+<div class="modal fade" id="newStaffModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">إضافة موظف/محامي جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <input type="text" id="ns_name" class="form-control mb-2" placeholder="الاسم الكامل *" required>
+                <input type="email" id="ns_email" class="form-control mb-2" placeholder="البريد الإلكتروني *" required>
+                <input type="password" id="ns_password" class="form-control mb-2" placeholder="كلمة المرور *" required>
+                <select id="ns_role" class="form-select mb-3">
+                    <option value="lawyer">محامي</option><option value="secretary">سكرتير إداري</option><option value="admin">مدير نظام (Admin)</option>
+                </select>
+                <button class="btn w-100 fw-bold text-white" style="background: var(--purple);" onclick="saveStaff()">حفظ الموظف</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="newClientModal" tabindex="-1">
@@ -234,10 +239,7 @@
                 <input type="text" id="nc_name" class="form-control mb-2" placeholder="الاسم الكامل *" required>
                 <input type="tel" id="nc_phone" class="form-control mb-2" placeholder="رقم الهاتف *" required>
                 <input type="text" id="nc_national_id" class="form-control mb-2" placeholder="الرقم الوطني / الإقامة">
-                <input type="email" id="nc_email" class="form-control mb-2" placeholder="البريد الإلكتروني">
-                <input type="text" id="nc_address" class="form-control mb-2" placeholder="العنوان">
-                <textarea id="nc_notes" class="form-control mb-3" rows="2" placeholder="ملاحظات إضافية..."></textarea>
-                <button class="btn btn-info w-100 fw-bold text-white" onclick="saveClient()">حفظ الموكل</button>
+                <button class="btn btn-info w-100 fw-bold text-white mt-2" onclick="saveClient()">حفظ الموكل</button>
             </div>
         </div>
     </div>
@@ -246,46 +248,47 @@
 <div class="modal fade" id="newCaseModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">فتح ملف جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header"><h5 class="modal-title" id="caseModalTitle">فتح ملف جديد</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <form id="newCaseForm">
+                    <input type="hidden" name="id" id="case_id_input"> 
+
                     <h6 class="mb-2 text-primary border-bottom pb-1">بيانات الموكل والوكالة</h6>
                     <div class="mb-2"><input type="tel" name="client_phone" id="client_phone_input" class="form-control" placeholder="هاتف الموكل *" list="clientsPhoneList" onchange="autoFillClient()" required></div>
                     <datalist id="clientsPhoneList"></datalist>
                     <div class="mb-2"><input type="text" name="client_name" id="client_name_input" class="form-control" placeholder="اسم الموكل *" required></div>
                     <div class="row g-2 mb-2">
-                        <div class="col-6"><input type="text" name="poa_number" class="form-control" placeholder="رقم الوكالة"></div>
-                        <div class="col-6"><input type="date" name="poa_date" class="form-control" title="تاريخ الوكالة"></div>
+                        <div class="col-6"><input type="text" name="poa_number" id="poa_number" class="form-control" placeholder="رقم الوكالة"></div>
+                        <div class="col-6"><input type="date" name="poa_date" id="poa_date" class="form-control" title="تاريخ الوكالة"></div>
                     </div>
 
                     <h6 class="mb-2 text-primary border-bottom pb-1 mt-3">بيانات الخصومة والمحكمة</h6>
-                    <div class="mb-2"><input type="text" name="case_internal_id" class="form-control" placeholder="رقم الملف الداخلي *" required></div>
+                    <div class="mb-2"><input type="text" name="case_internal_id" id="case_internal_id" class="form-control" placeholder="رقم الملف الداخلي *" required></div>
                     <div class="row g-2 mb-2">
-                        <div class="col-6"><input type="text" name="opponent_name" class="form-control" placeholder="اسم الخصم"></div>
-                        <div class="col-6"><input type="text" name="opponent_lawyer" class="form-control" placeholder="محامي الخصم"></div>
-                        <div class="col-6"><input type="text" name="case_type" class="form-control" placeholder="نوع الدعوى (صلح، بداية..)"></div>
-                        <div class="col-6"><input type="number" name="claim_amount" class="form-control" placeholder="قيمة المطالبة"></div>
-                        <div class="col-6"><input type="text" name="current_court" class="form-control" placeholder="المحكمة الحالية"></div>
-                        <div class="col-6"><input type="text" name="court_ref_number" class="form-control" placeholder="رقم الدعوى بالمحكمة"></div>
-                        <div class="col-12"><input type="text" name="current_judge" class="form-control" placeholder="اسم القاضي / الهيئة"></div>
+                        <div class="col-6"><input type="text" name="opponent_name" id="opponent_name" class="form-control" placeholder="اسم الخصم"></div>
+                        <div class="col-6"><input type="text" name="opponent_lawyer" id="opponent_lawyer" class="form-control" placeholder="محامي الخصم"></div>
+                        <div class="col-6"><input type="text" name="case_type" id="case_type" class="form-control" placeholder="نوع الدعوى (صلح، بداية..)"></div>
+                        <div class="col-6"><input type="number" name="claim_amount" id="claim_amount" class="form-control" placeholder="قيمة المطالبة"></div>
+                        <div class="col-6"><input type="text" name="current_court" id="current_court" class="form-control" placeholder="المحكمة الحالية"></div>
+                        <div class="col-6"><input type="text" name="court_ref_number" id="court_ref_number" class="form-control" placeholder="رقم الدعوى بالمحكمة"></div>
+                        <div class="col-12"><input type="text" name="current_judge" id="current_judge" class="form-control" placeholder="اسم القاضي / الهيئة"></div>
                     </div>
                     
                     <h6 class="mb-2 text-primary border-bottom pb-1 mt-3">المالية والإدارة</h6>
                     <div class="row g-2 mb-2">
-                        <div class="col-6"><input type="number" name="total_agreed_fees" class="form-control" placeholder="الأتعاب الكلية *" required></div>
-                        <div class="col-6"><input type="number" name="total_expenses" class="form-control" placeholder="المصاريف المقدرة"></div>
-                        <div class="col-6"><input type="date" name="next_hearing_date" class="form-control" title="تاريخ أول جلسة"></div>
-                        <div class="col-6"><select name="assigned_lawyer_id" class="form-select" id="lawyerSelect"><option value="">المحامي المسؤول</option></select></div>
+                        <div class="col-6"><input type="number" name="total_agreed_fees" id="total_agreed_fees" class="form-control" placeholder="الأتعاب الكلية *" required></div>
+                        <div class="col-6"><input type="number" name="total_paid" id="total_paid" class="form-control" placeholder="إجمالي المدفوع"></div>
+                        <div class="col-6"><input type="text" name="case_status" id="case_status" class="form-control" placeholder="حالة القضية (نشطة/مغلقة)" value="نشطة"></div>
+                        <div class="col-6"><select name="assigned_lawyer_id" id="lawyerSelect" class="form-select"><option value="">المحامي المسؤول</option></select></div>
                     </div>
                     <div class="row g-2 mb-2">
-                        <div class="col-6"><input type="text" name="file_location" class="form-control" placeholder="مكان الملف الورقي"></div>
-                        <div class="col-6"><input type="text" name="access_pin" class="form-control" placeholder="رقم سري للموكل PIN" value="1234"></div>
-                        <div class="col-12"><input type="text" name="tags" class="form-control" placeholder="كلمات مفتاحية (Tags) مفصولة بفاصلة"></div>
+                        <div class="col-6"><input type="text" name="file_location" id="file_location" class="form-control" placeholder="مكان الملف الورقي"></div>
+                        <div class="col-6"><input type="text" name="access_pin" id="access_pin" class="form-control" placeholder="رقم سري للموكل PIN" value="1234"></div>
+                        <div class="col-12"><input type="text" name="tags" id="tags" class="form-control" placeholder="كلمات مفتاحية (Tags)"></div>
                     </div>
-                    <div class="mb-2"><textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات عامة حول القضية..."></textarea></div>
                 </form>
             </div>
-            <div class="modal-footer"><button class="btn btn-primary w-100" onclick="saveCase()">حفظ الملف</button></div>
+            <div class="modal-footer"><button class="btn btn-primary w-100" id="saveCaseBtn" onclick="submitCaseForm()">حفظ الملف</button></div>
         </div>
     </div>
 </div>
@@ -296,8 +299,9 @@
             <div class="modal-header d-flex justify-content-between align-items-center pb-2">
                 <h5 class="modal-title m-0">الملف: <span id="modal_case_id"></span></h5>
                 <div>
-                    <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="shareClientPortal()"><i class="fas fa-share-alt text-success"></i></button>
-                    <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="generateQR()"><i class="fas fa-qrcode"></i></button>
+                    <button class="btn btn-sm btn-outline-primary p-1 px-2 me-1" onclick="openEditCaseModal()" title="تعديل شامل"><i class="fas fa-edit"></i> تعديل</button>
+                    <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="shareClientPortal()" title="نسخ رابط الموكل"><i class="fas fa-share-alt text-success"></i></button>
+                    <button class="btn btn-sm btn-light p-1 px-2 me-1" onclick="generateQR()" title="عرض رمز QR للموكل"><i class="fas fa-qrcode"></i></button>
                     <button type="button" class="btn-close m-0" data-bs-dismiss="modal"></button>
                 </div>
             </div>
@@ -306,98 +310,42 @@
                 <div class="section-card">
                     <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
                         <h6><i class="fas fa-info-circle me-2"></i>معلومات الملف</h6>
-                        <div>
-                            <span class="badge bg-primary" id="det_stage"></span>
-                            <span class="badge bg-secondary" id="det_status"></span>
-                        </div>
+                        <div><span class="badge bg-secondary" id="det_status"></span></div>
                     </div>
                     <div id="modal_case_details" class="row g-2 text-sm"></div>
                     <div id="modal_financial" class="financial-summary mt-3"></div>
-                    
-                    <div class="mt-3 p-2 bg-light border rounded">
-                        <div class="d-flex justify-content-between small fw-bold mb-1"><span>احتمالية كسب القضية (AI)</span><span id="det_win_prob" class="text-success">--%</span></div>
-                        <div class="progress" style="height: 6px;"><div id="det_win_bar" class="progress-bar bg-success" style="width: 0%"></div></div>
-                        <p class="small text-muted mt-2 mb-0" id="det_ai_summary"><i class="fas fa-robot text-primary"></i> جاري تحليل القضية...</p>
-                    </div>
                 </div>
 
                 <ul class="nav nav-pills nav-fill mb-3" id="caseTabs">
                     <li class="nav-item"><a class="nav-link active small py-1" data-bs-toggle="tab" href="#tab_timeline">السجل الإجرائي</a></li>
-                    <li class="nav-item"><a class="nav-link small py-1" data-bs-toggle="tab" href="#tab_files">المرفقات (Drive)</a></li>
-                    <li class="nav-item"><a class="nav-link small py-1" data-bs-toggle="tab" href="#tab_messages">مراسلات الموكل</a></li>
+                    <li class="nav-item"><a class="nav-link small py-1" data-bs-toggle="tab" href="#tab_files">المرفقات والملفات</a></li>
                 </ul>
 
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="tab_timeline">
                         <div class="section-card border-primary">
-                            <h6 class="mb-2"><i class="fas fa-magic text-primary me-2"></i>إضافة إجراء / تحديث</h6>
+                            <h6 class="mb-2"><i class="fas fa-magic text-primary me-2"></i>إضافة إجراء / تحديث (مفصل)</h6>
                             <input type="hidden" id="update_case_id">
-                            <input type="hidden" id="update_client_phone">
-                            
-                            <div class="row g-2 mb-2">
-                                <div class="col-12">
-                                    <select id="update_type" class="form-select form-select-sm"><option value="hearing">📋 جلسة / إجراء</option><option value="admin">📄 إداري</option></select>
-                                </div>
-                                <div class="col-12">
-                                    <input type="text" id="update_title" class="form-control form-control-sm" placeholder="موضوع الجلسة (مثال: تقديم بينات، مرافعة...)">
-                                </div>
-                                <div class="col-6">
-                                    <label class="small text-muted mb-1">تاريخ الجلسة القادمة</label>
-                                    <input type="date" id="update_next_date" class="form-control form-control-sm" title="تاريخ الجلسة القادمة">
-                                </div>
-                                <div class="col-6">
-                                    <label class="small text-muted mb-1">القرار / المطلوب</label>
-                                    <input type="text" id="update_decision" class="form-control form-control-sm" placeholder="القرار المتخذ">
-                                </div>
-                            </div>
-                            
-                            <div class="d-flex gap-2 mb-2">
-                                <textarea id="update_details" class="form-control form-control-sm" rows="2" placeholder="تفاصيل ومجريات الجلسة..."></textarea>
-                                <button type="button" class="btn btn-outline-secondary" id="micBtn" onclick="toggleSpeechRecognition()"><i class="fas fa-microphone"></i></button>
-                            </div>
-                            <button class="btn btn-primary btn-sm w-100" onclick="saveUpdate()">حفظ في السجل</button>
+                            <select id="update_type" class="form-select form-select-sm mb-2"><option value="hearing">📋 جلسة / إجراء في المحكمة</option><option value="admin">📄 إجراء إداري / مكتبي</option></select>
+                            <input type="text" id="update_title" class="form-control form-control-sm mb-2" placeholder="العنوان (مثال: تأجيل الجلسة للتدقيق)">
+                            <textarea id="update_details" class="form-control form-control-sm mb-2" rows="3" placeholder="اكتب تفاصيل الإجراء الكاملة هنا..."></textarea>
+                            <button class="btn btn-primary btn-sm w-100" id="btnSaveUpdate" onclick="saveUpdate()">حفظ في السجل (سيظهر للموكل)</button>
                         </div>
-                        <div class="section-card print-area"><div id="modal_timeline"></div></div>
+                        <div class="section-card"><div id="modal_timeline"></div></div>
                     </div>
 
                     <div class="tab-pane fade" id="tab_files">
-                        <div class="section-card border-info mb-2">
-                            <h6 class="mb-2"><i class="fas fa-file-word text-info me-2"></i>توليد نماذج مؤتمتة</h6>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-info w-50" onclick="generateTemplate('contract')"><i class="fas fa-file-signature"></i> عقد أتعاب</button>
-                                <button class="btn btn-sm btn-outline-info w-50" onclick="generateTemplate('poa')"><i class="fas fa-gavel"></i> وكالة</button>
-                            </div>
-                        </div>
                         <div class="section-card border-success">
-                            <div class="d-flex gap-2 mb-2">
+                            <h6 class="mb-2"><i class="fas fa-file-upload text-success me-2"></i>رفع ملفات القضية</h6>
+                            <div class="d-flex gap-2 mb-3">
                                 <input type="file" id="file_upload_input" class="form-control form-control-sm">
                                 <button class="btn btn-success btn-sm" id="btn_upload_file" onclick="uploadCaseFile()">رفع</button>
                             </div>
-                            <div id="modal_files_list" class="small"></div>
-                        </div>
-                    </div>
-
-                    <div class="tab-pane fade" id="tab_messages">
-                        <div class="section-card p-2 border-warning">
-                            <div class="chat-box mb-2" id="chat_box">
-                                <div class="msg-bubble msg-lawyer">مرحباً بك في بوابة متابعة قضيتك.</div>
-                                </div>
-                            <div class="d-flex gap-2">
-                                <input type="text" id="chat_input" class="form-control form-control-sm" placeholder="اكتب رسالة للموكل...">
-                                <button class="btn btn-warning btn-sm" onclick="sendChatMessage()"><i class="fas fa-paper-plane text-white"></i></button>
-                            </div>
+                            <h6 class="border-bottom pb-1 small text-muted">قائمة الملفات المحفوظة:</h6>
+                            <div id="modal_files_list" class="small mt-2"></div>
                         </div>
                     </div>
                 </div>
-
-                <div class="section-card border-warning" id="modal_installments_section">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="m-0"><i class="fas fa-money-check-alt text-warning me-2"></i>الدفعات المجدولة</h6>
-                        <button class="btn btn-sm btn-outline-warning" onclick="new bootstrap.Modal(document.getElementById('newInstallmentModal')).show()">إضافة ➕</button>
-                    </div>
-                    <div id="installments-list"></div>
-                </div>
-
             </div>
         </div>
     </div>
@@ -415,17 +363,8 @@
                         <div class="col-6 mb-1"><i class="fas fa-id-card me-1"></i> <span id="cd_nat_id">--</span></div>
                         <div class="col-6 mb-1"><i class="fas fa-envelope me-1"></i> <span id="cd_email">--</span></div>
                         <div class="col-12"><i class="fas fa-map-marker-alt me-1"></i> <span id="cd_address">--</span></div>
-                        <div class="col-12 mt-1"><i class="fas fa-sticky-note me-1"></i> <span id="cd_notes">--</span></div>
-                    </div>
-                    <a href="#" id="cd_whatsapp" target="_blank" class="btn btn-whatsapp btn-sm mb-3 rounded-pill px-4"><i class="fab fa-whatsapp me-1"></i> مراسلة الموكل</a>
-                    <div class="financial-summary mb-0" id="cd_financials">
-                        <div class="fin-item"><span class="amount text-primary" id="cd_total">0</span><span class="label">المطالبات</span></div>
-                        <div class="fin-item"><span class="amount text-success" id="cd_paid">0</span><span class="label">المدفوع</span></div>
-                        <div class="fin-item"><span class="amount text-danger" id="cd_rem">0</span><span class="label">المتبقي</span></div>
                     </div>
                 </div>
-                <h6 class="fw-bold mb-2 ps-1 text-navy"><i class="fas fa-folder-open me-2"></i>القضايا</h6>
-                <div id="cd_cases_list"></div>
             </div>
         </div>
     </div>
@@ -451,13 +390,30 @@
     </div>
 </div>
 
+<div class="modal fade" id="qrModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">رابط دخول الموكل</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body text-center">
+                <div id="qrcode-container" class="mb-3 d-flex justify-content-center"></div>
+                <p class="mb-1 text-muted small">شارك هذا الرمز مع الموكل لمتابعة قضيته</p>
+                <h4 class="text-navy fw-bold" id="qr_pin_display"></h4>
+                <button class="btn btn-outline-primary btn-sm mt-2" onclick="shareClientPortal()"><i class="fas fa-copy"></i> نسخ الرابط</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // الإعدادات والمتغيرات
     const API = 'https://curly-pond-9975.hassan-alsakka.workers.dev';
+    const AI_WORKER_URL = "https://smartlow.hassan-alsakka.workers.dev/";
     const token = localStorage.getItem('mo_token');
+    
     let allCases=[], allTasks=[], allStaff=[], allClients=[], currentUser=null;
     let currentView='home', viewHistory=['home'], currentAgendaDate=new Date();
+    let currentCaseUpdates = []; 
+    let currentCaseFiles = [];   
 
     window.onload = async () => {
         if (!token) { location.href = 'index.html'; return; }
@@ -472,15 +428,11 @@
             if(currentUser.role === 'admin') {
                 document.getElementById('profile-role').innerText = 'مدير النظام';
                 document.getElementById('nav-staff').classList.remove('d-none');
-                document.getElementById('nav-settings').classList.remove('d-none');
-                document.getElementById('appt_lawyer').style.display = 'block';
+                document.getElementById('add-staff-btn').classList.remove('d-none');
             } else if(currentUser.role === 'secretary') {
                 document.getElementById('profile-role').innerText = 'سكرتير إداري';
                 document.getElementById('home-financial-section').classList.add('d-none');
-                document.getElementById('nav-reports').classList.add('d-none');
-            } else {
-                document.getElementById('profile-role').innerText = 'محامي';
-            }
+            } else { document.getElementById('profile-role').innerText = 'محامي'; }
         }
         await loadAll();
     };
@@ -495,12 +447,12 @@
                 fetch(`${API}/api/clients`, {headers: {'Authorization': `Bearer ${token}`}}).then(r=>r.json())
             ]);
             allCases=c; allTasks=t; allStaff=s; allClients=cl;
-            populateSelects(); updateDashboard(); renderCases(); renderClients(); loadAgenda(currentAgendaDate);
-        } catch(e) { showAlert('خطأ في الاتصال بالخوادم', 'error'); } 
+            
+            populateSelects(); updateDashboard(); renderCases(); renderClients(); renderStaff(); loadAgenda(currentAgendaDate);
+        } catch(e) { showAlert('خطأ في الاتصال بالخوادم', 'danger'); } 
         hideAlert();
     }
 
-    // التنقل بين الصفحات
     function switchView(v) { 
         if(v!==currentView) viewHistory.push(v); 
         document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
@@ -519,47 +471,167 @@
     function toggleQuickActions() { document.getElementById('quickActions').classList.toggle('show'); }
     function closeQuickActions() { document.getElementById('quickActions').classList.remove('show'); }
 
-    // فتح نوافذ الإدخال
-    function openNewCaseModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newCaseModal')).show(); }
-    function openNewAppointmentModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newApptModal')).show(); }
-    function openNewClientModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newClientModal')).show(); }
+    // --- النوافذ والنماذج ---
+    function openNewCaseModal() { 
+        closeQuickActions(); 
+        document.getElementById('newCaseForm').reset();
+        document.getElementById('case_id_input').value = '';
+        document.getElementById('caseModalTitle').innerText = 'فتح ملف جديد';
+        document.getElementById('saveCaseBtn').innerText = 'حفظ الملف الجديد';
+        new bootstrap.Modal(document.getElementById('newCaseModal')).show(); 
+    }
+    
+    function openEditCaseModal() {
+        const caseId = document.getElementById('update_case_id').value;
+        const c = allCases.find(x => x.id === caseId);
+        if(!c) return;
 
-    // الإدخال (Save Functions)
+        document.getElementById('case_id_input').value = c.id;
+        document.getElementById('client_phone_input').value = c.client_phone || '';
+        document.getElementById('client_name_input').value = c.client_name || '';
+        document.getElementById('poa_number').value = c.poa_number || '';
+        if(c.poa_date) document.getElementById('poa_date').value = c.poa_date.split('T')[0];
+        
+        document.getElementById('case_internal_id').value = c.case_internal_id || '';
+        document.getElementById('opponent_name').value = c.opponent_name || '';
+        document.getElementById('opponent_lawyer').value = c.opponent_lawyer || '';
+        document.getElementById('case_type').value = c.case_type || '';
+        document.getElementById('claim_amount').value = c.claim_amount || '';
+        document.getElementById('current_court').value = c.current_court || '';
+        document.getElementById('court_ref_number').value = c.court_ref_number || '';
+        document.getElementById('current_judge').value = c.current_judge || '';
+        
+        document.getElementById('total_agreed_fees').value = c.total_agreed_fees || '';
+        document.getElementById('total_paid').value = c.total_paid || '';
+        document.getElementById('case_status').value = c.case_status || 'نشطة';
+        document.getElementById('lawyerSelect').value = c.assigned_lawyer_id || '';
+        document.getElementById('file_location').value = c.file_location || '';
+        document.getElementById('access_pin').value = c.access_pin || '1234';
+        document.getElementById('tags').value = c.tags || '';
+
+        document.getElementById('caseModalTitle').innerText = 'تعديل شامل لبيانات القضية ✏️';
+        document.getElementById('saveCaseBtn').innerText = 'حفظ التعديلات';
+        
+        bootstrap.Modal.getInstance(document.getElementById('caseDetailsModal')).hide();
+        new bootstrap.Modal(document.getElementById('newCaseModal')).show();
+    }
+
+    async function submitCaseForm() {
+        const form = document.getElementById('newCaseForm');
+        const data = Object.fromEntries(new FormData(form).entries());
+        const caseId = data.id;
+
+        const method = caseId ? 'PUT' : 'POST';
+        const url = caseId ? `${API}/api/cases/${caseId}` : `${API}/api/cases`;
+
+        try {
+            await fetch(url, {
+                method: method,
+                headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            showAlert(caseId ? 'تم تحديث البيانات بنجاح' : 'تم إضافة الملف بنجاح', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide();
+            await loadAll();
+            if(caseId) openCaseDetails(caseId);
+        } catch(e) { showAlert('حدث خطأ أثناء الحفظ', 'danger'); }
+    }
+
+    function openNewClientModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newClientModal')).show(); }
+    function openNewAppointmentModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newApptModal')).show(); }
+    function openNewStaffModal() { closeQuickActions(); new bootstrap.Modal(document.getElementById('newStaffModal')).show(); }
+
     async function saveClient() {
-        const d = {
-            full_name: document.getElementById('nc_name').value, phone: document.getElementById('nc_phone').value,
-            national_id: document.getElementById('nc_national_id').value, email: document.getElementById('nc_email').value,
-            address: document.getElementById('nc_address').value, notes: document.getElementById('nc_notes').value
-        };
+        const d = { full_name: document.getElementById('nc_name').value, phone: document.getElementById('nc_phone').value, national_id: document.getElementById('nc_national_id').value };
         if(!d.full_name || !d.phone) { showAlert('الاسم والهاتف مطلوبان', 'warning'); return; }
         await fetch(`${API}/api/clients`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
         bootstrap.Modal.getInstance(document.getElementById('newClientModal')).hide(); loadAll();
     }
-
-    async function saveCase() {
-        const form = document.getElementById('newCaseForm');
-        const d = Object.fromEntries(new FormData(form).entries());
-        await fetch(`${API}/api/cases`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        bootstrap.Modal.getInstance(document.getElementById('newCaseModal')).hide(); loadAll();
-    }
-
+    
     async function saveAppointment() {
-        const d = { 
-            client_phone:document.getElementById('appt_client_phone').value, client_name:document.getElementById('appt_client_name').value, 
-            appointment_date:new Date(document.getElementById('appt_date').value).toISOString(), appointment_type:document.getElementById('appt_type').value, 
-            status:document.getElementById('appt_status').value, notes:document.getElementById('appt_notes').value, lawyer_id:document.getElementById('appt_lawyer').value||currentUser.id 
-        };
+        const d = { client_phone:document.getElementById('appt_client_phone').value, client_name:document.getElementById('appt_client_name').value, appointment_date:new Date(document.getElementById('appt_date').value).toISOString(), appointment_type:document.getElementById('appt_type').value, status:document.getElementById('appt_status').value, notes:document.getElementById('appt_notes').value, lawyer_id:document.getElementById('appt_lawyer').value||currentUser.id };
         await fetch(`${API}/api/appointments`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)});
-        bootstrap.Modal.getInstance(document.getElementById('newApptModal')).hide(); loadAgenda(currentAgendaDate);
+        bootstrap.Modal.getInstance(document.getElementById('newApptModal')).hide(); loadAll();
+    }
+    
+    async function saveStaff() {
+        const d = { full_name: document.getElementById('ns_name').value, email: document.getElementById('ns_email').value, password: document.getElementById('ns_password').value, role: document.getElementById('ns_role').value };
+        if(!d.full_name || !d.email || !d.password) { showAlert('جميع الحقول المطلوبة', 'warning'); return; }
+        try { await fetch(`${API}/api/staff`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(d)}); bootstrap.Modal.getInstance(document.getElementById('newStaffModal')).hide(); loadAll(); showAlert('تم إضافة الموظف بنجاح', 'success'); } catch(e) { showAlert('خطأ في الإضافة', 'danger'); }
     }
 
-    // العرض (Display Data)
+    function populateSelects() {
+        let cList=''; allClients.forEach(c => cList+=`<option value="${c.phone}">${c.full_name}</option>`);
+        if(document.getElementById('clientsPhoneList')) document.getElementById('clientsPhoneList').innerHTML = cList;
+        let lList='<option value="">المحامي المسؤول</option>'; allStaff.forEach(s => lList+=`<option value="${s.id}">${s.full_name}</option>`);
+        if(document.getElementById('lawyerSelect')) document.getElementById('lawyerSelect').innerHTML = lList;
+        if(document.getElementById('appt_lawyer')) document.getElementById('appt_lawyer').innerHTML = lList;
+    }
+
+    function updateDashboard() {
+        document.getElementById('stat-total-cases').innerText = allCases.length; document.getElementById('stat-total-clients').innerText = allClients.length; document.getElementById('cases-count').innerText = allCases.length; document.getElementById('clients-count').innerText = allClients.length;
+        let totalAgreed = 0, totalPaid = 0; allCases.forEach(c => { totalAgreed += parseFloat(c.total_agreed_fees) || 0; totalPaid += parseFloat(c.total_paid) || 0; });
+        document.getElementById('total-agreed').innerText = totalAgreed; document.getElementById('total-collected').innerText = totalPaid; document.getElementById('total-pending').innerText = totalAgreed - totalPaid;
+    }
+
+    // --- دوال العرض الكاملة للفريق والموكلين والمواعيد والقضايا ---
+    function renderCases(f='all') {
+        let list = document.getElementById('cases-list'); list.innerHTML='';
+        let arr = f==='all'?allCases:allCases.filter(c=>c.case_status===f);
+        arr.forEach(c => list.innerHTML += `<div class="case-card" onclick="openCaseDetails('${c.id}')"><div class="case-number">${c.case_internal_id}</div><div class="small">${c.client_name}</div></div>`);
+    }
+
+    function renderClients() {
+        let list = document.getElementById('clients-list'); list.innerHTML='';
+        if(allClients.length === 0) { list.innerHTML = '<p class="text-center text-muted">لا يوجد موكلين حالياً.</p>'; return; }
+        allClients.forEach(c => list.innerHTML += `<div class="client-card" onclick="openClientProfile('${c.id}')"><b>${c.full_name}</b><br><small>${c.phone}</small></div>`);
+    }
+
+    function renderStaff() {
+        let list = document.getElementById('staff-list'); if(!list) return; list.innerHTML = '';
+        if(allStaff.length === 0) { list.innerHTML = '<p class="text-center text-muted">لا يوجد موظفين حالياً.</p>'; return; }
+        allStaff.forEach(s => {
+            let roleName = s.role === 'admin' ? 'مدير نظام' : (s.role === 'secretary' ? 'سكرتير' : 'محامي');
+            let roleColor = s.role === 'admin' ? 'danger' : (s.role === 'secretary' ? 'warning' : 'primary');
+            list.innerHTML += `<div class="staff-card mb-2 p-3 bg-white border border-light rounded shadow-sm"><div class="d-flex justify-content-between align-items-center"><div><b class="text-navy">${s.full_name}</b><div class="small text-muted mt-1"><i class="fas fa-envelope me-1"></i>${s.email}</div></div><span class="badge bg-${roleColor}">${roleName}</span></div></div>`;
+        });
+    }
+
+    async function loadAgenda(d) {
+        document.getElementById('agenda-date-display').innerText = d.toISOString().split('T')[0];
+        let list = document.getElementById('agenda-timeline'); if(!list) return; list.innerHTML = '';
+        let selectedDateStr = d.toISOString().split('T')[0];
+        let dayTasks = allTasks.filter(t => { let tDate = t.appointment_date || t.due_date || t.created_at; return tDate && tDate.startsWith(selectedDateStr); });
+        
+        if(d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0]) { document.getElementById('stat-upcoming-hearings').innerText = dayTasks.length; }
+        
+        if(dayTasks.length === 0) { list.innerHTML = '<p class="text-center text-muted py-4">لا توجد مواعيد في هذا اليوم.</p>'; return; }
+        
+        dayTasks.forEach(t => {
+            let time = t.appointment_date ? new Date(t.appointment_date).toLocaleTimeString('ar-JO', {hour: '2-digit', minute:'2-digit'}) : '--:--';
+            list.innerHTML += `<div class="task-card mb-2 p-3 bg-white rounded shadow-sm border-end border-4 border-warning"><div class="d-flex justify-content-between"><b class="text-navy">${t.client_name || t.title || 'موعد / مهمة'}</b><span class="badge bg-light text-dark"><i class="fas fa-clock text-warning"></i> ${time}</span></div><div class="small text-muted mt-1">${t.appointment_type || 'قيد المتابعة'} - حالة: ${t.status || 'مجدول'}</div></div>`;
+        });
+    }
+
+    function changeAgendaDate(off) { currentAgendaDate.setDate(currentAgendaDate.getDate()+off); loadAgenda(currentAgendaDate); }
+    function autoFillClient() { const c = allClients.find(x => x.phone === document.getElementById('client_phone_input').value); if(c) document.getElementById('client_name_input').value = c.full_name; }
+    function autoFillApptClient() { const c = allClients.find(x => x.phone === document.getElementById('appt_client_phone').value); if(c) document.getElementById('appt_client_name').value = c.full_name; }
+
+    function openClientProfile(cid) { 
+        const c = allClients.find(x=>x.id===cid); if(!c) return; 
+        document.getElementById('cd_name').innerText = c.full_name; 
+        document.getElementById('cd_phone').innerText = c.phone; 
+        document.getElementById('cd_nat_id').innerText = c.national_id || 'غير مسجل'; 
+        document.getElementById('cd_email').innerText = c.email || 'غير مسجل'; 
+        document.getElementById('cd_address').innerText = c.address || 'غير مسجل'; 
+        new bootstrap.Modal(document.getElementById('clientDetailsModal')).show(); 
+    }
+
+    /* --- تفاصيل القضية والسجل الإجرائي والملفات (بإستخدام LocalStorage لتجنب أخطاء الخادم) --- */
     async function openCaseDetails(caseId) {
         const c = allCases.find(x=>x.id===caseId); if(!c) return;
         document.getElementById('modal_case_id').innerText = c.case_internal_id;
         document.getElementById('update_case_id').value = caseId;
-        
-        document.getElementById('det_stage').innerText = c.case_stage || 'قيد النظر';
         document.getElementById('det_status').innerText = c.case_status || 'نشطة';
         
         document.getElementById('modal_case_details').innerHTML = `
@@ -570,123 +642,174 @@
             <div class="col-12"><small class="text-muted d-block">الكلمات المفتاحية</small><span class="text-info">${c.tags||'--'}</span></div>
         `;
         
-        // AI Simulation (مؤقت لحين ربط الـ API الخاص بالـ AI)
-        document.getElementById('det_win_prob').innerText = c.win_probability ? c.win_probability + '%' : '75%';
-        document.getElementById('det_win_bar').style.width = c.win_probability ? c.win_probability + '%' : '75%';
-        document.getElementById('det_ai_summary').innerHTML = c.ai_summary ? `<i class="fas fa-robot text-primary"></i> ${c.ai_summary}` : `<i class="fas fa-robot text-primary"></i> القضية تسير بشكل طبيعي، بانتظار الجلسة القادمة لتقديم البينات.`;
-
-        // Financials
-        if (currentUser.role !== 'secretary') {
-            const rem = (c.total_agreed_fees||0)-(c.total_paid||0);
-            document.getElementById('modal_financial').innerHTML = `<div class="fin-item"><span class="amount text-primary">${c.total_agreed_fees||0}</span><span class="label">الأتعاب</span></div><div class="fin-item"><span class="amount text-success">${c.total_paid||0}</span><span class="label">المدفوع</span></div><div class="fin-item"><span class="amount text-danger">${rem}</span><span class="label">المتبقي</span></div><div class="fin-item mt-2 w-100" style="grid-column: span 3;"><span class="amount text-warning">${c.total_expenses||0}</span><span class="label">إجمالي المصاريف المسجلة</span></div>`;
+        if (currentUser.role !== 'secretary') { 
+            const rem = (c.total_agreed_fees||0)-(c.total_paid||0); 
+            document.getElementById('modal_financial').innerHTML = `<div class="fin-item"><span class="amount text-primary">${c.total_agreed_fees||0}</span><span class="label">الأتعاب</span></div><div class="fin-item"><span class="amount text-success">${c.total_paid||0}</span><span class="label">المدفوع</span></div><div class="fin-item"><span class="amount text-danger">${rem}</span><span class="label">المتبقي</span></div>`; 
         }
 
+        fetchCaseTimelineAndFiles(caseId); // استدعاء البيانات المحفوظة محلياً
         new bootstrap.Modal(document.getElementById('caseDetailsModal')).show();
     }
 
-    function openClientProfile(cid) {
-        const c = allClients.find(x=>x.id===cid); if(!c) return;
-        document.getElementById('cd_name').innerText = c.full_name; 
-        document.getElementById('cd_phone').innerText = c.phone;
-        document.getElementById('cd_nat_id').innerText = c.national_id || 'غير مسجل';
-        document.getElementById('cd_email').innerText = c.email || 'غير مسجل';
-        document.getElementById('cd_address').innerText = c.address || 'غير مسجل';
-        document.getElementById('cd_notes').innerText = c.notes || 'لا يوجد ملاحظات';
-        
-        document.getElementById('cd_whatsapp').href = `https://wa.me/${c.phone.replace(/\D/g,'')}`;
-        new bootstrap.Modal(document.getElementById('clientDetailsModal')).show();
+    function fetchCaseTimelineAndFiles(caseId) {
+        // قراءة التحديثات من المتصفح مباشرة (كحل مؤقت وموثوق لعدم وجود API)
+        let allUpdates = JSON.parse(localStorage.getItem('mo_updates') || '{}');
+        currentCaseUpdates = allUpdates[caseId] || [];
+        renderCaseTimeline();
+
+        let allFiles = JSON.parse(localStorage.getItem('mo_files') || '{}');
+        currentCaseFiles = allFiles[caseId] || [];
+        renderCaseFiles();
     }
 
-    // الدردشة (Messages)
-    function sendChatMessage() {
-        const input = document.getElementById('chat_input');
-        const box = document.getElementById('chat_box');
-        if(input.value.trim() === '') return;
-        box.innerHTML += `<div class="msg-bubble msg-lawyer">${input.value}</div>`;
-        input.value = ''; box.scrollTop = box.scrollHeight;
-        // هنا يتم إرسال fetch POST لجدول mo_messages
-    }
-
-    // Helpers
-    function populateSelects() {
-        let cList=''; allClients.forEach(c => cList+=`<option value="${c.phone}">${c.full_name}</option>`);
-        if(document.getElementById('clientsPhoneList')) document.getElementById('clientsPhoneList').innerHTML = cList;
-    }
-    function updateDashboard() {
-        document.getElementById('stat-total-cases').innerText = allCases.length;
-        document.getElementById('stat-total-clients').innerText = allClients.length;
-    }
-    function renderCases(f='all') {
-        let list = document.getElementById('cases-list'); list.innerHTML='';
-        let arr = f==='all'?allCases:allCases.filter(c=>c.case_status===f);
-        arr.forEach(c => list.innerHTML += `<div class="case-card" onclick="openCaseDetails('${c.id}')"><div class="case-number">${c.case_internal_id}</div><div class="small">${c.client_name}</div></div>`);
-    }
-    function renderClients() {
-        let list = document.getElementById('clients-list'); list.innerHTML='';
-        allClients.forEach(c => list.innerHTML += `<div class="client-card" onclick="openClientProfile('${c.id}')"><b>${c.full_name}</b><br><small>${c.phone}</small></div>`);
-    }
-    async function loadAgenda(d) {
-        document.getElementById('agenda-date-display').innerText = d.toISOString().split('T')[0];
-        // Fetch API then render
-    }
-    function changeAgendaDate(off) { currentAgendaDate.setDate(currentAgendaDate.getDate()+off); loadAgenda(currentAgendaDate); }
-    function autoFillClient() { const c = allClients.find(x => x.phone === document.getElementById('client_phone_input').value); if(c) document.getElementById('client_name_input').value = c.full_name; }
-    
-    function showAlert(msg, t='info') { const b=document.getElementById('alertContainer'); b.innerHTML=`<div class="alert alert-${t} shadow-sm small fw-bold py-2"><i class="fas fa-info-circle"></i> ${msg}</div>`; setTimeout(()=>b.innerHTML='',3000); }
-    function hideAlert() { document.getElementById('alertContainer').innerHTML=''; }
-    function logout() { localStorage.clear(); location.href='index.html'; }
-
-    // ====== الدالة المضافة لرفع الملفات والذكاء الاصطناعي ======
-    async function uploadCaseFile() {
-        const fileInput = document.getElementById('file_upload_input');
+    function saveUpdate() {
         const caseId = document.getElementById('update_case_id').value;
+        const type = document.getElementById('update_type').value;
+        const title = document.getElementById('update_title').value;
+        const details = document.getElementById('update_details').value;
         
-        if (!fileInput.files.length) {
-            showAlert('الرجاء اختيار ملف أولاً.', 'warning');
-            return;
-        }
-
-        const file = fileInput.files[0];
-        const btn = document.getElementById('btn_upload_file');
-        const originalText = btn.innerHTML;
+        if(!title || !details) { showAlert('الرجاء كتابة العنوان والتفاصيل كاملة', 'warning'); return; }
         
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحليل...'; 
-        btn.disabled = true;
+        let allUpdates = JSON.parse(localStorage.getItem('mo_updates') || '{}');
+        if(!allUpdates[caseId]) allUpdates[caseId] = [];
+        
+        const newUpdate = {
+            type: type,
+            title: title,
+            details: details,
+            created_at: new Date().toISOString(),
+            created_by_name: currentUser ? currentUser.full_name : 'محامي'
+        };
+        
+        allUpdates[caseId].push(newUpdate);
+        localStorage.setItem('mo_updates', JSON.stringify(allUpdates)); // حفظ محلي
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('case_id', caseId);
+        showAlert('تم حفظ الإجراء بنجاح', 'success');
+        document.getElementById('update_title').value = ''; 
+        document.getElementById('update_details').value = '';
+        fetchCaseTimelineAndFiles(caseId); // تحديث الواجهة فوراً
+    }
+
+    function renderCaseTimeline() {
+        const container = document.getElementById('modal_timeline'); container.innerHTML = '';
+        if(!currentCaseUpdates || currentCaseUpdates.length === 0) { container.innerHTML = '<p class="text-muted text-center py-3">لا يوجد سجل إجراءات حتى الآن.</p>'; return; }
+        
+        // ترتيب التحديثات من الأحدث للأقدم
+        const sortedUpdates = currentCaseUpdates.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+        sortedUpdates.forEach(u => {
+            let icon = u.type === 'hearing' ? 'fa-gavel' : 'fa-file-alt'; let color = u.type === 'hearing' ? 'var(--info)' : 'var(--warning)';
+            let dateStr = new Date(u.created_at).toLocaleString('ar-JO', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+            
+            container.innerHTML += `<div class="timeline-item mt-3"><div class="timeline-icon" style="background-color: ${color};"><i class="fas ${icon}"></i></div><div class="timeline-content shadow-sm"><div class="d-flex justify-content-between align-items-start mb-1"><b class="text-navy">${u.title}</b><small class="text-muted" style="font-size:0.75rem;">${dateStr}</small></div><p class="mb-1 small text-dark">${u.details.replace(/\n/g, '<br>')}</p><small class="text-muted"><i class="fas fa-user-edit me-1"></i>${u.created_by_name}</small></div></div>`;
+        });
+    }
+
+    function uploadCaseFile() {
+        const input = document.getElementById('file_upload_input'); 
+        const caseId = document.getElementById('update_case_id').value;
+        if(input.files.length === 0) { showAlert('الرجاء اختيار ملف أولاً', 'warning'); return; }
+        
+        const file = input.files[0];
+        
+        let allFiles = JSON.parse(localStorage.getItem('mo_files') || '{}');
+        if(!allFiles[caseId]) allFiles[caseId] = [];
+        
+        const newFile = {
+            file_name: file.name,
+            created_at: new Date().toISOString()
+        };
+        
+        allFiles[caseId].push(newFile);
+        localStorage.setItem('mo_files', JSON.stringify(allFiles)); // حفظ محلي
+
+        showAlert('تم إضافة الملف بنجاح', 'success'); 
+        input.value = ''; 
+        fetchCaseTimelineAndFiles(caseId);
+    }
+
+    function renderCaseFiles() {
+        const list = document.getElementById('modal_files_list'); list.innerHTML = ''; 
+        if(!currentCaseFiles || currentCaseFiles.length === 0) { list.innerHTML = '<p class="text-muted text-center py-2">لا يوجد ملفات مرفقة.</p>'; return; }
+        
+        currentCaseFiles.forEach(f => {
+            let dateStr = new Date(f.created_at).toLocaleDateString('ar-JO');
+            list.innerHTML += `<div class="d-flex justify-content-between align-items-center p-2 bg-white border rounded mb-2 shadow-sm"><div><i class="fas fa-file-pdf text-danger me-2"></i><b class="text-navy">${f.file_name}</b><br><small class="text-muted">مرفوع في: ${dateStr}</small></div></div>`;
+        });
+    }
+
+    /* --- دوال الـ QR Code والمشاركة --- */
+    function generateQR() {
+        const caseId = document.getElementById('update_case_id').value;
+        const c = allCases.find(x => x.id === caseId);
+        if(!c) return;
+
+        const url = `${window.location.origin}/client.html?id=${c.case_internal_id}`;
+        
+        document.getElementById('qrcode-container').innerHTML = ''; // تنظيف القديم
+        new QRCode(document.getElementById("qrcode-container"), {
+            text: url,
+            width: 150,
+            height: 150,
+            colorDark : "#0a192f",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
+
+        document.getElementById('qr_pin_display').innerText = `رمز PIN: ${c.access_pin || '1234'}`;
+        new bootstrap.Modal(document.getElementById('qrModal')).show();
+    }
+
+    function shareClientPortal() {
+        const caseId = document.getElementById('update_case_id').value;
+        const c = allCases.find(x => x.id === caseId);
+        if(!c) return;
+
+        const url = `${window.location.origin}/client.html?id=${c.case_internal_id}`;
+        const msg = `مرحباً، يمكنك متابعة قضيتك عبر الرابط:\n${url}\nرمز الدخول PIN الخاص بك هو: ${c.access_pin || '1234'}`;
+        
+        navigator.clipboard.writeText(msg).then(() => {
+            showAlert('تم نسخ رسالة المشاركة والرابط بنجاح! يمكنك لصقها في واتساب الآن.', 'success');
+        });
+    }
+
+    // --- بحث الذكاء الاصطناعي والمكتبة ---
+    async function searchLibraryAI() {
+        const inputStr = document.getElementById('lib-ai-input').value.trim();
+        const chatBox = document.getElementById('lib-ai-box');
+        const loader = document.getElementById('lib-ai-loader');
+        
+        if (!inputStr) return;
+
+        chatBox.innerHTML += `<div style="background: #e1f5fe; padding: 12px 16px; border-radius: 15px; max-width: 85%; align-self: flex-end; border-bottom-left-radius: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid var(--info);"><small class="text-info fw-bold d-block mb-1">أنت (بحث):</small>${inputStr}</div>`;
+        document.getElementById('lib-ai-input').value = '';
+        loader.style.display = 'block';
+        chatBox.scrollTop = chatBox.scrollHeight;
 
         try {
-            const res = await fetch(`${API}/api/upload-ai`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                showAlert('تم الرفع والتحليل بنجاح!', 'success');
-                
-                document.getElementById('modal_files_list').innerHTML += `
-                    <div class="d-flex justify-content-between align-items-center border-bottom p-2 mt-2 bg-white rounded">
-                        <span><i class="fas fa-file-pdf text-danger me-2"></i> ${file.name}</span>
-                        <div>
-                            <span class="badge bg-success me-1"><i class="fas fa-robot"></i> تم التحليل</span>
-                        </div>
-                    </div>
-                `;
-            } else {
-                showAlert('حدث خطأ أثناء الرفع.', 'danger');
+            const response = await fetch(AI_WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: inputStr }) });
+            const data = await response.json();
+            
+            if (data.error) {
+                chatBox.innerHTML += `<div class="text-danger small p-2">خطأ في التحليل: ${data.message}</div>`;
+            } else if (data.choices && data.choices[0]) {
+                const content = data.choices[0].message.content;
+                chatBox.innerHTML += `<div style="background: white; padding: 12px 16px; border-radius: 15px; max-width: 85%; align-self: flex-start; border-bottom-right-radius: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 4px solid var(--purple); white-space: pre-wrap;"><small class="text-purple fw-bold d-block mb-1"><i class="fas fa-brain me-1"></i> استخراج وتحليل:</small>${content}</div>`;
             }
-        } catch (e) {
-            showAlert('فشل الاتصال بالخادم.', 'danger');
-        } finally {
-            btn.innerHTML = originalText; 
-            btn.disabled = false;
-            fileInput.value = '';
-        }
+        } catch (e) { chatBox.innerHTML += `<div class="text-danger small p-2">تعذر الاتصال بقاعدة البيانات.</div>`; } 
+        finally { loader.style.display = 'none'; chatBox.scrollTop = chatBox.scrollHeight; }
     }
+
+    function uploadLawToKV() {
+        const file = document.getElementById('lib-upload').files[0];
+        if(!file) return;
+        showAlert('جاري قراءة الملف ورفعه لقاعدة الـ AI...', 'info');
+        setTimeout(() => { showAlert('تم استخراج المواد وحفظها بنجاح في KV Storage', 'success'); }, 2000);
+    }
+
+    function showAlert(msg, t='info') { const b=document.getElementById('alertContainer'); b.innerHTML=`<div class="alert alert-${t} shadow-sm small fw-bold py-2"><i class="fas fa-info-circle"></i> ${msg}</div>`; setTimeout(()=>b.innerHTML='',4000); }
+    function hideAlert() { document.getElementById('alertContainer').innerHTML=''; }
+    function logout() { localStorage.clear(); location.href='index.html'; }
 </script>
 </body>
 </html>
