@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a192f">
+    <title>موكّل | بوابة الدخول</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --navy: #0a192f; 
+            --accent: #64ffda; 
+            --text-main: #334155; 
+            --bg-input: #f8fafc;
+        }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: linear-gradient(135deg, var(--navy) 0%, #112240 100%); 
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            margin: 0; 
+            overflow: hidden; 
+        }
+
+        /* تصميم البطاقة الرئيسية */
+        .login-card { 
+            background: #ffffff; 
+            border-radius: 24px; 
+            padding: 40px 30px 30px; 
+            width: 90%; 
+            max-width: 420px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
+            position: relative; 
+            animation: fadeInUp 0.6s cubic-bezier(0.165, 0.84, 0.44, 1); 
+        }
+
+        /* اللوجو العائم فوق البطاقة */
+        .logo-circle { 
+            width: 80px; 
+            height: 80px; 
+            background: var(--navy); 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            margin: -80px auto 20px; 
+            box-shadow: 0 10px 20px rgba(10, 25, 47, 0.3); 
+            border: 4px solid white; 
+        }
+        .logo-circle i { font-size: 35px; color: var(--accent); }
+        
+        /* أزرار التبديل الأنيقة (Toggle) */
+        .role-toggle { 
+            background: var(--bg-input); 
+            border-radius: 12px; 
+            display: flex; 
+            position: relative; 
+            margin-bottom: 30px; 
+            padding: 4px; 
+            border: 1px solid #e2e8f0;
+        }
+        .role-btn { 
+            flex: 1; 
+            text-align: center; 
+            padding: 12px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            color: #64748b; 
+            transition: all 0.3s ease; 
+            z-index: 2; 
+        }
+        .role-btn.active { color: var(--navy); }
+        .toggle-slider { 
+            position: absolute; 
+            top: 4px; bottom: 4px; width: calc(50% - 4px); 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 1; 
+        }
+        /* دعم الاتجاه العربي (RTL) للـ Slider */
+        .role-toggle[data-active="admin"] .toggle-slider { transform: translateX(0); right: 4px; }
+        .role-toggle[data-active="staff"] .toggle-slider { transform: translateX(-100%); right: 4px; }
+
+        /* حقول الإدخال */
+        .input-icon-wrapper { position: relative; margin-bottom: 20px; }
+        .input-icon-wrapper i { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem; transition: 0.3s; }
+        .form-control { 
+            border: 2px solid #e2e8f0; 
+            border-radius: 12px; 
+            padding: 14px 45px 14px 15px; 
+            font-weight: 600; 
+            font-size: 15px;
+            transition: 0.3s; 
+            background: var(--bg-input); 
+            color: var(--navy);
+        }
+        .form-control:focus { 
+            border-color: var(--navy); 
+            background: white; 
+            box-shadow: 0 0 0 4px rgba(10, 25, 47, 0.08); 
+        }
+        .form-control:focus + i, .form-control:focus ~ i { color: var(--navy); }
+        
+        /* حقل الـ OTP المميز */
+        #adminOtp { 
+            letter-spacing: 12px; 
+            text-align: center; 
+            font-size: 24px; 
+            padding: 15px; 
+            font-weight: 800;
+        }
+
+        /* الأزرار */
+        .btn-main { 
+            background: var(--navy); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            padding: 15px; 
+            font-weight: 800; 
+            width: 100%; 
+            transition: 0.3s; 
+            font-size: 16px; 
+            box-shadow: 0 4px 12px rgba(10, 25, 47, 0.2);
+        }
+        .btn-main:hover:not(:disabled) { 
+            background: #112240; 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 15px rgba(10, 25, 47, 0.3); 
+            color: var(--accent);
+        }
+        .btn-main:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        /* التنبيهات */
+        .alert-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+        .alert-custom { background: white; border-right: 5px solid var(--info); padding: 15px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 10px; font-weight: 700; animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: var(--navy); }
+        .alert-success-custom { border-right-color: var(--success); }
+        .alert-danger-custom { border-right-color: var(--danger); }
+
+        /* حركات الأنيميشن */
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeInUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .fade-form { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .d-none { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="alertBox" class="alert-container"></div>
+
+    <div class="login-card">
+        <div class="logo-circle">
+            <i class="fas fa-balance-scale"></i>
+        </div>
+        
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-navy mb-1">مرحباً بك في موكّل</h3>
+            <p class="text-muted small fw-bold">اختر صفتك لتسجيل الدخول</p>
+        </div>
+
+        <div class="role-toggle" id="roleToggle" data-active="admin">
+            <div class="toggle-slider"></div>
+            <div class="role-btn active" id="btnTabAdmin" onclick="switchTab('admin')">مدير المكتب</div>
+            <div class="role-btn" id="btnTabStaff" onclick="switchTab('staff')">فريق العمل</div>
+        </div>
+
+        <div id="formAdmin" class="fade-form">
+            <form onsubmit="handleAdminLogin(event)">
+                <div id="phoneStep">
+                    <div class="input-icon-wrapper">
+                        <input type="tel" id="adminPhone" class="form-control" placeholder="رقم الهاتف المعتمد (مثال: 079...)" required dir="ltr" style="text-align: right;">
+                        <i class="fas fa-phone-alt"></i>
+                    </div>
+                    <button type="submit" class="btn-main" id="btnRequestOtp">إرسال كود الدخول <i class="fas fa-paper-plane ms-2"></i></button>
+                </div>
+                
+                <div id="otpStep" class="d-none text-center">
+                    <p class="small text-muted fw-bold mb-2">أدخل الرمز المرسل إليك 🔒</p>
+                    <input type="number" id="adminOtp" class="form-control mb-3" placeholder="••••••" dir="ltr">
+                    <button type="button" class="btn-main mb-3" id="btnVerifyOtp" onclick="verifyAdminOtp()">تأكيد ودخول</button>
+                    <button type="button" class="btn btn-link text-muted w-100 text-decoration-none small fw-bold" onclick="resetAdminLogin()"><i class="fas fa-arrow-right me-1"></i> تغيير رقم الهاتف</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="formStaff" class="fade-form d-none">
+            <form onsubmit="handleStaffLogin(event)">
+                <div class="input-icon-wrapper">
+                    <input type="text" id="staffUsername" class="form-control" placeholder="اسم المستخدم" required>
+                    <i class="fas fa-user"></i>
+                </div>
+                
+                <div class="input-icon-wrapper">
+                    <input type="password" id="staffPassword" class="form-control" placeholder="كلمة المرور" required>
+                    <i class="fas fa-lock"></i>
+                    <span style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;" onclick="togglePassword()">
+                        <i class="fas fa-eye" id="eyeIcon" style="right: auto; position: static; transform: none;"></i>
+                    </span>
+                </div>
+                
+                <button type="submit" class="btn-main" id="btnStaffLogin">دخول للنظام <i class="fas fa-sign-in-alt ms-2"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        // دالة تحريك الـ Toggle بسلاسة
+        function switchTab(role) {
+            const toggle = document.getElementById('roleToggle');
+            const btnAdmin = document.getElementById('btnTabAdmin');
+            const btnStaff = document.getElementById('btnTabStaff');
+            const formAdmin = document.getElementById('formAdmin');
+            const formStaff = document.getElementById('formStaff');
+
+            toggle.setAttribute('data-active', role);
+            
+            if (role === 'admin') {
+                btnAdmin.classList.add('active');
+                btnStaff.classList.remove('active');
+                formStaff.classList.add('d-none');
+                formAdmin.classList.remove('d-none');
+            } else {
+                btnStaff.classList.add('active');
+                btnAdmin.classList.remove('active');
+                formAdmin.classList.add('d-none');
+                formStaff.classList.remove('d-none');
+            }
+        }
+    </script>
+</body>
+</html>
