@@ -2,10 +2,8 @@
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
+let clientObj = null;
 
-/**
- * عند التحميل: جلب كل ما يخص هذه القضية
- */
 window.onload = async () => {
     if (!currentCaseId) {
         window.location.href = 'app.html';
@@ -15,19 +13,25 @@ window.onload = async () => {
 };
 
 /**
- * جلب البيانات (بيانات القضية، التحديثات، الدفعات)
+ * دالة للعودة إلى اللوحة الرئيسية
+ */
+function goBack() {
+    window.location.href = 'app.html';
+}
+
+/**
+ * جلب البيانات الشاملة للقضية
  */
 async function loadCaseFullDetails() {
     console.log("🔄 جاري تحميل سجل القضية...");
     
-    // جلب البيانات بشكل متوازي لسرعة الأداء
-    const [allCases, updates, installments] = await Promise.all([
+    const [allCases, updates, installments, files] = await Promise.all([
         API.getCases(),
         API.getUpdates(currentCaseId),
-        API.getInstallments(currentCaseId)
+        API.getInstallments(currentCaseId),
+        API.getFiles(currentCaseId)
     ]);
 
-    // العثور على القضية الحالية من القائمة
     caseObj = (allCases || []).find(c => c.id == currentCaseId);
 
     if (!caseObj) {
@@ -36,148 +40,308 @@ async function loadCaseFullDetails() {
         return;
     }
 
-    renderHeader();
+    renderHeaderAndSummary();
     renderTimeline(updates || []);
     renderPayments(installments || []);
+    renderFiles(files || []);
     calculateFinances(installments || []);
 }
 
 /**
- * عرض بيانات الرأس (اسم الموكل ورقم القضية)
+ * عرض بيانات القضية في البطاقة العلوية
  */
-function renderHeader() {
-    const title = document.getElementById('case-title');
-    const clientName = document.getElementById('case-client-name');
-    const court = document.getElementById('case-court');
-    const status = document.getElementById('case-status');
-
-    if (title) title.innerText = `ملف: ${caseObj.case_internal_id}`;
-    if (clientName) clientName.innerText = caseObj.mo_clients?.full_name || "اسم الموكل";
-    if (court) court.innerText = caseObj.current_court || "المحكمة غير محددة";
-    if (status) {
-        status.innerText = caseObj.status;
-        status.className = `badge ${caseObj.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}`;
-    }
+function renderHeaderAndSummary() {
+    document.getElementById('case-title').innerText = `${caseObj.case_internal_id}`;
+    document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${caseObj.mo_clients?.full_name || "اسم الموكل"}`;
+    
+    // التفاصيل الفرعية
+    document.getElementById('det-court').innerText = caseObj.current_court || "--";
+    document.getElementById('det-judge').innerText = caseObj.current_judge || "--";
+    document.getElementById('det-type').innerText = caseObj.case_type || "--";
+    document.getElementById('det-opponent').innerText = caseObj.opponent_name || "--";
+    document.getElementById('det-claim').innerText = caseObj.claim_amount ? `${caseObj.claim_amount.toLocaleString()} د.أ` : "--";
+    document.getElementById('case-pin').innerHTML = `<i class="fas fa-key text-warning"></i> PIN: ${caseObj.access_pin || 'غير محدد'}`;
+    
+    // الحالة
+    const statusEl = document.getElementById('case-status');
+    statusEl.innerText = caseObj.status || "نشطة";
+    if(caseObj.status === 'نشطة') statusEl.className = 'badge bg-success fs-6';
+    else if(caseObj.status === 'مغلقة') statusEl.className = 'badge bg-danger fs-6';
+    else statusEl.className = 'badge bg-secondary fs-6';
 }
 
 /**
- * عرض الخط الزمني للأحداث (Timeline)
+ * عرض الخط الزمني (الوقائع)
  */
 function renderTimeline(updates) {
     const container = document.getElementById('timeline-container');
     if (!container) return;
 
     if (updates.length === 0) {
-        container.innerHTML = '<div class="text-center p-4 text-muted small">لا يوجد وقائع مسجلة بعد.</div>';
+        container.innerHTML = '<div class="text-center p-4 text-muted small border rounded-3 bg-white">لا يوجد وقائع مسجلة بعد.</div>';
         return;
     }
 
-    container.innerHTML = updates.map(u => `
+    container.innerHTML = updates.map(u => {
+        let visibilityBadge = u.is_visible_to_client ? '<span class="badge bg-soft-success text-success ms-2" style="font-size:10px;">مرئي للموكل</span>' : '<span class="badge bg-soft-danger text-danger ms-2" style="font-size:10px;">سري</span>';
+        let datesInfo = '';
+        if(u.hearing_date) datesInfo += `<small class="d-block text-muted mt-2"><i class="fas fa-gavel text-info"></i> الجلسة: ${u.hearing_date}</small>`;
+        if(u.next_hearing_date) datesInfo += `<small class="d-block text-muted"><i class="fas fa-calendar-alt text-warning"></i> القادمة: ${u.next_hearing_date}</small>`;
+
+        return `
         <div class="timeline-item mb-3">
             <div class="card-custom p-3 shadow-sm bg-white border-end border-4 border-navy">
-                <small class="text-primary d-block mb-1 fw-bold">
-                    ${new Date(u.created_at).toLocaleDateString('ar-EG')}
-                </small>
-                <p class="mb-0 small text-navy fw-bold">${u.content}</p>
+                <div class="d-flex justify-content-between align-items-start">
+                    <small class="text-primary fw-bold">${new Date(u.created_at).toLocaleDateString('ar-EG')}</small>
+                    ${visibilityBadge}
+                </div>
+                <h6 class="fw-bold text-navy mt-1 mb-1">${u.update_title || 'تحديث'}</h6>
+                <p class="mb-0 small text-dark" style="white-space: pre-wrap;">${u.update_details}</p>
+                ${datesInfo}
+            </div>
+        </div>
+    `}).join('');
+}
+
+/**
+ * عرض الدفعات المالية
+ */
+function renderPayments(installments) {
+    const container = document.getElementById('payments-container');
+    if (!container) return;
+
+    if (installments.length === 0) {
+        container.innerHTML = '<div class="text-center p-4 text-muted small border rounded-3 bg-white">لا توجد دفعات مسجلة.</div>';
+        return;
+    }
+
+    container.innerHTML = installments.map(i => `
+        <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 ${i.status === 'مدفوعة' ? 'border-success' : 'border-warning'}">
+            <div>
+                <b class="${i.status === 'مدفوعة' ? 'text-success' : 'text-warning'} fs-5">${i.amount} د.أ</b>
+                <span class="badge ${i.status === 'مدفوعة' ? 'bg-success' : 'bg-warning text-dark'} ms-2">${i.status}</span>
+            </div>
+            <div class="text-end">
+                <small class="text-muted d-block fw-bold">الاستحقاق</small>
+                <small class="text-dark">${i.due_date || new Date(i.created_at).toLocaleDateString()}</small>
             </div>
         </div>
     `).join('');
 }
 
 /**
- * عرض سجل الدفعات المالية
+ * عرض الملفات المؤرشفة
  */
-function renderPayments(installments) {
-    const container = document.getElementById('payments-container');
+function renderFiles(files) {
+    const container = document.getElementById('files-container');
     if (!container) return;
 
-    container.innerHTML = installments.map(i => `
-        <div class="card-custom p-2 mb-2 d-flex justify-content-between align-items-center border-bottom">
-            <b class="text-success">+ ${i.amount} د.أ</b>
-            <small class="text-muted">${new Date(i.created_at).toLocaleDateString()}</small>
+    if (files.length === 0) {
+        container.innerHTML = '<div class="col-12"><div class="text-center p-4 text-muted small border rounded-3 bg-white">لا توجد مستندات في الأرشيف.</div></div>';
+        return;
+    }
+
+    container.innerHTML = files.map(f => `
+        <div class="col-6">
+            <div class="card-custom p-3 text-center border shadow-sm">
+                <i class="fas fa-file-alt fs-1 text-secondary mb-2"></i>
+                <h6 class="small fw-bold text-truncate mb-2" title="${f.file_name}">${f.file_name}</h6>
+                <a href="${f.drive_file_id}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>
+            </div>
         </div>
-    `).join('') || '<p class="text-center text-muted p-3">لا توجد دفعات.</p>';
+    `).join('');
 }
 
 /**
- * حساب المبالغ المتبقية
+ * حساب المبالغ الكلية
  */
 function calculateFinances(installments) {
-    const totalPaid = installments.reduce((sum, i) => sum + Number(i.amount), 0);
+    // نحسب فقط الدفعات "المدفوعة"
+    const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + Number(i.amount), 0);
     const agreedFees = Number(caseObj.total_agreed_fees) || 0;
 
-    const agreedEl = document.getElementById('sum-agreed');
-    const paidEl = document.getElementById('sum-paid');
-    const remEl = document.getElementById('sum-rem');
-
-    if (agreedEl) agreedEl.innerText = agreedFees + " د.أ";
-    if (paidEl) paidEl.innerText = totalPaid + " د.أ";
-    if (remEl) remEl.innerText = (agreedFees - totalPaid) + " د.أ";
+    document.getElementById('sum-agreed').innerText = agreedFees.toLocaleString();
+    document.getElementById('sum-paid').innerText = totalPaid.toLocaleString();
+    document.getElementById('sum-rem').innerText = (agreedFees - totalPaid).toLocaleString();
 }
 
 /**
- * حفظ واقعة جديدة (Timeline)
+ * ==========================================
+ * دوال الحفظ والرفع (POST/PATCH)
+ * ==========================================
  */
+
 async function saveUpdate(event) {
     event.preventDefault();
-    const content = document.getElementById('upd_content').value;
-    if (!content) return;
+    const data = {
+        case_id: currentCaseId,
+        update_title: document.getElementById('upd_title').value,
+        update_details: document.getElementById('upd_details').value,
+        hearing_date: document.getElementById('upd_hearing_date').value || null,
+        next_hearing_date: document.getElementById('upd_next_hearing').value || null,
+        is_visible_to_client: document.getElementById('upd_visible').checked
+    };
 
-    const res = await API.addUpdate({ case_id: currentCaseId, content: content });
+    const res = await API.addUpdate(data);
     if (res) {
         closeModal('updateModal');
+        document.getElementById('updateForm').reset();
+        showAlert('تم تسجيل الواقعة بنجاح', 'success');
         await loadCaseFullDetails();
     }
 }
 
-/**
- * حفظ دفعة مالية جديدة
- */
 async function savePayment(event) {
     event.preventDefault();
-    const amount = document.getElementById('pay_amount').value;
-    if (!amount) return;
+    const data = {
+        case_id: currentCaseId,
+        amount: Number(document.getElementById('pay_amount').value),
+        due_date: document.getElementById('pay_due_date').value,
+        status: document.getElementById('pay_status').value
+    };
 
-    const res = await API.addInstallment({ case_id: currentCaseId, amount: amount });
+    const res = await API.addInstallment(data);
     if (res) {
         closeModal('paymentModal');
+        document.getElementById('paymentForm').reset();
+        showAlert('تم تسجيل الدفعة بنجاح', 'success');
+        await loadCaseFullDetails();
+    }
+}
+
+async function saveFile(event) {
+    event.preventDefault();
+    const fileInput = document.getElementById('file_input');
+    const titleInput = document.getElementById('file_title_input').value;
+    const btn = document.getElementById('btn_upload');
+    
+    if (!fileInput.files.length) return;
+    const file = fileInput.files[0];
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع لجوجل...';
+
+    try {
+        // 1. رفع الملف لجوجل درايف
+        const driveRes = await API.uploadToDrive(file, caseObj.case_internal_id);
+        
+        if(driveRes && driveRes.url) {
+            // 2. حفظ سجل الملف في قاعدة البيانات
+            await API.addFileRecord({
+                case_id: currentCaseId,
+                file_name: titleInput || file.name,
+                file_type: file.type,
+                drive_file_id: driveRes.url // حفظ الرابط كمعرف
+            });
+            
+            closeModal('fileModal');
+            document.getElementById('fileForm').reset();
+            showAlert('تم أرشفة الملف بنجاح', 'success');
+            await loadCaseFullDetails();
+        }
+    } catch (err) {
+        alert("فشل رفع الملف: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> بدء الرفع والأرشفة';
+    }
+}
+
+/**
+ * تجهيز نافذة التعديل وحفظ التعديلات
+ * ملاحظة: نستخدم دالة fetchAPI مباشرة للقيام بـ PATCH
+ */
+function openEditModal() {
+    document.getElementById('edit_internal_id').value = caseObj.case_internal_id || '';
+    document.getElementById('edit_status').value = caseObj.status || 'نشطة';
+    document.getElementById('edit_access_pin').value = caseObj.access_pin || '';
+    document.getElementById('edit_court').value = caseObj.current_court || '';
+    document.getElementById('edit_judge').value = caseObj.current_judge || '';
+    document.getElementById('edit_type').value = caseObj.case_type || '';
+    document.getElementById('edit_opponent').value = caseObj.opponent_name || '';
+    document.getElementById('edit_claim').value = caseObj.claim_amount || '';
+    document.getElementById('edit_fees').value = caseObj.total_agreed_fees || '';
+    
+    openModal('editCaseModal');
+}
+
+async function updateCaseDetails(event) {
+    event.preventDefault();
+    
+    const updateData = {
+        case_internal_id: document.getElementById('edit_internal_id').value,
+        status: document.getElementById('edit_status').value,
+        access_pin: document.getElementById('edit_access_pin').value,
+        current_court: document.getElementById('edit_court').value,
+        current_judge: document.getElementById('edit_judge').value,
+        case_type: document.getElementById('edit_type').value,
+        opponent_name: document.getElementById('edit_opponent').value,
+        claim_amount: Number(document.getElementById('edit_claim').value) || null,
+        total_agreed_fees: Number(document.getElementById('edit_fees').value) || 0
+    };
+
+    // بما أننا نستخدم Supabase REST، يمكننا إرسال طلب PATCH مباشرة لتحديث الصف
+    const res = await fetchAPI(`/api/cases?id=eq.${currentCaseId}`, 'PATCH', updateData);
+    
+    if (res) {
+        closeModal('editCaseModal');
+        showAlert('تم تحديث بيانات القضية بنجاح', 'success');
         await loadCaseFullDetails();
     }
 }
 
 /**
- * توليد تقرير فوري للطباعة
+ * ==========================================
+ * دوال مساعدة (رابط عميق، طباعة، تنبيهات)
+ * ==========================================
  */
-function generatePDF() {
-    let printContent = `
-        <div dir="rtl" style="font-family: Cairo, Arial; padding: 30px;">
-            <h1 style="text-align:center;">تقرير ملف قانوني</h1>
-            <hr>
-            <p><b>رقم الملف الداخلي:</b> ${caseObj.case_internal_id}</p>
-            <p><b>اسم الموكل:</b> ${caseObj.mo_clients?.full_name}</p>
-            <p><b>المحكمة:</b> ${caseObj.current_court}</p>
-            <hr>
-            <h3>سجل الوقائع</h3>
-            ${document.getElementById('timeline-container').innerHTML}
-            <hr>
-            <h3>ملخص المالية</h3>
-            <p>الأتعاب المتفق عليها: ${caseObj.total_agreed_fees} د.أ</p>
-            <p>إجمالي المدفوع: ${document.getElementById('sum-paid').innerText}</p>
-        </div>
-    `;
 
-    const win = window.open('', '_blank');
-    win.document.write(printContent);
-    win.document.close();
-    win.print();
+function copyDeepLink() {
+    if (!caseObj || !caseObj.client_id) return;
+    
+    // تكوين الرابط لبوابة الموكل (Client Portal)
+    const baseUrl = window.location.origin + window.location.pathname.replace('case-details.html', '');
+    const link = `${baseUrl}client.html?id=${caseObj.client_id}`;
+    
+    navigator.clipboard.writeText(link).then(() => {
+        showAlert('تم نسخ رابط بوابة الموكل بنجاح!', 'success');
+    }).catch(err => {
+        alert("الرابط: " + link);
+    });
 }
 
-/**
- * دوال مساعدة
- */
+function generatePDF() {
+    // طباعة مبسطة عبر نافذة المتصفح (يمكن تطويرها لاحقاً لـ jsPDF)
+    window.print();
+}
+
 function openModal(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
 function closeModal(id) {
     const m = bootstrap.Modal.getInstance(document.getElementById(id));
     if (m) m.hide();
     document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+}
+
+function showAlert(message, type = 'info') {
+    const box = document.getElementById('alertBox');
+    if(!box) return;
+    
+    const alertId = 'alert-' + Date.now();
+    let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
+    
+    const html = `
+        <div id="${alertId}" class="alert-custom ${typeClass}">
+            <i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-info-circle text-info'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    box.insertAdjacentHTML('beforeend', html);
+    
+    setTimeout(() => {
+        const el = document.getElementById(alertId);
+        if(el) {
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 300);
+        }
+    }, 3000);
 }
