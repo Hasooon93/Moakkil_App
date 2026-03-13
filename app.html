@@ -54,47 +54,9 @@
                 </div>
             </div>
 
-            <button id="admin-reports-btn" class="btn btn-warning w-100 fw-bold py-3 shadow-sm d-none" onclick="switchView('reports')" style="border-radius: 15px;">
+            <button id="admin-reports-btn" class="btn btn-warning w-100 fw-bold py-3 shadow-sm d-none" onclick="window.location.href='reports.html'" style="border-radius: 15px;">
                 <i class="fas fa-chart-line me-2"></i> عرض التقارير المفصلة (للمدير)
             </button>
-        </div>
-
-        <div id="reports-view" class="view fade-form d-none">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold text-navy mb-0"><i class="fas fa-chart-line me-2"></i> التقارير والتحليلات</h5>
-                <button class="btn btn-sm btn-outline-secondary" onclick="switchView('home')"><i class="fas fa-arrow-right"></i> عودة</button>
-            </div>
-            
-            <div class="card-custom mb-3 bg-white border-primary border-top border-4 shadow-sm">
-                <h6 class="text-muted small fw-bold"><i class="fas fa-gavel me-1 text-primary"></i> حالة القضايا الكلية</h6>
-                <div class="row mt-3 text-center">
-                    <div class="col-4 border-end"><h4 class="text-navy fw-bold mb-0" id="rep-active-cases">0</h4><small class="text-muted">نشطة</small></div>
-                    <div class="col-4 border-end"><h4 class="text-danger fw-bold mb-0" id="rep-closed-cases">0</h4><small class="text-muted">مغلقة</small></div>
-                    <div class="col-4"><h4 class="text-warning fw-bold mb-0" id="rep-appeal-cases">0</h4><small class="text-muted">استئناف</small></div>
-                </div>
-            </div>
-
-            <div class="card-custom mb-3 bg-white border-success border-top border-4 shadow-sm">
-                <h6 class="text-muted small fw-bold"><i class="fas fa-money-bill-wave me-1 text-success"></i> التدفق المالي العام</h6>
-                <ul class="list-group list-group-flush mt-2">
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 border-0">
-                        <span>إجمالي الأتعاب المتوقعة</span>
-                        <b class="text-navy"><span id="rep-total-agreed">0</span> د.أ</b>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 border-0">
-                        <span>المقبوضات الفعلية</span>
-                        <b class="text-success"><span id="rep-total-paid">0</span> د.أ</b>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 border-0">
-                        <span>الذمم المتبقية في السوق</span>
-                        <b class="text-danger"><span id="rep-total-rem">0</span> د.أ</b>
-                    </li>
-                </ul>
-            </div>
-            
-            <div class="alert alert-info border-0 shadow-sm text-center small fw-bold">
-                <i class="fas fa-lock me-1"></i> هذه الصفحة مرئية حصرياً لمدير النظام.
-            </div>
         </div>
 
         <div id="cases-view" class="view fade-form d-none">
