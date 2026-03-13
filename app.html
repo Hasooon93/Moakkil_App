@@ -37,7 +37,7 @@
                 <input type="text" id="global-search" class="form-control border-0 py-3 bg-white" placeholder="بحث ذكي في القضايا، الموكلين، والملفات..." onkeyup="handleSmartSearch(this.value)">
             </div>
             <div id="search-results-dropdown" class="position-absolute w-100 bg-white shadow-lg rounded-3 mt-1 d-none" style="z-index: 1000; max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0;">
-                </div>
+            </div>
         </div>
 
         <div id="dashboard-view" class="view">
@@ -179,11 +179,11 @@
                         <input type="text" id="case_poa_details" class="form-control mb-2" placeholder="تفاصيل الوكالة (الرقم، التاريخ، المرجع)">
                         <div class="row g-2 mb-2">
                             <div class="col-6">
-                                <label class="small text-muted fw-bold">تاريخ سقوط الحق / الموعد النهائي</label>
+                                <label class="small text-muted fw-bold">تاريخ سقوط الحق</label>
                                 <input type="date" id="case_deadline_date" class="form-control border-danger">
                             </div>
                             <div class="col-6">
-                                <label class="small text-muted fw-bold">نسبة النجاح المتوقعة (%)</label>
+                                <label class="small text-muted fw-bold">نسبة النجاح (%)</label>
                                 <input type="number" id="case_success_probability" class="form-control" min="0" max="100" placeholder="مثال: 80">
                             </div>
                         </div>
@@ -194,10 +194,12 @@
                         <h6 class="fw-bold text-success border-bottom pb-1 mt-3">المالية والإدارة</h6>
                         <input type="number" id="case_claim_amount" class="form-control mb-2" placeholder="قيمة المطالبة">
                         <input type="number" id="case_agreed_fees" class="form-control mb-2" placeholder="الأتعاب الكلية المتفق عليها">
+                        
                         <div id="case-assign-wrapper" class="mb-2">
-                            <select id="case_assigned_lawyer" class="form-select">
-                                <option value="">المحامي المسؤول (إسناد)...</option>
-                            </select>
+                            <label class="small text-muted fw-bold mb-1"><i class="fas fa-users"></i> فريق العمل (اختر محامي أو أكثر)</label>
+                            <div id="case_assigned_lawyers_container" class="border p-2 rounded bg-light shadow-inner" style="max-height: 120px; overflow-y: auto;">
+                                <small class="text-muted">جاري التحميل...</small>
+                            </div>
                         </div>
                         
                         <button type="submit" class="btn-primary-custom w-100 mt-3">حفظ ملف القضية المتقدم</button>

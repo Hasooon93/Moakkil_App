@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم (مع الحقول المؤسسية، فحص التعارض، والمزامنة)
+// js/app.js - محرك لوحة التحكم (مع الإسناد المتعدد Array)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -25,7 +25,7 @@ function startRealtimeSync() {
             let needsUpdate = false;
             
             if(newCases && JSON.stringify(newCases) !== JSON.stringify(globalData.cases)) {
-                globalData.cases = newCases; needsUpdate = true;
+                filterAndSetCases(newCases); needsUpdate = true;
             }
             if(newAppts && JSON.stringify(newAppts) !== JSON.stringify(globalData.appointments)) {
                 globalData.appointments = newAppts; needsUpdate = true;
@@ -93,6 +93,24 @@ function applyRoleBasedUI() {
     }
 }
 
+// تصفية القضايا بناءً على الإسناد المتعدد (مصفوفة)
+function filterAndSetCases(rawCases) {
+    const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    if (isLawyer) {
+        globalData.cases = (rawCases || []).filter(c => {
+            let isAssigned = false;
+            if (Array.isArray(c.assigned_lawyer_id)) {
+                isAssigned = c.assigned_lawyer_id.includes(currentUser.id);
+            } else if (c.assigned_lawyer_id) {
+                isAssigned = (c.assigned_lawyer_id === currentUser.id);
+            }
+            return isAssigned || c.created_by == currentUser.id;
+        });
+    } else {
+        globalData.cases = rawCases || [];
+    }
+}
+
 async function loadAllData() {
     const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
         API.getClients(), API.getCases(), API.getStaff(), API.getAppointments()
@@ -100,18 +118,17 @@ async function loadAllData() {
 
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
 
+    filterAndSetCases(rawCases);
+    globalData.staff = staff || [];
+
     if (isLawyer) {
-        globalData.cases = (rawCases || []).filter(c => c.assigned_lawyer_id == currentUser.id || c.created_by == currentUser.id);
         globalData.appointments = (rawAppointments || []).filter(a => a.assigned_to == currentUser.id || a.created_by == currentUser.id);
         const myClientIds = new Set(globalData.cases.map(c => c.client_id));
         globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id) || c.created_by == currentUser.id);
     } else {
-        globalData.cases = rawCases || [];
         globalData.appointments = rawAppointments || [];
         globalData.clients = rawClients || [];
     }
-    
-    globalData.staff = staff || [];
 
     renderDashboard();
     renderCasesList();
@@ -147,12 +164,11 @@ function renderCasesList() {
     }
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.cases.map(c => {
-        // فحص التنبيهات (Deadline)
         let deadlineWarning = '';
         if(c.deadline_date) {
             const daysLeft = Math.ceil((new Date(c.deadline_date) - new Date()) / (1000 * 60 * 60 * 24));
             if(daysLeft <= 7 && daysLeft >= 0) deadlineWarning = `<span class="badge bg-danger ms-2 heartbeat-animation"><i class="fas fa-clock"></i> متبقي ${daysLeft} أيام</span>`;
-            else if(daysLeft < 0) deadlineWarning = `<span class="badge bg-dark ms-2"><i class="fas fa-times-circle"></i> انتهت المدة</span>`;
+            else if(daysLeft < 0) deadlineWarning = `<span class="badge bg-dark ms-2"><i class="fas fa-times-circle"></i> منتهي</span>`;
         }
         
         return `
@@ -249,15 +265,28 @@ function populateSelects() {
     if(clientSelect) clientSelect.innerHTML = '<option value="">اختر الموكل...</option>' + globalData.clients.map(c => `<option value="${c.id}">${c.full_name}</option>`).join('');
     
     const activeStaff = globalData.staff.filter(s => s.is_active !== false);
+    
+    // بناء نظام Checkboxes المتعدد للإسناد
+    const lawyersContainer = document.getElementById('case_assigned_lawyers_container');
+    if (lawyersContainer) {
+        if (activeStaff.length === 0) {
+            lawyersContainer.innerHTML = '<small class="text-muted">لا يوجد موظفين فعالين</small>';
+        } else {
+            lawyersContainer.innerHTML = activeStaff.map(s => `
+                <div class="form-check border-bottom pb-1 mb-1">
+                    <input class="form-check-input lawyer-checkbox" type="checkbox" value="${s.id}" id="lawyer_cb_${s.id}">
+                    <label class="form-check-label small fw-bold" for="lawyer_cb_${s.id}">
+                        ${s.full_name} <span class="text-muted fw-normal">(${getRoleNameInArabic(s.role)})</span>
+                    </label>
+                </div>
+            `).join('');
+        }
+    }
+    
     const staffOptions = activeStaff.map(s => `<option value="${s.id}">${s.full_name} (${getRoleNameInArabic(s.role)})</option>`).join('');
-    
-    const caseLawyerSelect = document.getElementById('case_assigned_lawyer');
-    if(caseLawyerSelect) caseLawyerSelect.innerHTML = '<option value="">المحامي المسؤول (إسناد)...</option>' + staffOptions;
-    
     const apptAssignSelect = document.getElementById('appt_assigned_to');
     if(apptAssignSelect) apptAssignSelect.innerHTML = '<option value="">إسناد إلى موظف (اختياري)...</option>' + staffOptions;
 
-    // تعبئة قائمة القضايا السابقة للربط (الميزة المؤسسية)
     const parentCaseSelect = document.getElementById('case_parent_case_id');
     if(parentCaseSelect) parentCaseSelect.innerHTML = '<option value="">ارتباط بقضية سابقة (اختياري)...</option>' + globalData.cases.map(c => `<option value="${c.id}">${c.case_internal_id} - ${c.opponent_name || 'بدون خصم'}</option>`).join('');
 }
@@ -265,7 +294,6 @@ function populateSelects() {
 function filterCases() { const val = document.getElementById('search-cases').value.toLowerCase(); Array.from(document.getElementById('cases-list').children).forEach(card => card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none'); }
 function filterClients() { const val = document.getElementById('search-clients').value.toLowerCase(); Array.from(document.getElementById('clients-list').children).forEach(card => card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none'); }
 
-// دالة البحث الذكي العام
 async function handleSmartSearch(query) {
     const drop = document.getElementById('search-results-dropdown');
     if(!query || query.length < 2) { drop.classList.add('d-none'); return; }
@@ -282,7 +310,6 @@ async function handleSmartSearch(query) {
     drop.classList.remove('d-none');
 }
 
-// إخفاء نتائج البحث عند النقر خارجها
 document.addEventListener('click', (e) => {
     if(!e.target.closest('.position-relative')) document.getElementById('search-results-dropdown')?.classList.add('d-none');
 });
@@ -296,31 +323,24 @@ function switchView(viewId) {
     if(activeNav) activeNav.parentElement.classList.remove('text-muted');
 }
 
-// -------------------------------------------------------------
-// نظام فحص تعارض المصالح (Conflict Checker)
-// -------------------------------------------------------------
 async function runConflictCheck() {
     const query = document.getElementById('conflict_search_input').value;
     if(!query || query.length < 2) {
         showAlert('أدخل اسم الخصم للبحث (حرفين على الأقل)', 'warning');
         return;
     }
-    
     const btn = document.querySelector('#conflictModal .btn-danger');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     btn.disabled = true;
-    
     const resultsDiv = document.getElementById('conflict_results');
     resultsDiv.innerHTML = '<div class="text-center text-muted small py-3"><i class="fas fa-shield-alt fa-2x mb-2 text-warning"></i><br>جاري الفحص الأمني السريع في الأرشيف...</div>';
     
     try {
         const res = await API.checkConflict(query);
         if(res.error) throw new Error(res.error);
-        
         let html = '';
         if(res.opponentConflicts.length > 0 || res.clientConflicts.length > 0) {
             html += `<div class="alert alert-danger small fw-bold mb-2"><i class="fas fa-exclamation-triangle"></i> تحذير: تم العثور على تعارض مصالح محتمل!</div>`;
-            
             if(res.clientConflicts.length > 0) {
                 html += `<h6 class="fw-bold text-navy mt-3 border-bottom pb-1"><i class="fas fa-user-tie"></i> موكلين سابقين مطابقين:</h6>`;
                 html += res.clientConflicts.map(c => `<div class="p-2 border rounded mb-1 bg-white text-danger small shadow-sm"><b>${c.full_name}</b><br>هاتف: ${c.phone}</div>`).join('');
@@ -353,8 +373,17 @@ async function saveClient(event) {
 
 async function saveCase(event) {
     event.preventDefault();
+    
+    // جمع فريق العمل (المصفوفة) من الـ Checkboxes
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
-    const assignedLawyer = isLawyer ? currentUser.id : (document.getElementById('case_assigned_lawyer').value || null);
+    let assignedLawyers = [];
+    if (isLawyer) {
+        assignedLawyers = [currentUser.id];
+    } else {
+        document.querySelectorAll('.lawyer-checkbox:checked').forEach(cb => {
+            assignedLawyers.push(cb.value);
+        });
+    }
     
     const data = {
         client_id: document.getElementById('case_client_id').value, 
@@ -366,11 +395,12 @@ async function saveCase(event) {
         current_judge: document.getElementById('case_current_judge').value, 
         claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
-        assigned_lawyer_id: assignedLawyer, 
+        
+        // إرسال المصفوفة هنا
+        assigned_lawyer_id: assignedLawyers.length > 0 ? assignedLawyers : null, 
+        
         created_by: currentUser.id, 
         status: 'نشطة',
-        
-        // الحقول المؤسسية الجديدة
         opponent_lawyer: document.getElementById('case_opponent_lawyer').value || null,
         poa_details: document.getElementById('case_poa_details').value || null,
         deadline_date: document.getElementById('case_deadline_date').value || null,
@@ -378,7 +408,7 @@ async function saveCase(event) {
         parent_case_id: document.getElementById('case_parent_case_id').value || null
     };
     
-    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم إنشاء ملف القضية المؤسسي بنجاح', 'success'); }
+    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم إنشاء ملف القضية وإسناده لفريق العمل', 'success'); }
 }
 
 async function saveAppointment(event) {
@@ -400,17 +430,11 @@ async function saveStaff(event) {
         password: document.getElementById('staff_password').value, 
         role: document.getElementById('staff_role').value
     };
-    
     const res = await API.addStaff(data);
     if(res && !res.error) { 
-        closeModal('staffModal'); 
-        document.getElementById('staffForm').reset(); 
-        await loadAllData(); 
-        if(res._warning) showAlert(res._warning, 'warning');
-        else showAlert('تم إضافة الموظف الفعال بنجاح', 'success'); 
-    } else if (res && res.error) {
-        showAlert(res.error, 'danger');
-    }
+        closeModal('staffModal'); document.getElementById('staffForm').reset(); await loadAllData(); 
+        if(res._warning) showAlert(res._warning, 'warning'); else showAlert('تم إضافة الموظف الفعال بنجاح', 'success'); 
+    } else if (res && res.error) { showAlert(res.error, 'danger'); }
 }
 
 async function deleteRecord(type, id) {
@@ -425,52 +449,42 @@ async function deleteRecord(type, id) {
 async function toggleStaffStatus(id, currentStatus) {
     if(!confirm('تأكيد الإجراء؟ تذكر أنه لا يمكنك التراجع إلا بعد 24 ساعة!')) return;
     const newStatus = !currentStatus;
-    
     const res = await API.updateStaff(id, { is_active: newStatus, can_login: newStatus });
-    
-    if(res && !res.error) { 
-        showAlert('تم تحديث حالة الموظف بنجاح', 'success'); 
-        await loadAllData(); 
-    } else if (res && res.error) {
-        showAlert(res.error, 'danger');
-    }
+    if(res && !res.error) { showAlert('تم تحديث حالة الموظف بنجاح', 'success'); await loadAllData(); } 
+    else if (res && res.error) { showAlert(res.error, 'danger'); }
 }
 
 function copyClientDeepLink(publicToken, pin) {
-    if(!publicToken || publicToken === "undefined" || publicToken === "null") {
-        showAlert('هذه القضية لا تملك رمزاً عاماً بعد.', 'danger');
-        return;
-    }
-    
+    if(!publicToken || publicToken === "undefined" || publicToken === "null") { showAlert('هذه القضية لا تملك رمزاً عاماً بعد.', 'danger'); return; }
     const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
     const deepLink = `${baseUrl}client.html?token=${publicToken}`;
     const safePin = (pin && pin !== "undefined") ? pin : "غير محدد";
-    
     const shareText = `مرحباً، يمكنك متابعة قضيتك عبر الرابط:\n${deepLink}\n\nرمز الدخول PIN الخاص بك هو: ${safePin}`;
-    
-    if (navigator.share) {
-        navigator.share({
-            title: 'رابط القضية',
-            text: shareText
-        }).catch(err => console.log('فشلت المشاركة', err));
-    } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
-    }
+    if (navigator.share) navigator.share({ title: 'رابط القضية', text: shareText }).catch(err => console.log('فشلت المشاركة', err));
+    else window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
 }
 
 function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function viewClientProfile(id) { if(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; } }
 function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-function openModal(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
-function closeModal(id) {
-    const m = bootstrap.Modal.getInstance(document.getElementById(id));
-    if(m) m.hide();
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+function openModal(id) { 
+    const el = document.getElementById(id);
+    if(el) { const m = new bootstrap.Modal(el); m.show(); }
+}
+function closeModal(id) { 
+    const el = document.getElementById(id);
+    if(el) {
+        const m = bootstrap.Modal.getInstance(el);
+        if(m) m.hide();
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
 }
 function showAlert(message, type = 'info') {
-    const box = document.getElementById('alertBox');
-    if(!box) return;
+    const box = document.getElementById('alertBox'); if(!box) return;
     const alertId = 'alert-' + Date.now();
     let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
     if(type === 'warning') typeClass = 'bg-warning text-dark border-warning';
