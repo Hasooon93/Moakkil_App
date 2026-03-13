@@ -333,6 +333,10 @@ async function saveCase(event) {
     if (isLawyer) assignedLawyers = [currentUser.id];
     else document.querySelectorAll('.case-lawyer-cb:checked').forEach(cb => assignedLawyers.push(cb.value));
     
+    // التقاط النص الخاص بلائحة الدعوى من الواجهة (إذا وجد)
+    const lawsuitTextElement = document.getElementById('case_lawsuit_text');
+    const lawsuitText = lawsuitTextElement ? lawsuitTextElement.value : null;
+
     const data = {
         client_id: document.getElementById('case_client_id').value, access_pin: document.getElementById('case_access_pin').value,
         case_internal_id: document.getElementById('case_internal_id').value, case_type: document.getElementById('case_type').value,
@@ -341,11 +345,38 @@ async function saveCase(event) {
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
         assigned_lawyer_id: assignedLawyers.length > 0 ? assignedLawyers : null, 
         created_by: currentUser.id, status: 'نشطة',
-        opponent_lawyer: document.getElementById('case_opponent_lawyer').value || null, poa_details: document.getElementById('case_poa_details').value || null,
-        deadline_date: document.getElementById('case_deadline_date').value || null, success_probability: document.getElementById('case_success_probability').value ? Number(document.getElementById('case_success_probability').value) : null,
-        parent_case_id: document.getElementById('case_parent_case_id').value || null
+        
+        // التقاط الحقول الإضافية بطريقة آمنة لتفادي أي أخطاء إذا لم تكن موجودة في بعض النسخ
+        opponent_lawyer: document.getElementById('case_opponent_lawyer')?.value || null, 
+        poa_details: document.getElementById('case_poa_details')?.value || null,
+        deadline_date: document.getElementById('case_deadline_date')?.value || null, 
+        success_probability: document.getElementById('case_success_probability')?.value ? Number(document.getElementById('case_success_probability').value) : null,
+        parent_case_id: document.getElementById('case_parent_case_id')?.value || null,
+        
+        // إضافة الحقول الجديدة الخاصة بالذكاء الاصطناعي
+        lawsuit_text: lawsuitText,
+        ai_entities: {} // يتم تهيئته ككائن فارغ ليقوم الـ Worker أو الـ AI بملئه لاحقاً بالأسماء والتواريخ المستخرجة
     };
-    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم الإنشاء', 'success'); }
+    
+    const btn = document.querySelector('#caseModal button[type="submit"]');
+    const originalBtnText = btn ? btn.innerHTML : '';
+    
+    if(btn && lawsuitText && lawsuitText.trim().length > 10) {
+        btn.innerHTML = '<i class="fas fa-brain fa-spin me-1"></i> جاري تحليل اللائحة وحفظ القضية...';
+        btn.disabled = true;
+    }
+
+    if(await API.addCase(data)) { 
+        closeModal('caseModal'); 
+        document.getElementById('caseForm').reset(); 
+        await loadAllData(); 
+        showAlert('تم إنشاء القضية بنجاح', 'success'); 
+    }
+    
+    if(btn) {
+        btn.innerHTML = originalBtnText;
+        btn.disabled = false;
+    }
 }
 
 async function saveAppointment(event) {
