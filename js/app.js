@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم الشامل والنهائي
+// js/app.js - محرك لوحة التحكم (مع الحقول المؤسسية، فحص التعارض، والمزامنة)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -87,6 +87,9 @@ function applyRoleBasedUI() {
         const reportsBtn = document.getElementById('admin-reports-btn');
         if (staffCard) staffCard.style.display = 'block';
         if (reportsBtn) reportsBtn.classList.remove('d-none');
+    } else {
+        const staffMgmt = document.getElementById('staff-management-section');
+        if(staffMgmt) staffMgmt.style.display = 'none';
     }
 }
 
@@ -143,10 +146,21 @@ function renderCasesList() {
         return;
     }
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
-    list.innerHTML = globalData.cases.map(c => `
+    list.innerHTML = globalData.cases.map(c => {
+        // فحص التنبيهات (Deadline)
+        let deadlineWarning = '';
+        if(c.deadline_date) {
+            const daysLeft = Math.ceil((new Date(c.deadline_date) - new Date()) / (1000 * 60 * 60 * 24));
+            if(daysLeft <= 7 && daysLeft >= 0) deadlineWarning = `<span class="badge bg-danger ms-2 heartbeat-animation"><i class="fas fa-clock"></i> متبقي ${daysLeft} أيام</span>`;
+            else if(daysLeft < 0) deadlineWarning = `<span class="badge bg-dark ms-2"><i class="fas fa-times-circle"></i> انتهت المدة</span>`;
+        }
+        
+        return `
         <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-accent position-relative">
             <div class="d-flex justify-content-between align-items-center mb-1">
-                <h6 class="fw-bold mb-0 text-navy" onclick="viewCaseDetails('${c.id}')" style="cursor:pointer; width: 70%;">${c.case_internal_id || 'بدون رقم'}</h6>
+                <h6 class="fw-bold mb-0 text-navy" onclick="viewCaseDetails('${c.id}')" style="cursor:pointer; width: 70%;">
+                    ${c.case_internal_id || 'بدون رقم'} ${deadlineWarning}
+                </h6>
                 <div>
                     <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}">${c.status || 'نشطة'}</span>
                     ${isAdmin ? `<button class="btn btn-sm text-danger p-0 ms-2" onclick="deleteRecord('case', '${c.id}')"><i class="fas fa-trash"></i></button>` : ''}
@@ -160,7 +174,7 @@ function renderCasesList() {
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function renderClientsList() {
@@ -242,14 +256,37 @@ function populateSelects() {
     
     const apptAssignSelect = document.getElementById('appt_assigned_to');
     if(apptAssignSelect) apptAssignSelect.innerHTML = '<option value="">إسناد إلى موظف (اختياري)...</option>' + staffOptions;
+
+    // تعبئة قائمة القضايا السابقة للربط (الميزة المؤسسية)
+    const parentCaseSelect = document.getElementById('case_parent_case_id');
+    if(parentCaseSelect) parentCaseSelect.innerHTML = '<option value="">ارتباط بقضية سابقة (اختياري)...</option>' + globalData.cases.map(c => `<option value="${c.id}">${c.case_internal_id} - ${c.opponent_name || 'بدون خصم'}</option>`).join('');
 }
 
 function filterCases() { const val = document.getElementById('search-cases').value.toLowerCase(); Array.from(document.getElementById('cases-list').children).forEach(card => card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none'); }
 function filterClients() { const val = document.getElementById('search-clients').value.toLowerCase(); Array.from(document.getElementById('clients-list').children).forEach(card => card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none'); }
 
-// -----------------------------------------------------------------
-// الدالة المفقودة التي سببت الخطأ في الشاشة
-// -----------------------------------------------------------------
+// دالة البحث الذكي العام
+async function handleSmartSearch(query) {
+    const drop = document.getElementById('search-results-dropdown');
+    if(!query || query.length < 2) { drop.classList.add('d-none'); return; }
+    
+    const res = await API.smartSearch(query);
+    if(!res) return;
+
+    let html = '';
+    if(res.cases && res.cases.length) html += `<h6 class="dropdown-header bg-light fw-bold">القضايا</h6>` + res.cases.map(c => `<button class="dropdown-item py-2 border-bottom" onclick="viewCaseDetails('${c.id}')"><i class="fas fa-gavel text-warning"></i> ${c.case_internal_id}</button>`).join('');
+    if(res.clients && res.clients.length) html += `<h6 class="dropdown-header bg-light fw-bold">الموكلين</h6>` + res.clients.map(c => `<button class="dropdown-item py-2 border-bottom" onclick="viewClientProfile('${c.id}')"><i class="fas fa-user text-info"></i> ${c.full_name}</button>`).join('');
+    if(res.files && res.files.length) html += `<h6 class="dropdown-header bg-light fw-bold">الملفات</h6>` + res.files.map(f => `<button class="dropdown-item py-2 text-truncate" onclick="window.open('${f.drive_file_id}')"><i class="fas fa-file text-danger"></i> ${f.file_name}</button>`).join('');
+
+    drop.innerHTML = html || '<div class="p-3 text-center text-muted small">لا توجد نتائج مطابقة</div>';
+    drop.classList.remove('d-none');
+}
+
+// إخفاء نتائج البحث عند النقر خارجها
+document.addEventListener('click', (e) => {
+    if(!e.target.closest('.position-relative')) document.getElementById('search-results-dropdown')?.classList.add('d-none');
+});
+
 function switchView(viewId) {
     document.querySelectorAll('.view').forEach(v => v.classList.add('d-none'));
     const target = document.getElementById(viewId + '-view');
@@ -257,6 +294,51 @@ function switchView(viewId) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.add('text-muted'));
     const activeNav = document.getElementById(`nav-icon-${viewId}`);
     if(activeNav) activeNav.parentElement.classList.remove('text-muted');
+}
+
+// -------------------------------------------------------------
+// نظام فحص تعارض المصالح (Conflict Checker)
+// -------------------------------------------------------------
+async function runConflictCheck() {
+    const query = document.getElementById('conflict_search_input').value;
+    if(!query || query.length < 2) {
+        showAlert('أدخل اسم الخصم للبحث (حرفين على الأقل)', 'warning');
+        return;
+    }
+    
+    const btn = document.querySelector('#conflictModal .btn-danger');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    
+    const resultsDiv = document.getElementById('conflict_results');
+    resultsDiv.innerHTML = '<div class="text-center text-muted small py-3"><i class="fas fa-shield-alt fa-2x mb-2 text-warning"></i><br>جاري الفحص الأمني السريع في الأرشيف...</div>';
+    
+    try {
+        const res = await API.checkConflict(query);
+        if(res.error) throw new Error(res.error);
+        
+        let html = '';
+        if(res.opponentConflicts.length > 0 || res.clientConflicts.length > 0) {
+            html += `<div class="alert alert-danger small fw-bold mb-2"><i class="fas fa-exclamation-triangle"></i> تحذير: تم العثور على تعارض مصالح محتمل!</div>`;
+            
+            if(res.clientConflicts.length > 0) {
+                html += `<h6 class="fw-bold text-navy mt-3 border-bottom pb-1"><i class="fas fa-user-tie"></i> موكلين سابقين مطابقين:</h6>`;
+                html += res.clientConflicts.map(c => `<div class="p-2 border rounded mb-1 bg-white text-danger small shadow-sm"><b>${c.full_name}</b><br>هاتف: ${c.phone}</div>`).join('');
+            }
+            if(res.opponentConflicts.length > 0) {
+                html += `<h6 class="fw-bold text-navy mt-3 border-bottom pb-1"><i class="fas fa-balance-scale"></i> خصوم في قضايا أخرى:</h6>`;
+                html += res.opponentConflicts.map(c => `<div class="p-2 border rounded mb-1 bg-white text-danger small shadow-sm"><b>${c.opponent_name}</b><br>رقم الملف: ${c.case_internal_id} - الحالة: ${c.status}</div>`).join('');
+            }
+        } else {
+            html = `<div class="alert alert-success small fw-bold text-center py-3"><i class="fas fa-check-circle fs-3 d-block mb-2"></i>السجل نظيف. لا يوجد تعارض مصالح مع هذا الاسم في المكتب.</div>`;
+        }
+        resultsDiv.innerHTML = html;
+    } catch (err) {
+        resultsDiv.innerHTML = `<div class="alert alert-danger small">خطأ في البحث: ${err.message}</div>`;
+    } finally {
+        btn.innerHTML = '<i class="fas fa-search"></i> فحص';
+        btn.disabled = false;
+    }
 }
 
 async function saveClient(event) {
@@ -273,15 +355,30 @@ async function saveCase(event) {
     event.preventDefault();
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     const assignedLawyer = isLawyer ? currentUser.id : (document.getElementById('case_assigned_lawyer').value || null);
+    
     const data = {
-        client_id: document.getElementById('case_client_id').value, access_pin: document.getElementById('case_access_pin').value,
-        case_internal_id: document.getElementById('case_internal_id').value, case_type: document.getElementById('case_type').value,
-        opponent_name: document.getElementById('case_opponent_name').value, current_court: document.getElementById('case_current_court').value,
-        current_judge: document.getElementById('case_current_judge').value, claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
+        client_id: document.getElementById('case_client_id').value, 
+        access_pin: document.getElementById('case_access_pin').value,
+        case_internal_id: document.getElementById('case_internal_id').value, 
+        case_type: document.getElementById('case_type').value,
+        opponent_name: document.getElementById('case_opponent_name').value, 
+        current_court: document.getElementById('case_current_court').value,
+        current_judge: document.getElementById('case_current_judge').value, 
+        claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
-        assigned_lawyer_id: assignedLawyer, created_by: currentUser.id, status: 'نشطة'
+        assigned_lawyer_id: assignedLawyer, 
+        created_by: currentUser.id, 
+        status: 'نشطة',
+        
+        // الحقول المؤسسية الجديدة
+        opponent_lawyer: document.getElementById('case_opponent_lawyer').value || null,
+        poa_details: document.getElementById('case_poa_details').value || null,
+        deadline_date: document.getElementById('case_deadline_date').value || null,
+        success_probability: document.getElementById('case_success_probability').value ? Number(document.getElementById('case_success_probability').value) : null,
+        parent_case_id: document.getElementById('case_parent_case_id').value || null
     };
-    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم إنشاء ملف القضية بنجاح', 'success'); }
+    
+    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم إنشاء ملف القضية المؤسسي بنجاح', 'success'); }
 }
 
 async function saveAppointment(event) {
@@ -304,7 +401,7 @@ async function saveStaff(event) {
         role: document.getElementById('staff_role').value
     };
     
-    const res = await fetchAPI('/api/users', 'POST', data);
+    const res = await API.addStaff(data);
     if(res && !res.error) { 
         closeModal('staffModal'); 
         document.getElementById('staffForm').reset(); 
@@ -329,7 +426,7 @@ async function toggleStaffStatus(id, currentStatus) {
     if(!confirm('تأكيد الإجراء؟ تذكر أنه لا يمكنك التراجع إلا بعد 24 ساعة!')) return;
     const newStatus = !currentStatus;
     
-    const res = await fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', { is_active: newStatus, can_login: newStatus });
+    const res = await API.updateStaff(id, { is_active: newStatus, can_login: newStatus });
     
     if(res && !res.error) { 
         showAlert('تم تحديث حالة الموظف بنجاح', 'success'); 

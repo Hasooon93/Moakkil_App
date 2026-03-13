@@ -1,4 +1,4 @@
-// js/api.js - المحرك الموحد المحدث (يدعم البحث الذكي، التعديل، الحذف، والملفات الشائعة)
+// js/api.js - المحرك الموحد المحدث (يدعم فحص التعارض، والبحث، والتعديل الشامل)
 
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
@@ -22,7 +22,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
         return data;
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
-        return null;
+        return { error: error.message }; // تم تعديله لإرجاع الخطأ ليتم التقاطه بوضوح
     }
 }
 
@@ -39,7 +39,7 @@ const API = {
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
     deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
     
-    // الموظفين (مع التفعيل والتعطيل)
+    // الموظفين
     getStaff: () => fetchAPI('/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
@@ -64,6 +64,10 @@ const API = {
     // الأرشيف والذكاء الاصطناعي والبحث
     askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
+    
+    // فحص تعارض المصالح (ميزة مؤسسية جديدة)
+    checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
+
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=${caseId}` : '/api/files'),
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
