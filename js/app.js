@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم (Dashboard Engine)
+// js/app.js - محرك لوحة التحكم (Dashboard Engine) المدمج بنظام الصلاحيات (RBAC)
 
 // المتغيرات العامة (State)
 let globalData = { cases: [], clients: [], staff: [], appointments: [] };
@@ -10,47 +10,92 @@ window.onload = async () => {
         return;
     }
     
-    // إعداد واجهة المستخدم بناءً على الصلاحيات
+    // إعداد الواجهة العلوية بمعلومات المستخدم
     const welcomeName = document.getElementById('welcome-name');
+    const welcomeRole = document.getElementById('welcome-role');
     const topUserName = document.getElementById('top-user-name');
     const topAvatar = document.getElementById('top-user-avatar');
     
     if (welcomeName) welcomeName.innerText = currentUser.full_name;
+    if (welcomeRole) welcomeRole.innerText = `المنصب: ${getRoleNameInArabic(currentUser.role)}`;
     if (topUserName) topUserName.innerText = currentUser.full_name;
     if (topAvatar) topAvatar.innerText = currentUser.full_name.charAt(0);
 
-    // إظهار إحصائية فريق العمل للمدير فقط
-    if(currentUser.role === 'admin' || currentUser.role === 'مدير') {
-        const staffCard = document.getElementById('stat-staff-card');
-        if(staffCard) staffCard.style.display = 'block';
-    }
+    // تطبيق قواعد الصلاحيات على الواجهة (UI Rules)
+    applyRoleBasedUI();
 
     // إعداد صفحة الملف الشخصي
     const profName = document.getElementById('prof-name');
     const profRole = document.getElementById('prof-role');
     if(profName) profName.innerText = currentUser.full_name;
-    if(profRole) profRole.innerText = currentUser.role || 'موظف';
+    if(profRole) profRole.innerText = getRoleNameInArabic(currentUser.role);
 
     await loadAllData();
 };
 
 /**
- * جلب كافة البيانات من السيرفر بالتوازي
+ * تحويل المسمى الوظيفي للعربية
+ */
+function getRoleNameInArabic(role) {
+    if (role === 'admin' || role === 'مدير') return 'مدير النظام';
+    if (role === 'secretary' || role === 'سكرتاريا') return 'سكرتاريا';
+    if (role === 'lawyer' || role === 'محامي') return 'محامي';
+    return role;
+}
+
+/**
+ * إخفاء/إظهار عناصر الواجهة بناءً على منصب المستخدم
+ */
+function applyRoleBasedUI() {
+    const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
+
+    // إخفاء حقول الإسناد عن المحامي (لأنه يسند لنفسه فقط)
+    if (isLawyer) {
+        document.getElementById('case-assign-wrapper').style.display = 'none';
+        document.getElementById('appt-assign-wrapper').style.display = 'none';
+    }
+
+    // إظهار بطاقة فريق العمل وزر التقارير للمدير فقط
+    if (isAdmin) {
+        const staffCard = document.getElementById('stat-staff-card');
+        const reportsBtn = document.getElementById('admin-reports-btn');
+        if (staffCard) staffCard.style.display = 'block';
+        if (reportsBtn) reportsBtn.classList.remove('d-none');
+    }
+}
+
+/**
+ * جلب كافة البيانات من السيرفر وفلترتها حسب الصلاحيات
  */
 async function loadAllData() {
-    console.log("🔄 جاري مزامنة البيانات...");
+    console.log("🔄 جاري مزامنة البيانات وتطبيق الصلاحيات...");
     
-    const [clients, cases, staff, appointments] = await Promise.all([
+    const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
         API.getClients(),
         API.getCases(),
         API.getStaff(),
         API.getAppointments()
     ]);
 
-    globalData.clients = clients || [];
-    globalData.cases = cases || [];
+    const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+
+    // فلترة البيانات إذا كان المستخدم محامياً (يرى ملفاته فقط)
+    if (isLawyer) {
+        globalData.cases = (rawCases || []).filter(c => c.assigned_lawyer_id == currentUser.id);
+        globalData.appointments = (rawAppointments || []).filter(a => a.assigned_to == currentUser.id);
+        
+        // جلب الموكلين المرتبطين بقضايا المحامي فقط
+        const myClientIds = new Set(globalData.cases.map(c => c.client_id));
+        globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id));
+    } else {
+        // المدير والسكرتاريا يرون كل شيء
+        globalData.cases = rawCases || [];
+        globalData.appointments = rawAppointments || [];
+        globalData.clients = rawClients || [];
+    }
+    
     globalData.staff = staff || [];
-    globalData.appointments = appointments || [];
 
     renderDashboard();
     renderCasesList();
@@ -58,6 +103,11 @@ async function loadAllData() {
     renderAgendaList();
     renderStaffList();
     populateSelects();
+
+    // تشغيل محرك التقارير المفصلة إذا كان المستخدم مديراً
+    if (currentUser.role === 'admin' || currentUser.role === 'مدير') {
+        generateAdminReports();
+    }
 }
 
 /**
@@ -69,7 +119,7 @@ function renderDashboard() {
     document.getElementById('stat-appointments').innerText = globalData.appointments.length;
     document.getElementById('stat-staff').innerText = globalData.staff.length;
 
-    // حساب المالية
+    // حساب المالية (حسب ما يراه المستخدم)
     let totalAgreed = 0;
     let totalPaid = 0;
 
@@ -81,6 +131,31 @@ function renderDashboard() {
     document.getElementById('fin-agreed').innerText = totalAgreed.toLocaleString();
     document.getElementById('fin-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('fin-rem').innerText = (totalAgreed - totalPaid).toLocaleString();
+}
+
+/**
+ * توليد التقارير المفصلة للمدير
+ */
+function generateAdminReports() {
+    let totalAgreed = 0, totalPaid = 0;
+    let activeCases = 0, closedCases = 0, appealCases = 0;
+
+    globalData.cases.forEach(c => {
+        totalAgreed += Number(c.total_agreed_fees) || 0;
+        totalPaid += Number(c.total_paid) || 0;
+
+        if (c.status === 'نشطة') activeCases++;
+        else if (c.status === 'مغلقة') closedCases++;
+        else if (c.status === 'قيد الاستئناف') appealCases++;
+    });
+
+    document.getElementById('rep-active-cases').innerText = activeCases;
+    document.getElementById('rep-closed-cases').innerText = closedCases;
+    document.getElementById('rep-appeal-cases').innerText = appealCases;
+
+    document.getElementById('rep-total-agreed').innerText = totalAgreed.toLocaleString();
+    document.getElementById('rep-total-paid').innerText = totalPaid.toLocaleString();
+    document.getElementById('rep-total-rem').innerText = (totalAgreed - totalPaid).toLocaleString();
 }
 
 /**
@@ -166,7 +241,7 @@ function renderStaffList() {
         <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center">
             <div>
                 <b class="text-navy">${s.full_name}</b><br>
-                <small class="text-muted">${s.role}</small>
+                <small class="text-muted">${getRoleNameInArabic(s.role)}</small>
             </div>
             <span class="badge bg-purple text-white">${s.username}</span>
         </div>
@@ -174,18 +249,16 @@ function renderStaffList() {
 }
 
 /**
- * تعبئة القوائم المنسدلة (الموكلين والموظفين) في النوافذ المنبثقة
+ * تعبئة القوائم المنسدلة (الموكلين والموظفين)
  */
 function populateSelects() {
-    // قائمة الموكلين في نافذة القضايا
     const clientSelect = document.getElementById('case_client_id');
     if(clientSelect) {
         clientSelect.innerHTML = '<option value="">اختر الموكل...</option>' + 
             globalData.clients.map(c => `<option value="${c.id}">${c.full_name}</option>`).join('');
     }
 
-    // قائمة الموظفين (المحامين) في الإسناد
-    const staffOptions = globalData.staff.map(s => `<option value="${s.id}">${s.full_name} (${s.role})</option>`).join('');
+    const staffOptions = globalData.staff.map(s => `<option value="${s.id}">${s.full_name} (${getRoleNameInArabic(s.role)})</option>`).join('');
     
     const caseLawyerSelect = document.getElementById('case_assigned_lawyer');
     if(caseLawyerSelect) caseLawyerSelect.innerHTML = '<option value="">المحامي المسؤول (إسناد)...</option>' + staffOptions;
@@ -255,6 +328,11 @@ async function saveClient(event) {
 
 async function saveCase(event) {
     event.preventDefault();
+    const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    
+    // إجبار الإسناد للمحامي الحالي إذا كانت صلاحيته "محامي"
+    const assignedLawyer = isLawyer ? currentUser.id : (document.getElementById('case_assigned_lawyer').value || null);
+
     const data = {
         client_id: document.getElementById('case_client_id').value,
         access_pin: document.getElementById('case_access_pin').value,
@@ -265,7 +343,7 @@ async function saveCase(event) {
         current_judge: document.getElementById('case_current_judge').value,
         claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
-        assigned_lawyer_id: document.getElementById('case_assigned_lawyer').value || null,
+        assigned_lawyer_id: assignedLawyer,
         status: 'نشطة'
     };
     
@@ -280,11 +358,16 @@ async function saveCase(event) {
 
 async function saveAppointment(event) {
     event.preventDefault();
+    const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    
+    // إجبار الإسناد للمحامي الحالي إذا كانت صلاحيته "محامي"
+    const assignedTo = isLawyer ? currentUser.id : (document.getElementById('appt_assigned_to').value || null);
+
     const data = {
         title: document.getElementById('appt_title').value,
         appt_date: document.getElementById('appt_date').value,
         type: document.getElementById('appt_type').value,
-        assigned_to: document.getElementById('appt_assigned_to').value || null,
+        assigned_to: assignedTo,
         status: 'مجدول'
     };
 
@@ -328,7 +411,7 @@ function viewCaseDetails(id) {
  */
 function logout() {
     localStorage.clear();
-    window.location.href = 'index.html';
+    window.location.href = 'index.html'; // أو login.html إذا قمت بتغيير الاسم
 }
 
 /**
