@@ -13,11 +13,11 @@ window.onload = async () => {
 
 async function loadClientProfile() {
     try {
-        // جلب بيانات الموكل، قضاياه، وملفاته الشخصية بالتوازي لتوفير الوقت
+        // جلب بيانات الموكل، قضاياه، وملفاته الشخصية بالتوازي لتوفير الوقت (تم تصحيح الرابط لتجنب تكرار eq)
         const [clients, cases, files] = await Promise.all([
             API.getClients(),
-            fetchAPI(`/api/cases?client_id=eq.${currentClientId}&order=created_at.desc`), // مسار ذكي لجلب قضايا الموكل فقط
-            fetchAPI(`/api/files?client_id=eq.${currentClientId}&order=created_at.desc`) // مسار لجلب ملفات الموكل الشخصية
+            fetchAPI(`/api/cases?client_id=${currentClientId}`), 
+            fetchAPI(`/api/files?client_id=${currentClientId}`) 
         ]);
 
         clientObj = (clients || []).find(c => c.id == currentClientId);
@@ -70,7 +70,6 @@ function renderClientFiles(files) {
     }
 
     list.innerHTML = files.map(f => {
-        // تحديد الأيقونة بناءً على نوع الملف أو التصنيف
         let icon = 'fa-file-alt text-secondary';
         if(f.file_type && f.file_type.includes('image')) icon = 'fa-image text-primary';
         if(f.file_type && f.file_type.includes('pdf')) icon = 'fa-file-pdf text-danger';
@@ -101,13 +100,11 @@ async function uploadPersonalFile(event) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
 
     try {
-        // الرفع لـ Google Drive باستخدام المحرك الموجود
         const driveRes = await API.uploadToDrive(file, `Client_${clientObj.full_name}`);
         
         if(driveRes && driveRes.url) {
-            // حفظ الرابط في قاعدة البيانات (بدون case_id، مع إسناد client_id)
             const dbRes = await API.addFileRecord({
-                client_id: currentClientId, // ربط الملف بالموكل
+                client_id: currentClientId,
                 file_name: titleInput || file.name,
                 file_type: file.type,
                 file_category: catInput,
@@ -119,7 +116,7 @@ async function uploadPersonalFile(event) {
                 closeModal('uploadModal');
                 document.getElementById('uploadForm').reset();
                 showAlert('تم حفظ المستند في ملف الموكل بنجاح', 'success');
-                await loadClientProfile(); // إعادة تحميل الواجهة
+                await loadClientProfile(); 
             }
         }
     } catch (err) {

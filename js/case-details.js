@@ -15,12 +15,13 @@ function goBack() { window.location.href = 'app.html'; }
 
 async function loadCaseFullDetails() {
     try {
+        // تم تصحيح الروابط لتجنب تكرار eq
         const [allCases, updates, installments, expenses, files] = await Promise.all([
             API.getCases(),
-            fetchAPI(`/api/updates?case_id=eq.${currentCaseId}&order=created_at.desc`),
-            fetchAPI(`/api/installments?case_id=eq.${currentCaseId}&order=created_at.desc`),
-            fetchAPI(`/api/expenses?case_id=eq.${currentCaseId}&order=created_at.desc`), // مسار المصروفات الجديد
-            fetchAPI(`/api/files?case_id=eq.${currentCaseId}&order=created_at.desc`)
+            fetchAPI(`/api/updates?case_id=${currentCaseId}`),
+            fetchAPI(`/api/installments?case_id=${currentCaseId}`),
+            fetchAPI(`/api/expenses?case_id=${currentCaseId}`), 
+            fetchAPI(`/api/files?case_id=${currentCaseId}`)
         ]);
 
         caseObj = (allCases || []).find(c => c.id == currentCaseId);
@@ -126,7 +127,6 @@ function renderFiles(files) {
         let iconHtml = '';
         
         if(isImage && f.drive_file_id) {
-            // استخراج معرف الصورة من رابط درايف لتشغيلها كمعاينة (يحتاج أن يكون الرابط قابلاً للعرض)
             iconHtml = `<i class="fas fa-image fs-1 text-primary mb-2"></i>`;
         } else {
             iconHtml = `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
@@ -158,7 +158,6 @@ function calculateFinances(installments, expenses) {
     document.getElementById('sum-expenses').innerText = totalExpenses.toLocaleString();
     document.getElementById('sum-net').innerText = netProfit.toLocaleString();
     
-    // تلوين الصافي بناءً على القيمة
     document.getElementById('sum-net').className = netProfit >= 0 ? 'text-primary' : 'text-danger';
 }
 
@@ -333,7 +332,6 @@ function showAlert(message, type = 'info') {
     setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 3000);
 }
 
-// دالة مبدئية لتوليد تقرير (يمكن تطويرها لاحقاً لطباعة PDF حقيقي)
 function generatePDF() {
     window.print();
 }
