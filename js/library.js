@@ -8,9 +8,10 @@ window.onload = async () => {
         return;
     }
 
-    // إظهار زر "إضافة نموذج" للمدراء والمحامين فقط (السكرتاريا لا يمكنهم إضافة نماذج رئيسية)
-    if (currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.role === 'محامي' || currentUser.role === 'lawyer') {
-        document.getElementById('btn-add-template').style.display = 'block';
+    // إخفاء زر "إضافة نموذج" للسكرتاريا فقط (المدير والمحامي يمكنهم الرفع دائماً)
+    if (currentUser.role === 'secretary' || currentUser.role === 'سكرتاريا') {
+        const btnAdd = document.getElementById('btn-add-template');
+        if (btnAdd) btnAdd.style.display = 'none';
     }
 
     await loadLibrary();
@@ -32,7 +33,7 @@ async function loadLibrary() {
                 else if (f.file_category === 'وكالات') poas.push(f);
                 else if (f.file_category === 'لوائح') pleadings.push(f);
                 else if (f.file_category === 'قوانين') laws.push(f);
-                else contracts.push(f); // إذا كان التصنيف غير معروف، نضعه في العقود افتراضياً
+                else contracts.push(f); 
             });
         }
 
@@ -98,7 +99,7 @@ async function saveTemplate(event) {
                 file_type: file.type,
                 file_category: catInput,
                 drive_file_id: driveRes.url,
-                is_template: true // الإشارة التي تخبر قاعدة البيانات بأن هذا قالب للمكتبة وليس لقضية معينة
+                is_template: true 
             };
             
             const dbRes = await API.addFileRecord(payload);
@@ -120,11 +121,29 @@ async function saveTemplate(event) {
     }
 }
 
-function openModal(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
+// -----------------------------------------------------------------
+// دوال النوافذ المنبثقة المحسنة لتجنب أخطاء (backdrop)
+// -----------------------------------------------------------------
+function openModal(id) { 
+    const el = document.getElementById(id);
+    if(el) {
+        const m = new bootstrap.Modal(el);
+        m.show();
+    }
+}
+
 function closeModal(id) { 
-    const m = bootstrap.Modal.getInstance(document.getElementById(id)); 
-    if (m) m.hide(); 
-    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove()); 
+    const el = document.getElementById(id);
+    if(el) {
+        const m = bootstrap.Modal.getInstance(el);
+        if(m) m.hide();
+        
+        // إزالة الخلفية السوداء يدوياً لضمان عدم تعليق الشاشة
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
 }
 
 function showAlert(message, type = 'info') {

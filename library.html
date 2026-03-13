@@ -21,8 +21,13 @@
 <body style="background: var(--bg-light); padding-bottom: 80px;">
 
     <div class="top-nav d-flex align-items-center px-3 shadow-sm position-relative" style="height: 65px; background: var(--navy);">
-        <h5 class="text-white mb-0 fw-bold mx-auto"><i class="fas fa-book-open text-accent me-2"></i> المكتبة القانونية</h5>
-        <button class="btn btn-sm btn-accent fw-bold text-navy position-absolute end-0 me-3" onclick="openModal('uploadTemplateModal')" id="btn-add-template" style="display:none;" title="إضافة نموذج"><i class="fas fa-plus"></i> إضافة</button>
+        <button class="btn btn-link text-white text-decoration-none p-0 position-absolute start-0 ms-3" onclick="window.location.href='app.html'">
+            <i class="fas fa-arrow-right fs-4"></i>
+        </button>
+        <h6 class="text-white mb-0 fw-bold mx-auto"><i class="fas fa-book-open text-accent me-2"></i> المكتبة القانونية</h6>
+        <button class="btn btn-sm btn-warning text-dark fw-bold position-absolute end-0 me-3" onclick="openModal('uploadTemplateModal')" id="btn-add-template" title="رفع نموذج جديد">
+            <i class="fas fa-plus"></i> رفع ملف
+        </button>
     </div>
 
     <div class="container mt-4">

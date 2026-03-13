@@ -1,4 +1,4 @@
-// js/case-details.js - محرك التفاصيل المطور (يدعم الفواتير، التفقيط، الـ QR Code، الملاحظات السرية)
+// js/case-details.js - محرك التفاصيل المطور (يعالج الإسناد، القضايا المرتبطة، الفواتير، التفقيط، الـ QR)
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -30,10 +30,19 @@ function goBack() { window.location.href = 'app.html'; }
 
 async function loadCaseFullDetails() {
     try {
-        const [allCases, updates, installments, expenses, files] = await Promise.all([
-            API.getCases(), fetchAPI(`/api/updates?case_id=${currentCaseId}`), fetchAPI(`/api/installments?case_id=${currentCaseId}`),
-            fetchAPI(`/api/expenses?case_id=${currentCaseId}`), fetchAPI(`/api/files?case_id=${currentCaseId}`)
+        // جلبنا طاقم العمل (الموظفين) وجميع القضايا لكي نستخدمها في نافذة التعديل للإسناد والارتباط
+        const [allCases, updates, installments, expenses, files, staff] = await Promise.all([
+            API.getCases(), 
+            fetchAPI(`/api/updates?case_id=${currentCaseId}`), 
+            fetchAPI(`/api/installments?case_id=${currentCaseId}`),
+            fetchAPI(`/api/expenses?case_id=${currentCaseId}`), 
+            fetchAPI(`/api/files?case_id=${currentCaseId}`),
+            API.getStaff()
         ]);
+        
+        window.firmStaff = staff || [];
+        window.firmCases = allCases || [];
+        
         caseObj = (allCases || []).find(c => c.id == currentCaseId);
         if (!caseObj) { window.location.href = 'app.html'; return; }
 
@@ -252,6 +261,7 @@ function printQRCode() {
     }, 500);
 }
 
+// تعبئة وتجهيز نافذة التعديل بحقول الإسناد والارتباط
 function openEditModal() {
     document.getElementById('edit_internal_id').value = caseObj.case_internal_id || '';
     document.getElementById('edit_status').value = caseObj.status || 'نشطة';
@@ -271,26 +281,51 @@ function openEditModal() {
     document.getElementById('edit_deadline_date').value = caseObj.deadline_date || '';
     document.getElementById('edit_success_probability').value = caseObj.success_probability || '';
     
+    // تعبئة قائمة المحامين للإسناد
+    const lawyerSelect = document.getElementById('edit_assigned_lawyer');
+    if(lawyerSelect && window.firmStaff) {
+        lawyerSelect.innerHTML = '<option value="">بدون إسناد (لمكتب العمل)</option>' + 
+            window.firmStaff.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+        lawyerSelect.value = caseObj.assigned_lawyer_id || '';
+    }
+    
+    // تعبئة قائمة القضايا للارتباط
+    const parentSelect = document.getElementById('edit_parent_case_id');
+    if(parentSelect && window.firmCases) {
+        parentSelect.innerHTML = '<option value="">لا يوجد ارتباط</option>' + 
+            window.firmCases.filter(c => c.id !== currentCaseId).map(c => `<option value="${c.id}">${c.case_internal_id} - ${c.opponent_name || ''}</option>`).join('');
+        parentSelect.value = caseObj.parent_case_id || '';
+    }
+
     openModal('editCaseModal');
 }
 
 async function updateCaseDetails(event) {
     event.preventDefault();
     const data = {
-        case_internal_id: document.getElementById('edit_internal_id').value, status: document.getElementById('edit_status').value,
-        access_pin: document.getElementById('edit_access_pin').value, current_court: document.getElementById('edit_court').value,
-        court_case_number: document.getElementById('edit_court_case_number').value, case_year: document.getElementById('edit_case_year').value ? Number(document.getElementById('edit_case_year').value) : null,
-        litigation_degree: document.getElementById('edit_litigation_degree').value, current_judge: document.getElementById('edit_judge').value,
-        case_type: document.getElementById('edit_type').value, opponent_name: document.getElementById('edit_opponent').value,
+        case_internal_id: document.getElementById('edit_internal_id').value, 
+        status: document.getElementById('edit_status').value,
+        access_pin: document.getElementById('edit_access_pin').value, 
+        current_court: document.getElementById('edit_court').value,
+        court_case_number: document.getElementById('edit_court_case_number').value, 
+        case_year: document.getElementById('edit_case_year').value ? Number(document.getElementById('edit_case_year').value) : null,
+        litigation_degree: document.getElementById('edit_litigation_degree').value, 
+        current_judge: document.getElementById('edit_judge').value,
+        case_type: document.getElementById('edit_type').value, 
+        opponent_name: document.getElementById('edit_opponent').value,
         claim_amount: document.getElementById('edit_claim').value ? Number(document.getElementById('edit_claim').value) : null,
         total_agreed_fees: document.getElementById('edit_fees').value ? Number(document.getElementById('edit_fees').value) : 0,
         
         opponent_lawyer: document.getElementById('edit_opponent_lawyer').value || null,
         poa_details: document.getElementById('edit_poa_details').value || null,
         deadline_date: document.getElementById('edit_deadline_date').value || null,
-        success_probability: document.getElementById('edit_success_probability').value ? Number(document.getElementById('edit_success_probability').value) : null
+        success_probability: document.getElementById('edit_success_probability').value ? Number(document.getElementById('edit_success_probability').value) : null,
+        
+        // التقاط قيم الإسناد والارتباط
+        assigned_lawyer_id: document.getElementById('edit_assigned_lawyer').value || null,
+        parent_case_id: document.getElementById('edit_parent_case_id').value || null
     };
-    if(await API.updateCase(currentCaseId, data)) { closeModal('editCaseModal'); showAlert('تم التحديث', 'success'); await loadCaseFullDetails(); }
+    if(await API.updateCase(currentCaseId, data)) { closeModal('editCaseModal'); showAlert('تم التحديث بنجاح', 'success'); await loadCaseFullDetails(); }
 }
 
 async function saveUpdate(event) {
@@ -345,8 +380,21 @@ function copyDeepLink() {
 }
 
 function goToClientProfile() { if (caseObj && caseObj.client_id) { localStorage.setItem('current_client_id', caseObj.client_id); window.location.href = 'client-details.html'; } }
-function openModal(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
-function closeModal(id) { const m = bootstrap.Modal.getInstance(document.getElementById(id)); if (m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(el => el.remove()); }
+function openModal(id) { 
+    const el = document.getElementById(id);
+    if(el) { const m = new bootstrap.Modal(el); m.show(); }
+}
+function closeModal(id) { 
+    const el = document.getElementById(id);
+    if(el) {
+        const m = bootstrap.Modal.getInstance(el);
+        if(m) m.hide();
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
+}
 function showAlert(message, type = 'info') {
     const box = document.getElementById('alertBox'); if(!box) return;
     const alertId = 'alert-' + Date.now();
