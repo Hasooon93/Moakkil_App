@@ -1,5 +1,4 @@
-// js/api.js - المحرك الموحد المطور لحل مشاكل الرفع والأرشفة
-
+// js/api.js - المحرك الموحد المحدث لحل أخطاء القيود والأرشفة
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
     const headers = {
@@ -34,24 +33,20 @@ const API = {
     getCases: () => fetchAPI('/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     getStaff: () => fetchAPI('/api/users'),
-    addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     getAppointments: () => fetchAPI('/api/appointments'),
-    addAppointment: (data) => fetchAPI('/api/appointments', 'POST', data),
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
     getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=${caseId}`),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
     getFiles: (caseId) => fetchAPI(`/api/files?case_id=${caseId}`),
     
-    // حفظ سجل الملف مع إضافة firm_id و added_by
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
         const firmId = localStorage.getItem(CONFIG.FIRM_KEY);
-        
         const payload = {
             ...data,
             added_by: currentUser ? currentUser.id : null,
-            firm_id: firmId || null
+            firm_id: (firmId && firmId !== "undefined") ? firmId : null
         };
         return fetchAPI('/api/files', 'POST', payload);
     },
@@ -68,14 +63,12 @@ const API = {
                         fileData: base64Data,
                         caseNumber: caseInternalId || "عام"
                     };
-                    
                     const res = await fetch(CONFIG.GAS_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify(payload),
                         redirect: 'follow'
                     });
-                    
                     const result = await res.json();
                     if(result && result.success && result.url) {
                         resolve(result);
@@ -91,5 +84,4 @@ const API = {
         });
     }
 };
-
 console.log("✅ API Engine Ready");
