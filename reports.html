@@ -9,77 +9,104 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .report-card { border-radius: var(--radius-md); padding: 15px; color: white; box-shadow: var(--shadow-sm); }
+        .bg-gradient-primary { background: linear-gradient(135deg, var(--navy) 0%, #1e3a8a 100%); }
+        .bg-gradient-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .bg-gradient-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .bg-gradient-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .table-custom th { background-color: #f8fafc; color: var(--text-muted); font-size: 0.85rem; }
+        .table-custom td { vertical-align: middle; font-size: 0.95rem; font-weight: 600; }
+    </style>
 </head>
 <body style="background-color: var(--bg-light); padding-bottom: 30px;">
 
-    <div class="top-nav px-3 d-flex align-items-center" style="height: 65px; background: var(--navy); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <div class="top-nav px-3 d-flex align-items-center">
         <button class="btn btn-link text-white text-decoration-none me-2 p-0" onclick="window.location.href='app.html'">
             <i class="fas fa-arrow-right fs-4"></i>
         </button>
-        <h5 class="text-white mb-0 fw-bold"><i class="fas fa-chart-pie text-accent me-2"></i> التقارير والتحليلات</h5>
+        <h6 class="text-white mb-0 fw-bold">التقارير والإحصائيات الشاملة</h6>
+        <button class="btn btn-sm btn-light text-navy fw-bold ms-auto" onclick="window.print()" title="طباعة التقرير"><i class="fas fa-print"></i></button>
     </div>
 
-    <div class="container mt-4" id="reports-container">
+    <div class="container mt-3" id="reports-container">
         
-        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-wallet me-2"></i> الملخص المالي الشامل</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-navy mb-0"><i class="fas fa-chart-pie me-2"></i> الملخص المالي للمكتب</h6>
+            <span class="badge bg-navy px-3 py-2" id="report-date">جاري التحميل...</span>
+        </div>
+
         <div class="row g-2 mb-4">
-            <div class="col-12">
-                <div class="card-custom bg-white border-top border-success border-4 shadow-sm p-4 text-center">
-                    <small class="text-muted fw-bold d-block mb-1">إجمالي الأتعاب المتفق عليها (السوق)</small>
-                    <h2 class="text-navy fw-bold mb-0" id="rep-total-agreed">0 <span class="fs-6">د.أ</span></h2>
+            <div class="col-6">
+                <div class="report-card bg-gradient-primary text-center h-100">
+                    <small class="d-block opacity-75 mb-1"><i class="fas fa-handshake"></i> إجمالي الأتعاب المتفق عليها</small>
+                    <h4 class="fw-bold mb-0" id="rep-total-agreed">0</h4>
                 </div>
             </div>
             <div class="col-6">
-                <div class="card-custom bg-white border shadow-sm p-3 text-center h-100">
-                    <small class="text-success fw-bold d-block mb-1">المقبوضات الفعلية</small>
-                    <h4 class="text-success fw-bold mb-0" id="rep-total-paid">0</h4>
+                <div class="report-card bg-gradient-success text-center h-100">
+                    <small class="d-block opacity-75 mb-1"><i class="fas fa-coins"></i> إجمالي المحصّل الفعلي</small>
+                    <h4 class="fw-bold mb-0" id="rep-total-paid">0</h4>
                 </div>
             </div>
             <div class="col-6">
-                <div class="card-custom bg-white border shadow-sm p-3 text-center h-100">
-                    <small class="text-danger fw-bold d-block mb-1">الذمم المتبقية</small>
-                    <h4 class="text-danger fw-bold mb-0" id="rep-total-rem">0</h4>
+                <div class="report-card bg-gradient-danger text-center h-100">
+                    <small class="d-block opacity-75 mb-1"><i class="fas fa-receipt"></i> إجمالي المصروفات والرسوم</small>
+                    <h4 class="fw-bold mb-0" id="rep-total-expenses">0</h4>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="report-card bg-gradient-warning text-center h-100 position-relative border border-2 border-white">
+                    <small class="d-block text-dark opacity-75 fw-bold mb-1"><i class="fas fa-wallet"></i> الأرباح الصافية (صندوق)</small>
+                    <h4 class="fw-bold text-dark mb-0" id="rep-net-profit">0</h4>
                 </div>
             </div>
         </div>
 
-        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-folder-open me-2"></i> التوزيع الإحصائي للقضايا</h6>
-        <div class="card-custom bg-white shadow-sm p-3 mb-4">
-            <div class="row text-center g-2">
-                <div class="col-4 border-end">
-                    <h3 class="text-success fw-bold mb-0" id="rep-active">0</h3>
+        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-folder-open me-2"></i> حالة القضايا ودرجات التقاضي</h6>
+        <div class="card-custom mb-4 p-3 text-center">
+            <div class="row g-2">
+                <div class="col-3 border-end">
+                    <h3 class="text-primary fw-bold mb-0" id="rep-cases-total">0</h3>
+                    <small class="text-muted fw-bold">الإجمالي</small>
+                </div>
+                <div class="col-3 border-end">
+                    <h3 class="text-success fw-bold mb-0" id="rep-cases-active">0</h3>
                     <small class="text-muted fw-bold">نشطة</small>
                 </div>
-                <div class="col-4 border-end">
-                    <h3 class="text-secondary fw-bold mb-0" id="rep-closed">0</h3>
-                    <small class="text-muted fw-bold">مغلقة</small>
-                </div>
-                <div class="col-4">
-                    <h3 class="text-warning fw-bold mb-0" id="rep-appeal">0</h3>
+                <div class="col-3 border-end">
+                    <h3 class="text-warning fw-bold mb-0" id="rep-cases-appeal">0</h3>
                     <small class="text-muted fw-bold">استئناف</small>
+                </div>
+                <div class="col-3">
+                    <h3 class="text-danger fw-bold mb-0" id="rep-cases-closed">0</h3>
+                    <small class="text-muted fw-bold">مغلقة</small>
                 </div>
             </div>
         </div>
 
-        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-user-tie me-2"></i> أداء فريق العمل (المحامين)</h6>
-        <div class="card-custom bg-white shadow-sm p-0 overflow-hidden mb-4">
+        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-users-cog me-2"></i> أداء المحامين والموظفين</h6>
+        <div class="card-custom p-0 overflow-hidden mb-4 border border-light">
             <div class="table-responsive">
-                <table class="table table-hover table-borderless mb-0 text-center align-middle">
-                    <thead class="table-light text-muted small">
+                <table class="table table-custom table-hover table-borderless mb-0 text-center align-middle">
+                    <thead>
                         <tr>
-                            <th>المحامي</th>
-                            <th>القضايا</th>
-                            <th>المحصل (د.أ)</th>
+                            <th class="text-start ps-3">اسم المحامي / الموظف</th>
+                            <th>حالة الحساب</th>
+                            <th>عدد القضايا</th>
+                            <th>الأتعاب المرتبطة (د.أ)</th>
                         </tr>
                     </thead>
                     <tbody id="lawyer-performance-body">
-                        <tr><td colspan="3" class="text-muted p-3">جاري الحساب...</td></tr>
+                        <tr><td colspan="4" class="text-muted p-4">جاري الحساب وتحليل البيانات...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
     </div>
+
+    <div id="alertBox" class="alert-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="./js/config.js"></script>
