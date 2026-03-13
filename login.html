@@ -6,75 +6,166 @@
     <title>دخول نظام موكّل 2.0</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        :root { --navy: #1a237e; --accent: #ffd700; }
-        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f9; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { width: 100%; max-width: 400px; padding: 2rem; border-radius: 20px; background: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .brand-logo { font-size: 2.5rem; font-weight: 900; color: var(--navy); text-align: center; margin-bottom: 0.5rem; }
-        .nav-pills .nav-link { color: var(--navy); font-weight: 700; border-radius: 10px; }
-        .nav-pills .nav-link.active { background-color: var(--navy); color: white; }
-        .form-control { border-radius: 12px; padding: 12px; border: 2px solid #eef2f6; font-weight: 700; text-align: center; }
-        .btn-navy { background-color: var(--navy); color: white; border-radius: 12px; padding: 12px; font-weight: 700; width: 100%; transition: 0.3s; }
-        .btn-navy:hover { background-color: #0d1440; color: white; }
+        :root { 
+            --navy: #0a192f; 
+            --accent: #64ffda; 
+            --light-bg: #f8fafc; 
+        }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: linear-gradient(135deg, var(--navy) 0%, #1e293b 100%);
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px;
+        }
+        
+        .login-card { 
+            width: 100%; 
+            max-width: 420px; 
+            padding: 2.5rem 2rem; 
+            border-radius: 20px; 
+            background: #ffffff; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3); 
+            position: relative;
+        }
+        
+        .brand-logo-box {
+            background: var(--navy);
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            margin: -60px auto 15px auto;
+            box-shadow: 0 10px 20px rgba(10, 25, 47, 0.2);
+            border: 4px solid white;
+        }
+        
+        .brand-title { 
+            font-size: 1.8rem; 
+            font-weight: 900; 
+            color: var(--navy); 
+            text-align: center; 
+            margin-bottom: 0.2rem; 
+        }
+        
+        .nav-pills {
+            background-color: var(--light-bg);
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 25px;
+        }
+        .nav-pills .nav-link { 
+            color: #64748b; 
+            font-weight: 700; 
+            border-radius: 8px; 
+            transition: 0.3s;
+        }
+        .nav-pills .nav-link.active { 
+            background-color: var(--navy); 
+            color: var(--accent); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .form-control { 
+            border-radius: 12px; 
+            padding: 12px; 
+            border: 2px solid #eef2f6; 
+            font-weight: 600; 
+            text-align: center; 
+            background-color: #fcfcfc;
+            transition: 0.3s;
+        }
+        .form-control:focus {
+            border-color: var(--navy);
+            background-color: white;
+            box-shadow: none;
+        }
+        
+        .btn-navy { 
+            background-color: var(--navy); 
+            color: white; 
+            border-radius: 12px; 
+            padding: 14px; 
+            font-weight: 800; 
+            width: 100%; 
+            transition: 0.3s; 
+            border: none;
+            margin-top: 10px;
+        }
+        .btn-navy:hover { 
+            background-color: var(--accent); 
+            color: var(--navy); 
+            transform: translateY(-2px);
+        }
+        
+        .form-label { font-size: 0.9rem; color: #475569; }
     </style>
 </head>
 <body>
 
     <div class="login-card">
-        <div class="brand-logo">موكّل</div>
-        <p class="text-center text-muted mb-4 small">نظام إدارة المكاتب القانونية</p>
+        <div class="brand-logo-box">
+            <i class="fas fa-balance-scale fs-2" style="color: var(--accent);"></i>
+        </div>
+        <div class="brand-title">موكّل ERP</div>
+        <p class="text-center text-muted mb-4 small fw-bold">بوابة الوصول السحابية الآمنة</p>
 
-        <ul class="nav nav-pills nav-fill mb-4 bg-light rounded-3 p-1" id="loginTabs">
+        <ul class="nav nav-pills nav-fill" id="loginTabs">
             <li class="nav-item">
-                <button class="nav-link active" onclick="toggleLogin('admin', this)">المدير</button>
+                <button class="nav-link active" onclick="toggleLogin('admin', this)"><i class="fas fa-user-shield me-1"></i> الإدارة</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" onclick="toggleLogin('staff', this)">الموظفين</button>
+                <button class="nav-link" onclick="toggleLogin('staff', this)"><i class="fas fa-users me-1"></i> فريق العمل</button>
             </li>
         </ul>
 
         <div id="admin-login-view">
             <div id="phone-section">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">رقم الهاتف</label>
-                    <input type="tel" id="phone" class="form-control" placeholder="07XXXXXXXX">
+                    <label class="form-label fw-bold">رقم الهاتف المسجل</label>
+                    <input type="tel" id="phone" class="form-control" placeholder="07XXXXXXXX" dir="ltr">
                 </div>
-                <button onclick="requestOTP()" class="btn btn-navy">إرسال كود الدخول</button>
+                <button onclick="requestOTP()" class="btn btn-navy"><i class="fas fa-paper-plane me-2"></i> إرسال رمز التحقق</button>
             </div>
 
             <div id="otp-section" class="d-none">
                 <div class="mb-3">
-                    <label class="form-label fw-bold">كود التحقق (Telegram)</label>
-                    <input type="text" id="otp" class="form-control" placeholder="------" maxlength="6">
+                    <label class="form-label fw-bold">كود التحقق (Telegram / SMS)</label>
+                    <input type="text" id="otp" class="form-control fs-4" placeholder="------" maxlength="6" style="letter-spacing: 8px;">
                 </div>
-                <button onclick="verifyOTP()" class="btn btn-success w-100 py-3 rounded-3 fw-bold">تأكيد ودخول</button>
-                <button onclick="location.reload()" class="btn btn-link btn-sm w-100 mt-2 text-decoration-none text-muted">تغيير الرقم</button>
+                <button onclick="verifyOTP()" class="btn btn-success w-100 py-3 rounded-3 fw-bold mb-3" style="background-color: #10b981; border:none;"><i class="fas fa-check-circle me-1"></i> تأكيد الدخول</button>
+                <button onclick="location.reload()" class="btn btn-link btn-sm w-100 text-decoration-none" style="color: #64748b;"><i class="fas fa-arrow-right me-1"></i> تغيير الرقم</button>
             </div>
         </div>
 
         <div id="staff-login-view" class="d-none">
-            <div class="mb-2">
-                <label class="form-label fw-bold">اسم المستخدم</label>
-                <input type="text" id="username" class="form-control" placeholder="Username">
-            </div>
             <div class="mb-3">
-                <label class="form-label fw-bold">كلمة المرور</label>
-                <input type="password" id="password" class="form-control" placeholder="Password">
+                <label class="form-label fw-bold">اسم المستخدم</label>
+                <input type="text" id="username" class="form-control" placeholder="أدخل اليوزر نيم" dir="ltr">
             </div>
-            <button onclick="staffLogin()" class="btn btn-navy">دخول فريق العمل</button>
+            <div class="mb-4">
+                <label class="form-label fw-bold">كلمة المرور</label>
+                <input type="password" id="password" class="form-control" placeholder="••••••••" dir="ltr">
+            </div>
+            <button onclick="staffLogin()" class="btn btn-navy"><i class="fas fa-sign-in-alt me-2"></i> دخول للحساب</button>
         </div>
+        
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script src="./js/config.js"></script>
     <script src="./js/auth.js"></script>
 
     <script>
-        // دالة التبديل بين الواجهات في صفحة الدخول
         function toggleLogin(type, btn) {
             document.querySelectorAll('#loginTabs .nav-link').forEach(l => l.classList.remove('active'));
             btn.classList.add('active');

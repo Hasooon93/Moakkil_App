@@ -19,7 +19,6 @@
             --navy: #0a192f; 
             --navy-light: #112240;
             --accent: #64ffda; 
-            --accent-hover: #34d399;
             --light-bg: #f8fafc;
             --text-main: #334155;
         }
@@ -31,22 +30,35 @@
             overflow-x: hidden;
         }
         
-        /* الشريط العلوي بتأثير الزجاج */
+        /* الشريط العلوي */
         .navbar-custom {
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             box-shadow: 0 4px 30px rgba(0,0,0,0.05);
             padding: 15px 0;
             transition: 0.3s;
         }
+        
+        /* إصلاح تشوه الشعار بجعله في صندوق ثابت الأبعاد */
+        .brand-logo-box {
+            background: var(--navy);
+            width: 45px;
+            height: 45px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            margin-left: 10px;
+        }
         .navbar-brand {
             font-size: 1.8rem;
             font-weight: 900;
             color: var(--navy) !important;
-            letter-spacing: -1px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
         }
         
-        /* الأزرار */
         .btn-login {
             background-color: var(--navy);
             color: white;
@@ -67,16 +79,15 @@
             border-radius: 10px;
             padding: 10px 20px;
             font-weight: 800;
-            display: none; /* مخفي حتى يتأكد دعم المتصفح */
+            display: none;
             transition: 0.3s;
             border: none;
         }
         .btn-install:hover {
-            background-color: var(--accent-hover);
+            background-color: #ffffff;
             transform: translateY(-2px);
         }
 
-        /* قسم الهيرو (الواجهة) */
         .hero-section {
             background: linear-gradient(135deg, var(--navy) 0%, #1e293b 100%);
             color: white;
@@ -101,25 +112,29 @@
             margin-right: auto;
             line-height: 1.8;
         }
+        
+        /* إصلاح مشكلة الزر الغامق عند النقر (إلغاء تأثيرات البوتستراب الافتراضية) */
         .btn-hero {
             background-color: var(--accent);
-            color: var(--navy);
+            color: var(--navy) !important;
             border-radius: 12px;
             padding: 16px 45px;
             font-size: 1.2rem;
             font-weight: 800;
             text-decoration: none;
-            transition: 0.3s;
+            transition: all 0.3s ease;
             display: inline-block;
-            box-shadow: 0 10px 20px rgba(100, 255, 218, 0.2);
+            border: 2px solid var(--accent);
         }
-        .btn-hero:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 25px rgba(100, 255, 218, 0.3);
-            color: var(--navy);
+        .btn-hero:hover, .btn-hero:focus, .btn-hero:active {
+            background-color: #ffffff !important;
+            color: var(--navy) !important;
+            border-color: #ffffff !important;
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(100, 255, 218, 0.4) !important;
+            outline: none !important;
         }
 
-        /* الميزات */
         .features-section { padding: 90px 0; background-color: white; }
         .section-title { font-weight: 900; color: var(--navy); margin-bottom: 60px; text-align: center; font-size: 2.5rem; }
         .feature-card { 
@@ -128,7 +143,7 @@
             background: var(--light-bg); 
             border: 1px solid #eef2f6; 
             height: 100%; 
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            transition: 0.4s; 
         }
         .feature-card:hover { 
             transform: translateY(-10px); 
@@ -136,9 +151,8 @@
             background: white;
             border-color: var(--accent);
         }
-        .feature-icon { font-size: 3rem; color: var(--accent); margin-bottom: 25px; background: var(--navy); width: 80px; height: 80px; line-height: 80px; border-radius: 20px; }
+        .feature-icon { font-size: 2.5rem; color: var(--accent); margin-bottom: 25px; background: var(--navy); width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; border-radius: 20px; }
 
-        /* الأسعار */
         .pricing-section { padding: 90px 0; background-color: var(--light-bg); }
         .pricing-card { 
             background: white; 
@@ -173,14 +187,13 @@
         .duration { color: #94a3b8; font-size: 1.1rem; font-weight: 600; }
         .pricing-list { list-style: none; padding: 0; margin: 40px 0; text-align: right; }
         .pricing-list li { margin-bottom: 18px; font-weight: 600; font-size: 1.1rem; color: var(--text-main); }
-        .pricing-list li i { color: var(--accent); background: var(--navy); border-radius: 50%; padding: 2px; margin-left: 12px; font-size: 0.9rem;}
+        .pricing-list li i { color: var(--accent); background: var(--navy); border-radius: 50%; padding: 3px; margin-left: 12px; font-size: 0.8rem;}
         
-        .btn-pricing-outline { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: var(--navy); background: transparent; transition: 0.3s; text-decoration: none; display: block; }
+        .btn-pricing-outline { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: var(--navy); background: transparent; transition: 0.3s; text-decoration: none; display: block; text-align: center;}
         .btn-pricing-outline:hover { background: var(--navy); color: white; }
-        .btn-pricing-solid { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: white; background: var(--navy); transition: 0.3s; text-decoration: none; display: block;}
+        .btn-pricing-solid { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: white; background: var(--navy); transition: 0.3s; text-decoration: none; display: block; text-align: center;}
         .btn-pricing-solid:hover { background: var(--accent); color: var(--navy); border-color: var(--accent); }
 
-        /* الفوتر القانوني الموحد (تم حله) */
         .footer-unified { 
             background-color: var(--navy); 
             color: #cbd5e1; 
@@ -188,7 +201,7 @@
             text-align: center; 
             border-top: 5px solid var(--accent);
         }
-        .footer-brand { color: white; font-weight: 900; font-size: 1.8rem; margin-bottom: 15px; }
+        .footer-brand { color: white; font-weight: 900; font-size: 1.8rem; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;}
         .footer-links { margin: 25px 0; }
         .footer-links a { 
             color: var(--accent); 
@@ -205,10 +218,13 @@
 
     <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="#"><i class="fas fa-balance-scale text-accent me-2" style="background:var(--navy); padding:8px; border-radius:10px;"></i> موكّل</a>
+            <a class="navbar-brand text-decoration-none" href="#">
+                <div class="brand-logo-box"><i class="fas fa-balance-scale text-accent fs-5"></i></div>
+                موكّل
+            </a>
             <div class="d-flex gap-2 align-items-center">
                 <button id="install-btn" class="btn btn-install shadow-sm"><i class="fas fa-download me-1"></i> تثبيت التطبيق</button>
-                <a href="login.html" class="btn btn-login shadow-sm"><i class="fas fa-user-shield me-2"></i>تسجيل الدخول</a>
+                <a href="login.html" class="btn btn-login shadow-sm"><i class="fas fa-user-shield me-2"></i>دخول للمنصة</a>
             </div>
         </div>
     </nav>
@@ -227,28 +243,28 @@
             <div class="row g-4 text-center">
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
-                        <i class="fas fa-sitemap feature-icon"></i>
+                        <div class="feature-icon"><i class="fas fa-sitemap"></i></div>
                         <h5 class="fw-bold text-navy">إدارة القضايا والفرق</h5>
                         <p class="text-muted mb-0 mt-3">إسناد القضية لفريق عمل، تتبع المواعيد النهائية، وحفظ الملاحظات السرية.</p>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
-                        <i class="fas fa-user-lock feature-icon"></i>
+                        <div class="feature-icon"><i class="fas fa-user-lock"></i></div>
                         <h5 class="fw-bold text-navy">بوابة الموكلين الآمنة</h5>
                         <p class="text-muted mb-0 mt-3">امنح موكلك وصولاً خاصاً برقم PIN لمتابعة سير قضيته وتحميل مستنداته.</p>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
-                        <i class="fas fa-file-invoice-dollar feature-icon"></i>
+                        <div class="feature-icon"><i class="fas fa-file-invoice-dollar"></i></div>
                         <h5 class="fw-bold text-navy">الفوترة والتفقيط</h5>
                         <p class="text-muted mb-0 mt-3">إصدار سندات قبض رسمية قابلة للطباعة مع تحويل الأرقام لنصوص عربية آلياً.</p>
                     </div>
                 </div>
                 <div class="col-lg-3 col-md-6">
                     <div class="feature-card">
-                        <i class="fas fa-shield-alt feature-icon"></i>
+                        <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
                         <h5 class="fw-bold text-navy">فحص تعارض المصالح</h5>
                         <p class="text-muted mb-0 mt-3">محرك بحث سريع للتأكد من نظافة سجل الخصوم قبل استلام أي قضية جديدة.</p>
                     </div>
@@ -261,13 +277,10 @@
         <div class="container">
             <h2 class="section-title">استثمر في نجاح مكتبك</h2>
             <div class="row g-4 justify-content-center">
-                
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card text-center">
                         <h4 class="fw-bold text-navy mb-4">الباقة الشهرية</h4>
-                        <div class="price mb-4">
-                            <span class="currency">د.أ</span>299<span class="duration">/شهرياً</span>
-                        </div>
+                        <div class="price mb-4"><span class="currency">د.أ</span>299<span class="duration">/شهرياً</span></div>
                         <ul class="pricing-list">
                             <li><i class="fas fa-check"></i> عدد غير محدود من القضايا</li>
                             <li><i class="fas fa-check"></i> عدد غير محدود من الموكلين</li>
@@ -278,13 +291,10 @@
                         <a href="https://wa.me/qr/FYIWTXMB3LU6I1" target="_blank" class="btn-pricing-outline">طلب اشتراك شهري</a>
                     </div>
                 </div>
-
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card popular text-center">
                         <h4 class="fw-bold text-navy mb-4">الباقة السنوية</h4>
-                        <div class="price mb-4">
-                            <span class="currency">د.أ</span>2999<span class="duration">/سنوياً</span>
-                        </div>
+                        <div class="price mb-4"><span class="currency">د.أ</span>2999<span class="duration">/سنوياً</span></div>
                         <ul class="pricing-list">
                             <li><i class="fas fa-check"></i> <strong>توفير قيمة شهرين مجاناً</strong></li>
                             <li><i class="fas fa-check"></i> جميع ميزات الباقة الشهرية</li>
@@ -295,15 +305,17 @@
                         <a href="https://wa.me/qr/FYIWTXMB3LU6I1" target="_blank" class="btn-pricing-solid">احجز نسختك السنوية</a>
                     </div>
                 </div>
-
             </div>
         </div>
     </section>
 
     <footer class="footer-unified">
         <div class="container">
-            <div class="footer-brand"><i class="fas fa-balance-scale text-accent me-2"></i> نظام موكّل ERP</div>
-            <p class="mb-0">المنصة السحابية الأولى لإدارة المكاتب القانونية بذكاء وأمان تام.</p>
+            <div class="footer-brand">
+                <div class="brand-logo-box me-2"><i class="fas fa-balance-scale text-accent fs-4"></i></div>
+                موكّل ERP
+            </div>
+            <p class="mb-0 mt-3">المنصة السحابية الأولى لإدارة المكاتب القانونية بذكاء وأمان تام.</p>
             
             <div class="footer-links">
                 <a href="terms.html">الشروط والأحكام</a> | 
@@ -318,7 +330,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
     <script>
         let deferredPrompt;
         const installBtn = document.getElementById('install-btn');
