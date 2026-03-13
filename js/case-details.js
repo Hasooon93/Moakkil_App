@@ -1,12 +1,31 @@
-// js/case-details.js - محرك التفاصيل والأرشفة المطور
+// js/case-details.js - محرك التفاصيل المطور (مع التحديث اللحظي والرابط السليم)
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
+let realtimeSyncTimer = null;
 
 window.onload = async () => {
     if (!currentCaseId) { window.location.href = 'app.html'; return; }
     await loadCaseFullDetails();
+    startRealtimeSync();
 };
+
+function startRealtimeSync() {
+    realtimeSyncTimer = setInterval(async () => {
+        try {
+            const [updates, installments, expenses] = await Promise.all([
+                fetchAPI(`/api/updates?case_id=${currentCaseId}`),
+                fetchAPI(`/api/installments?case_id=${currentCaseId}`),
+                fetchAPI(`/api/expenses?case_id=${currentCaseId}`)
+            ]);
+            // التحديث الصامت للشاشة بدون تحميل ليعطي إحساس الـ Realtime
+            renderTimeline(updates || []);
+            renderPayments(installments || []);
+            renderExpenses(expenses || []);
+            calculateFinances(installments || [], expenses || []);
+        } catch(e) {}
+    }, 5000);
+}
 
 function goBack() { window.location.href = 'app.html'; }
 
@@ -191,17 +210,18 @@ async function saveFile(event) {
     } catch (err) { showAlert("فشل: " + err.message, 'danger'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> بدء الرفع'; }
 }
 
-// دالة المشاركة الفائقة (مشاركة الرابط + الرمز السري معاً)
+// دالة المشاركة النظيفة مع الرقم السري
 function copyDeepLink() {
     if(!caseObj.public_token) {
         showAlert('لا يوجد رمز وصول آمن لهذه القضية بعد.', 'danger');
         return;
     }
-    const baseUrl = window.location.origin + window.location.pathname.replace('case-details.html', '');
+    
+    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
     const deepLink = `${baseUrl}client.html?token=${caseObj.public_token}`;
     const pin = caseObj.access_pin || 'غير محدد';
     
-    const shareText = `أهلاً بك،\nتفضل رابط متابعة قضيتك الآمن عبر نظام موكّل:\n${deepLink}\n\nالرمز السري (PIN): ${pin}`;
+    const shareText = `مرحباً، يمكنك متابعة قضيتك عبر الرابط:\n${deepLink}\n\nرمز الدخول PIN الخاص بك هو: ${pin}`;
     
     if (navigator.share) {
         navigator.share({
