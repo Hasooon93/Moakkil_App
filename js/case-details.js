@@ -1,4 +1,4 @@
-// js/case-details.js - محرك التفاصيل والأرشفة والتحليل الذكي
+// js/case-details.js - محرك التفاصيل والأرشفة والتحليل الذكي والمصاريف
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -17,11 +17,13 @@ function goBack() {
 
 async function loadCaseFullDetails() {
     try {
-        const [allCases, updates, installments, files] = await Promise.all([
+        // جلب كافة بيانات القضية بما فيها المصاريف الجديدة باستخدام fetchAPI
+        const [allCases, updates, installments, files, expenses] = await Promise.all([
             API.getCases(),
             API.getUpdates(currentCaseId),
             API.getInstallments(currentCaseId),
-            API.getFiles(currentCaseId)
+            API.getFiles(currentCaseId),
+            fetchAPI(`/api/expenses?case_id=${currentCaseId}`) 
         ]);
 
         caseObj = (allCases || []).find(c => c.id == currentCaseId);
@@ -31,11 +33,12 @@ async function loadCaseFullDetails() {
         }
 
         renderHeaderAndSummary();
-        renderAIAnalysis(); // الدالة الجديدة الخاصة بالذكاء الاصطناعي
+        renderAIAnalysis(); 
         renderTimeline(updates || []);
         renderPayments(installments || []);
+        renderExpenses(expenses || []);
         renderFiles(files || []);
-        calculateFinances(installments || []);
+        calculateFinances(installments || [], expenses || []);
         
         // تعبئة نموذج التعديل بالبيانات الحالية
         populateEditForm();
@@ -74,15 +77,12 @@ function renderAIAnalysis() {
     const aiCard = document.getElementById('ai-analysis-card');
     if (!aiCard) return;
 
-    // التحقق من وجود كيانات ذكاء اصطناعي محفوظة في القضية
     if (caseObj.ai_entities && Object.keys(caseObj.ai_entities).length > 0) {
         const ai = caseObj.ai_entities;
         
-        // عرض ملخص الوقائع
         const summaryEl = document.getElementById('ai-facts_summary');
         if (summaryEl) summaryEl.innerText = ai.facts_summary || 'لم يتمكن الذكاء الاصطناعي من استخراج ملخص واضح.';
 
-        // عرض الأسماء
         const namesEl = document.getElementById('ai-names');
         if (namesEl) {
             namesEl.innerHTML = (ai.names && Array.isArray(ai.names) && ai.names.length > 0) 
@@ -90,7 +90,6 @@ function renderAIAnalysis() {
                 : '<span class="text-muted small">لم يتم اكتشاف أسماء محددة</span>';
         }
 
-        // عرض التواريخ
         const datesEl = document.getElementById('ai-dates');
         if (datesEl) {
             datesEl.innerHTML = (ai.dates && Array.isArray(ai.dates) && ai.dates.length > 0) 
@@ -98,7 +97,6 @@ function renderAIAnalysis() {
                 : '<span class="text-muted small">لم يتم اكتشاف تواريخ</span>';
         }
 
-        // عرض المواد القانونية
         const legalEl = document.getElementById('ai-legal_articles');
         if (legalEl) {
             legalEl.innerHTML = (ai.legal_articles && Array.isArray(ai.legal_articles) && ai.legal_articles.length > 0) 
@@ -106,16 +104,15 @@ function renderAIAnalysis() {
                 : '<span class="text-muted small">لم يتم اكتشاف إشارات قانونية</span>';
         }
 
-        // إظهار البطاقة
         aiCard.classList.remove('d-none');
     } else {
-        // إخفاء البطاقة إذا لم يكن هناك تحليل
         aiCard.classList.add('d-none');
     }
 }
 
 function renderTimeline(updates) {
     const container = document.getElementById('timeline-container');
+    if (!container) return;
     if (!updates || updates.length === 0) {
         container.innerHTML = '<div class="text-center p-4 text-muted small"><i class="fas fa-history fa-2x mb-2 opacity-50 d-block"></i>لا يوجد وقائع أو جلسات مسجلة حتى الآن.</div>';
         return;
@@ -138,6 +135,7 @@ function renderTimeline(updates) {
 
 function renderPayments(installments) {
     const container = document.getElementById('payments-container');
+    if (!container) return;
     if (!installments || installments.length === 0) {
         container.innerHTML = '<div class="text-center p-4 text-muted small"><i class="fas fa-file-invoice-dollar fa-2x mb-2 opacity-50 d-block"></i>لا توجد دفعات مسجلة.</div>';
         return;
@@ -146,15 +144,35 @@ function renderPayments(installments) {
         <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 ${i.status === 'مدفوعة' ? 'border-success' : 'border-warning'}">
             <div>
                 <b class="fs-5 text-navy">${Number(i.amount).toLocaleString()} د.أ</b>
-                <small class="text-muted d-block"><i class="fas fa-calendar-alt"></i> التاريح: ${new Date(i.due_date).toLocaleDateString('ar-EG')}</small>
+                <small class="text-muted d-block"><i class="fas fa-calendar-alt"></i> التاريخ: ${new Date(i.due_date).toLocaleDateString('ar-EG')}</small>
             </div>
             <span class="badge ${i.status === 'مدفوعة' ? 'bg-success' : 'bg-warning text-dark'}">${i.status}</span>
         </div>
     `).join('');
 }
 
+function renderExpenses(expenses) {
+    const container = document.getElementById('expenses-container');
+    if (!container) return;
+    if (!expenses || expenses.length === 0) {
+        container.innerHTML = '<div class="text-center p-4 text-muted small"><i class="fas fa-hand-holding-usd fa-2x mb-2 opacity-50 d-block"></i>لا توجد مصاريف مسجلة.</div>';
+        return;
+    }
+    container.innerHTML = expenses.map(e => `
+        <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-danger">
+            <div>
+                <b class="fs-5 text-navy">${Number(e.amount).toLocaleString()} د.أ</b>
+                <small class="text-muted d-block mt-1"><i class="fas fa-tag text-danger"></i> ${e.description}</small>
+                <small class="text-muted d-block"><i class="fas fa-calendar-alt"></i> التاريخ: ${e.expense_date ? new Date(e.expense_date).toLocaleDateString('ar-EG') : new Date(e.created_at).toLocaleDateString('ar-EG')}</small>
+            </div>
+            <span class="badge bg-soft-danger text-danger border border-danger"><i class="fas fa-minus"></i> مصروف</span>
+        </div>
+    `).join('');
+}
+
 function renderFiles(files) {
     const container = document.getElementById('files-container');
+    if (!container) return;
     if (!files || files.length === 0) {
         container.innerHTML = '<div class="col-12 text-center p-4 text-muted small"><i class="fas fa-folder-open fa-2x mb-2 opacity-50 d-block"></i>الأرشيف فارغ.</div>';
         return;
@@ -170,13 +188,17 @@ function renderFiles(files) {
     `).join('');
 }
 
-function calculateFinances(installments) {
+function calculateFinances(installments, expenses) {
     const totalPaid = (installments || []).filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + Number(i.amount), 0);
+    const totalExpenses = (expenses || []).reduce((sum, e) => sum + Number(e.amount), 0);
     const agreedFees = Number(caseObj.total_agreed_fees) || 0;
     
     document.getElementById('sum-agreed').innerText = agreedFees.toLocaleString();
     document.getElementById('sum-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('sum-rem').innerText = (agreedFees - totalPaid).toLocaleString();
+    
+    const expEl = document.getElementById('sum-expenses');
+    if (expEl) expEl.innerText = totalExpenses.toLocaleString();
 }
 
 // ==========================================
@@ -263,6 +285,31 @@ async function savePayment(event) {
         await loadCaseFullDetails();
     } else {
         showAlert(res?.error || 'حدث خطأ أثناء الحفظ', 'danger');
+    }
+}
+
+async function saveExpense(event) {
+    event.preventDefault();
+    const data = {
+        case_id: currentCaseId,
+        amount: Number(document.getElementById('exp_amount').value),
+        description: document.getElementById('exp_description').value,
+        expense_date: document.getElementById('exp_date').value
+    };
+
+    // استخدام fetchAPI مباشرة للوصول إلى /api/expenses وتجاوز api.js
+    try {
+        const res = await fetchAPI('/api/expenses', 'POST', data);
+        if(res && !res.error) {
+            closeModal('expenseModal');
+            document.getElementById('expenseForm').reset();
+            showAlert('تم تسجيل المصروف بنجاح', 'success');
+            await loadCaseFullDetails();
+        } else {
+            showAlert(res?.error || 'حدث خطأ أثناء الحفظ', 'danger');
+        }
+    } catch(e) {
+        showAlert('تعذر الاتصال بالخادم', 'danger');
     }
 }
 
