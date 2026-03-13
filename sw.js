@@ -49,10 +49,10 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// حدث الجلب (Fetch) - استراتيجية الشبكة أولاً (Network First) للتطبيقات الديناميكية
+// حدث الجلب (Fetch) - استراتيجية الشبكة أولاً للتطبيقات الديناميكية
 self.addEventListener('fetch', event => {
-    // نتجاهل الطلبات التي ليست من نوع GET (مثل POST لرفع الملفات أو حفظ البيانات)
-    if (event.request.method !== 'GET') return;
+    // نتجاهل الطلبات التي ليست GET والطلبات التي لا تبدأ بـ http/https (مثل إضافات المتصفح)
+    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
     event.respondWith(
         fetch(event.request)
