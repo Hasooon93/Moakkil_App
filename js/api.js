@@ -10,15 +10,19 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
 
     try {
         const res = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
-        // إذا كان السيرفر معلق (500)
+        const data = await res.json();
+        
         if (!res.ok) {
-            console.error(`🔴 Server Error on ${endpoint}`);
-            return []; // نرجع مصفوفة فارغة بدل الانهيار
+            if (res.status === 401) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+            return null;
         }
-        return await res.json();
+        return data;
     } catch (e) {
-        console.error(`❌ Connection Error on ${endpoint}:`, e.message);
-        return []; 
+        console.error("❌ API Error:", endpoint, e.message);
+        return null;
     }
 }
 
