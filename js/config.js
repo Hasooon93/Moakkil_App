@@ -7,4 +7,3 @@ const CONFIG = {
     TOKEN_KEY: "moakkil_v2_token",
     USER_KEY: "moakkil_v2_user",
     FIRM_KEY: "moakkil_v2_firm_id"
-};
