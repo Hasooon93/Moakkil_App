@@ -164,45 +164,35 @@
                 <div class="modal-body">
                     <form id="caseForm" onsubmit="saveCase(event)">
                         <h6 class="fw-bold text-primary border-bottom pb-1">البيانات الأساسية</h6>
-                        <select id="case_client_id" class="form-select mb-2" required><option value="">جاري تحميل الموكلين...</option></select>
-                        <input type="text" id="case_internal_id" class="form-control mb-2" placeholder="رقم الملف الداخلي في المكتب *" required>
-                        <input type="text" id="case_access_pin" class="form-control mb-3 border-warning" placeholder="رمز PIN سري ليدخل به الموكل (مثال: 1234) *" required>
+                        <select id="case_client_id" class="form-select mb-2" required><option value="">جاري التحميل...</option></select>
+                        <input type="text" id="case_internal_id" class="form-control mb-2" placeholder="رقم الملف الداخلي *" required>
+                        <input type="text" id="case_access_pin" class="form-control mb-3 border-warning" placeholder="رمز PIN للموكل *" required>
                         
                         <h6 class="fw-bold text-primary border-bottom pb-1 mt-3">بيانات المحكمة والخصوم</h6>
-                        <input type="text" id="case_type" class="form-control mb-2" placeholder="نوع الدعوى (مثال: عمالية، مطالبة مالية) *" required>
+                        <input type="text" id="case_type" class="form-control mb-2" placeholder="نوع الدعوى *" required>
                         <input type="text" id="case_opponent_name" class="form-control mb-2" placeholder="اسم الخصم">
                         <input type="text" id="case_current_court" class="form-control mb-2" placeholder="المحكمة الحالية">
-                        <input type="text" id="case_current_judge" class="form-control mb-3" placeholder="اسم القاضي أو الهيئة">
+                        <input type="text" id="case_current_judge" class="form-control mb-3" placeholder="اسم القاضي">
 
-                        <h6 class="fw-bold text-danger border-bottom pb-1 mt-3">التفاصيل المؤسسية الدقيقة</h6>
-                        <input type="text" id="case_opponent_lawyer" class="form-control mb-2" placeholder="محامي الخصم (الاسم ورقم الهاتف)">
-                        <input type="text" id="case_poa_details" class="form-control mb-2" placeholder="تفاصيل الوكالة (الرقم، التاريخ، المرجع)">
+                        <h6 class="fw-bold text-danger border-bottom pb-1 mt-3">التفاصيل المؤسسية</h6>
+                        <input type="text" id="case_opponent_lawyer" class="form-control mb-2" placeholder="محامي الخصم">
+                        <input type="text" id="case_poa_details" class="form-control mb-2" placeholder="تفاصيل الوكالة">
                         <div class="row g-2 mb-2">
-                            <div class="col-6">
-                                <label class="small text-muted fw-bold">تاريخ سقوط الحق</label>
-                                <input type="date" id="case_deadline_date" class="form-control border-danger">
-                            </div>
-                            <div class="col-6">
-                                <label class="small text-muted fw-bold">نسبة النجاح (%)</label>
-                                <input type="number" id="case_success_probability" class="form-control" min="0" max="100" placeholder="مثال: 80">
-                            </div>
+                            <div class="col-6"><input type="date" id="case_deadline_date" class="form-control border-danger"></div>
+                            <div class="col-6"><input type="number" id="case_success_probability" class="form-control" placeholder="نسبة النجاح%"></div>
                         </div>
-                        <select id="case_parent_case_id" class="form-select mb-3">
-                            <option value="">ارتباط بقضية سابقة (اختياري)...</option>
-                        </select>
+                        <select id="case_parent_case_id" class="form-select mb-3"><option value="">ارتباط بقضية سابقة...</option></select>
 
                         <h6 class="fw-bold text-success border-bottom pb-1 mt-3">المالية والإدارة</h6>
                         <input type="number" id="case_claim_amount" class="form-control mb-2" placeholder="قيمة المطالبة">
-                        <input type="number" id="case_agreed_fees" class="form-control mb-2" placeholder="الأتعاب الكلية المتفق عليها">
+                        <input type="number" id="case_agreed_fees" class="form-control mb-2" placeholder="الأتعاب المتفق عليها">
                         
                         <div id="case-assign-wrapper" class="mb-2">
                             <label class="small text-muted fw-bold mb-1"><i class="fas fa-users"></i> فريق العمل (اختر محامي أو أكثر)</label>
-                            <div id="case_assigned_lawyers_container" class="border p-2 rounded bg-light shadow-inner" style="max-height: 120px; overflow-y: auto;">
-                                <small class="text-muted">جاري التحميل...</small>
-                            </div>
+                            <div id="case_assigned_lawyers_container" class="border p-2 rounded bg-light shadow-inner" style="max-height: 120px; overflow-y: auto;"></div>
                         </div>
                         
-                        <button type="submit" class="btn-primary-custom w-100 mt-3">حفظ ملف القضية المتقدم</button>
+                        <button type="submit" class="btn-primary-custom w-100 mt-3">حفظ ملف القضية</button>
                     </form>
                 </div>
             </div>
@@ -227,9 +217,8 @@
                             <option value="مهمة مكتبية">مهمة مكتبية / صياغة</option>
                         </select>
                         <div id="appt-assign-wrapper" class="mb-3">
-                            <select id="appt_assigned_to" class="form-select">
-                                <option value="">إسناد إلى موظف (اختياري)...</option>
-                            </select>
+                            <label class="small text-muted fw-bold mb-1">إسناد الموعد إلى (اختر شخص أو أكثر)</label>
+                            <div id="appt_assigned_to_container" class="border p-2 rounded bg-light shadow-inner" style="max-height: 120px; overflow-y: auto;"></div>
                         </div>
                         <button type="submit" class="btn btn-warning w-100 fw-bold text-dark rounded-3 py-2">حفظ الموعد</button>
                     </form>
@@ -256,6 +245,38 @@
                             <option value="مدير">مدير نظام</option>
                         </select>
                         <button type="submit" class="btn-primary-custom w-100">تسجيل الموظف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editStaffModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-warning text-dark">تعديل بيانات الموظف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editStaffForm" onsubmit="updateStaffDetails(event)">
+                        <input type="hidden" id="edit_staff_id">
+                        <label class="small text-muted fw-bold">الاسم الكامل</label>
+                        <input type="text" id="edit_staff_full_name" class="form-control mb-2" required>
+                        
+                        <label class="small text-muted fw-bold">اسم المستخدم (للدخول)</label>
+                        <input type="text" id="edit_staff_username" class="form-control mb-2" required>
+                        
+                        <label class="small text-muted fw-bold">كلمة المرور الجديدة (اختياري)</label>
+                        <input type="password" id="edit_staff_password" class="form-control mb-2" placeholder="اتركه فارغاً إذا لم ترد تغييره">
+                        
+                        <label class="small text-muted fw-bold">الصلاحية</label>
+                        <select id="edit_staff_role" class="form-select mb-3">
+                            <option value="محامي">محامي</option>
+                            <option value="سكرتاريا">سكرتاريا</option>
+                            <option value="مدير">مدير نظام</option>
+                        </select>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold">حفظ التعديلات</button>
                     </form>
                 </div>
             </div>
