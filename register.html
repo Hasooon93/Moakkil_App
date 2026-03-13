@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تأسيس مكتب جديد | Super Admin</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #0f172a; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .register-card { background: #1e293b; color: white; border-radius: 20px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid #334155; }
+        .form-control { background: #0f172a; border: 1px solid #334155; color: white; padding: 12px; border-radius: 10px; }
+        .form-control:focus { background: #0f172a; border-color: #64ffda; color: white; box-shadow: none; }
+        .form-control::placeholder { color: #64748b; }
+        .btn-super { background: #64ffda; color: #0f172a; font-weight: 800; border: none; padding: 12px; border-radius: 10px; transition: 0.3s; }
+        .btn-super:hover { background: #34d399; transform: translateY(-2px); }
+        .text-accent { color: #64ffda; }
+    </style>
+</head>
+<body>
+
+    <div class="register-card">
+        <div class="text-center mb-4">
+            <i class="fas fa-shield-alt text-accent fs-1 mb-2"></i>
+            <h4 class="fw-bold">بوابة النظام الأساسي (SaaS)</h4>
+            <p class="text-muted small">إضافة مكتب محاماة جديد كمستأجر (Tenant)</p>
+        </div>
+
+        <form id="superRegisterForm" onsubmit="handleSuperRegister(event)">
+            <div class="mb-4 pb-3 border-bottom border-secondary">
+                <label class="form-label text-accent fw-bold small"><i class="fas fa-key me-1"></i> كلمة مرور المالك (Super Admin)</label>
+                <input type="password" id="reg_super_pass" class="form-control" placeholder="أدخل الرمز السري الأساسي" required>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-8">
+                    <label class="form-label text-light small">اسم المكتب / الشركة</label>
+                    <input type="text" id="reg_firm_name" class="form-control" placeholder="مثال: مكتب العدالة للمحاماة" required>
+                </div>
+                <div class="col-4">
+                    <label class="form-label text-light small">الحد الأقصى للموظفين</label>
+                    <input type="number" id="reg_max_users" class="form-control" placeholder="مثال: 5" required>
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label text-light small">اسم المدير الرئيسي</label>
+                <input type="text" id="reg_admin_name" class="form-control" placeholder="الاسم الكامل للمدير" required>
+            </div>
+
+            <div class="row g-2 mb-4">
+                <div class="col-6">
+                    <label class="form-label text-light small">رقم هاتف المدير (للدخول)</label>
+                    <input type="text" id="reg_admin_phone" class="form-control" placeholder="0790000000" required>
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-light small">معرف تيليجرام (اختياري)</label>
+                    <input type="text" id="reg_telegram_id" class="form-control" placeholder="123456789">
+                </div>
+            </div>
+
+            <button type="submit" id="reg_btn" class="btn btn-super w-100"><i class="fas fa-plus-circle me-1"></i> إنشاء المكتب والمدير</button>
+        </form>
+        
+        <div id="reg_msg" class="text-center mt-3 small fw-bold"></div>
+    </div>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/register.js"></script>
+</body>
+</html>
