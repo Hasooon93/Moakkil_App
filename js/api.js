@@ -1,4 +1,5 @@
-// js/api.js - المحرك الموحد المحدث لحل أخطاء القيود والأرشفة
+// js/api.js - المحرك الموحد المحدث
+
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
     const headers = {
@@ -28,18 +29,33 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
 }
 
 const API = {
+    // الموكلين
     getClients: () => fetchAPI('/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
+    
+    // القضايا
     getCases: () => fetchAPI('/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
+    
+    // الموظفين (تم استرجاعها)
     getStaff: () => fetchAPI('/api/users'),
+    addStaff: (data) => fetchAPI('/api/users', 'POST', data),
+    
+    // المواعيد والمهام
     getAppointments: () => fetchAPI('/api/appointments'),
+    addAppointment: (data) => fetchAPI('/api/appointments', 'POST', data),
+    
+    // المالية
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
+    
+    // الوقائع
     getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=${caseId}`),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
-    getFiles: (caseId) => fetchAPI(`/api/files?case_id=${caseId}`),
     
+    // الأرشيف والذكاء الاصطناعي
+    askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
+    getFiles: (caseId) => fetchAPI(`/api/files?case_id=${caseId}`),
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
         const firmId = localStorage.getItem(CONFIG.FIRM_KEY);
@@ -84,4 +100,5 @@ const API = {
         });
     }
 };
+
 console.log("✅ API Engine Ready");

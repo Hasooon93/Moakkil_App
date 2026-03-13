@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم مع صلاحيات صارمة جداً (Strict RBAC)
+// js/app.js - محرك لوحة التحكم (مطور ومستقر مع الصلاحيات الصارمة)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -9,38 +9,47 @@ window.onload = async () => {
         return;
     }
     
+    // 1. إعداد معلومات المستخدم (الشريط العلوي، الترحيب، الملف الشخصي)
+    setupUserInfo();
+
+    // 2. إعداد الصلاحيات وإخفاء/إظهار العناصر
+    applyRoleBasedUI();
+
+    // 3. جلب البيانات
+    await loadAllData();
+};
+
+function setupUserInfo() {
+    const roleAr = getRoleNameInArabic(currentUser.role);
+    const userName = currentUser.full_name || 'مستخدم';
+    
     const welcomeName = document.getElementById('welcome-name');
-    const welcomeRole = document.getElementById('welcome-role');
+    const welcomeFirm = document.getElementById('welcome-firm');
+    if (welcomeName) welcomeName.innerText = userName;
+    if (welcomeFirm) welcomeFirm.innerText = `المنصب: ${roleAr}`;
+    
     const topUserName = document.getElementById('top-user-name');
     const topAvatar = document.getElementById('top-user-avatar');
-    
-    if (welcomeName) welcomeName.innerText = currentUser.full_name;
-    if (welcomeRole) welcomeRole.innerText = `المنصب: ${getRoleNameInArabic(currentUser.role)}`;
-    if (topUserName) topUserName.innerText = currentUser.full_name;
-    if (topAvatar) topAvatar.innerText = currentUser.full_name.charAt(0);
-
-    applyRoleBasedUI();
+    if (topUserName) topUserName.innerText = userName;
+    if (topAvatar) topAvatar.innerText = userName.charAt(0).toUpperCase();
 
     const profName = document.getElementById('prof-name');
     const profRole = document.getElementById('prof-role');
-    if(profName) profName.innerText = currentUser.full_name;
-    if(profRole) profRole.innerText = getRoleNameInArabic(currentUser.role);
-
-    await loadAllData();
-};
+    if (profName) profName.innerText = userName;
+    if (profRole) profRole.innerText = roleAr;
+}
 
 function getRoleNameInArabic(role) {
     if (role === 'admin' || role === 'مدير') return 'مدير النظام';
     if (role === 'secretary' || role === 'سكرتاريا') return 'سكرتاريا';
     if (role === 'lawyer' || role === 'محامي') return 'محامي';
-    return role;
+    return role || 'موظف';
 }
 
 function applyRoleBasedUI() {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
 
-    // إخفاء حقول الإسناد عن المحامي تماماً
     if (isLawyer) {
         const caseAssign = document.getElementById('case-assign-wrapper');
         const apptAssign = document.getElementById('appt-assign-wrapper');
@@ -48,7 +57,6 @@ function applyRoleBasedUI() {
         if(apptAssign) apptAssign.style.display = 'none';
     }
 
-    // إظهار الصلاحيات الخاصة بالمدير
     if (isAdmin) {
         const staffCard = document.getElementById('stat-staff-card');
         const reportsBtn = document.getElementById('admin-reports-btn');
@@ -58,7 +66,7 @@ function applyRoleBasedUI() {
 }
 
 async function loadAllData() {
-    console.log("🔄 جاري مزامنة البيانات وتطبيق الفلترة الصارمة...");
+    console.log("🔄 جاري مزامنة البيانات...");
     
     const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
         API.getClients(),
@@ -70,15 +78,14 @@ async function loadAllData() {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
 
     if (isLawyer) {
-        // المحامي يرى فقط القضايا والمواعيد التي تخصه (مسندة له أو هو من أضافها)
+        // المحامي يرى فقط ما أُسند إليه، أو ما قام هو بإنشائه (created_by)
         globalData.cases = (rawCases || []).filter(c => c.assigned_lawyer_id == currentUser.id || c.created_by == currentUser.id);
         globalData.appointments = (rawAppointments || []).filter(a => a.assigned_to == currentUser.id || a.created_by == currentUser.id);
         
-        // يرى فقط الموكلين المرتبطين بقضاياه
+        // جلب الموكلين المرتبطين بقضايا المحامي أو الذين أضافهم هو
         const myClientIds = new Set(globalData.cases.map(c => c.client_id));
-        globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id));
+        globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id) || c.created_by == currentUser.id);
     } else {
-        // المدير والسكرتاريا يرون كافة البيانات
         globalData.cases = rawCases || [];
         globalData.appointments = rawAppointments || [];
         globalData.clients = rawClients || [];
@@ -188,8 +195,10 @@ function populateSelects() {
             globalData.clients.map(c => `<option value="${c.id}">${c.full_name}</option>`).join('');
     }
     const staffOptions = globalData.staff.map(s => `<option value="${s.id}">${s.full_name} (${getRoleNameInArabic(s.role)})</option>`).join('');
+    
     const caseLawyerSelect = document.getElementById('case_assigned_lawyer');
     if(caseLawyerSelect) caseLawyerSelect.innerHTML = '<option value="">المحامي المسؤول (إسناد)...</option>' + staffOptions;
+    
     const apptAssignSelect = document.getElementById('appt_assigned_to');
     if(apptAssignSelect) apptAssignSelect.innerHTML = '<option value="">إسناد إلى موظف (اختياري)...</option>' + staffOptions;
 }
@@ -217,7 +226,10 @@ function switchView(viewId) {
     if(activeNav) activeNav.parentElement.classList.remove('text-muted');
 }
 
-// === الحفظ والاتصال بالسيرفر ===
+// ==========================================
+// دوال الحفظ والاتصال بالسيرفر 
+// ==========================================
+
 async function saveClient(event) {
     event.preventDefault();
     const data = {
@@ -225,7 +237,7 @@ async function saveClient(event) {
         phone: document.getElementById('client_phone').value,
         national_id: document.getElementById('client_national_id').value,
         email: document.getElementById('client_email').value,
-        created_by: currentUser.id // حقل إضافي لضمان ملكية الإضافة
+        created_by: currentUser.id // تم إعادتها للعمل مع التحديث الجديد
     };
     const res = await API.addClient(data);
     if(res) {
@@ -252,7 +264,7 @@ async function saveCase(event) {
         claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
         assigned_lawyer_id: assignedLawyer,
-        created_by: currentUser.id,
+        created_by: currentUser.id, // تم إعادتها
         status: 'نشطة'
     };
     const res = await API.addCase(data);
@@ -274,7 +286,7 @@ async function saveAppointment(event) {
         appt_date: document.getElementById('appt_date').value,
         type: document.getElementById('appt_type').value,
         assigned_to: assignedTo,
-        created_by: currentUser.id,
+        created_by: currentUser.id, // تم إعادتها
         status: 'مجدول'
     };
     const res = await API.addAppointment(data);
