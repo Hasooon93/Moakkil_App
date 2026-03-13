@@ -4,7 +4,7 @@ const CONFIG = {
     API_URL: "https://curly-pond-9975.hassan-alsakka.workers.dev",
     
     // رابط تطبيق جوجل ويب (Google Apps Script) لرفع وأرشفة الملفات
-    GAS_URL: "https://script.google.com/macros/s/AKfycbxOqtt2E4643aYjOcbaHPcYn6_9EM_Fs3PZB6JBP8a_CEJr-fdqn8eYTHV6eJziT3Bb/exec",
+    GAS_URL: "https://script.google.com/macros/s/AKfycbwxHOR6u00UEP-VLzFwuIICUH1ljhOWAMi8Qai4KGEKB5Khvd6aMSHk_7x_nW5G-ArQ/exec",
     
     // مفاتيح التخزين المحلي (LocalStorage)
     TOKEN_KEY: "moakkil_v2_token",
