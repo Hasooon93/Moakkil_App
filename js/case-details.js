@@ -1,4 +1,4 @@
-// js/case-details.js - محرك تفاصيل القضية والتقارير
+// js/case-details.js - محرك تفاصيل القضية والتقارير والمستندات
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -209,6 +209,9 @@ async function savePayment(event) {
     }
 }
 
+/**
+ * دالة حفظ ورفع الملف لجوجل درايف وتسجيله بالقاعدة
+ */
 async function saveFile(event) {
     event.preventDefault();
     const fileInput = document.getElementById('file_input');
@@ -219,28 +222,33 @@ async function saveFile(event) {
     const file = fileInput.files[0];
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع لجوجل...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع والأرشفة...';
 
     try {
-        // 1. رفع الملف لجوجل درايف
+        // 1. رفع الملف لجوجل درايف واستلام الرابط
         const driveRes = await API.uploadToDrive(file, caseObj.case_internal_id);
         
         if(driveRes && driveRes.url) {
-            // 2. حفظ سجل الملف في قاعدة البيانات
-            await API.addFileRecord({
+            // 2. حفظ سجل الملف في قاعدة البيانات لربطه بالقضية
+            const dbRes = await API.addFileRecord({
                 case_id: currentCaseId,
                 file_name: titleInput || file.name,
                 file_type: file.type,
-                drive_file_id: driveRes.url // حفظ الرابط كمعرف
+                drive_file_id: driveRes.url // حفظ الرابط القادم من جوجل
             });
             
-            closeModal('fileModal');
-            document.getElementById('fileForm').reset();
-            showAlert('تم أرشفة الملف بنجاح', 'success');
-            await loadCaseFullDetails();
+            // 3. التحقق من الحفظ بنجاح وتحديث الواجهة
+            if(dbRes) {
+                closeModal('fileModal');
+                document.getElementById('fileForm').reset();
+                showAlert('تم أرشفة الملف بنجاح', 'success');
+                await loadCaseFullDetails(); // إعادة تحميل بيانات القضية ليظهر الملف فوراً في الأرشيف
+            } else {
+                throw new Error("تم الرفع لجوجل، لكن حدث خطأ أثناء الحفظ في قاعدة البيانات!");
+            }
         }
     } catch (err) {
-        alert("فشل رفع الملف: " + err.message);
+        alert("فشل العملية: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> بدء الرفع والأرشفة';
@@ -249,7 +257,6 @@ async function saveFile(event) {
 
 /**
  * تجهيز نافذة التعديل وحفظ التعديلات
- * ملاحظة: نستخدم دالة fetchAPI مباشرة للقيام بـ PATCH
  */
 function openEditModal() {
     document.getElementById('edit_internal_id').value = caseObj.case_internal_id || '';
@@ -280,7 +287,6 @@ async function updateCaseDetails(event) {
         total_agreed_fees: Number(document.getElementById('edit_fees').value) || 0
     };
 
-    // بما أننا نستخدم Supabase REST، يمكننا إرسال طلب PATCH مباشرة لتحديث الصف
     const res = await fetchAPI(`/api/cases?id=eq.${currentCaseId}`, 'PATCH', updateData);
     
     if (res) {
@@ -299,7 +305,6 @@ async function updateCaseDetails(event) {
 function copyDeepLink() {
     if (!caseObj || !caseObj.client_id) return;
     
-    // تكوين الرابط لبوابة الموكل (Client Portal)
     const baseUrl = window.location.origin + window.location.pathname.replace('case-details.html', '');
     const link = `${baseUrl}client.html?id=${caseObj.client_id}`;
     
@@ -311,14 +316,19 @@ function copyDeepLink() {
 }
 
 function generatePDF() {
-    // طباعة مبسطة عبر نافذة المتصفح (يمكن تطويرها لاحقاً لـ jsPDF)
     window.print();
 }
 
-function openModal(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
+function openModal(id) { 
+    new bootstrap.Modal(document.getElementById(id)).show(); 
+}
+
 function closeModal(id) {
-    const m = bootstrap.Modal.getInstance(document.getElementById(id));
-    if (m) m.hide();
+    const el = document.getElementById(id);
+    if(el) {
+        const m = bootstrap.Modal.getInstance(el);
+        if (m) m.hide();
+    }
     document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 }
 
