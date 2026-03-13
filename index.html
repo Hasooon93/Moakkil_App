@@ -3,89 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دخول نظام موكّل 2.0</title>
+    <meta name="theme-color" content="#1a237e">
+    <meta name="description" content="موكّل - نظام إدارة مكاتب المحاماة الأذكى والأسرع">
+    <title>موكّل | نظام إدارة المكاتب القانونية</title>
     
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        :root { --navy: #1a237e; --accent: #ffd700; }
-        body { font-family: 'Cairo', sans-serif; background-color: #f4f7f9; height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-card { width: 100%; max-width: 400px; padding: 2rem; border-radius: 20px; background: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .brand-logo { font-size: 2.5rem; font-weight: 900; color: var(--navy); text-align: center; margin-bottom: 0.5rem; }
-        .nav-pills .nav-link { color: var(--navy); font-weight: 700; border-radius: 10px; }
-        .nav-pills .nav-link.active { background-color: var(--navy); color: white; }
-        .form-control { border-radius: 12px; padding: 12px; border: 2px solid #eef2f6; font-weight: 700; text-align: center; }
-        .btn-navy { background-color: var(--navy); color: white; border-radius: 12px; padding: 12px; font-weight: 700; width: 100%; transition: 0.3s; }
-        .btn-navy:hover { background-color: #0d1440; color: white; }
+        :root { 
+            --navy: #1a237e; 
+            --accent: #ffd700; 
+            --light-bg: #f4f7f9;
+        }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            overflow-x: hidden;
+        }
+        
+        /* Navbar */
+        .navbar-custom {
+            background-color: #ffffff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 15px 0;
+        }
+        .navbar-brand {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--navy) !important;
+        }
+        .btn-login {
+            background-color: var(--navy);
+            color: white;
+            border-radius: 12px;
+            padding: 8px 25px;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+        .btn-login:hover {
+            background-color: #0d1440;
+            color: var(--accent);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, var(--navy) 0%, #1a3a5a 100%);
+            color: white;
+            padding: 100px 0 80px;
+            text-align: center;
+        }
+        .hero-title {
+            font-weight: 900;
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        .hero-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 40px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.8;
+        }
+        .btn-hero {
+            background-color: var(--accent);
+            color: var(--navy);
+            border-radius: 12px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            text-decoration: none;
+            transition: 0.3s;
+            display: inline-block;
+        }
+        .btn-hero:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 215, 0, 0.3);
+            color: var(--navy);
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 80px 0;
+            background-color: white;
+        }
+        .section-title {
+            font-weight: 900;
+            color: var(--navy);
+            margin-bottom: 50px;
+            text-align: center;
+        }
+        .feature-card {
+            padding: 30px;
+            border-radius: 20px;
+            background: var(--light-bg);
+            border: 1px solid #eef2f6;
+            height: 100%;
+            transition: 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--navy);
+            margin-bottom: 20px;
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            padding: 80px 0;
+            background-color: var(--light-bg);
+        }
+        .pricing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 2px solid transparent;
+            height: 100%;
+            position: relative;
+            transition: 0.3s;
+        }
+        .pricing-card.popular {
+            border-color: var(--navy);
+            transform: scale(1.05);
+        }
+        .pricing-card.popular::before {
+            content: 'الأكثر طلباً';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: var(--navy);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.9rem;
+        }
+        .price {
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--navy);
+        }
+        .currency { font-size: 1.2rem; }
+        .duration { color: #6c757d; font-size: 1rem; }
+        .pricing-list {
+            list-style: none;
+            padding: 0;
+            margin: 30px 0;
+            text-align: right;
+        }
+        .pricing-list li {
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .pricing-list li i {
+            color: #198754;
+            margin-left: 10px;
+        }
+        .btn-pricing {
+            width: 100%;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 700;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--navy);
+            color: white;
+            padding: 40px 0 20px;
+            text-align: center;
+        }
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
-    <div class="login-card">
-        <div class="brand-logo">موكّل</div>
-        <p class="text-center text-muted mb-4 small">نظام إدارة المكاتب القانونية</p>
-
-        <ul class="nav nav-pills nav-fill mb-4 bg-light rounded-3 p-1" id="loginTabs">
-            <li class="nav-item">
-                <button class="nav-link active" onclick="toggleLogin('admin', this)">المدير</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="toggleLogin('staff', this)">الموظفين</button>
-            </li>
-        </ul>
-
-        <div id="admin-login-view">
-            <div id="phone-section">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">رقم الهاتف</label>
-                    <input type="tel" id="phone" class="form-control" placeholder="07XXXXXXXX">
-                </div>
-                <button onclick="requestOTP()" class="btn btn-navy">إرسال كود الدخول</button>
-            </div>
-
-            <div id="otp-section" class="d-none">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">كود التحقق (Telegram)</label>
-                    <input type="text" id="otp" class="form-control" placeholder="------" maxlength="6">
-                </div>
-                <button onclick="verifyOTP()" class="btn btn-success w-100 py-3 rounded-3 fw-bold">تأكيد ودخول</button>
-                <button onclick="location.reload()" class="btn btn-link btn-sm w-100 mt-2 text-decoration-none text-muted">تغيير الرقم</button>
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-balance-scale text-warning me-2"></i>موكّل</a>
+            <div class="d-flex">
+                <a href="login.html" class="btn btn-login"><i class="fas fa-sign-in-alt me-2"></i>تسجيل الدخول</a>
             </div>
         </div>
+    </nav>
 
-        <div id="staff-login-view" class="d-none">
-            <div class="mb-2">
-                <label class="form-label fw-bold">اسم المستخدم</label>
-                <input type="text" id="username" class="form-control" placeholder="Username">
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">كلمة المرور</label>
-                <input type="password" id="password" class="form-control" placeholder="Password">
-            </div>
-            <button onclick="staffLogin()" class="btn btn-navy">دخول فريق العمل</button>
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">أدر مكتب المحاماة الخاص بك بذكاء وسرعة</h1>
+            <p class="hero-subtitle">نظام "موكّل" هو الحل السحابي المتكامل لإدارة القضايا، الموكلين، الجلسات، والشؤون المالية، مع بوابة مخصصة لعملائك لتبقيهم على اطلاع دائم بكل شفافية وموثوقية.</p>
+            <a href="#pricing" class="btn btn-hero">ابدأ الآن واختر خطتك</a>
         </div>
-    </div>
+    </section>
+
+    <section class="features-section">
+        <div class="container">
+            <h2 class="section-title">لماذا تختار نظام موكّل؟</h2>
+            <div class="row g-4 text-center">
+                <div class="col-md-3 col-sm-6">
+                    <div class="feature-card">
+                        <i class="fas fa-folder-open feature-icon"></i>
+                        <h5 class="fw-bold">إدارة شاملة للقضايا</h5>
+                        <p class="text-muted small mb-0">تتبع دقيق لكل ملف، الجلسات القادمة، الوقائع، والقرارات في مكان واحد آمن.</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="feature-card">
+                        <i class="fas fa-users feature-icon"></i>
+                        <h5 class="fw-bold">بوابة الموكلين</h5>
+                        <p class="text-muted small mb-0">امنح موكليك وصولاً آمناً برقم PIN مخصص لمتابعة قضاياهم والاطمئنان على سير العمل.</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="feature-card">
+                        <i class="fas fa-chart-pie feature-icon"></i>
+                        <h5 class="fw-bold">محاسبة وتقارير</h5>
+                        <p class="text-muted small mb-0">ضبط الأتعاب، تتبع الدفعات المحصلة والمتبقية، وتقارير مالية دقيقة بضغطة زر.</p>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="feature-card">
+                        <i class="fas fa-brain feature-icon"></i>
+                        <h5 class="fw-bold">مساعد قانوني AI</h5>
+                        <p class="text-muted small mb-0">باحث قانوني مدعوم بالذكاء الاصطناعي لاستخراج النصوص وصياغة اللوائح بسرعة.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <h2 class="section-title">خطط أسعار مرنة تناسب طموحك</h2>
+            <div class="row g-4 justify-content-center">
+                
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card text-center">
+                        <h4 class="fw-bold text-navy mb-3">الاشتراك الشهري</h4>
+                        <div class="price mb-4">
+                            <span class="currency">د.أ</span>35<span class="duration">/شهرياً</span>
+                        </div>
+                        <ul class="pricing-list">
+                            <li><i class="fas fa-check-circle"></i> عدد لا محدود من القضايا</li>
+                            <li><i class="fas fa-check-circle"></i> عدد لا محدود من الموكلين</li>
+                            <li><i class="fas fa-check-circle"></i> حسابات متعددة للموظفين</li>
+                            <li><i class="fas fa-check-circle"></i> بوابة إلكترونية للموكلين</li>
+                            <li><i class="fas fa-check-circle"></i> دعم فني خلال أوقات الدوام</li>
+                        </ul>
+                        <a href="https://wa.me/YOUR_PHONE_NUMBER" target="_blank" class="btn btn-outline-primary btn-pricing">اشترك الآن</a>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card popular text-center">
+                        <h4 class="fw-bold text-navy mb-3">الاشتراك السنوي</h4>
+                        <div class="price mb-4">
+                            <span class="currency">د.أ</span>350<span class="duration">/سنوياً</span>
+                        </div>
+                        <ul class="pricing-list">
+                            <li><i class="fas fa-check-circle"></i> توفير قيمة شهرين مجاناً</li>
+                            <li><i class="fas fa-check-circle"></i> جميع ميزات الباقة الشهرية</li>
+                            <li><i class="fas fa-check-circle"></i> ربط مباشر مع Google Drive</li>
+                            <li><i class="fas fa-check-circle"></i> وصول غير محدود لـ AI الباحث</li>
+                            <li><i class="fas fa-check-circle"></i> دعم فني مميز 24/7</li>
+                        </ul>
+                        <a href="https://wa.me/YOUR_PHONE_NUMBER" target="_blank" class="btn btn-login btn-pricing w-100">اشترك الآن (الأوفر)</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="mb-4">
+                <i class="fas fa-balance-scale fs-1 text-warning mb-3"></i>
+                <h4 class="fw-bold">نظام موكّل</h4>
+                <p class="small text-white-50">إدارة قانونية متطورة، سريعة، وآمنة.</p>
+            </div>
+            <hr class="border-secondary opacity-25">
+            <p class="mb-0 mt-3 small">
+                جميع الحقوق محفوظة &copy; 2026<br>
+                Powered by <a href="https://www.damascodes.com/" target="_blank">DamasCodes</a>
+            </p>
+        </div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <script src="./js/config.js"></script>
-    <script src="./js/auth.js"></script>
-
     <script>
-        // دالة التبديل بين الواجهات في صفحة الدخول
-        function toggleLogin(type, btn) {
-            document.querySelectorAll('#loginTabs .nav-link').forEach(l => l.classList.remove('active'));
-            btn.classList.add('active');
-
-            if(type === 'admin') {
-                document.getElementById('admin-login-view').classList.remove('d-none');
-                document.getElementById('staff-login-view').classList.add('d-none');
-            } else {
-                document.getElementById('admin-login-view').classList.add('d-none');
-                document.getElementById('staff-login-view').classList.remove('d-none');
-            }
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('✅ ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('⚠️ ServiceWorker registration failed: ', err);
+                    });
+            });
         }
     </script>
 </body>
