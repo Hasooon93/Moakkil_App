@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موكّل | الأدوات والحاسبات القانونية</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-light">
+    
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="#">نظام موكّل الإداري</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-3">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div>
+                <h2 class="fw-bold text-primary mb-0">الأدوات والحاسبات المالية والشرعية</h2>
+                <p class="text-muted mt-1 mb-0">حسابات دقيقة لدعم القضايا والاستشارات القانونية</p>
+            </div>
+            <a href="app.html" class="btn btn-outline-secondary px-4 fw-bold">العودة للرئيسية</a>
+        </div>
+        
+        <ul class="nav nav-pills mb-4 justify-content-center" id="calculatorsTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="loan-tab" data-bs-toggle="tab" data-bs-target="#loan" type="button" role="tab">القروض</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="compound-tab" data-bs-toggle="tab" data-bs-target="#compound" type="button" role="tab">الفائدة المركبة</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="breakeven-tab" data-bs-toggle="tab" data-bs-target="#breakeven" type="button" role="tab">نقطة التعادل</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="discount-tab" data-bs-toggle="tab" data-bs-target="#discount" type="button" role="tab">الخصم والضريبة</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="share-tab" data-bs-toggle="tab" data-bs-target="#share" type="button" role="tab">حصة الفرد</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="inheritance-tab" data-bs-toggle="tab" data-bs-target="#inheritance" type="button" role="tab">المواريث الشامل</button>
+            </li>
+        </ul>
+
+        <div class="tab-content bg-white p-4 rounded shadow-sm border" id="calculatorsTabContent">
+            
+            <div class="tab-pane fade show active" id="loan" role="tabpanel">
+                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة القروض والتمويل</h4>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">مبلغ القرض الأساسي</label>
+                        <input type="number" id="loanAmount" class="form-control bg-light" placeholder="مثال: 10000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">نسبة الفائدة السنوية (%)</label>
+                        <input type="number" id="loanRate" class="form-control bg-light" placeholder="مثال: 5">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">مدة القرض (بالأشهر)</label>
+                        <input type="number" id="loanTerm" class="form-control bg-light" placeholder="مثال: 60">
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button id="calcLoanBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
+                    </div>
+                </div>
+                <div id="loanResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
+            </div>
+
+            <div class="tab-pane fade" id="compound" role="tabpanel">
+                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة الفائدة المركبة والعوائد</h4>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">المبلغ الأساسي (رأس المال)</label>
+                        <input type="number" id="compPrincipal" class="form-control bg-light" placeholder="مثال: 5000">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">المساهمة الشهرية المتكررة</label>
+                        <input type="number" id="compAddition" class="form-control bg-light" placeholder="مثال: 100" value="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">نسبة العائد السنوي (%)</label>
+                        <input type="number" id="compRate" class="form-control bg-light" placeholder="مثال: 7">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">المدة (بالسنوات)</label>
+                        <input type="number" id="compYears" class="form-control bg-light" placeholder="مثال: 10">
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button id="calcCompBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
+                    </div>
+                </div>
+                <div id="compResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
+            </div>
+
+            <div class="tab-pane fade" id="breakeven" role="tabpanel">
+                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة نقطة التعادل التجارية</h4>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">التكاليف الثابتة الإجمالية</label>
+                        <input type="number" id="beFixedCosts" class="form-control bg-light" placeholder="مثال: 50000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">التكلفة المتغيرة للوحدة الواحدة</label>
+                        <input type="number" id="beVarCost" class="form-control bg-light" placeholder="مثال: 20">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">سعر بيع الوحدة الواحدة</label>
+                        <input type="number" id="bePrice" class="form-control bg-light" placeholder="مثال: 50">
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button id="calcBeBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
+                    </div>
+                </div>
+                <div id="beResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
+            </div>
+
+            <div class="tab-pane fade" id="discount" role="tabpanel">
+                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة الخصومات والضرائب المضافة</h4>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">المبلغ الأصلي</label>
+                        <input type="number" id="dtPrice" class="form-control bg-light" placeholder="مثال: 1000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">نسبة الخصم الممنوح (%)</label>
+                        <input type="number" id="dtDiscount" class="form-control bg-light" placeholder="مثال: 15" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">نسبة الضريبة (VAT) (%)</label>
+                        <input type="number" id="dtTax" class="form-control bg-light" placeholder="مثال: 16" value="0">
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button id="calcDtBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
+                    </div>
+                </div>
+                <div id="dtResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
+            </div>
+
+            <div class="tab-pane fade" id="share" role="tabpanel">
+                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة حصص الأفراد والشركاء</h4>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">القيمة الإجمالية المراد تقسيمها</label>
+                        <input type="number" id="shareTotal" class="form-control bg-light" placeholder="مثال: 10000">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">آلية التقسيم المتبعة</label>
+                        <div class="input-group">
+                            <select id="shareType" class="form-select bg-light" style="max-width: 150px;">
+                                <option value="count">تقسيم على (عدد)</option>
+                                <option value="percent">استخراج (نسبة %)</option>
+                            </select>
+                            <input type="number" id="shareValue" class="form-control bg-light" placeholder="مثال: 4 شركاء أو 25%">
+                        </div>
+                    </div>
+                    <div class="col-12 text-end mt-4">
+                        <button id="calcShareBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
+                    </div>
+                </div>
+                <div id="shareResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
+            </div>
+
+            <div class="tab-pane fade" id="inheritance" role="tabpanel">
+                <h4 class="mb-4 text-secondary border-bottom pb-2">محرك توزيع المواريث الشرعية</h4>
+                <p class="text-muted small mb-4">يتم الحساب وفقاً للأنصبة الشرعية متضمناً معالجة العول والتعصيب والحجب. يرجى إدخال التركة صافية (بعد سداد الديون والوصايا).</p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-danger">صافي التركة (الوعاء الإرثي)</label>
+                        <input type="number" id="inhTotal" class="form-control bg-light border-danger" placeholder="مثال: 100000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">جنس المتوفى</label>
+                        <select id="inhGender" class="form-select bg-light">
+                            <option value="male">ذكر</option>
+                            <option value="female">أنثى</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">الزوج / الزوجة (على قيد الحياة)</label>
+                        <select id="inhSpouse" class="form-select bg-light">
+                            <option value="0">لا يوجد</option>
+                            <option value="1">1 (زوجة/زوج)</option>
+                            <option value="2">2 (زوجتان)</option>
+                            <option value="3">3 (ثلاث زوجات)</option>
+                            <option value="4">4 (أربع زوجات)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">الأبناء (الذكور)</label>
+                        <input type="number" id="inhSons" class="form-control bg-light" value="0" min="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">البنات (الإناث)</label>
+                        <input type="number" id="inhDaughters" class="form-control bg-light" value="0" min="0">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">الأب (على قيد الحياة؟)</label>
+                        <select id="inhFather" class="form-select bg-light">
+                            <option value="0">متوفى</option>
+                            <option value="1">حي</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">الأم (على قيد الحياة؟)</label>
+                        <select id="inhMother" class="form-select bg-light">
+                            <option value="0">متوفاة</option>
+                            <option value="1">حية</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-12 mt-4">
+                        <h5 class="text-secondary border-bottom pb-2">طبقة الإخوة والأخوات</h5>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">إخوة أشقاء (ذكور)</label>
+                        <input type="number" id="inhBrothers" class="form-control bg-light" value="0" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">أخوات شقيقات (إناث)</label>
+                        <input type="number" id="inhSisters" class="form-control bg-light" value="0" min="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">إخوة/أخوات لأم (من الطرفين)</label>
+                        <input type="number" id="inhMaternalSiblings" class="form-control bg-light" value="0" min="0">
+                    </div>
+
+                    <div class="col-12 text-end mt-4 border-top pt-3">
+                        <button id="calcInhBtn" class="btn btn-primary px-5 fw-bold">استخراج الفريضة الشرعية</button>
+                    </div>
+                </div>
+                <div id="inhResult" class="mt-4 d-none shadow-sm"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="js/loan.js"></script>
+    <script src="js/compound.js"></script>
+    <script src="js/breakeven.js"></script>
+    <script src="js/discount.js"></script>
+    <script src="js/share.js"></script>
+    <script src="js/inheritance.js"></script>
+</body>
+</html>
