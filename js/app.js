@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم (مطور ومستقر مع الصلاحيات الصارمة)
+// js/app.js - محرك لوحة التحكم الشامل والنهائي (يدعم الحذف، التعطيل، الروابط الآمنة)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -9,13 +9,8 @@ window.onload = async () => {
         return;
     }
     
-    // 1. إعداد معلومات المستخدم (الشريط العلوي، الترحيب، الملف الشخصي)
     setupUserInfo();
-
-    // 2. إعداد الصلاحيات وإخفاء/إظهار العناصر
     applyRoleBasedUI();
-
-    // 3. جلب البيانات
     await loadAllData();
 };
 
@@ -24,9 +19,9 @@ function setupUserInfo() {
     const userName = currentUser.full_name || 'مستخدم';
     
     const welcomeName = document.getElementById('welcome-name');
-    const welcomeFirm = document.getElementById('welcome-firm');
+    const welcomeRole = document.getElementById('welcome-role'); 
     if (welcomeName) welcomeName.innerText = userName;
-    if (welcomeFirm) welcomeFirm.innerText = `المنصب: ${roleAr}`;
+    if (welcomeRole) welcomeRole.innerText = `المنصب: ${roleAr}`;
     
     const topUserName = document.getElementById('top-user-name');
     const topAvatar = document.getElementById('top-user-avatar');
@@ -67,7 +62,6 @@ function applyRoleBasedUI() {
 
 async function loadAllData() {
     console.log("🔄 جاري مزامنة البيانات...");
-    
     const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
         API.getClients(),
         API.getCases(),
@@ -78,11 +72,8 @@ async function loadAllData() {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
 
     if (isLawyer) {
-        // المحامي يرى فقط ما أُسند إليه، أو ما قام هو بإنشائه (created_by)
         globalData.cases = (rawCases || []).filter(c => c.assigned_lawyer_id == currentUser.id || c.created_by == currentUser.id);
         globalData.appointments = (rawAppointments || []).filter(a => a.assigned_to == currentUser.id || a.created_by == currentUser.id);
-        
-        // جلب الموكلين المرتبطين بقضايا المحامي أو الذين أضافهم هو
         const myClientIds = new Set(globalData.cases.map(c => c.client_id));
         globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id) || c.created_by == currentUser.id);
     } else {
@@ -125,14 +116,25 @@ function renderCasesList() {
         list.innerHTML = '<p class="text-center p-3 text-muted">لا يوجد قضايا مسجلة</p>';
         return;
     }
+    
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
+    
     list.innerHTML = globalData.cases.map(c => `
-        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-accent" onclick="viewCaseDetails('${c.id}')" style="cursor:pointer">
+        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-accent position-relative">
             <div class="d-flex justify-content-between align-items-center mb-1">
-                <h6 class="fw-bold mb-0 text-navy">${c.case_internal_id || 'بدون رقم'}</h6>
-                <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}">${c.status || 'نشطة'}</span>
+                <h6 class="fw-bold mb-0 text-navy" onclick="viewCaseDetails('${c.id}')" style="cursor:pointer; width: 70%;">${c.case_internal_id || 'بدون رقم'}</h6>
+                <div>
+                    <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}">${c.status || 'نشطة'}</span>
+                    ${isAdmin ? `<button class="btn btn-sm text-danger p-0 ms-2" onclick="deleteRecord('case', '${c.id}')" title="حذف القضية"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
             </div>
-            <small class="text-muted d-block"><i class="fas fa-user me-1"></i> ${c.mo_clients?.full_name || 'موكل غير محدد'}</small>
-            <small class="text-muted d-block"><i class="fas fa-balance-scale me-1"></i> ${c.current_court || 'محكمة غير محددة'}</small>
+            <small class="text-muted d-block" onclick="viewClientProfile('${c.client_id}')" style="cursor:pointer;"><i class="fas fa-user me-1"></i> ${c.mo_clients?.full_name || 'موكل غير محدد'}</small>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted"><i class="fas fa-balance-scale me-1"></i> ${c.current_court || 'محكمة غير محددة'}</small>
+                <button class="btn btn-sm btn-outline-info py-0 px-2 fw-bold" onclick="copyClientDeepLink('${c.public_token}')" title="نسخ رابط الموكل">
+                    <i class="fas fa-link"></i> نسخ الرابط
+                </button>
+            </div>
         </div>
     `).join('');
 }
@@ -144,12 +146,14 @@ function renderClientsList() {
         list.innerHTML = '<p class="text-center p-3 text-muted">لا يوجد موكلين مسجلين</p>';
         return;
     }
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.clients.map(c => `
         <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center">
             <div>
-                <b class="text-navy">${c.full_name}</b><br>
+                <b class="text-navy" onclick="viewClientProfile('${c.id}')" style="cursor:pointer; font-size: 1.1rem;">${c.full_name}</b><br>
                 <small class="text-muted"><i class="fas fa-phone me-1"></i> ${c.phone}</small>
             </div>
+            ${isAdmin ? `<button class="btn btn-sm text-danger p-0" onclick="deleteRecord('client', '${c.id}')" title="حذف الموكل"><i class="fas fa-trash"></i></button>` : ''}
         </div>
     `).join('');
 }
@@ -161,9 +165,13 @@ function renderAgendaList() {
         list.innerHTML = '<p class="text-center p-3 text-muted">لا توجد مواعيد مجدولة</p>';
         return;
     }
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.appointments.map(a => `
         <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-warning">
-            <h6 class="fw-bold text-navy mb-1">${a.title}</h6>
+            <div class="d-flex justify-content-between align-items-start">
+                <h6 class="fw-bold text-navy mb-1" style="width:85%">${a.title}</h6>
+                ${isAdmin || a.created_by === currentUser.id ? `<button class="btn btn-sm text-danger p-0" onclick="deleteRecord('appointment', '${a.id}')" title="حذف الموعد"><i class="fas fa-trash"></i></button>` : ''}
+            </div>
             <small class="text-muted d-block"><i class="fas fa-clock me-1 text-warning"></i> ${new Date(a.appt_date).toLocaleString('ar-EG')}</small>
             <small class="badge bg-soft-primary text-primary mt-2">${a.type}</small>
         </div>
@@ -177,15 +185,28 @@ function renderStaffList() {
         list.innerHTML = '<p class="text-center p-3 text-muted">لا يوجد موظفين</p>';
         return;
     }
-    list.innerHTML = globalData.staff.map(s => `
-        <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center">
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
+    list.innerHTML = globalData.staff.map(s => {
+        const isMainAdmin = s.id === currentUser.id;
+        const statusBadge = s.is_active === false ? '<span class="badge bg-danger">معطل</span>' : '<span class="badge bg-success">فعال</span>';
+        
+        const actionBtn = isAdmin && !isMainAdmin ? `
+            <button class="btn btn-sm ${s.is_active === false ? 'btn-success' : 'btn-warning text-dark'} p-1" onclick="toggleStaffStatus('${s.id}', ${s.is_active})" title="تغيير حالة الصلاحية">
+                <i class="fas ${s.is_active === false ? 'fa-user-check' : 'fa-user-lock'}"></i>
+            </button>
+        ` : '';
+
+        return `
+        <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center ${s.is_active === false ? 'opacity-50' : ''}">
             <div>
-                <b class="text-navy">${s.full_name}</b><br>
-                <small class="text-muted">${getRoleNameInArabic(s.role)}</small>
+                <b class="text-navy">${s.full_name}</b> ${statusBadge}<br>
+                <small class="text-muted">${getRoleNameInArabic(s.role)} - @${s.username}</small>
             </div>
-            <span class="badge bg-purple text-white">${s.username}</span>
+            <div>
+                ${actionBtn}
+            </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function populateSelects() {
@@ -194,7 +215,9 @@ function populateSelects() {
         clientSelect.innerHTML = '<option value="">اختر الموكل...</option>' + 
             globalData.clients.map(c => `<option value="${c.id}">${c.full_name}</option>`).join('');
     }
-    const staffOptions = globalData.staff.map(s => `<option value="${s.id}">${s.full_name} (${getRoleNameInArabic(s.role)})</option>`).join('');
+    
+    const activeStaff = globalData.staff.filter(s => s.is_active !== false);
+    const staffOptions = activeStaff.map(s => `<option value="${s.id}">${s.full_name} (${getRoleNameInArabic(s.role)})</option>`).join('');
     
     const caseLawyerSelect = document.getElementById('case_assigned_lawyer');
     if(caseLawyerSelect) caseLawyerSelect.innerHTML = '<option value="">المحامي المسؤول (إسناد)...</option>' + staffOptions;
@@ -237,7 +260,8 @@ async function saveClient(event) {
         phone: document.getElementById('client_phone').value,
         national_id: document.getElementById('client_national_id').value,
         email: document.getElementById('client_email').value,
-        created_by: currentUser.id // تم إعادتها للعمل مع التحديث الجديد
+        client_type: 'فرد', 
+        created_by: currentUser.id
     };
     const res = await API.addClient(data);
     if(res) {
@@ -252,7 +276,6 @@ async function saveCase(event) {
     event.preventDefault();
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     const assignedLawyer = isLawyer ? currentUser.id : (document.getElementById('case_assigned_lawyer').value || null);
-
     const data = {
         client_id: document.getElementById('case_client_id').value,
         access_pin: document.getElementById('case_access_pin').value,
@@ -264,7 +287,7 @@ async function saveCase(event) {
         claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
         assigned_lawyer_id: assignedLawyer,
-        created_by: currentUser.id, // تم إعادتها
+        created_by: currentUser.id,
         status: 'نشطة'
     };
     const res = await API.addCase(data);
@@ -280,13 +303,12 @@ async function saveAppointment(event) {
     event.preventDefault();
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     const assignedTo = isLawyer ? currentUser.id : (document.getElementById('appt_assigned_to').value || null);
-
     const data = {
         title: document.getElementById('appt_title').value,
         appt_date: document.getElementById('appt_date').value,
         type: document.getElementById('appt_type').value,
         assigned_to: assignedTo,
-        created_by: currentUser.id, // تم إعادتها
+        created_by: currentUser.id,
         status: 'مجدول'
     };
     const res = await API.addAppointment(data);
@@ -304,7 +326,9 @@ async function saveStaff(event) {
         full_name: document.getElementById('staff_full_name').value,
         username: document.getElementById('staff_username').value,
         password: document.getElementById('staff_password').value,
-        role: document.getElementById('staff_role').value
+        role: document.getElementById('staff_role').value,
+        is_active: true,
+        can_login: true
     };
     const res = await API.addStaff(data);
     if(res) {
@@ -315,9 +339,62 @@ async function saveStaff(event) {
     }
 }
 
+// ==========================================
+// الميزات الجديدة: الحذف، التفعيل/التعطيل، والروابط العميقة
+// ==========================================
+
+async function deleteRecord(type, id) {
+    if(!confirm('هل أنت متأكد من الحذف النهائي؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    
+    let res;
+    if(type === 'case') res = await API.deleteCase(id);
+    if(type === 'client') res = await API.deleteClient(id);
+    if(type === 'appointment') res = await API.deleteAppointment(id);
+    
+    if(res && res.success) {
+        showAlert('تم الحذف بنجاح', 'success');
+        await loadAllData();
+    } else {
+        showAlert('حدث خطأ أثناء الحذف، تأكد من الصلاحيات', 'danger');
+    }
+}
+
+async function toggleStaffStatus(id, currentStatus) {
+    if(!confirm(currentStatus === false ? 'هل تريد تفعيل حساب هذا الموظف لإعادة صلاحية الدخول له؟' : 'هل تريد سحب صلاحية الدخول وتعطيل هذا الموظف؟ (لن يتم حذف أرشيفه)')) return;
+    
+    const newStatus = currentStatus === false ? true : false;
+    const res = await API.updateStaff(id, { is_active: newStatus, can_login: newStatus });
+    
+    if(res) {
+        showAlert('تم تحديث حالة الموظف بنجاح', 'success');
+        await loadAllData();
+    }
+}
+
+function copyClientDeepLink(publicToken) {
+    if(!publicToken || publicToken === "undefined" || publicToken === "null") {
+        showAlert('هذه القضية لا تملك رمزاً عاماً بعد. يرجى تعديلها وحفظها لتوليده.', 'danger');
+        return;
+    }
+    const baseUrl = window.location.origin + window.location.pathname.replace('app.html', '');
+    const deepLink = `${baseUrl}client.html?token=${publicToken}`;
+    
+    navigator.clipboard.writeText(deepLink).then(() => {
+        showAlert('تم نسخ الرابط السري للموكل بنجاح!', 'success');
+    }).catch(() => {
+        prompt("انسخ الرابط التالي وأرسله للموكل:", deepLink);
+    });
+}
+
 function viewCaseDetails(id) {
     localStorage.setItem('current_case_id', id);
     window.location.href = 'case-details.html';
+}
+
+function viewClientProfile(id) {
+    if (!id) return;
+    localStorage.setItem('current_client_id', id);
+    window.location.href = 'client-details.html';
 }
 
 function logout() {

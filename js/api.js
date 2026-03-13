@@ -1,4 +1,4 @@
-// js/api.js - المحرك الموحد المحدث
+// js/api.js - المحرك الموحد المحدث (يدعم البحث الذكي، التعديل، الحذف، والملفات الشائعة)
 
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
@@ -6,13 +6,11 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
     };
-
     const options = { method, headers };
     if (body) options.body = JSON.stringify(body);
-
+    
     try {
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
-        
         if (response.status === 401) {
             localStorage.clear();
             window.location.href = 'login.html';
@@ -24,7 +22,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
         return data;
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
-        return null; 
+        return null;
     }
 }
 
@@ -32,30 +30,41 @@ const API = {
     // الموكلين
     getClients: () => fetchAPI('/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
+    updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
+    deleteClient: (id) => fetchAPI(`/api/clients?id=eq.${id}`, 'DELETE'),
     
     // القضايا
     getCases: () => fetchAPI('/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
+    updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
+    deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
     
-    // الموظفين (تم استرجاعها)
+    // الموظفين (مع التفعيل والتعطيل)
     getStaff: () => fetchAPI('/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
+    updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
+    deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     
     // المواعيد والمهام
     getAppointments: () => fetchAPI('/api/appointments'),
     addAppointment: (data) => fetchAPI('/api/appointments', 'POST', data),
+    updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
+    deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
     
-    // المالية
+    // المالية والمصروفات
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
+    getExpenses: () => fetchAPI('/api/expenses'),
+    addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     
     // الوقائع
     getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=${caseId}`),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
     
-    // الأرشيف والذكاء الاصطناعي
+    // الأرشيف والذكاء الاصطناعي والبحث
     askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
-    getFiles: (caseId) => fetchAPI(`/api/files?case_id=${caseId}`),
+    smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
+    getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=${caseId}` : '/api/files'),
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
         const firmId = localStorage.getItem(CONFIG.FIRM_KEY);

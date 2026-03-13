@@ -17,6 +17,8 @@
         .nav-pills .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); }
         .detail-item { font-size: 0.9rem; margin-bottom: 8px; }
         .detail-item i { width: 20px; color: var(--info); text-align: center; }
+        .image-preview { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; cursor: pointer; transition: 0.3s; }
+        .image-preview:hover { opacity: 0.8; }
     </style>
 </head>
 <body style="background: #f8fafc; padding-bottom: 80px;">
@@ -39,20 +41,24 @@
                 <span class="badge fs-6" id="case-status">--</span>
                 <span class="text-muted small fw-bold bg-light px-2 py-1 rounded-2" id="case-pin"><i class="fas fa-key text-warning"></i> PIN: --</span>
             </div>
-            <h5 class="fw-bold text-navy mt-2 mb-3 border-bottom pb-2" id="case-client-name"><i class="fas fa-user-tie me-2 text-info"></i> --</h5>
+            <h5 class="fw-bold text-navy mt-2 mb-3 border-bottom pb-2" id="case-client-name" style="cursor: pointer;" onclick="goToClientProfile()"><i class="fas fa-user-tie me-2 text-info"></i> --</h5>
             
             <div class="row g-2 mb-3">
                 <div class="col-6 detail-item"><i class="fas fa-balance-scale"></i> <b>المحكمة:</b> <span id="det-court">--</span></div>
+                <div class="col-6 detail-item"><i class="fas fa-hashtag"></i> <b>رقم المحكمة:</b> <span id="det-court-num">--</span></div>
                 <div class="col-6 detail-item"><i class="fas fa-gavel"></i> <b>القاضي:</b> <span id="det-judge">--</span></div>
+                <div class="col-6 detail-item"><i class="fas fa-layer-group"></i> <b>الدرجة:</b> <span id="det-degree">--</span></div>
+                <div class="col-6 detail-item"><i class="fas fa-calendar-alt"></i> <b>سنة الدعوى:</b> <span id="det-year">--</span></div>
                 <div class="col-6 detail-item"><i class="fas fa-folder"></i> <b>النوع:</b> <span id="det-type">--</span></div>
-                <div class="col-6 detail-item"><i class="fas fa-user-shield"></i> <b>الخصم:</b> <span id="det-opponent">--</span></div>
+                <div class="col-12 detail-item"><i class="fas fa-user-shield"></i> <b>الخصم:</b> <span id="det-opponent">--</span></div>
                 <div class="col-12 detail-item"><i class="fas fa-money-bill-wave"></i> <b>قيمة المطالبة:</b> <span id="det-claim" class="text-danger fw-bold">--</span></div>
             </div>
 
             <div class="row mt-2 text-center bg-light rounded-3 p-2 border">
-                <div class="col-4 border-end border-2"><small class="text-muted d-block fw-bold">الأتعاب</small><b id="sum-agreed" class="text-navy">0</b></div>
-                <div class="col-4 border-end border-2"><small class="text-muted d-block fw-bold">المُحصّل</small><b class="text-success" id="sum-paid">0</b></div>
-                <div class="col-4"><small class="text-muted d-block fw-bold">المتبقي</small><b class="text-danger" id="sum-rem">0</b></div>
+                <div class="col-3 border-end border-2"><small class="text-muted d-block fw-bold">الأتعاب</small><b id="sum-agreed" class="text-navy">0</b></div>
+                <div class="col-3 border-end border-2"><small class="text-success d-block fw-bold">مُحصّل</small><b class="text-success" id="sum-paid">0</b></div>
+                <div class="col-3 border-end border-2"><small class="text-danger d-block fw-bold">مصاريف</small><b class="text-danger" id="sum-expenses">0</b></div>
+                <div class="col-3"><small class="text-primary d-block fw-bold">صافي</small><b class="text-primary" id="sum-net">0</b></div>
             </div>
         </div>
 
@@ -74,11 +80,19 @@
             </div>
 
             <div class="tab-pane fade" id="tab-finance">
-                <div class="d-flex justify-content-between mb-3 align-items-center">
-                    <h6 class="fw-bold mb-0 text-navy"><i class="fas fa-receipt me-1"></i> سجل الدفعات</h6>
-                    <button class="btn btn-sm btn-success fw-bold" onclick="openModal('paymentModal')"><i class="fas fa-plus"></i> دفعة جديدة</button>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <button class="btn btn-success w-100 fw-bold shadow-sm" onclick="openModal('paymentModal')"><i class="fas fa-plus"></i> دفعة أتعاب</button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-danger w-100 fw-bold shadow-sm" onclick="openModal('expenseModal')"><i class="fas fa-minus"></i> تسجيل مصروف</button>
+                    </div>
                 </div>
-                <div id="payments-container"></div>
+                <h6 class="fw-bold text-success mb-2 border-bottom pb-1"><i class="fas fa-hand-holding-usd me-1"></i> الدفعات المستلمة والمستحقة</h6>
+                <div id="payments-container" class="mb-4"></div>
+                
+                <h6 class="fw-bold text-danger mb-2 border-bottom pb-1"><i class="fas fa-receipt me-1"></i> المصروفات والرسوم</h6>
+                <div id="expenses-container"></div>
             </div>
 
             <div class="tab-pane fade" id="tab-files">
@@ -102,6 +116,7 @@
                 </div>
                 <div class="modal-body">
                     <form id="editCaseForm" onsubmit="updateCaseDetails(event)">
+                        <h6 class="fw-bold text-primary border-bottom pb-1">البيانات الأساسية</h6>
                         <input type="text" id="edit_internal_id" class="form-control mb-2" placeholder="رقم الملف الداخلي *" required>
                         <select id="edit_status" class="form-select mb-2" required>
                             <option value="نشطة">نشطة</option>
@@ -109,15 +124,28 @@
                             <option value="قيد الاستئناف">قيد الاستئناف</option>
                             <option value="محفوظة">محفوظة</option>
                         </select>
-                        <input type="text" id="edit_access_pin" class="form-control mb-2" placeholder="رمز PIN للموكل *" required>
-                        <hr>
+                        <input type="text" id="edit_access_pin" class="form-control mb-3" placeholder="رمز PIN للموكل *" required>
+                        
+                        <h6 class="fw-bold text-primary border-bottom pb-1">بيانات المحكمة (جديد)</h6>
                         <input type="text" id="edit_court" class="form-control mb-2" placeholder="المحكمة الحالية">
+                        <input type="text" id="edit_court_case_number" class="form-control mb-2" placeholder="رقم الدعوى في المحكمة">
+                        <input type="number" id="edit_case_year" class="form-control mb-2" placeholder="سنة الدعوى (مثال: 2024)">
+                        <select id="edit_litigation_degree" class="form-select mb-2">
+                            <option value="">درجة التقاضي...</option>
+                            <option value="صلح">صلح</option>
+                            <option value="بداية">بداية</option>
+                            <option value="استئناف">استئناف</option>
+                            <option value="تمييز">تمييز</option>
+                            <option value="تنفيذ">تنفيذ</option>
+                        </select>
                         <input type="text" id="edit_judge" class="form-control mb-2" placeholder="اسم القاضي">
                         <input type="text" id="edit_type" class="form-control mb-2" placeholder="نوع الدعوى">
-                        <input type="text" id="edit_opponent" class="form-control mb-2" placeholder="اسم الخصم">
-                        <hr>
+                        <input type="text" id="edit_opponent" class="form-control mb-3" placeholder="اسم الخصم">
+                        
+                        <h6 class="fw-bold text-primary border-bottom pb-1">المالية</h6>
                         <input type="number" id="edit_claim" class="form-control mb-2" placeholder="قيمة المطالبة">
-                        <input type="number" id="edit_fees" class="form-control mb-3" placeholder="الأتعاب الكلية">
+                        <input type="number" id="edit_fees" class="form-control mb-3" placeholder="الأتعاب الكلية المتفق عليها">
+                        
                         <button type="submit" class="btn-primary-custom w-100">حفظ التعديلات</button>
                     </form>
                 </div>
@@ -164,13 +192,13 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0" style="border-radius: 20px;">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-success">تسجيل دفعة مالية</h5>
+                    <h5 class="modal-title fw-bold text-success">تسجيل دفعة أتعاب</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="paymentForm" onsubmit="savePayment(event)">
                         <div class="input-group mb-2">
-                            <input type="number" id="pay_amount" class="form-control" placeholder="المبلغ المرفوع *" required>
+                            <input type="number" id="pay_amount" class="form-control" placeholder="المبلغ *" required>
                             <span class="input-group-text fw-bold">د.أ</span>
                         </div>
                         <label class="small text-muted">تاريخ الدفعة / الاستحقاق</label>
@@ -186,22 +214,64 @@
         </div>
     </div>
 
+    <div class="modal fade" id="expenseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">تسجيل مصروف أو رسم قضائي</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="expenseForm" onsubmit="saveExpense(event)">
+                        <div class="input-group mb-2">
+                            <input type="number" id="exp_amount" class="form-control" placeholder="قيمة المصروف *" required>
+                            <span class="input-group-text fw-bold">د.أ</span>
+                        </div>
+                        <input type="text" id="exp_desc" class="form-control mb-2" placeholder="البيان (رسوم محكمة، طوابع، مواصلات) *" required>
+                        <label class="small text-muted">تاريخ الصرف</label>
+                        <input type="date" id="exp_date" class="form-control mb-3" required>
+                        
+                        <button type="submit" class="btn btn-danger w-100 fw-bold py-2" style="border-radius: 10px;">حفظ المصروف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="fileModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0" style="border-radius: 20px;">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-warning text-dark">رفع مستند (Drive)</h5>
+                    <h5 class="modal-title fw-bold text-warning text-dark">رفع مستند للأرشيف</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body text-center">
                     <form id="fileForm" onsubmit="saveFile(event)">
                         <input type="text" id="file_title_input" class="form-control mb-2" placeholder="اسم المستند (مثال: وكالة، لائحة دعوى) *" required>
-                        <input type="file" id="file_input" class="form-control mb-3" required>
+                        <select id="file_category_input" class="form-select mb-2" required>
+                            <option value="لائحة/مذكرة">لائحة / مذكرة</option>
+                            <option value="قرار حكم">قرار حكم</option>
+                            <option value="بينة/مستند">بينة / مستند</option>
+                            <option value="وكالة">وكالة</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                        <input type="file" id="file_input" class="form-control mb-3" accept="image/*,.pdf,.doc,.docx" required>
                         
                         <button type="submit" id="btn_upload" class="btn btn-warning w-100 fw-bold py-2" style="border-radius: 10px;">
                             <i class="fas fa-cloud-upload-alt me-1"></i> بدء الرفع والأرشفة
                         </button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="imagePreviewModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body text-center position-relative p-0">
+                    <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" style="z-index: 10;"></button>
+                    <img id="fullImagePreview" src="" class="img-fluid rounded-3 shadow-lg" style="max-height: 85vh;">
                 </div>
             </div>
         </div>
