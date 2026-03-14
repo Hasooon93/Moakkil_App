@@ -1,8 +1,9 @@
-// js/app.js - محرك لوحة التحكم الشامل 
+// js/app.js - محرك لوحة التحكم الشامل (يدعم الإشعارات وتثبيت PWA)
 
-let globalData = { cases: [], clients: [], staff: [], appointments: [] };
+let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
 let realtimeSyncTimer = null;
+let deferredPrompt; // لتخزين حدث تثبيت PWA
 
 window.onload = async () => {
     if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !currentUser) {
@@ -12,8 +13,32 @@ window.onload = async () => {
     setupUserInfo();
     applyRoleBasedUI();
     await loadAllData();
+    await loadNotifications(); // تحميل الإشعارات عند الدخول
     startRealtimeSync();
 };
+
+// الاستماع لحدث جاهزية تثبيت التطبيق PWA
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBtn = document.getElementById('install-pwa-btn');
+    if (installBtn) {
+        installBtn.classList.remove('d-none'); // إظهار زر التثبيت في الواجهة
+        installBtn.onclick = async () => {
+            installBtn.classList.add('d-none');
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            deferredPrompt = null;
+        };
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    console.log('موكّل PWA تم تثبيته بنجاح');
+    const installBtn = document.getElementById('install-pwa-btn');
+    if (installBtn) installBtn.classList.add('d-none');
+});
 
 function startRealtimeSync() {
     realtimeSyncTimer = setInterval(async () => {
@@ -27,9 +52,90 @@ function startRealtimeSync() {
             if(newClients && JSON.stringify(newClients) !== JSON.stringify(globalData.clients)) { filterAndSetClients(newClients); needsUpdate = true; }
 
             if(needsUpdate) { renderDashboard(); renderCasesList(); renderClientsList(); renderAgendaList(); }
+            
+            // مزامنة الإشعارات
+            await loadNotifications(true);
         } catch(e) {}
     }, 5000);
 }
+
+// ----------------------------------------------------
+// نظام الإشعارات الداخلي
+// ----------------------------------------------------
+async function loadNotifications(isSilent = false) {
+    if (typeof API.getNotifications !== 'function') return;
+    
+    const notifications = await API.getNotifications();
+    if (!notifications || notifications.error) return;
+    
+    // التحقق مما إذا كان هناك إشعارات جديدة لم تكن موجودة (لإصدار صوت أو تنبيه مرئي إذا لزم الأمر مستقبلاً)
+    const isNew = notifications.length > globalData.notifications.length;
+    globalData.notifications = notifications;
+    
+    renderNotificationsDropdown();
+}
+
+function renderNotificationsDropdown() {
+    const list = document.getElementById('notifications-list');
+    const badge = document.getElementById('notification-badge');
+    const bellIcon = document.querySelector('#notificationDropdown i');
+    if (!list || !badge) return;
+
+    const unreadNotifications = globalData.notifications.filter(n => !n.is_read);
+    
+    if (unreadNotifications.length > 0) {
+        badge.innerText = unreadNotifications.length;
+        badge.classList.remove('d-none');
+        if (bellIcon) bellIcon.classList.add('heartbeat-animation'); // إضافة تأثير نبض للجرس
+    } else {
+        badge.classList.add('d-none');
+        if (bellIcon) bellIcon.classList.remove('heartbeat-animation');
+    }
+
+    let html = `<li><h6 class="dropdown-header fw-bold text-navy"><i class="fas fa-bell me-2"></i>الإشعارات الحديثة</h6></li>
+                <li><hr class="dropdown-divider"></li>`;
+
+    if (globalData.notifications.length === 0) {
+        html += `<li><a class="dropdown-item text-center text-muted small py-3" href="#">لا توجد إشعارات</a></li>`;
+    } else {
+        html += globalData.notifications.slice(0, 10).map(n => {
+            const bgClass = n.is_read ? '' : 'bg-light';
+            const fwClass = n.is_read ? 'text-muted' : 'fw-bold text-dark';
+            const timeString = new Date(n.created_at).toLocaleString('ar-EG', {hour: '2-digit', minute:'2-digit', day:'numeric', month:'numeric'});
+            
+            return `<li>
+                        <a class="dropdown-item py-2 border-bottom ${bgClass}" href="#" onclick="handleNotificationClick('${n.id}', '${n.link}')">
+                            <div class="d-flex justify-content-between">
+                                <span class="small ${fwClass}">${n.title}</span>
+                                <small class="text-muted" style="font-size: 0.7rem;">${timeString}</small>
+                            </div>
+                            <div class="small text-muted text-wrap mt-1" style="font-size: 0.8rem;">${n.body}</div>
+                        </a>
+                    </li>`;
+        }).join('');
+    }
+    list.innerHTML = html;
+}
+
+async function handleNotificationClick(id, linkAction) {
+    event.preventDefault();
+    const notif = globalData.notifications.find(n => n.id === id);
+    if (notif && !notif.is_read) {
+        await API.markNotificationAsRead(id);
+        notif.is_read = true;
+        renderNotificationsDropdown();
+    }
+    
+    // توجيه المستخدم بناءً على نوع الإشعار
+    if (linkAction === 'cases') switchView('cases');
+    else if (linkAction === 'appointments' || linkAction === 'agenda') switchView('agenda');
+    else switchView('dashboard');
+}
+
+async function markNotificationsAsRead() {
+    // يمكن تفعيل هذه الدالة لاحقاً لقراءة جميع الإشعارات المفتوحة بضغطة واحدة
+}
+// ----------------------------------------------------
 
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role);
@@ -103,7 +209,6 @@ function filterAndSetAppointments(rawAppointments) {
 function filterAndSetClients(rawClients) {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     if (isLawyer) {
-        // المحامي يرى فقط موكليه الذين تم إسناد قضاياهم إليه
         const myClientIds = new Set(globalData.cases.map(c => c.client_id));
         globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id) || c.created_by == currentUser.id);
     } else globalData.clients = rawClients || [];

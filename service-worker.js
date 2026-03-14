@@ -1,6 +1,6 @@
 // service-worker.js - محرك الكاش والتثبيت لتطبيق موكّل (استراتيجية الشبكة أولاً)
 
-const CACHE_NAME = 'moakkil-v3-cache-1';
+const CACHE_NAME = 'moakkil-v4-cache-1';
 
 // قائمة بالملفات الأساسية التي يجب تخزينها ليتمكن التطبيق من الإقلاع والعمل السريع
 const urlsToCache = [
@@ -13,6 +13,7 @@ const urlsToCache = [
     './client-details.html',
     './client.html',
     './reports.html',
+    './calculators.html',
     './css/style.css',
     './js/config.js',
     './js/api.js',
@@ -20,6 +21,12 @@ const urlsToCache = [
     './js/auth.js',
     './js/case-details.js',
     './js/client-details.js',
+    './js/loan.js',
+    './js/compound.js',
+    './js/breakeven.js',
+    './js/discount.js',
+    './js/share.js',
+    './js/inheritance.js',
     './manifest.json'
 ];
 

@@ -2,249 +2,283 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a192f">
     <title>موكّل | الأدوات والحاسبات القانونية</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-light">
     
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="#">نظام موكّل الإداري</a>
-        </div>
-    </nav>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
-    <div class="container-fluid px-4 py-3">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="./css/style.css" rel="stylesheet">
+
+    <style>
+        .nav-pills-custom { display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; gap: 8px; -webkit-overflow-scrolling: touch; }
+        .nav-pills-custom::-webkit-scrollbar { height: 4px; }
+        .nav-pills-custom::-webkit-scrollbar-thumb { background-color: var(--navy); border-radius: 10px; }
+        .nav-pills-custom .nav-link { white-space: nowrap; border-radius: 10px; color: var(--navy); font-weight: 700; border: 1px solid #e2e8f0; transition: 0.3s; background: white; }
+        .nav-pills-custom .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); box-shadow: var(--shadow-sm); }
+        .calc-icon { width: 30px; text-align: center; }
+    </style>
+</head>
+<body style="background: #f8fafc; padding-bottom: 80px;">
+
+    <div class="top-nav d-flex align-items-center px-3 shadow-sm no-print" style="height: 65px; background: var(--navy);">
+        <button class="btn btn-link text-white text-decoration-none me-2 p-0" onclick="window.location.href='app.html'"><i class="fas fa-arrow-right fs-4"></i></button>
+        <h6 class="text-white mb-0 fw-bold"><i class="fas fa-calculator text-accent me-2"></i> الأدوات والحاسبات</h6>
+    </div>
+
+    <div class="container mt-4 mb-5 pb-5">
         
-        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-            <div>
-                <h2 class="fw-bold text-primary mb-0">الأدوات والحاسبات المالية والشرعية</h2>
-                <p class="text-muted mt-1 mb-0">حسابات دقيقة لدعم القضايا والاستشارات القانونية</p>
-            </div>
-            <a href="app.html" class="btn btn-outline-secondary px-4 fw-bold">العودة للرئيسية</a>
+        <div class="mb-4 text-center">
+            <h5 class="fw-bold text-navy mb-1">الحاسبات المالية والشرعية</h5>
+            <p class="text-muted small mb-0">حسابات دقيقة وموثوقة لدعم القضايا والاستشارات القانونية</p>
         </div>
         
-        <ul class="nav nav-pills mb-4 justify-content-center" id="calculatorsTab" role="tablist">
+        <ul class="nav nav-pills nav-pills-custom mb-4" id="calculatorsTab" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="loan-tab" data-bs-toggle="tab" data-bs-target="#loan" type="button" role="tab">القروض</button>
+                <button class="nav-link active px-3" id="loan-tab" data-bs-toggle="pill" data-bs-target="#loan" type="button" role="tab"><i class="fas fa-hand-holding-usd me-1 text-success"></i> القروض</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="compound-tab" data-bs-toggle="tab" data-bs-target="#compound" type="button" role="tab">الفائدة المركبة</button>
+                <button class="nav-link px-3" id="compound-tab" data-bs-toggle="pill" data-bs-target="#compound" type="button" role="tab"><i class="fas fa-chart-line me-1 text-primary"></i> الفائدة المركبة</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="breakeven-tab" data-bs-toggle="tab" data-bs-target="#breakeven" type="button" role="tab">نقطة التعادل</button>
+                <button class="nav-link px-3" id="breakeven-tab" data-bs-toggle="pill" data-bs-target="#breakeven" type="button" role="tab"><i class="fas fa-balance-scale me-1 text-warning"></i> نقطة التعادل</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="discount-tab" data-bs-toggle="tab" data-bs-target="#discount" type="button" role="tab">الخصم والضريبة</button>
+                <button class="nav-link px-3" id="discount-tab" data-bs-toggle="pill" data-bs-target="#discount" type="button" role="tab"><i class="fas fa-tags me-1 text-danger"></i> الخصم والضريبة</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="share-tab" data-bs-toggle="tab" data-bs-target="#share" type="button" role="tab">حصة الفرد</button>
+                <button class="nav-link px-3" id="share-tab" data-bs-toggle="pill" data-bs-target="#share" type="button" role="tab"><i class="fas fa-users me-1 text-info"></i> حصة الفرد</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="inheritance-tab" data-bs-toggle="tab" data-bs-target="#inheritance" type="button" role="tab">المواريث الشامل</button>
+                <button class="nav-link px-3" id="inheritance-tab" data-bs-toggle="pill" data-bs-target="#inheritance" type="button" role="tab"><i class="fas fa-scroll me-1 text-dark"></i> المواريث الشامل</button>
             </li>
         </ul>
 
-        <div class="tab-content bg-white p-4 rounded shadow-sm border" id="calculatorsTabContent">
+        <div class="tab-content" id="calculatorsTabContent">
             
             <div class="tab-pane fade show active" id="loan" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة القروض والتمويل</h4>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">مبلغ القرض الأساسي</label>
-                        <input type="number" id="loanAmount" class="form-control bg-light" placeholder="مثال: 10000">
+                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-success">
+                    <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-hand-holding-usd me-2 text-success"></i> حاسبة القروض والتمويل</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">مبلغ القرض الأساسي (د.أ)</label>
+                            <input type="number" id="loanAmount" class="form-control bg-light" placeholder="مثال: 10000">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">نسبة الفائدة السنوية (%)</label>
+                            <input type="number" id="loanRate" class="form-control bg-light" placeholder="مثال: 5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">مدة القرض (بالأشهر)</label>
+                            <input type="number" id="loanTerm" class="form-control bg-light" placeholder="مثال: 60">
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button id="calcLoanBtn" class="btn btn-success w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">نسبة الفائدة السنوية (%)</label>
-                        <input type="number" id="loanRate" class="form-control bg-light" placeholder="مثال: 5">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">مدة القرض (بالأشهر)</label>
-                        <input type="number" id="loanTerm" class="form-control bg-light" placeholder="مثال: 60">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcLoanBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
+                    <div id="loanResult" class="mt-4 d-none alert alert-success border-0 shadow-sm rounded-3"></div>
                 </div>
-                <div id="loanResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
             </div>
 
             <div class="tab-pane fade" id="compound" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة الفائدة المركبة والعوائد</h4>
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">المبلغ الأساسي (رأس المال)</label>
-                        <input type="number" id="compPrincipal" class="form-control bg-light" placeholder="مثال: 5000">
+                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-primary">
+                    <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-chart-line me-2 text-primary"></i> حاسبة الفائدة المركبة والعوائد</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">المبلغ الأساسي (رأس المال)</label>
+                            <input type="number" id="compPrincipal" class="form-control bg-light" placeholder="مثال: 5000">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">المساهمة الشهرية المتكررة</label>
+                            <input type="number" id="compAddition" class="form-control bg-light" placeholder="مثال: 100" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">نسبة العائد السنوي (%)</label>
+                            <input type="number" id="compRate" class="form-control bg-light" placeholder="مثال: 7">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">المدة (بالسنوات)</label>
+                            <input type="number" id="compYears" class="form-control bg-light" placeholder="مثال: 10">
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button id="calcCompBtn" class="btn btn-primary w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">المساهمة الشهرية المتكررة</label>
-                        <input type="number" id="compAddition" class="form-control bg-light" placeholder="مثال: 100" value="0">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">نسبة العائد السنوي (%)</label>
-                        <input type="number" id="compRate" class="form-control bg-light" placeholder="مثال: 7">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">المدة (بالسنوات)</label>
-                        <input type="number" id="compYears" class="form-control bg-light" placeholder="مثال: 10">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcCompBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
+                    <div id="compResult" class="mt-4 d-none alert alert-primary border-0 shadow-sm rounded-3"></div>
                 </div>
-                <div id="compResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
             </div>
 
             <div class="tab-pane fade" id="breakeven" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة نقطة التعادل التجارية</h4>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">التكاليف الثابتة الإجمالية</label>
-                        <input type="number" id="beFixedCosts" class="form-control bg-light" placeholder="مثال: 50000">
+                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-warning">
+                    <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-balance-scale me-2 text-warning"></i> حاسبة نقطة التعادل التجارية</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">التكاليف الثابتة الإجمالية</label>
+                            <input type="number" id="beFixedCosts" class="form-control bg-light border-warning" placeholder="مثال: 50000">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">التكلفة المتغيرة للوحدة الواحدة</label>
+                            <input type="number" id="beVarCost" class="form-control bg-light" placeholder="مثال: 20">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">سعر بيع الوحدة الواحدة</label>
+                            <input type="number" id="bePrice" class="form-control bg-light border-success" placeholder="مثال: 50">
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button id="calcBeBtn" class="btn btn-warning text-dark w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">التكلفة المتغيرة للوحدة الواحدة</label>
-                        <input type="number" id="beVarCost" class="form-control bg-light" placeholder="مثال: 20">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">سعر بيع الوحدة الواحدة</label>
-                        <input type="number" id="bePrice" class="form-control bg-light" placeholder="مثال: 50">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcBeBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
+                    <div id="beResult" class="mt-4 d-none alert alert-warning border-0 shadow-sm rounded-3"></div>
                 </div>
-                <div id="beResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
             </div>
 
             <div class="tab-pane fade" id="discount" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة الخصومات والضرائب المضافة</h4>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">المبلغ الأصلي</label>
-                        <input type="number" id="dtPrice" class="form-control bg-light" placeholder="مثال: 1000">
+                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-danger">
+                    <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-tags me-2 text-danger"></i> حاسبة الخصومات والضرائب المضافة</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">المبلغ الأصلي</label>
+                            <input type="number" id="dtPrice" class="form-control bg-light border-primary" placeholder="مثال: 1000">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">نسبة الخصم الممنوح (%)</label>
+                            <input type="number" id="dtDiscount" class="form-control bg-light border-success" placeholder="مثال: 15" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">نسبة الضريبة (VAT) (%)</label>
+                            <input type="number" id="dtTax" class="form-control bg-light border-danger" placeholder="مثال: 16" value="0">
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button id="calcDtBtn" class="btn btn-danger w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">نسبة الخصم الممنوح (%)</label>
-                        <input type="number" id="dtDiscount" class="form-control bg-light" placeholder="مثال: 15" value="0">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">نسبة الضريبة (VAT) (%)</label>
-                        <input type="number" id="dtTax" class="form-control bg-light" placeholder="مثال: 16" value="0">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcDtBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
+                    <div id="dtResult" class="mt-4 d-none alert alert-danger border-0 shadow-sm rounded-3"></div>
                 </div>
-                <div id="dtResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
             </div>
 
             <div class="tab-pane fade" id="share" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة حصص الأفراد والشركاء</h4>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">القيمة الإجمالية المراد تقسيمها</label>
-                        <input type="number" id="shareTotal" class="form-control bg-light" placeholder="مثال: 10000">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">آلية التقسيم المتبعة</label>
-                        <div class="input-group">
-                            <select id="shareType" class="form-select bg-light" style="max-width: 150px;">
-                                <option value="count">تقسيم على (عدد)</option>
-                                <option value="percent">استخراج (نسبة %)</option>
-                            </select>
-                            <input type="number" id="shareValue" class="form-control bg-light" placeholder="مثال: 4 شركاء أو 25%">
+                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-info">
+                    <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-users me-2 text-info"></i> حاسبة حصص الأفراد والشركاء</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">القيمة الإجمالية المراد تقسيمها</label>
+                            <input type="number" id="shareTotal" class="form-control bg-light border-info" placeholder="مثال: 10000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">آلية التقسيم المتبعة</label>
+                            <div class="input-group">
+                                <select id="shareType" class="form-select bg-light" style="max-width: 150px;">
+                                    <option value="count">تقسيم على (عدد)</option>
+                                    <option value="percent">استخراج (نسبة %)</option>
+                                </select>
+                                <input type="number" id="shareValue" class="form-control bg-light" placeholder="مثال: 4 شركاء أو 25%">
+                            </div>
+                        </div>
+                        <div class="col-12 mt-4">
+                            <button id="calcShareBtn" class="btn btn-info text-white w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
                         </div>
                     </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcShareBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
+                    <div id="shareResult" class="mt-4 d-none alert alert-info border-0 shadow-sm rounded-3"></div>
                 </div>
-                <div id="shareResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
             </div>
 
             <div class="tab-pane fade" id="inheritance" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">محرك توزيع المواريث الشرعية</h4>
-                <p class="text-muted small mb-4">يتم الحساب وفقاً للأنصبة الشرعية متضمناً معالجة العول والتعصيب والحجب. يرجى إدخال التركة صافية (بعد سداد الديون والوصايا).</p>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-danger">صافي التركة (الوعاء الإرثي)</label>
-                        <input type="number" id="inhTotal" class="form-control bg-light border-danger" placeholder="مثال: 100000">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">جنس المتوفى</label>
-                        <select id="inhGender" class="form-select bg-light">
-                            <option value="male">ذكر</option>
-                            <option value="female">أنثى</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">الزوج / الزوجة (على قيد الحياة)</label>
-                        <select id="inhSpouse" class="form-select bg-light">
-                            <option value="0">لا يوجد</option>
-                            <option value="1">1 (زوجة/زوج)</option>
-                            <option value="2">2 (زوجتان)</option>
-                            <option value="3">3 (ثلاث زوجات)</option>
-                            <option value="4">4 (أربع زوجات)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">الأبناء (الذكور)</label>
-                        <input type="number" id="inhSons" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">البنات (الإناث)</label>
-                        <input type="number" id="inhDaughters" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">الأب (على قيد الحياة؟)</label>
-                        <select id="inhFather" class="form-select bg-light">
-                            <option value="0">متوفى</option>
-                            <option value="1">حي</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">الأم (على قيد الحياة؟)</label>
-                        <select id="inhMother" class="form-select bg-light">
-                            <option value="0">متوفاة</option>
-                            <option value="1">حية</option>
-                        </select>
-                    </div>
+                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-dark">
+                    <h5 class="mb-2 text-navy fw-bold border-bottom pb-2"><i class="fas fa-scroll me-2 text-dark"></i> محرك توزيع المواريث الشرعية</h5>
+                    <p class="text-muted small mb-4 bg-light p-2 rounded-3 border"><i class="fas fa-info-circle text-info me-1"></i> يتم الحساب وفقاً للأنصبة الشرعية متضمناً معالجة العول والتعصيب والحجب. يرجى إدخال التركة صافية (بعد سداد الديون والوصايا).</p>
                     
-                    <div class="col-12 mt-4">
-                        <h5 class="text-secondary border-bottom pb-2">طبقة الإخوة والأخوات</h5>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">إخوة أشقاء (ذكور)</label>
-                        <input type="number" id="inhBrothers" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">أخوات شقيقات (إناث)</label>
-                        <input type="number" id="inhSisters" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">إخوة/أخوات لأم (من الطرفين)</label>
-                        <input type="number" id="inhMaternalSiblings" class="form-control bg-light" value="0" min="0">
-                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-danger">صافي التركة (الوعاء الإرثي)</label>
+                            <input type="number" id="inhTotal" class="form-control bg-light border-danger" placeholder="مثال: 100000">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">جنس المتوفى</label>
+                            <select id="inhGender" class="form-select bg-light">
+                                <option value="male">ذكر</option>
+                                <option value="female">أنثى</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">الزوج / الزوجة (على قيد الحياة)</label>
+                            <select id="inhSpouse" class="form-select bg-light border-primary">
+                                <option value="0">لا يوجد</option>
+                                <option value="1">1 (زوجة/زوج)</option>
+                                <option value="2">2 (زوجتان)</option>
+                                <option value="3">3 (ثلاث زوجات)</option>
+                                <option value="4">4 (أربع زوجات)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">الأبناء (الذكور)</label>
+                            <input type="number" id="inhSons" class="form-control bg-light border-success" value="0" min="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">البنات (الإناث)</label>
+                            <input type="number" id="inhDaughters" class="form-control bg-light border-success" value="0" min="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">الأب (على قيد الحياة؟)</label>
+                            <select id="inhFather" class="form-select bg-light">
+                                <option value="0">متوفى</option>
+                                <option value="1">حي</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">الأم (على قيد الحياة؟)</label>
+                            <select id="inhMother" class="form-select bg-light">
+                                <option value="0">متوفاة</option>
+                                <option value="1">حية</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-12 mt-4">
+                            <h6 class="text-secondary border-bottom pb-2 fw-bold"><i class="fas fa-users mb-1 text-muted"></i> طبقة الإخوة والأخوات</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">إخوة أشقاء (ذكور)</label>
+                            <input type="number" id="inhBrothers" class="form-control bg-light" value="0" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">أخوات شقيقات (إناث)</label>
+                            <input type="number" id="inhSisters" class="form-control bg-light" value="0" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">إخوة/أخوات لأم (من الطرفين)</label>
+                            <input type="number" id="inhMaternalSiblings" class="form-control bg-light" value="0" min="0">
+                        </div>
 
-                    <div class="col-12 text-end mt-4 border-top pt-3">
-                        <button id="calcInhBtn" class="btn btn-primary px-5 fw-bold">استخراج الفريضة الشرعية</button>
+                        <div class="col-12 mt-4 pt-3">
+                            <button id="calcInhBtn" class="btn btn-dark w-100 fw-bold py-2 rounded-3"><i class="fas fa-balance-scale-right me-1"></i> استخراج الفريضة الشرعية</button>
+                        </div>
                     </div>
+                    <div id="inhResult" class="mt-4 d-none border-0 shadow-sm rounded-3"></div>
                 </div>
-                <div id="inhResult" class="mt-4 d-none shadow-sm"></div>
             </div>
 
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='app.html'" id="nav-icon-dashboard"><i class="fas fa-home"></i><span>الرئيسية</span></div>
+        <div class="nav-item" onclick="window.location.href='app.html'" id="nav-icon-cases"><i class="fas fa-gavel"></i><span>القضايا</span></div>
+        <div class="nav-item active" onclick="window.location.href='calculators.html'" id="nav-icon-calculators"><i class="fas fa-calculator"></i><span>الحاسبات</span></div>
+        <div class="nav-item" onclick="window.location.href='app.html'" id="nav-icon-clients"><i class="fas fa-users"></i><span>الموكلين</span></div>
+        <div class="nav-item" onclick="window.location.href='app.html'" id="nav-icon-agenda"><i class="fas fa-calendar-alt"></i><span>الأجندة</span></div>
+        <div class="nav-item" onclick="window.location.href='library.html'" id="nav-icon-library"><i class="fas fa-book"></i><span>المكتبة</span></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <script src="js/loan.js"></script>
-    <script src="js/compound.js"></script>
-    <script src="js/breakeven.js"></script>
-    <script src="js/discount.js"></script>
-    <script src="js/share.js"></script>
-    <script src="js/inheritance.js"></script>
+    <script src="./js/loan.js"></script>
+    <script src="./js/compound.js"></script>
+    <script src="./js/breakeven.js"></script>
+    <script src="./js/discount.js"></script>
+    <script src="./js/share.js"></script>
+    <script src="./js/inheritance.js"></script>
 </body>
 </html>

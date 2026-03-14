@@ -19,6 +19,7 @@
         .detail-item i { width: 20px; color: var(--info); text-align: center; }
         
         .secret-notes-card { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 15px; position: relative; }
+        .ai-analysis-card { background-color: #f5f3ff; border: 1px solid #ddd6fe; border-right: 4px solid #8b5cf6 !important; border-radius: var(--radius-md); padding: 15px; }
         
         @media print {
             body * { visibility: hidden; }
@@ -49,7 +50,12 @@
                 <span class="badge fs-6" id="case-status">--</span>
                 <span class="text-muted small fw-bold bg-light px-2 py-1 rounded-2" id="case-pin"><i class="fas fa-key text-warning"></i> PIN: --</span>
             </div>
-            <h5 class="fw-bold text-navy mt-2 mb-3 border-bottom pb-2" id="case-client-name" style="cursor: pointer;" onclick="goToClientProfile()"><i class="fas fa-user-tie me-2 text-info"></i> --</h5>
+            
+            <h5 class="fw-bold text-navy mt-2 mb-1 border-bottom pb-2" id="case-client-name" style="cursor: pointer;" onclick="goToClientProfile()"><i class="fas fa-user-tie me-2 text-info"></i> --</h5>
+            
+            <div class="mb-3 small d-none" id="client-last-seen-container">
+                <i class="fas fa-eye text-success me-1"></i> <span class="text-muted">آخر اطلاع للموكل على الملف:</span> <span id="det-client-last-seen" class="fw-bold text-dark">--</span>
+            </div>
             
             <div class="row g-2 mb-2">
                 <div class="col-6 detail-item"><i class="fas fa-balance-scale"></i> <b>المحكمة:</b> <span id="det-court">--</span></div>
@@ -73,6 +79,22 @@
                 <div class="col-3 border-end border-2"><small class="text-success d-block fw-bold">مُحصّل</small><b class="text-success" id="sum-paid">0</b></div>
                 <div class="col-3 border-end border-2"><small class="text-danger d-block fw-bold">مصاريف</small><b class="text-danger" id="sum-expenses">0</b></div>
                 <div class="col-3"><small class="text-primary d-block fw-bold">صافي</small><b class="text-primary" id="sum-net">0</b></div>
+            </div>
+        </div>
+
+        <div class="ai-analysis-card mb-3 shadow-sm d-none" id="ai-analysis-container">
+            <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2 border-secondary-subtle">
+                <h6 class="fw-bold mb-0" style="color: #6d28d9;"><i class="fas fa-robot me-2"></i> التحليل الذكي للقضية (AI)</h6>
+                <span class="badge bg-light text-secondary border">مستخرج آلياً</span>
+            </div>
+            <div class="row g-2 mt-2">
+                <div class="col-12 detail-item"><i class="fas fa-users text-primary"></i> <b class="text-navy">الأسماء والجهات:</b> <span id="ai-names" class="text-dark small">--</span></div>
+                <div class="col-12 detail-item"><i class="fas fa-calendar-alt text-warning"></i> <b class="text-navy">التواريخ الهامة:</b> <span id="ai-dates" class="text-dark small">--</span></div>
+                <div class="col-12 detail-item"><i class="fas fa-balance-scale-right text-danger"></i> <b class="text-navy">المواد القانونية:</b> <span id="ai-articles" class="text-dark small">--</span></div>
+                <div class="col-12 mt-2">
+                    <b class="text-navy small"><i class="fas fa-align-right text-success me-1"></i> ملخص الوقائع:</b>
+                    <p id="ai-summary" class="bg-white p-2 rounded border mt-1 small text-dark mb-0 lh-base">--</p>
+                </div>
             </div>
         </div>
 
@@ -301,7 +323,11 @@
                         </div>
                         <input type="text" id="exp_desc" class="form-control mb-2" placeholder="البيان (رسوم محكمة، طوابع، مواصلات) *" required>
                         <label class="small text-muted">تاريخ الصرف</label>
-                        <input type="date" id="exp_date" class="form-control mb-3" required>
+                        <input type="date" id="exp_date" class="form-control mb-2" required>
+                        
+                        <label class="small text-muted mt-2"><i class="fas fa-paperclip me-1"></i> المرفقات المالية (اختياري)</label>
+                        <input type="url" id="exp_receipt_url" class="form-control mb-3 border-secondary" placeholder="الصق رابط صورة الإيصال أو الفاتورة هنا...">
+                        
                         <button type="submit" class="btn btn-danger w-100 fw-bold py-2" style="border-radius: 10px;">حفظ المصروف</button>
                     </form>
                 </div>

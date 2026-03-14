@@ -1,4 +1,4 @@
-// js/case-details.js - محرك التفاصيل المطور (يعالج الإسناد، القضايا المرتبطة، الفواتير، التفقيط، الـ QR)
+// js/case-details.js - محرك التفاصيل المطور (يعالج الإسناد، القضايا المرتبطة، الفواتير، التفقيط، الـ QR، والذكاء الاصطناعي)
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -47,6 +47,7 @@ async function loadCaseFullDetails() {
         if (!caseObj) { window.location.href = 'app.html'; return; }
 
         renderHeaderAndSummary();
+        renderAiAnalysis(); // دالة مخرجات الذكاء الاصطناعي
         renderTimeline(updates || []);
         renderPayments(installments || []);
         renderExpenses(expenses || []);
@@ -61,6 +62,17 @@ async function loadCaseFullDetails() {
 function renderHeaderAndSummary() {
     document.getElementById('case-title').innerText = `${caseObj.case_internal_id || 'ملف قضية'}`;
     document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${caseObj.mo_clients?.full_name || "موكل غير محدد"}`;
+    
+    // إظهار آخر ظهور للموكل إن وجد
+    const lastSeenContainer = document.getElementById('client-last-seen-container');
+    const lastSeenEl = document.getElementById('det-client-last-seen');
+    if (caseObj.client_last_seen) {
+        lastSeenEl.innerText = new Date(caseObj.client_last_seen).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+        lastSeenContainer.classList.remove('d-none');
+    } else {
+        lastSeenContainer.classList.add('d-none');
+    }
+
     document.getElementById('det-court').innerText = caseObj.current_court || "--";
     document.getElementById('det-court-num').innerText = caseObj.court_case_number || "--";
     document.getElementById('det-judge').innerText = caseObj.current_judge || "--";
@@ -85,6 +97,23 @@ function renderHeaderAndSummary() {
     const statusEl = document.getElementById('case-status');
     statusEl.innerText = caseObj.status || "نشطة";
     statusEl.className = `badge fs-6 ${caseObj.status === 'نشطة' ? 'bg-success' : 'bg-danger'}`;
+}
+
+// دالة لمعالجة وعرض مخرجات الذكاء الاصطناعي
+function renderAiAnalysis() {
+    const aiContainer = document.getElementById('ai-analysis-container');
+    if (!caseObj.ai_entities || Object.keys(caseObj.ai_entities).length === 0) {
+        aiContainer.classList.add('d-none');
+        return;
+    }
+    
+    aiContainer.classList.remove('d-none');
+    const ai = caseObj.ai_entities;
+    
+    document.getElementById('ai-names').innerText = (ai.names && ai.names.length > 0) ? ai.names.join('، ') : '--';
+    document.getElementById('ai-dates').innerText = (ai.dates && ai.dates.length > 0) ? ai.dates.join('، ') : '--';
+    document.getElementById('ai-articles').innerText = (ai.legal_articles && ai.legal_articles.length > 0) ? ai.legal_articles.join('، ') : '--';
+    document.getElementById('ai-summary').innerText = ai.facts_summary || 'لا يوجد ملخص متاح.';
 }
 
 async function saveSecretNotes() {
@@ -131,15 +160,18 @@ function renderPayments(installments) {
 function renderExpenses(expenses) {
     const container = document.getElementById('expenses-container');
     if (!expenses || expenses.length === 0) { container.innerHTML = '<div class="text-center p-3 text-muted small border bg-white">لا توجد مصروفات.</div>'; return; }
-    container.innerHTML = expenses.map(e => `
+    container.innerHTML = expenses.map(e => {
+        const receiptLink = e.receipt_url ? `<a href="${e.receipt_url}" target="_blank" class="btn btn-sm btn-outline-secondary mt-1 py-0 px-2" title="عرض الإيصال المرفق"><i class="fas fa-paperclip"></i> مرفق</a>` : '';
+        return `
         <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-danger">
             <div>
                 <b class="fs-5 text-danger">${Number(e.amount).toLocaleString()} د.أ</b>
                 <small class="d-block text-muted">${e.description}</small>
+                ${receiptLink}
             </div>
             <small class="text-muted"><i class="fas fa-calendar-alt"></i> ${e.expense_date}</small>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function renderFiles(files) {
@@ -346,7 +378,13 @@ async function savePayment(event) {
 
 async function saveExpense(event) {
     event.preventDefault();
-    const data = { case_id: currentCaseId, amount: Number(document.getElementById('exp_amount').value), description: document.getElementById('exp_desc').value, expense_date: document.getElementById('exp_date').value };
+    const data = { 
+        case_id: currentCaseId, 
+        amount: Number(document.getElementById('exp_amount').value), 
+        description: document.getElementById('exp_desc').value, 
+        expense_date: document.getElementById('exp_date').value,
+        receipt_url: document.getElementById('exp_receipt_url').value || null 
+    };
     if(await API.addExpense(data)) { closeModal('expenseModal'); document.getElementById('expenseForm').reset(); showAlert('تم تسجيل المصروف', 'success'); await loadCaseFullDetails(); }
 }
 

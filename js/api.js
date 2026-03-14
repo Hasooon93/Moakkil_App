@@ -1,4 +1,4 @@
-// js/api.js - المحرك الموحد المحدث (يدعم فحص التعارض، والبحث، والتعديل الشامل)
+// js/api.js - المحرك الموحد المحدث (يدعم فحص التعارض، والبحث، الإشعارات، والتعديل الشامل)
 
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
@@ -22,7 +22,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
         return data;
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
-        return { error: error.message }; // تم تعديله لإرجاع الخطأ ليتم التقاطه بوضوح
+        return { error: error.message }; 
     }
 }
 
@@ -54,7 +54,7 @@ const API = {
     // المالية والمصروفات
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
-    getExpenses: () => fetchAPI('/api/expenses'),
+    getExpenses: (caseId) => fetchAPI(caseId ? `/api/expenses?case_id=eq.${caseId}` : '/api/expenses'),
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     
     // الوقائع
@@ -65,8 +65,12 @@ const API = {
     askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     
-    // فحص تعارض المصالح (ميزة مؤسسية جديدة)
+    // فحص تعارض المصالح 
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
+
+    // الإشعارات الداخلية (الميزة الجديدة)
+    getNotifications: () => fetchAPI('/api/notifications'),
+    markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
 
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=${caseId}` : '/api/files'),
     addFileRecord: (data) => {
