@@ -7,7 +7,7 @@
     <title>بوابة الموكل الإلكترونية</title>
     
     <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -22,7 +22,6 @@
         .nav-pills .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); }
         .firm-brand-container { text-align: center; padding: 25px 15px; background: linear-gradient(135deg, var(--navy) 0%, #112240 100%); color: white; border-radius: 0 0 30px 30px; box-shadow: var(--shadow-md); margin-bottom: 30px; }
         
-        /* إخفاء قسم التفاصيل حتى يتم التحقق من الـ PIN */
         #auth-section { display: flex; min-height: 70vh; align-items: center; justify-content: center; }
         #case-details-section { display: none; }
     </style>
@@ -81,27 +80,43 @@
 
             <ul class="nav nav-pills mb-3 justify-content-center" id="pills-tab" role="tablist">
                 <li class="nav-item"><button class="nav-link active shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-updates">مجريات القضية</button></li>
-                <li class="nav-item"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-finance">الدفعات</button></li>
+                <li class="nav-item"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-finance">المالية</button></li>
                 <li class="nav-item"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-files">المستندات</button></li>
             </ul>
 
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="tab-updates">
                     <h6 class="fw-bold mb-3 text-navy border-bottom pb-2"><i class="fas fa-stream me-1 text-primary"></i> الخط الزمني للقضية</h6>
-                    <div class="timeline" id="client-timeline-container">
-                        </div>
+                    <div class="timeline" id="client-timeline-container"></div>
                 </div>
 
                 <div class="tab-pane fade" id="tab-finance">
-                    <h6 class="fw-bold text-success mb-3 border-bottom pb-2"><i class="fas fa-check-circle me-1"></i> الدفعات المسددة للمكتب</h6>
-                    <div id="client-payments-container">
+                    
+                    <div class="row text-center bg-white shadow-sm rounded-3 p-3 border mb-4">
+                        <div class="col-4 border-end">
+                            <small class="text-muted fw-bold d-block mb-1"><i class="fas fa-handshake"></i> المتفق عليه</small>
+                            <b class="text-navy fs-6" id="client-total-fees">0</b>
                         </div>
+                        <div class="col-4 border-end">
+                            <small class="text-success fw-bold d-block mb-1"><i class="fas fa-check-circle"></i> تم سداده</small>
+                            <b class="text-success fs-6" id="client-total-paid">0</b>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-danger fw-bold d-block mb-1"><i class="fas fa-exclamation-circle"></i> المتبقي</small>
+                            <b class="text-danger fs-6" id="client-total-rem">0</b>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-success mb-2 border-bottom pb-1"><i class="fas fa-money-bill-wave me-1"></i> سجل الدفعات (المسددة والمستحقة)</h6>
+                    <div id="client-payments-container" class="mb-4"></div>
+
+                    <h6 class="fw-bold text-danger mb-2 border-bottom pb-1"><i class="fas fa-receipt me-1"></i> المصاريف والرسوم المدفوعة للقضية</h6>
+                    <div id="client-expenses-container"></div>
                 </div>
 
                 <div class="tab-pane fade" id="tab-files">
                     <h6 class="fw-bold text-navy mb-3 border-bottom pb-2"><i class="fas fa-folder-open me-1 text-warning"></i> المستندات المتاحة لك</h6>
-                    <div class="row g-2" id="client-files-container">
-                        </div>
+                    <div class="row g-2" id="client-files-container"></div>
                 </div>
             </div>
         </div>
@@ -111,14 +126,13 @@
     <script src="./js/config.js"></script>
     
     <script>
-        // المتغيرات العامة
         let caseData = null;
         let caseUpdates = [];
         let caseInstallments = [];
+        let caseExpenses = [];
         let caseFiles = [];
         let clientName = "";
         
-        // استخراج التوكن من الرابط
         const urlParams = new URLSearchParams(window.location.search);
         const publicToken = urlParams.get('token');
 
@@ -129,8 +143,6 @@
                 document.getElementById('verifyBtn').disabled = true;
                 return;
             }
-            
-            // محاولة جلب بيانات المكتب المحفوظة محلياً (إن وجدت) لتزيين شاشة الدخول
             applyFirmBrand();
         };
 
@@ -146,7 +158,7 @@
                 
                 if (fwSettings.logo_url) {
                     logoContainer.innerHTML = `<img src="${fwSettings.logo_url}" alt="شعار المكتب" width="60" height="60" class="rounded-circle shadow-sm border border-2 border-white" style="object-fit:cover;">`;
-                    document.getElementById('auth-icon').className = "d-none"; // إخفاء القفل وإظهار الشعار
+                    document.getElementById('auth-icon').className = "d-none"; 
                 }
                 if (fwSettings.firm_name) {
                     nameContainer.innerText = fwSettings.firm_name;
@@ -164,32 +176,24 @@
             showAuthError("");
 
             try {
-                // الاتصال بـ API العام للموكل
                 const response = await fetch(`${CONFIG.API_URL}/api/public/client?token=${publicToken}`);
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || "خطأ في السيرفر");
-                }
+                if (!response.ok) throw new Error(data.error || "خطأ في السيرفر");
 
                 if (data.cases && data.cases.length > 0) {
                     const fetchedCase = data.cases[0];
-                    
-                    // التحقق من صحة الـ PIN
-                    if (fetchedCase.access_pin !== pin) {
-                        throw new Error("رمز التحقق (PIN) غير صحيح.");
-                    }
+                    if (fetchedCase.access_pin !== pin) throw new Error("رمز التحقق (PIN) غير صحيح.");
 
-                    // الرمز صحيح، حفظ البيانات وبناء الواجهة
                     caseData = fetchedCase;
                     clientName = data.client ? data.client.full_name : "موكلنا العزيز";
                     caseUpdates = data.updates || [];
                     caseInstallments = data.installments || [];
+                    caseExpenses = data.expenses || [];
                     caseFiles = data.files || [];
 
                     buildClientInterface();
                     
-                    // إخفاء شاشة الدخول وإظهار التفاصيل
                     document.getElementById('auth-section').style.display = 'none';
                     document.getElementById('case-details-section').style.display = 'block';
                 } else {
@@ -234,25 +238,50 @@
                 `).join('');
             }
 
-            // 3. الدفعات المالية (المدفوعة فقط)
+            // 3. الملخص المالي
+            const totalFees = Number(caseData.total_agreed_fees) || 0;
+            const totalPaid = caseInstallments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + Number(i.amount), 0);
+            const totalRem = totalFees - totalPaid;
+
+            document.getElementById('client-total-fees').innerText = totalFees.toLocaleString() + ' د.أ';
+            document.getElementById('client-total-paid').innerText = totalPaid.toLocaleString() + ' د.أ';
+            document.getElementById('client-total-rem').innerText = totalRem.toLocaleString() + ' د.أ';
+
+            // 4. تفصيل الدفعات 
             const paymentsContainer = document.getElementById('client-payments-container');
-            const paidInstallments = caseInstallments.filter(i => i.status === 'مدفوعة');
-            
-            if (paidInstallments.length === 0) {
-                paymentsContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد دفعات مسجلة كـ "مدفوعة" في السجل.</div>';
+            if (caseInstallments.length === 0) {
+                paymentsContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد دفعات مسجلة في السجل.</div>';
             } else {
-                paymentsContainer.innerHTML = paidInstallments.map(i => `
-                    <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-success bg-white shadow-sm">
+                paymentsContainer.innerHTML = caseInstallments.map(i => {
+                    const isPaid = i.status === 'مدفوعة';
+                    return `
+                    <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 ${isPaid ? 'border-success' : 'border-warning'} bg-white shadow-sm">
                         <div>
-                            <b class="fs-5 text-success">${Number(i.amount).toLocaleString()} د.أ</b>
-                            <small class="d-block text-muted">تاريخ السداد: ${i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG')}</small>
+                            <b class="fs-6 ${isPaid ? 'text-success' : 'text-warning text-dark'}">${Number(i.amount).toLocaleString()} د.أ</b>
+                            <small class="d-block text-muted">تاريخ الاستحقاق/السداد: ${i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG')}</small>
                         </div>
-                        <span class="badge bg-success fs-6"><i class="fas fa-check me-1"></i> واصلة</span>
+                        <span class="badge ${isPaid ? 'bg-success' : 'bg-warning text-dark'} fs-6">${i.status}</span>
+                    </div>
+                `}).join('');
+            }
+
+            // 5. تفصيل المصاريف
+            const expensesContainer = document.getElementById('client-expenses-container');
+            if (caseExpenses.length === 0) {
+                expensesContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد مصاريف مسجلة حتى الآن.</div>';
+            } else {
+                expensesContainer.innerHTML = caseExpenses.map(e => `
+                    <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-danger bg-white shadow-sm">
+                        <div>
+                            <b class="fs-6 text-danger">${Number(e.amount).toLocaleString()} د.أ</b>
+                            <small class="d-block text-muted">${e.description}</small>
+                        </div>
+                        <small class="text-muted"><i class="fas fa-calendar-alt me-1"></i>${e.expense_date || new Date(e.created_at).toLocaleDateString('ar-EG')}</small>
                     </div>
                 `).join('');
             }
 
-            // 4. المستندات والأرشيف
+            // 6. المستندات والأرشيف
             const filesContainer = document.getElementById('client-files-container');
             if (caseFiles.length === 0) {
                 filesContainer.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white rounded">لا توجد مستندات متاحة.</div>';
