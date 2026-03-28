@@ -1,24 +1,21 @@
-// js/app.js - محرك لوحة التحكم (تم تأمينه ضد أخطاء الربط مع قواعد البيانات وإضافة إشعارات Push)
+// js/app.js - محرك لوحة التحكم (تم تحديث محرك الإشعارات ليتوافق مع سياسات المتصفحات)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
 let realtimeSyncTimer = null;
 let deferredPrompt; 
-let notifiedIds = new Set(); // تتبع الإشعارات المنبثقة لمنع تكرارها
+let notifiedIds = new Set(); 
 
 window.onload = async () => {
-    // 1. تشغيل محرك الـ Service Worker المسؤول عن الإشعارات المنبثقة وتكييش الملفات
+    // 1. تشغيل محرك Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
     }
 
-    // 2. التحقق من تسجيل الدخول
     if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !currentUser) {
         window.location.href = 'login.html';
         return;
     }
-    
-    // 3. تحميل باقي بيانات النظام
     setupUserInfo();
     applyRoleBasedUI();
     loadFirmSettings(); 
@@ -26,6 +23,7 @@ window.onload = async () => {
     await loadNotifications(); 
     startRealtimeSync();
 };
+
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
@@ -53,7 +51,6 @@ function startRealtimeSync() {
             ]);
             let needsUpdate = false;
             
-            // التأكد من أن البيانات مصفوفة صالحة قبل المقارنة
             const safeCases = Array.isArray(newCases) ? newCases : [];
             const safeAppts = Array.isArray(newAppts) ? newAppts : [];
             const safeClients = Array.isArray(newClients) ? newClients : [];
@@ -119,14 +116,49 @@ async function saveFirmSettings(event) {
     showAlert('تم حفظ الإعدادات', 'success');
 }
 
+// ----------------------------------------------------
+// -- محرك الإشعارات المنبثقة المدرع (المحدث) --
+// ----------------------------------------------------
+async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        showAlert('متصفحك لا يدعم الإشعارات المنبثقة', 'danger');
+        return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+        showAlert('تم تفعيل إشعارات الهاتف بنجاح!', 'success');
+        renderNotificationsDropdown(); // إعادة رسم القائمة لإخفاء زر التفعيل
+    } else {
+        showAlert('تم رفض صلاحية الإشعارات من قبل النظام', 'warning');
+    }
+}
+
+function triggerPushNotification(title, body) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    
+    try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification('نظام موكّل | ' + title, {
+                    body: body,
+                    icon: './icons/icon-192.png',
+                    vibrate: [200, 100, 200],
+                    badge: './icons/icon-192.png'
+                }).catch(e => {
+                    // Fallback in case Service Worker fails
+                    new Notification('نظام موكّل | ' + title, { body: body });
+                });
+            });
+        } else {
+            new Notification('نظام موكّل | ' + title, { body: body });
+        }
+    } catch(err) {
+        console.log("Push Notification Error:", err);
+    }
+}
+
 async function loadNotifications(isSilent = false) {
     if (typeof API.getNotifications !== 'function') return;
-    
-    // طلب صلاحية الإشعارات من المتصفح في أول مرة
-    if (Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-
     const notifications = await API.getNotifications();
     globalData.notifications = Array.isArray(notifications) ? notifications : [];
     renderNotificationsDropdown(isSilent);
@@ -145,29 +177,30 @@ function renderNotificationsDropdown(isSilent) {
         badge.classList.remove('d-none');
         if (bellIcon) bellIcon.classList.add('heartbeat-animation'); 
 
-        // إطلاق إشعار منبثق (Push Notification)
+        // تشغيل الإشعار المنبثق
         unreadNotifications.forEach(n => {
             if (!notifiedIds.has(n.id)) {
                 notifiedIds.add(n.id);
-                if (isSilent && Notification.permission === 'granted') {
-                    navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification('نظام موكّل | ' + n.title, {
-                            body: n.message || n.body,
-                            icon: './icons/icon-192.png',
-                            vibrate: [200, 100, 200],
-                            badge: './icons/icon-192.png'
-                        });
-                    });
+                if (isSilent) {
+                    triggerPushNotification(n.title, n.message || n.body);
                 }
             }
         });
-
     } else {
         badge.classList.add('d-none');
         if (bellIcon) bellIcon.classList.remove('heartbeat-animation');
     }
 
-    let html = `<li><h6 class="dropdown-header fw-bold text-navy"><i class="fas fa-bell me-2"></i>الإشعارات الحديثة</h6></li><li><hr class="dropdown-divider"></li>`;
+    let html = '';
+    
+    // زر تفعيل الإشعارات إذا لم تكن مفعلة
+    if ("Notification" in window && Notification.permission === "default") {
+        html += `<li class="p-2 mb-2 bg-light border-bottom">
+                    <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="requestNotificationPermission()"><i class="fas fa-bell-on"></i> تفعيل إشعارات المتصفح/الهاتف</button>
+                 </li>`;
+    }
+
+    html += `<li><h6 class="dropdown-header fw-bold text-navy"><i class="fas fa-bell me-2"></i>الإشعارات الحديثة</h6></li><li><hr class="dropdown-divider"></li>`;
 
     if (globalData.notifications.length === 0) {
         html += `<li><a class="dropdown-item text-center text-muted small py-3" href="#">لا توجد إشعارات</a></li>`;
@@ -193,6 +226,7 @@ async function handleNotificationClick(id, linkAction) {
     else switchView('dashboard');
 }
 async function markNotificationsAsRead() {}
+// ----------------------------------------------------
 
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role);
