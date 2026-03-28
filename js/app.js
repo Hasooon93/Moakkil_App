@@ -7,10 +7,18 @@ let deferredPrompt;
 let notifiedIds = new Set(); // تتبع الإشعارات المنبثقة لمنع تكرارها
 
 window.onload = async () => {
+    // 1. تشغيل محرك الـ Service Worker المسؤول عن الإشعارات المنبثقة وتكييش الملفات
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
+    }
+
+    // 2. التحقق من تسجيل الدخول
     if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !currentUser) {
         window.location.href = 'login.html';
         return;
     }
+    
+    // 3. تحميل باقي بيانات النظام
     setupUserInfo();
     applyRoleBasedUI();
     loadFirmSettings(); 
@@ -18,7 +26,6 @@ window.onload = async () => {
     await loadNotifications(); 
     startRealtimeSync();
 };
-
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
