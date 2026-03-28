@@ -213,15 +213,21 @@ function calculateFinances(installments, expenses) {
     const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + Number(i.amount), 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const agreedFees = Number(caseObj.total_agreed_fees) || 0;
-    const netProfit = totalPaid - totalExpenses;
+    
+    // المتبقي على الموكل = (الأتعاب المتفق عليها + المصاريف) - المسدد
+    const clientRemaining = (agreedFees + totalExpenses) - totalPaid;
+
     document.getElementById('sum-agreed').innerText = agreedFees.toLocaleString();
     document.getElementById('sum-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('sum-expenses').innerText = totalExpenses.toLocaleString();
-    document.getElementById('sum-net').innerText = netProfit.toLocaleString();
-    document.getElementById('sum-net').className = netProfit >= 0 ? 'text-primary' : 'text-danger';
-}
-
-function tafqeet(number) {
+    
+    // تغيير خانة "الصافي" لتعرض "المتبقي على الموكل" لأنها الأهم في سياق القضية
+    const netEl = document.getElementById('sum-net');
+    if(netEl) {
+        netEl.innerText = clientRemaining.toLocaleString();
+        netEl.className = clientRemaining > 0 ? 'text-danger' : 'text-success';
+    }
+}function tafqeet(number) {
     const units = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"];
     const tens = ["", "عشرة", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
     const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];

@@ -1,9 +1,10 @@
-// js/app.js - محرك لوحة التحكم (تم تأمينه ضد أخطاء الربط مع قواعد البيانات)
+// js/app.js - محرك لوحة التحكم (تم تأمينه ضد أخطاء الربط مع قواعد البيانات وإضافة إشعارات Push)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
 let realtimeSyncTimer = null;
 let deferredPrompt; 
+let notifiedIds = new Set(); // تتبع الإشعارات المنبثقة لمنع تكرارها
 
 window.onload = async () => {
     if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !currentUser) {
@@ -113,12 +114,18 @@ async function saveFirmSettings(event) {
 
 async function loadNotifications(isSilent = false) {
     if (typeof API.getNotifications !== 'function') return;
+    
+    // طلب صلاحية الإشعارات من المتصفح في أول مرة
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+
     const notifications = await API.getNotifications();
     globalData.notifications = Array.isArray(notifications) ? notifications : [];
-    renderNotificationsDropdown();
+    renderNotificationsDropdown(isSilent);
 }
 
-function renderNotificationsDropdown() {
+function renderNotificationsDropdown(isSilent) {
     const list = document.getElementById('notifications-list');
     const badge = document.getElementById('notification-badge');
     const bellIcon = document.querySelector('#notificationDropdown i');
@@ -130,6 +137,24 @@ function renderNotificationsDropdown() {
         badge.innerText = unreadNotifications.length;
         badge.classList.remove('d-none');
         if (bellIcon) bellIcon.classList.add('heartbeat-animation'); 
+
+        // إطلاق إشعار منبثق (Push Notification)
+        unreadNotifications.forEach(n => {
+            if (!notifiedIds.has(n.id)) {
+                notifiedIds.add(n.id);
+                if (isSilent && Notification.permission === 'granted') {
+                    navigator.serviceWorker.ready.then(registration => {
+                        registration.showNotification('نظام موكّل | ' + n.title, {
+                            body: n.message || n.body,
+                            icon: './icons/icon-192.png',
+                            vibrate: [200, 100, 200],
+                            badge: './icons/icon-192.png'
+                        });
+                    });
+                }
+            }
+        });
+
     } else {
         badge.classList.add('d-none');
         if (bellIcon) bellIcon.classList.remove('heartbeat-animation');
@@ -287,7 +312,6 @@ function renderCasesList() {
             else if(daysLeft < 0) deadlineWarning = `<span class="badge bg-dark ms-2"><i class="fas fa-times-circle"></i> منتهي</span>`;
         }
         
-        // الربط الذكي لاسم الموكل
         const client = globalData.clients.find(cl => cl.id === c.client_id);
         const clientName = client ? client.full_name : 'موكل غير محدد';
 

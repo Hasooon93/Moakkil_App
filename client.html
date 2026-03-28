@@ -45,7 +45,6 @@
     </div>
 
     <div id="case-details-section">
-        
         <div class="firm-brand-container position-relative">
             <div class="position-absolute top-0 end-0 p-3">
                 <button class="btn btn-sm btn-outline-light border-0" onclick="logoutClient()" title="تسجيل الخروج"><i class="fas fa-sign-out-alt"></i></button>
@@ -63,15 +62,12 @@
                     <h6 class="fw-bold text-navy mb-0" id="client-case-id">رقم الملف: --</h6>
                     <span class="badge bg-success" id="client-case-status">--</span>
                 </div>
-                
                 <h5 class="fw-bold text-dark mt-2 mb-3" id="client-name"><i class="fas fa-user me-2 text-info"></i> مرحباً، <span>--</span></h5>
-                
                 <div class="row g-2 mb-2 bg-light p-2 rounded border">
                     <div class="col-6 detail-item mb-0"><small class="text-muted d-block"><i class="fas fa-balance-scale me-1"></i> المحكمة</small> <b id="client-court">--</b></div>
                     <div class="col-6 detail-item mb-0"><small class="text-muted d-block"><i class="fas fa-hashtag me-1"></i> رقم الدعوى</small> <b id="client-court-num">--</b></div>
                     <div class="col-12 detail-item mb-0"><small class="text-muted d-block"><i class="fas fa-user-shield me-1"></i> الخصم</small> <b id="client-opponent">--</b></div>
                 </div>
-                
                 <div class="alert alert-info mt-3 mb-0 py-2 border-info d-flex justify-content-between align-items-center d-none" id="client-deadline-container">
                     <span><i class="fas fa-calendar-check me-1"></i> الموعد القادم / التاريخ الهام:</span>
                     <b id="client-deadline">--</b>
@@ -92,18 +88,22 @@
 
                 <div class="tab-pane fade" id="tab-finance">
                     
-                    <div class="row text-center bg-white shadow-sm rounded-3 p-3 border mb-4">
-                        <div class="col-4 border-end">
-                            <small class="text-muted fw-bold d-block mb-1"><i class="fas fa-handshake"></i> المتفق عليه</small>
+                    <div class="row text-center bg-white shadow-sm rounded-3 p-3 border mb-4 g-2">
+                        <div class="col-6 col-md-3 border-end">
+                            <small class="text-muted fw-bold d-block mb-1">الأتعاب</small>
                             <b class="text-navy fs-6" id="client-total-fees">0</b>
                         </div>
-                        <div class="col-4 border-end">
-                            <small class="text-success fw-bold d-block mb-1"><i class="fas fa-check-circle"></i> تم سداده</small>
+                        <div class="col-6 col-md-3 border-end">
+                            <small class="text-danger fw-bold d-block mb-1">المصاريف</small>
+                            <b class="text-danger fs-6" id="client-total-expenses">0</b>
+                        </div>
+                        <div class="col-6 col-md-3 border-end">
+                            <small class="text-success fw-bold d-block mb-1">المُسدّد</small>
                             <b class="text-success fs-6" id="client-total-paid">0</b>
                         </div>
-                        <div class="col-4">
-                            <small class="text-danger fw-bold d-block mb-1"><i class="fas fa-exclamation-circle"></i> المتبقي</small>
-                            <b class="text-danger fs-6" id="client-total-rem">0</b>
+                        <div class="col-6 col-md-3">
+                            <small class="text-warning text-dark fw-bold d-block mb-1">المتبقي</small>
+                            <b class="text-warning text-dark fs-6" id="client-total-rem">0</b>
                         </div>
                     </div>
 
@@ -143,34 +143,12 @@
                 document.getElementById('verifyBtn').disabled = true;
                 return;
             }
-            applyFirmBrand();
         };
-
-        function applyFirmBrand() {
-            const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
-            if (fwSettings) {
-                const root = document.documentElement;
-                if (fwSettings.primary_color) root.style.setProperty('--navy', fwSettings.primary_color);
-                if (fwSettings.accent_color) root.style.setProperty('--accent', fwSettings.accent_color);
-                
-                const logoContainer = document.getElementById('firm-logo-container');
-                const nameContainer = document.getElementById('firm-name');
-                
-                if (fwSettings.logo_url) {
-                    logoContainer.innerHTML = `<img src="${fwSettings.logo_url}" alt="شعار المكتب" width="60" height="60" class="rounded-circle shadow-sm border border-2 border-white" style="object-fit:cover;">`;
-                    document.getElementById('auth-icon').className = "d-none"; 
-                }
-                if (fwSettings.firm_name) {
-                    nameContainer.innerText = fwSettings.firm_name;
-                }
-            }
-        }
 
         async function verifyPin(event) {
             event.preventDefault();
             const pin = document.getElementById('client_pin').value;
             const btn = document.getElementById('verifyBtn');
-            
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحقق...';
             showAuthError("");
@@ -192,6 +170,22 @@
                     caseExpenses = data.expenses || [];
                     caseFiles = data.files || [];
 
+                    // تطبيق الهوية البصرية من السيرفر مباشرة
+                    if (data.firm) {
+                        const root = document.documentElement;
+                        if (data.firm.primary_color) root.style.setProperty('--navy', data.firm.primary_color);
+                        if (data.firm.accent_color) root.style.setProperty('--accent', data.firm.accent_color);
+                        
+                        const logoContainer = document.getElementById('firm-logo-container');
+                        const nameContainer = document.getElementById('firm-name');
+                        
+                        if (data.firm.logo_url) {
+                            logoContainer.innerHTML = `<img src="${data.firm.logo_url}" alt="شعار المكتب" width="60" height="60" class="rounded-circle shadow-sm border border-2 border-white" style="object-fit:cover;">`;
+                            document.getElementById('auth-icon').className = "d-none"; 
+                        }
+                        if (data.firm.firm_name) nameContainer.innerText = data.firm.firm_name;
+                    }
+
                     buildClientInterface();
                     
                     document.getElementById('auth-section').style.display = 'none';
@@ -199,7 +193,6 @@
                 } else {
                     throw new Error("لا توجد بيانات لهذه القضية.");
                 }
-
             } catch (err) {
                 showAuthError(err.message);
                 btn.disabled = false;
@@ -208,7 +201,6 @@
         }
 
         function buildClientInterface() {
-            // 1. البيانات الأساسية
             document.getElementById('client-name').innerHTML = `<i class="fas fa-user me-2 text-info"></i> مرحباً، <span class="text-navy">${clientName}</span>`;
             document.getElementById('client-case-id').innerText = `ملف رقم: ${caseData.case_internal_id || 'غير محدد'}`;
             document.getElementById('client-case-status').innerText = caseData.status || 'نشطة';
@@ -221,7 +213,6 @@
                 document.getElementById('client-deadline').innerText = new Date(caseData.deadline_date).toLocaleDateString('ar-EG');
             }
 
-            // 2. الوقائع (الخط الزمني)
             const updatesContainer = document.getElementById('client-timeline-container');
             if (caseUpdates.length === 0) {
                 updatesContainer.innerHTML = '<div class="text-center p-4 text-muted small border bg-white rounded">لا توجد تحديثات متاحة للعرض حالياً.</div>';
@@ -238,16 +229,17 @@
                 `).join('');
             }
 
-            // 3. الملخص المالي
+            // الحسابات المالية الدقيقة (المتبقي = الأتعاب + المصاريف - المسدد)
             const totalFees = Number(caseData.total_agreed_fees) || 0;
+            const totalExpenses = caseExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
             const totalPaid = caseInstallments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + Number(i.amount), 0);
-            const totalRem = totalFees - totalPaid;
+            const totalRem = (totalFees + totalExpenses) - totalPaid;
 
             document.getElementById('client-total-fees').innerText = totalFees.toLocaleString() + ' د.أ';
+            document.getElementById('client-total-expenses').innerText = totalExpenses.toLocaleString() + ' د.أ';
             document.getElementById('client-total-paid').innerText = totalPaid.toLocaleString() + ' د.أ';
             document.getElementById('client-total-rem').innerText = totalRem.toLocaleString() + ' د.أ';
 
-            // 4. تفصيل الدفعات 
             const paymentsContainer = document.getElementById('client-payments-container');
             if (caseInstallments.length === 0) {
                 paymentsContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد دفعات مسجلة في السجل.</div>';
@@ -265,7 +257,6 @@
                 `}).join('');
             }
 
-            // 5. تفصيل المصاريف
             const expensesContainer = document.getElementById('client-expenses-container');
             if (caseExpenses.length === 0) {
                 expensesContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد مصاريف مسجلة حتى الآن.</div>';
@@ -281,7 +272,6 @@
                 `).join('');
             }
 
-            // 6. المستندات والأرشيف
             const filesContainer = document.getElementById('client-files-container');
             if (caseFiles.length === 0) {
                 filesContainer.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white rounded">لا توجد مستندات متاحة.</div>';
@@ -304,12 +294,8 @@
 
         function showAuthError(msg) {
             const errDiv = document.getElementById('auth-error');
-            if(msg) {
-                errDiv.innerText = msg;
-                errDiv.classList.remove('d-none');
-            } else {
-                errDiv.classList.add('d-none');
-            }
+            if(msg) { errDiv.innerText = msg; errDiv.classList.remove('d-none'); } 
+            else { errDiv.classList.add('d-none'); }
         }
 
         function logoutClient() {
