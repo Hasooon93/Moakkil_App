@@ -1,9 +1,9 @@
-// js/app.js - محرك لوحة التحكم الشامل (يدعم الإشعارات وتثبيت PWA)
+// js/app.js - محرك لوحة التحكم الشامل (يدعم الإشعارات، تثبيت PWA، تخصيص هوية المكتب، وإدارة دورة حياة المهام)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
 let realtimeSyncTimer = null;
-let deferredPrompt; // لتخزين حدث تثبيت PWA
+let deferredPrompt; 
 
 window.onload = async () => {
     if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !currentUser) {
@@ -12,30 +12,28 @@ window.onload = async () => {
     }
     setupUserInfo();
     applyRoleBasedUI();
+    loadFirmSettings(); 
     await loadAllData();
-    await loadNotifications(); // تحميل الإشعارات عند الدخول
+    await loadNotifications(); 
     startRealtimeSync();
 };
 
-// الاستماع لحدث جاهزية تثبيت التطبيق PWA
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
     const installBtn = document.getElementById('install-pwa-btn');
     if (installBtn) {
-        installBtn.classList.remove('d-none'); // إظهار زر التثبيت في الواجهة
+        installBtn.classList.remove('d-none');
         installBtn.onclick = async () => {
             installBtn.classList.add('d-none');
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
             deferredPrompt = null;
         };
     }
 });
 
 window.addEventListener('appinstalled', () => {
-    console.log('موكّل PWA تم تثبيته بنجاح');
     const installBtn = document.getElementById('install-pwa-btn');
     if (installBtn) installBtn.classList.add('d-none');
 });
@@ -53,25 +51,84 @@ function startRealtimeSync() {
 
             if(needsUpdate) { renderDashboard(); renderCasesList(); renderClientsList(); renderAgendaList(); }
             
-            // مزامنة الإشعارات
             await loadNotifications(true);
         } catch(e) {}
     }, 5000);
 }
 
 // ----------------------------------------------------
-// نظام الإشعارات الداخلي
+// نظام تخصيص هوية المكتب 
+// ----------------------------------------------------
+async function loadFirmSettings() {
+    const localSettings = JSON.parse(localStorage.getItem('firm_settings'));
+    if (localSettings) applyFirmSettings(localSettings);
+
+    try {
+        let res;
+        if(typeof API.getFirmSettings === 'function') {
+            res = await API.getFirmSettings();
+        } else {
+            const req = await fetch(`${CONFIG.API_URL}/api/firms?id=eq.${currentUser.firm_id}&select=*`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }
+            });
+            if(req.ok) {
+                const data = await req.json();
+                res = data[0];
+            }
+        }
+        
+        if (res) {
+            const settings = { firm_name: res.firm_name || res.name, logo_url: res.logo_url, primary_color: res.primary_color, accent_color: res.accent_color };
+            localStorage.setItem('firm_settings', JSON.stringify(settings));
+            applyFirmSettings(settings);
+            
+            if(settings.firm_name) document.getElementById('firm_setting_name').value = settings.firm_name;
+            if(settings.logo_url) document.getElementById('firm_setting_logo').value = settings.logo_url;
+            if(settings.primary_color) document.getElementById('firm_setting_primary').value = settings.primary_color;
+            if(settings.accent_color) document.getElementById('firm_setting_accent').value = settings.accent_color;
+        }
+    } catch(e) {}
+}
+
+function applyFirmSettings(settings) {
+    if (!settings) return;
+    const root = document.documentElement;
+    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
+    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
+    
+    const topName = document.getElementById('top-firm-name');
+    if (topName && (settings.firm_name || settings.logo_url)) {
+        const logoHtml = settings.logo_url ? `<img src="${settings.logo_url}" width="24" height="24" class="me-2 rounded" style="object-fit:cover;">` : `<i class="fas fa-balance-scale text-accent me-2"></i>`;
+        topName.innerHTML = `${logoHtml} ${settings.firm_name || 'موكّل'}`;
+    }
+}
+
+async function saveFirmSettings(event) {
+    event.preventDefault();
+    const data = {
+        firm_name: document.getElementById('firm_setting_name').value, logo_url: document.getElementById('firm_setting_logo').value,
+        primary_color: document.getElementById('firm_setting_primary').value, accent_color: document.getElementById('firm_setting_accent').value
+    };
+    localStorage.setItem('firm_settings', JSON.stringify(data));
+    applyFirmSettings(data);
+    
+    try {
+        if(typeof API.updateFirmSettings === 'function') await API.updateFirmSettings(data);
+        else await fetch(`${CONFIG.API_URL}/api/firms?id=eq.${currentUser.firm_id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }, body: JSON.stringify(data) });
+    } catch(e) {}
+
+    closeModal('settingsModal');
+    showAlert('تم تطبيق وحفظ إعدادات الهوية البصرية بنجاح', 'success');
+}
+
+// ----------------------------------------------------
+// الإشعارات
 // ----------------------------------------------------
 async function loadNotifications(isSilent = false) {
     if (typeof API.getNotifications !== 'function') return;
-    
     const notifications = await API.getNotifications();
     if (!notifications || notifications.error) return;
-    
-    // التحقق مما إذا كان هناك إشعارات جديدة لم تكن موجودة (لإصدار صوت أو تنبيه مرئي إذا لزم الأمر مستقبلاً)
-    const isNew = notifications.length > globalData.notifications.length;
     globalData.notifications = notifications;
-    
     renderNotificationsDropdown();
 }
 
@@ -86,14 +143,13 @@ function renderNotificationsDropdown() {
     if (unreadNotifications.length > 0) {
         badge.innerText = unreadNotifications.length;
         badge.classList.remove('d-none');
-        if (bellIcon) bellIcon.classList.add('heartbeat-animation'); // إضافة تأثير نبض للجرس
+        if (bellIcon) bellIcon.classList.add('heartbeat-animation'); 
     } else {
         badge.classList.add('d-none');
         if (bellIcon) bellIcon.classList.remove('heartbeat-animation');
     }
 
-    let html = `<li><h6 class="dropdown-header fw-bold text-navy"><i class="fas fa-bell me-2"></i>الإشعارات الحديثة</h6></li>
-                <li><hr class="dropdown-divider"></li>`;
+    let html = `<li><h6 class="dropdown-header fw-bold text-navy"><i class="fas fa-bell me-2"></i>الإشعارات الحديثة</h6></li><li><hr class="dropdown-divider"></li>`;
 
     if (globalData.notifications.length === 0) {
         html += `<li><a class="dropdown-item text-center text-muted small py-3" href="#">لا توجد إشعارات</a></li>`;
@@ -102,16 +158,9 @@ function renderNotificationsDropdown() {
             const bgClass = n.is_read ? '' : 'bg-light';
             const fwClass = n.is_read ? 'text-muted' : 'fw-bold text-dark';
             const timeString = new Date(n.created_at).toLocaleString('ar-EG', {hour: '2-digit', minute:'2-digit', day:'numeric', month:'numeric'});
-            
-            return `<li>
-                        <a class="dropdown-item py-2 border-bottom ${bgClass}" href="#" onclick="handleNotificationClick('${n.id}', '${n.link}')">
-                            <div class="d-flex justify-content-between">
-                                <span class="small ${fwClass}">${n.title}</span>
-                                <small class="text-muted" style="font-size: 0.7rem;">${timeString}</small>
-                            </div>
-                            <div class="small text-muted text-wrap mt-1" style="font-size: 0.8rem;">${n.body}</div>
-                        </a>
-                    </li>`;
+            return `<li><a class="dropdown-item py-2 border-bottom ${bgClass}" href="#" onclick="handleNotificationClick('${n.id}', '${n.link}')">
+                        <div class="d-flex justify-content-between"><span class="small ${fwClass}">${n.title}</span><small class="text-muted" style="font-size: 0.7rem;">${timeString}</small></div>
+                        <div class="small text-muted text-wrap mt-1" style="font-size: 0.8rem;">${n.body}</div></a></li>`;
         }).join('');
     }
     list.innerHTML = html;
@@ -120,38 +169,23 @@ function renderNotificationsDropdown() {
 async function handleNotificationClick(id, linkAction) {
     event.preventDefault();
     const notif = globalData.notifications.find(n => n.id === id);
-    if (notif && !notif.is_read) {
-        await API.markNotificationAsRead(id);
-        notif.is_read = true;
-        renderNotificationsDropdown();
-    }
-    
-    // توجيه المستخدم بناءً على نوع الإشعار
+    if (notif && !notif.is_read) { await API.markNotificationAsRead(id); notif.is_read = true; renderNotificationsDropdown(); }
     if (linkAction === 'cases') switchView('cases');
     else if (linkAction === 'appointments' || linkAction === 'agenda') switchView('agenda');
     else switchView('dashboard');
 }
+async function markNotificationsAsRead() {}
 
-async function markNotificationsAsRead() {
-    // يمكن تفعيل هذه الدالة لاحقاً لقراءة جميع الإشعارات المفتوحة بضغطة واحدة
-}
 // ----------------------------------------------------
-
+// واجهة المستخدم والبيانات
+// ----------------------------------------------------
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role);
     const userName = currentUser.full_name || 'مستخدم';
-    const welcomeName = document.getElementById('welcome-name');
-    const welcomeRole = document.getElementById('welcome-role'); 
-    if (welcomeName) welcomeName.innerText = userName;
-    if (welcomeRole) welcomeRole.innerText = `المنصب: ${roleAr}`;
-    const topUserName = document.getElementById('top-user-name');
-    const topAvatar = document.getElementById('top-user-avatar');
-    if (topUserName) topUserName.innerText = userName;
-    if (topAvatar) topAvatar.innerText = userName.charAt(0).toUpperCase();
-    const profName = document.getElementById('prof-name');
-    const profRole = document.getElementById('prof-role');
-    if (profName) profName.innerText = userName;
-    if (profRole) profRole.innerText = roleAr;
+    if (document.getElementById('welcome-name')) document.getElementById('welcome-name').innerText = userName;
+    if (document.getElementById('welcome-role')) document.getElementById('welcome-role').innerText = `المنصب: ${roleAr}`;
+    if (document.getElementById('top-user-name')) document.getElementById('top-user-name').innerText = userName;
+    if (document.getElementById('top-user-avatar')) document.getElementById('top-user-avatar').innerText = userName.charAt(0).toUpperCase();
 }
 
 function getRoleNameInArabic(role) {
@@ -165,23 +199,18 @@ function applyRoleBasedUI() {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     if (isLawyer) {
-        const caseAssign = document.getElementById('case-assign-wrapper');
-        const apptAssign = document.getElementById('appt-assign-wrapper');
-        if(caseAssign) caseAssign.style.display = 'none';
-        if(apptAssign) apptAssign.style.display = 'none';
+        if(document.getElementById('case-assign-wrapper')) document.getElementById('case-assign-wrapper').style.display = 'none';
+        if(document.getElementById('appt-assign-wrapper')) document.getElementById('appt-assign-wrapper').style.display = 'none';
     }
     if (isAdmin) {
-        const staffCard = document.getElementById('stat-staff-card');
-        const reportsBtn = document.getElementById('admin-reports-btn');
-        if (staffCard) staffCard.style.display = 'block';
-        if (reportsBtn) reportsBtn.classList.remove('d-none');
+        if (document.getElementById('stat-staff-card')) document.getElementById('stat-staff-card').style.display = 'block';
+        if (document.getElementById('admin-reports-btn')) document.getElementById('admin-reports-btn').classList.remove('d-none');
+        if (document.getElementById('firm-settings-btn')) document.getElementById('firm-settings-btn').style.display = 'block';
     } else {
-        const staffMgmt = document.getElementById('staff-management-section');
-        if(staffMgmt) staffMgmt.style.display = 'none';
+        if(document.getElementById('staff-management-section')) document.getElementById('staff-management-section').style.display = 'none';
     }
 }
 
-// الفلترة الدقيقة للصلاحيات
 function filterAndSetCases(rawCases) {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
     if (isLawyer) {
@@ -238,10 +267,7 @@ function renderDashboard() {
     document.getElementById('stat-staff').innerText = globalData.staff.length;
 
     let totalAgreed = 0, totalPaid = 0;
-    globalData.cases.forEach(c => {
-        totalAgreed += Number(c.total_agreed_fees) || 0;
-        totalPaid += Number(c.total_paid) || 0;
-    });
+    globalData.cases.forEach(c => { totalAgreed += Number(c.total_agreed_fees) || 0; totalPaid += Number(c.total_paid) || 0; });
     document.getElementById('fin-agreed').innerText = totalAgreed.toLocaleString();
     document.getElementById('fin-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('fin-rem').innerText = (totalAgreed - totalPaid).toLocaleString();
@@ -293,25 +319,125 @@ function renderClientsList() {
     `).join('');
 }
 
+// ----------------------------------------------------
+// دورة حياة المواعيد (الإسناد، التنبيهات، والنتيجة)
+// ----------------------------------------------------
 function renderAgendaList() {
     const list = document.getElementById('agenda-list');
     if(!list) return;
     if (globalData.appointments.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted">لا توجد مواعيد مجدولة لك</p>'; return; }
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
-    list.innerHTML = globalData.appointments.map(a => `
-        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-warning">
-            <div class="d-flex justify-content-between align-items-start">
-                <h6 class="fw-bold text-navy mb-1" style="width:75%">${a.title}</h6>
+    
+    list.innerHTML = globalData.appointments.map(a => {
+        const apptDate = new Date(a.appt_date);
+        const isPast = apptDate < new Date();
+        const isScheduled = a.status === 'مجدول' || !a.status;
+
+        // أزرار الإجراءات تظهر فقط إذا كان الموعد في الماضي وما زال مجدولاً (لم يتم اتخاذ إجراء عليه)
+        let actionButtons = '';
+        if (isPast && isScheduled) {
+            actionButtons = `
+                <div class="d-flex gap-2 mt-3 border-top pt-2">
+                    <button class="btn btn-sm btn-success flex-grow-1 fw-bold" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check-circle"></i> تم الإنجاز</button>
+                    <button class="btn btn-sm btn-warning flex-grow-1 fw-bold text-dark" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button>
+                    <button class="btn btn-sm btn-danger flex-grow-1 fw-bold" onclick="cancelAppointment('${a.id}')"><i class="fas fa-times-circle"></i> إلغاء</button>
+                </div>
+            `;
+        }
+
+        let statusBadge = '';
+        if (a.status === 'تم') statusBadge = '<span class="badge bg-success ms-2">منجز</span>';
+        else if (a.status === 'مؤجل') statusBadge = '<span class="badge bg-warning text-dark ms-2">مؤجل</span>';
+        else if (a.status === 'ملغي') statusBadge = '<span class="badge bg-danger ms-2">ملغي</span>';
+        else if (isPast) statusBadge = '<span class="badge bg-secondary ms-2 heartbeat-animation">بانتظار اتخاذ إجراء</span>';
+        else statusBadge = '<span class="badge bg-info ms-2">قادم</span>';
+
+        const dateStr = apptDate.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = apptDate.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+        return `
+        <div class="card-custom p-3 mb-3 shadow-sm border-start border-4 ${a.status==='تم'?'border-success': a.status==='ملغي'?'border-danger': a.status==='مؤجل'?'border-warning':'border-primary'}">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="fw-bold text-navy mb-0" style="width:75%">${a.title} ${statusBadge}</h6>
                 <div>
-                    <button class="btn btn-sm text-info p-0 me-2" onclick="shareAppointment('${a.id}')" title="إرسال الموعد للموكل"><i class="fas fa-share-alt"></i></button>
+                    <button class="btn btn-sm text-info p-0 me-2" onclick="shareAppointment('${a.id}')" title="إرسال الموعد"><i class="fas fa-share-alt"></i></button>
                     ${isAdmin || a.created_by === currentUser.id ? `<button class="btn btn-sm text-danger p-0" onclick="deleteRecord('appointment', '${a.id}')"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
-            <small class="text-muted d-block"><i class="fas fa-clock me-1 text-warning"></i> ${new Date(a.appt_date).toLocaleString('ar-EG')}</small>
-            <small class="badge bg-soft-primary text-primary mt-2">${a.type}</small>
+            <div class="text-muted small mb-1"><i class="fas fa-calendar-day me-1 text-primary"></i> ${dateStr}</div>
+            <div class="text-muted small mb-2"><i class="fas fa-clock me-1 text-warning"></i> الساعة: ${timeStr}</div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="badge bg-soft-primary text-primary">${a.type}</span>
+                <small class="text-muted"><i class="fas fa-user-check me-1"></i> إسناد: ${getAssignedNames(a.assigned_to)}</small>
+            </div>
+            
+            ${a.notes ? `<div class="mt-2 p-2 bg-light rounded small border-start border-success border-3"><b>مخرجات وتفاصيل:</b> <br>${a.notes.replace(/\n/g, '<br>')}</div>` : ''}
+            
+            ${actionButtons}
         </div>
-    `).join('');
+    `}).join('');
 }
+
+function getAssignedNames(assigned_to) {
+    if (!assigned_to) return 'عام للمكتب';
+    let ids = Array.isArray(assigned_to) ? assigned_to : [assigned_to];
+    let names = ids.map(id => {
+        let staff = globalData.staff.find(s => s.id === id);
+        return staff ? staff.full_name : '';
+    }).filter(n => n);
+    return names.length > 0 ? names.join('، ') : 'عام للمكتب';
+}
+
+function openApptOutcomeModal(id) {
+    document.getElementById('outcome_appt_id').value = id;
+    document.getElementById('outcome_text').value = '';
+    openModal('apptOutcomeModal');
+}
+
+async function saveApptOutcome(event) {
+    event.preventDefault();
+    const id = document.getElementById('outcome_appt_id').value;
+    const outcome = document.getElementById('outcome_text').value;
+    
+    if(await API.updateAppointment(id, { status: 'تم', notes: outcome })) {
+        closeModal('apptOutcomeModal');
+        showAlert('تم تسجيل النتيجة بنجاح في السجل', 'success');
+        await loadAllData();
+    }
+}
+
+function openApptPostponeModal(id) {
+    document.getElementById('postpone_appt_id').value = id;
+    document.getElementById('postpone_date').value = '';
+    openModal('apptPostponeModal');
+}
+
+async function saveApptPostpone(event) {
+    event.preventDefault();
+    const id = document.getElementById('postpone_appt_id').value;
+    const newDate = document.getElementById('postpone_date').value;
+    
+    const appt = globalData.appointments.find(a => a.id === id);
+    let newTitle = appt.title;
+    if(!newTitle.includes('(مؤجل)')) newTitle += ' (مؤجل)';
+
+    if(await API.updateAppointment(id, { status: 'مجدول', appt_date: newDate, title: newTitle })) {
+        closeModal('apptPostponeModal');
+        showAlert('تم تأجيل الموعد وإعادة جدولته بنجاح', 'success');
+        await loadAllData();
+    }
+}
+
+async function cancelAppointment(id) {
+    if(!confirm('هل أنت متأكد من إلغاء هذا الموعد؟')) return;
+    if(await API.updateAppointment(id, { status: 'ملغي' })) {
+        showAlert('تم إلغاء الموعد', 'info');
+        await loadAllData();
+    }
+}
+
+// ----------------------------------------------------
 
 function renderStaffList() {
     const list = document.getElementById('staff-list');
@@ -323,17 +449,12 @@ function renderStaffList() {
         const statusBadge = s.is_active === false ? '<span class="badge bg-danger">معطل</span>' : '<span class="badge bg-success">فعال</span>';
         const actionBtn = isAdmin && !isMainAdmin ? `
             <button class="btn btn-sm btn-outline-warning text-dark p-1 me-1" onclick="openEditStaffModal('${s.id}')"><i class="fas fa-pen"></i></button>
-            <button class="btn btn-sm ${s.is_active === false ? 'btn-success' : 'btn-dark'} p-1" onclick="toggleStaffStatus('${s.id}', ${s.is_active})">
-                <i class="fas ${s.is_active === false ? 'fa-user-check' : 'fa-user-lock'}"></i>
-            </button>
+            <button class="btn btn-sm ${s.is_active === false ? 'btn-success' : 'btn-dark'} p-1" onclick="toggleStaffStatus('${s.id}', ${s.is_active})"><i class="fas ${s.is_active === false ? 'fa-user-check' : 'fa-user-lock'}"></i></button>
         ` : '';
 
         return `
         <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center ${s.is_active === false ? 'opacity-50' : ''}">
-            <div>
-                <b class="text-navy">${s.full_name}</b> ${statusBadge}<br>
-                <small class="text-muted">${getRoleNameInArabic(s.role)} - @${s.username}</small>
-            </div>
+            <div><b class="text-navy">${s.full_name}</b> ${statusBadge}<br><small class="text-muted">${getRoleNameInArabic(s.role)} - @${s.username}</small></div>
             <div>${actionBtn}</div>
         </div>
     `}).join('');
@@ -345,7 +466,6 @@ function populateSelects() {
     
     const activeStaff = globalData.staff.filter(s => s.is_active !== false);
     
-    // بناء نظام الإسناد المتعدد للقضايا
     const lawyersContainer = document.getElementById('case_assigned_lawyers_container');
     if (lawyersContainer) {
         lawyersContainer.innerHTML = activeStaff.length ? activeStaff.map(s => `
@@ -356,13 +476,12 @@ function populateSelects() {
         `).join('') : '<small class="text-muted">لا يوجد موظفين</small>';
     }
 
-    // بناء نظام الإسناد المتعدد للمواعيد
     const apptsContainer = document.getElementById('appt_assigned_to_container');
     if (apptsContainer) {
         apptsContainer.innerHTML = activeStaff.length ? activeStaff.map(s => `
             <div class="form-check border-bottom pb-1 mb-1">
                 <input class="form-check-input appt-lawyer-cb" type="checkbox" value="${s.id}" id="a_lawyer_${s.id}">
-                <label class="form-check-label small fw-bold" for="a_lawyer_${s.id}">${s.full_name}</label>
+                <label class="form-check-label small fw-bold" for="a_lawyer_${s.id}">${s.full_name} <span class="text-muted fw-normal">(${getRoleNameInArabic(s.role)})</span></label>
             </div>
         `).join('') : '<small class="text-muted">لا يوجد موظفين</small>';
     }
@@ -438,7 +557,6 @@ async function saveCase(event) {
     if (isLawyer) assignedLawyers = [currentUser.id];
     else document.querySelectorAll('.case-lawyer-cb:checked').forEach(cb => assignedLawyers.push(cb.value));
     
-    // التقاط النص الخاص بلائحة الدعوى من الواجهة (إذا وجد)
     const lawsuitTextElement = document.getElementById('case_lawsuit_text');
     const lawsuitText = lawsuitTextElement ? lawsuitTextElement.value : null;
 
@@ -450,17 +568,12 @@ async function saveCase(event) {
         total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
         assigned_lawyer_id: assignedLawyers.length > 0 ? assignedLawyers : null, 
         created_by: currentUser.id, status: 'نشطة',
-        
-        // التقاط الحقول الإضافية بطريقة آمنة لتفادي أي أخطاء إذا لم تكن موجودة في بعض النسخ
         opponent_lawyer: document.getElementById('case_opponent_lawyer')?.value || null, 
         poa_details: document.getElementById('case_poa_details')?.value || null,
         deadline_date: document.getElementById('case_deadline_date')?.value || null, 
         success_probability: document.getElementById('case_success_probability')?.value ? Number(document.getElementById('case_success_probability').value) : null,
         parent_case_id: document.getElementById('case_parent_case_id')?.value || null,
-        
-        // إضافة الحقول الجديدة الخاصة بالذكاء الاصطناعي
-        lawsuit_text: lawsuitText,
-        ai_entities: {} // يتم تهيئته ككائن فارغ ليقوم الـ Worker أو الـ AI بملئه لاحقاً بالأسماء والتواريخ المستخرجة
+        lawsuit_text: lawsuitText, ai_entities: {} 
     };
     
     const btn = document.querySelector('#caseModal button[type="submit"]');
@@ -471,17 +584,8 @@ async function saveCase(event) {
         btn.disabled = true;
     }
 
-    if(await API.addCase(data)) { 
-        closeModal('caseModal'); 
-        document.getElementById('caseForm').reset(); 
-        await loadAllData(); 
-        showAlert('تم إنشاء القضية بنجاح', 'success'); 
-    }
-    
-    if(btn) {
-        btn.innerHTML = originalBtnText;
-        btn.disabled = false;
-    }
+    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم إنشاء القضية بنجاح', 'success'); }
+    if(btn) { btn.innerHTML = originalBtnText; btn.disabled = false; }
 }
 
 async function saveAppointment(event) {
@@ -520,17 +624,12 @@ function openEditStaffModal(id) {
 async function updateStaffDetails(event) {
     event.preventDefault();
     const id = document.getElementById('edit_staff_id').value;
-    const data = {
-        full_name: document.getElementById('edit_staff_full_name').value,
-        username: document.getElementById('edit_staff_username').value,
-        role: document.getElementById('edit_staff_role').value
-    };
+    const data = { full_name: document.getElementById('edit_staff_full_name').value, username: document.getElementById('edit_staff_username').value, role: document.getElementById('edit_staff_role').value };
     const pw = document.getElementById('edit_staff_password').value;
     if(pw && pw.length >= 3) data.password = pw;
     
     const res = await API.updateStaff(id, data);
-    if(res && !res.error) { closeModal('editStaffModal'); showAlert('تم تعديل بيانات الموظف بنجاح', 'success'); await loadAllData(); }
-    else { showAlert('خطأ أثناء التعديل', 'danger'); }
+    if(res && !res.error) { closeModal('editStaffModal'); showAlert('تم تعديل بيانات الموظف بنجاح', 'success'); await loadAllData(); } else { showAlert('خطأ أثناء التعديل', 'danger'); }
 }
 
 async function deleteRecord(type, id) {
@@ -553,12 +652,8 @@ function shareAppointment(apptId) {
     if(!appt) return;
     
     let names = [];
-    if (Array.isArray(appt.assigned_to)) {
-        names = appt.assigned_to.map(id => { const s = globalData.staff.find(st => st.id === id); return s ? s.full_name : ''; }).filter(n => n);
-    } else if (appt.assigned_to) {
-        const s = globalData.staff.find(st => st.id === appt.assigned_to);
-        if(s) names.push(s.full_name);
-    }
+    if (Array.isArray(appt.assigned_to)) { names = appt.assigned_to.map(id => { const s = globalData.staff.find(st => st.id === id); return s ? s.full_name : ''; }).filter(n => n); } 
+    else if (appt.assigned_to) { const s = globalData.staff.find(st => st.id === appt.assigned_to); if(s) names.push(s.full_name); }
     
     const staffText = names.length > 0 ? `مع المحامي/ة: ${names.join(' و ')}` : 'مع فريق المكتب';
     const txt = `أهلاً بك،\nنود تذكيركم بموعدكم المجدول معنا:\n\n📌 بخصوص: ${appt.title}\n📅 التاريخ والوقت: ${new Date(appt.appt_date).toLocaleString('ar-EG')}\n👥 ${staffText}\n\nنرجو الالتزام بالموعد، ودمتم بخير.`;

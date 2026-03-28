@@ -5,10 +5,19 @@ let caseObj = null;
 let realtimeSyncTimer = null;
 
 window.onload = async () => {
+    applyFirmSettings(); // تطبيق هوية المكتب
     if (!currentCaseId) { window.location.href = 'app.html'; return; }
     await loadCaseFullDetails();
     startRealtimeSync();
 };
+
+function applyFirmSettings() {
+    const settings = JSON.parse(localStorage.getItem('firm_settings'));
+    if (!settings) return;
+    const root = document.documentElement;
+    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
+    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
+}
 
 function startRealtimeSync() {
     realtimeSyncTimer = setInterval(async () => {
@@ -30,7 +39,6 @@ function goBack() { window.location.href = 'app.html'; }
 
 async function loadCaseFullDetails() {
     try {
-        // جلبنا طاقم العمل (الموظفين) وجميع القضايا لكي نستخدمها في نافذة التعديل للإسناد والارتباط
         const [allCases, updates, installments, expenses, files, staff] = await Promise.all([
             API.getCases(), 
             fetchAPI(`/api/updates?case_id=${currentCaseId}`), 
@@ -47,7 +55,7 @@ async function loadCaseFullDetails() {
         if (!caseObj) { window.location.href = 'app.html'; return; }
 
         renderHeaderAndSummary();
-        renderAiAnalysis(); // دالة مخرجات الذكاء الاصطناعي
+        renderAiAnalysis(); 
         renderTimeline(updates || []);
         renderPayments(installments || []);
         renderExpenses(expenses || []);
@@ -63,14 +71,13 @@ function renderHeaderAndSummary() {
     document.getElementById('case-title').innerText = `${caseObj.case_internal_id || 'ملف قضية'}`;
     document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${caseObj.mo_clients?.full_name || "موكل غير محدد"}`;
     
-    // إظهار آخر ظهور للموكل إن وجد
     const lastSeenContainer = document.getElementById('client-last-seen-container');
     const lastSeenEl = document.getElementById('det-client-last-seen');
     if (caseObj.client_last_seen) {
         lastSeenEl.innerText = new Date(caseObj.client_last_seen).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
-        lastSeenContainer.classList.remove('d-none');
+        if(lastSeenContainer) lastSeenContainer.classList.remove('d-none');
     } else {
-        lastSeenContainer.classList.add('d-none');
+        if(lastSeenContainer) lastSeenContainer.classList.add('d-none');
     }
 
     document.getElementById('det-court').innerText = caseObj.current_court || "--";
@@ -99,9 +106,9 @@ function renderHeaderAndSummary() {
     statusEl.className = `badge fs-6 ${caseObj.status === 'نشطة' ? 'bg-success' : 'bg-danger'}`;
 }
 
-// دالة لمعالجة وعرض مخرجات الذكاء الاصطناعي
 function renderAiAnalysis() {
     const aiContainer = document.getElementById('ai-analysis-container');
+    if(!aiContainer) return;
     if (!caseObj.ai_entities || Object.keys(caseObj.ai_entities).length === 0) {
         aiContainer.classList.add('d-none');
         return;
@@ -293,7 +300,6 @@ function printQRCode() {
     }, 500);
 }
 
-// تعبئة وتجهيز نافذة التعديل بحقول الإسناد والارتباط
 function openEditModal() {
     document.getElementById('edit_internal_id').value = caseObj.case_internal_id || '';
     document.getElementById('edit_status').value = caseObj.status || 'نشطة';
@@ -313,7 +319,6 @@ function openEditModal() {
     document.getElementById('edit_deadline_date').value = caseObj.deadline_date || '';
     document.getElementById('edit_success_probability').value = caseObj.success_probability || '';
     
-    // تعبئة قائمة المحامين للإسناد
     const lawyerSelect = document.getElementById('edit_assigned_lawyer');
     if(lawyerSelect && window.firmStaff) {
         lawyerSelect.innerHTML = '<option value="">بدون إسناد (لمكتب العمل)</option>' + 
@@ -321,7 +326,6 @@ function openEditModal() {
         lawyerSelect.value = caseObj.assigned_lawyer_id || '';
     }
     
-    // تعبئة قائمة القضايا للارتباط
     const parentSelect = document.getElementById('edit_parent_case_id');
     if(parentSelect && window.firmCases) {
         parentSelect.innerHTML = '<option value="">لا يوجد ارتباط</option>' + 
@@ -353,21 +357,36 @@ async function updateCaseDetails(event) {
         deadline_date: document.getElementById('edit_deadline_date').value || null,
         success_probability: document.getElementById('edit_success_probability').value ? Number(document.getElementById('edit_success_probability').value) : null,
         
-        // التقاط قيم الإسناد والارتباط
         assigned_lawyer_id: document.getElementById('edit_assigned_lawyer').value || null,
         parent_case_id: document.getElementById('edit_parent_case_id').value || null
     };
     if(await API.updateCase(currentCaseId, data)) { closeModal('editCaseModal'); showAlert('تم التحديث بنجاح', 'success'); await loadCaseFullDetails(); }
 }
 
+// تعديل لفتح نافذة إضافة تحديث مع تعبئة قائمة المحامين للإسناد
+function openUpdateModal() {
+    const lawyerSelect = document.getElementById('upd_assigned_lawyer');
+    if(lawyerSelect && window.firmStaff) {
+        lawyerSelect.innerHTML = '<option value="">لا يوجد إسناد محدد</option>' + 
+            window.firmStaff.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+    }
+    openModal('updateModal');
+}
+
 async function saveUpdate(event) {
     event.preventDefault();
+    const assignedLawyer = document.getElementById('upd_assigned_lawyer') ? document.getElementById('upd_assigned_lawyer').value : null;
+
     const data = {
-        case_id: currentCaseId, update_title: document.getElementById('upd_title').value, update_details: document.getElementById('upd_details').value,
-        hearing_date: document.getElementById('upd_hearing_date').value || null, next_hearing_date: document.getElementById('upd_next_hearing').value || null,
-        is_visible_to_client: document.getElementById('upd_visible').checked
+        case_id: currentCaseId, 
+        update_title: document.getElementById('upd_title').value, 
+        update_details: document.getElementById('upd_details').value,
+        hearing_date: document.getElementById('upd_hearing_date').value || null, 
+        next_hearing_date: document.getElementById('upd_next_hearing').value || null,
+        is_visible_to_client: document.getElementById('upd_visible').checked,
+        assigned_to: assignedLawyer // إسناد المهمة/التحديث لمحامٍ
     };
-    if(await API.addUpdate(data)) { closeModal('updateModal'); document.getElementById('updateForm').reset(); showAlert('تمت الإضافة', 'success'); await loadCaseFullDetails(); }
+    if(await API.addUpdate(data)) { closeModal('updateModal'); document.getElementById('updateForm').reset(); showAlert('تمت الإضافة وإرسال الإشعار', 'success'); await loadCaseFullDetails(); }
 }
 
 async function savePayment(event) {

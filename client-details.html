@@ -13,6 +13,14 @@
         .nav-pills .nav-link { border-radius: 10px; color: var(--navy); font-weight: 700; border: 1px solid #eef2f6; margin-left: 5px; transition: 0.3s; }
         .nav-pills .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); }
     </style>
+
+    <script>
+        const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
+        if (fwSettings) {
+            if (fwSettings.primary_color) document.documentElement.style.setProperty('--navy', fwSettings.primary_color);
+            if (fwSettings.accent_color) document.documentElement.style.setProperty('--accent', fwSettings.accent_color);
+        }
+    </script>
 </head>
 <body style="background: var(--bg-light); padding-bottom: 80px;">
 

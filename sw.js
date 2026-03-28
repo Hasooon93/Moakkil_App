@@ -1,4 +1,7 @@
-const CACHE_NAME = 'moakkil-v2-cache-1';
+// sw.js - محرك الكاش والتثبيت لتطبيق موكّل (استراتيجية الشبكة أولاً)
+
+// تم رفع الإصدار إلى v5 لإجبار متصفحات المستخدمين على تنزيل التحديثات الجديدة فوراً
+const CACHE_NAME = 'moakkil-v5-cache-1';
 
 // قائمة بالملفات الأساسية التي يجب تخزينها ليتمكن التطبيق من الإقلاع والعمل السريع
 const urlsToCache = [
@@ -8,23 +11,33 @@ const urlsToCache = [
     './app.html',
     './ai-chat.html',
     './case-details.html',
+    './client-details.html',
     './client.html',
+    './reports.html',
+    './calculators.html',
     './css/style.css',
     './js/config.js',
     './js/api.js',
     './js/app.js',
     './js/auth.js',
     './js/case-details.js',
+    './js/client-details.js',
+    './js/loan.js',
+    './js/compound.js',
+    './js/breakeven.js',
+    './js/discount.js',
+    './js/share.js',
+    './js/inheritance.js',
     './manifest.json'
 ];
 
 // حدث التثبيت (Install) - يتم فيه تخزين الملفات الأساسية
 self.addEventListener('install', event => {
-    self.skipWaiting();
+    self.skipWaiting(); // إجبار السيرفر ووركر الجديد على التثبيت فوراً
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('✅ تم فتح الكاش وتخزين الملفات الأساسية');
+                console.log('✅ تم فتح الكاش وتخزين الملفات الأساسية (الإصدار الخامس)');
                 return cache.addAll(urlsToCache);
             })
             .catch(err => console.error('خطأ في تخزين الكاش:', err))
@@ -46,13 +59,16 @@ self.addEventListener('activate', event => {
             );
         })
     );
-    self.clients.claim();
+    self.clients.claim(); // السيطرة الفورية على كافة صفحات التطبيق المفتوحة
 });
 
 // حدث الجلب (Fetch) - استراتيجية الشبكة أولاً للتطبيقات الديناميكية
 self.addEventListener('fetch', event => {
     // نتجاهل الطلبات التي ليست GET والطلبات التي لا تبدأ بـ http/https (مثل إضافات المتصفح)
-    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
+    // كما نتجاهل طلبات الـ API بقاعدة البيانات لضمان عدم كيش البيانات الحساسة
+    if (event.request.method !== 'GET' || !event.request.url.startsWith('http') || event.request.url.includes('/api/')) {
+        return;
+    }
 
     event.respondWith(
         fetch(event.request)

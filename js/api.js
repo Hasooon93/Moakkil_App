@@ -27,6 +27,16 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
 }
 
 const API = {
+    // إعدادات المكتب (تخصيص الهوية)
+    getFirmSettings: () => {
+        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+        return fetchAPI(`/api/firms?id=eq.${currentUser.firm_id}`);
+    },
+    updateFirmSettings: (data) => {
+        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+        return fetchAPI(`/api/firms?id=eq.${currentUser.firm_id}`, 'PATCH', data);
+    },
+
     // الموكلين
     getClients: () => fetchAPI('/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),

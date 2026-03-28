@@ -1,250 +1,305 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>موكّل | الأدوات والحاسبات القانونية</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-light">
+// js/inheritance.js - محرك توزيع المواريث الشرعية (موكّل ERP) مع تفصيل حصص الأفراد
+
+document.addEventListener("DOMContentLoaded", function() {
+    const calcInhBtn = document.getElementById("calcInhBtn");
     
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="#">نظام موكّل الإداري</a>
-        </div>
-    </nav>
+    if(calcInhBtn) {
+        calcInhBtn.addEventListener("click", function() {
+            // 1. جلب المدخلات من واجهة المستخدم
+            const total = parseFloat(document.getElementById("inhTotal").value);
+            const gender = document.getElementById("inhGender").value; // male أو female
+            const spouses = parseInt(document.getElementById("inhSpouse").value) || 0;
+            const sons = parseInt(document.getElementById("inhSons").value) || 0;
+            const daughters = parseInt(document.getElementById("inhDaughters").value) || 0;
+            const fatherAlive = parseInt(document.getElementById("inhFather").value) === 1;
+            const motherAlive = parseInt(document.getElementById("inhMother").value) === 1;
+            const brothers = parseInt(document.getElementById("inhBrothers").value) || 0;
+            const sisters = parseInt(document.getElementById("inhSisters").value) || 0;
+            const maternalSiblings = parseInt(document.getElementById("inhMaternalSiblings").value) || 0;
 
-    <div class="container-fluid px-4 py-3">
-        
-        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-            <div>
-                <h2 class="fw-bold text-primary mb-0">الأدوات والحاسبات المالية والشرعية</h2>
-                <p class="text-muted mt-1 mb-0">حسابات دقيقة لدعم القضايا والاستشارات القانونية</p>
-            </div>
-            <a href="index.html" class="btn btn-outline-secondary px-4 fw-bold">العودة للرئيسية</a>
-        </div>
-        
-        <ul class="nav nav-pills mb-4 justify-content-center" id="calculatorsTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="loan-tab" data-bs-toggle="tab" data-bs-target="#loan" type="button" role="tab">القروض</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="compound-tab" data-bs-toggle="tab" data-bs-target="#compound" type="button" role="tab">الفائدة المركبة</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="breakeven-tab" data-bs-toggle="tab" data-bs-target="#breakeven" type="button" role="tab">نقطة التعادل</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="discount-tab" data-bs-toggle="tab" data-bs-target="#discount" type="button" role="tab">الخصم والضريبة</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="share-tab" data-bs-toggle="tab" data-bs-target="#share" type="button" role="tab">حصة الفرد</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="inheritance-tab" data-bs-toggle="tab" data-bs-target="#inheritance" type="button" role="tab">المواريث الشامل</button>
-            </li>
-        </ul>
+            const resultDiv = document.getElementById("inhResult");
 
-        <div class="tab-content bg-white p-4 rounded shadow-sm border" id="calculatorsTabContent">
+            // 2. التحقق من صحة مبلغ التركة
+            if (isNaN(total) || total <= 0) {
+                resultDiv.className = "mt-4 alert alert-danger";
+                resultDiv.innerHTML = "<i class='fas fa-exclamation-triangle me-2'></i> يرجى إدخال صافي التركة برقم صحيح وموجب.";
+                resultDiv.classList.remove("d-none");
+                return;
+            }
+
+            let remaining = total;
+            let shares = []; // مصفوفة لتخزين أنصبة الفئات والورثة
+
+            // متغيرات مساعدة للحجب والتعصيب
+            const hasDescendants = (sons > 0 || daughters > 0);
+            const hasMaleDescendants = (sons > 0);
+            const siblingsCount = brothers + sisters + maternalSiblings;
+            const hasMultipleSiblings = siblingsCount >= 2;
+
+            // ==========================================
+            // أصحاب الفروض
+            // ==========================================
+
+            // 1. الزوج أو الزوجة (Spouses)
+            if (spouses > 0) {
+                let spouseShareRatio = 0;
+                let title = "";
+                if (gender === 'male') { 
+                    // المتوفى ذكر -> الورثة زوجات
+                    spouseShareRatio = hasDescendants ? (1/8) : (1/4);
+                    title = spouses > 1 ? `الزوجات (${spouses})` : "الزوجة";
+                } else { 
+                    // المتوفاة أنثى -> الوارث زوج
+                    spouseShareRatio = hasDescendants ? (1/4) : (1/2);
+                    title = "الزوج";
+                }
+                let amount = total * spouseShareRatio;
+                shares.push({ 
+                    title: title, 
+                    amount: amount, 
+                    ratioText: `1/${Math.round(1/spouseShareRatio)}`,
+                    count: spouses,
+                    singleAmount: amount / spouses
+                });
+                remaining -= amount;
+            }
+
+            // 2. الأم (Mother)
+            if (motherAlive) {
+                // ترث السدس لوجود فرع وارث أو جمع من الإخوة، وإلا فالثلث
+                let motherShareRatio = (hasDescendants || hasMultipleSiblings) ? (1/6) : (1/3);
+                let amount = total * motherShareRatio;
+                shares.push({ 
+                    title: "الأم", 
+                    amount: amount, 
+                    ratioText: `1/${Math.round(1/motherShareRatio)}`,
+                    count: 1,
+                    singleAmount: amount
+                });
+                remaining -= amount;
+            }
+
+            // 3. الأب (Father) - فرضاً
+            let fatherTakesResidue = false;
+            if (fatherAlive) {
+                // الأب يأخذ السدس فرضاً لوجود فرع وارث
+                let fatherShareRatio = (1/6);
+                let amount = total * fatherShareRatio;
+                shares.push({ 
+                    title: "الأب (فرضاً)", 
+                    amount: amount, 
+                    ratioText: "1/6", 
+                    isFather: true,
+                    count: 1,
+                    singleAmount: amount
+                });
+                remaining -= amount;
+                
+                // الأب يعصب (يأخذ الباقي) إذا لم يكن للمتوفى فرع وارث ذكر
+                if (!hasMaleDescendants) {
+                    fatherTakesResidue = true;
+                }
+            }
+
+            // 4. الإخوة لأم (Maternal Siblings)
+            // يحجبون بالأصل الوارث الذكر (الأب) والفرع الوارث مطلقاً (أبناء أو بنات)
+            if (maternalSiblings > 0 && !hasDescendants && !fatherAlive) {
+                let msShareRatio = maternalSiblings === 1 ? (1/6) : (1/3);
+                let amount = total * msShareRatio;
+                shares.push({ 
+                    title: `الإخوة لأم (${maternalSiblings}) بالتساوي`, 
+                    amount: amount, 
+                    ratioText: `1/${Math.round(1/msShareRatio)}`,
+                    count: maternalSiblings,
+                    singleAmount: amount / maternalSiblings
+                });
+                remaining -= amount;
+            }
+
+            // 5. البنات (Daughters) - في حال عدم وجود أبناء يعصبونهن
+            if (daughters > 0 && sons === 0) {
+                let dShareRatio = daughters === 1 ? (1/2) : (2/3);
+                let amount = total * dShareRatio;
+                shares.push({ 
+                    title: `البنات (${daughters})`, 
+                    amount: amount, 
+                    ratioText: daughters === 1 ? "1/2" : "2/3",
+                    count: daughters,
+                    singleAmount: amount / daughters
+                });
+                remaining -= amount;
+            }
+
+            // 6. الأخوات الشقيقات (فرضاً) - في حال عدم وجود فرع وارث، ولا أب، ولا إخوة ذكور يعصبونهن
+            if (sisters > 0 && brothers === 0 && !hasDescendants && !fatherAlive) {
+                let sShareRatio = sisters === 1 ? (1/2) : (2/3);
+                let amount = total * sShareRatio;
+                shares.push({ 
+                    title: `الأخوات الشقيقات (${sisters})`, 
+                    amount: amount, 
+                    ratioText: sisters === 1 ? "1/2" : "2/3",
+                    count: sisters,
+                    singleAmount: amount / sisters
+                });
+                remaining -= amount;
+            }
+
+
+            // ==========================================
+            // العصبات (Ta'seeb) و العول (Aul)
+            // ==========================================
+
+            // معالجة العول رياضياً: إذا زادت السهام المفروضة عن التركة (تخطت 100%)
+            let totalCalculated = shares.reduce((sum, s) => sum + s.amount, 0);
+            if (totalCalculated > total) {
+                // إعادة تحجيم الأنصبة لتتناسب مع التركة الكلية (العول)
+                let scale = total / totalCalculated;
+                shares.forEach(s => {
+                    s.amount = s.amount * scale;
+                    if (s.singleAmount) s.singleAmount = s.singleAmount * scale;
+                    s.ratioText += " (عولاً)";
+                });
+                remaining = 0;
+            }
+
+            // التعصيب 1: الأب يأخذ الباقي تعصيباً (إذا وجد باقي ولم يكن هناك فرع وارث ذكر)
+            if (fatherTakesResidue && remaining > 0 && sons === 0) {
+                let fatherEntry = shares.find(s => s.isFather);
+                if (fatherEntry) {
+                    fatherEntry.amount += remaining;
+                    fatherEntry.singleAmount += remaining;
+                    fatherEntry.title = "الأب (فرضاً وتعصيباً)";
+                    fatherEntry.ratioText = "1/6 + الباقي";
+                    remaining = 0;
+                }
+            }
+
+            // التعصيب 2: الأبناء والبنات (للذكر مثل حظ الأنثيين)
+            if (sons > 0 && remaining > 0) {
+                let totalShares = (sons * 2) + daughters;
+                let shareValue = remaining / totalShares;
+                shares.push({ 
+                    title: `الأبناء والبنات (${sons} ذكور، ${daughters} إناث)`, 
+                    amount: remaining, 
+                    ratioText: "الباقي تعصيباً", 
+                    isMixed: true,
+                    maleCount: sons,
+                    femaleCount: daughters,
+                    maleAmount: shareValue * 2,
+                    femaleAmount: shareValue
+                });
+                remaining = 0;
+            }
+
+            // التعصيب 3: الإخوة والأخوات الأشقاء (عصبة بالغير أو مع الغير) يحجبون بالأب والفرع الذكر
+            if ((brothers > 0 || sisters > 0) && !hasMaleDescendants && !fatherAlive && remaining > 0) {
+                if (daughters > 0) {
+                    // الأخوات يصبحن عصبة مع البنات (الأخوات مع البنات عصبات)
+                    if (sisters > 0 && brothers === 0) {
+                        shares.push({ 
+                            title: `الأخوات الشقيقات (${sisters}) (عصبة مع الغير)`, 
+                            amount: remaining, 
+                            ratioText: "الباقي",
+                            count: sisters,
+                            singleAmount: remaining / sisters
+                        });
+                        remaining = 0;
+                    } else if (brothers > 0) {
+                        let totalShares = (brothers * 2) + sisters;
+                        let shareValue = remaining / totalShares;
+                        shares.push({ 
+                            title: `الإخوة والأخوات الأشقاء (${brothers} ذكور، ${sisters} إناث)`, 
+                            amount: remaining, 
+                            ratioText: "الباقي تعصيباً", 
+                            isMixed: true,
+                            maleCount: brothers,
+                            femaleCount: sisters,
+                            maleAmount: shareValue * 2,
+                            femaleAmount: shareValue
+                        });
+                        remaining = 0;
+                    }
+                } else if (brothers > 0) {
+                    // إخوة أشقاء (ومعهم أخوات إن وجد) يعصبون ما تبقى في غياب الفرع الوارث والأب
+                    let totalShares = (brothers * 2) + sisters;
+                    let shareValue = remaining / totalShares;
+                    shares.push({ 
+                        title: `الإخوة والأخوات الأشقاء (${brothers} ذكور، ${sisters} إناث)`, 
+                        amount: remaining, 
+                        ratioText: "الباقي تعصيباً", 
+                        isMixed: true,
+                        maleCount: brothers,
+                        femaleCount: sisters,
+                        maleAmount: shareValue * 2,
+                        femaleAmount: shareValue
+                    });
+                    remaining = 0;
+                }
+            }
+
+            // ==========================================
+            // عرض النتيجة بالتفصيل
+            // ==========================================
+
+            resultDiv.className = "mt-4 p-4 border-0 shadow-sm rounded-3 bg-white";
+            let html = `<h5 class="fw-bold text-navy mb-4 border-bottom pb-2"><i class="fas fa-balance-scale-right text-success me-2"></i> نتيجة التوزيع الشرعي وتفصيل الحصص</h5>`;
             
-            <div class="tab-pane fade show active" id="loan" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة القروض والتمويل</h4>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">مبلغ القرض الأساسي</label>
-                        <input type="number" id="loanAmount" class="form-control bg-light" placeholder="مثال: 10000">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">نسبة الفائدة السنوية (%)</label>
-                        <input type="number" id="loanRate" class="form-control bg-light" placeholder="مثال: 5">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">مدة القرض (بالأشهر)</label>
-                        <input type="number" id="loanTerm" class="form-control bg-light" placeholder="مثال: 60">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcLoanBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
-                </div>
-                <div id="loanResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
-            </div>
-
-            <div class="tab-pane fade" id="compound" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة الفائدة المركبة والعوائد</h4>
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">المبلغ الأساسي (رأس المال)</label>
-                        <input type="number" id="compPrincipal" class="form-control bg-light" placeholder="مثال: 5000">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">المساهمة الشهرية المتكررة</label>
-                        <input type="number" id="compAddition" class="form-control bg-light" placeholder="مثال: 100" value="0">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">نسبة العائد السنوي (%)</label>
-                        <input type="number" id="compRate" class="form-control bg-light" placeholder="مثال: 7">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">المدة (بالسنوات)</label>
-                        <input type="number" id="compYears" class="form-control bg-light" placeholder="مثال: 10">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcCompBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
-                </div>
-                <div id="compResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
-            </div>
-
-            <div class="tab-pane fade" id="breakeven" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة نقطة التعادل التجارية</h4>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">التكاليف الثابتة الإجمالية</label>
-                        <input type="number" id="beFixedCosts" class="form-control bg-light" placeholder="مثال: 50000">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">التكلفة المتغيرة للوحدة الواحدة</label>
-                        <input type="number" id="beVarCost" class="form-control bg-light" placeholder="مثال: 20">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">سعر بيع الوحدة الواحدة</label>
-                        <input type="number" id="bePrice" class="form-control bg-light" placeholder="مثال: 50">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcBeBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
-                </div>
-                <div id="beResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
-            </div>
-
-            <div class="tab-pane fade" id="discount" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة الخصومات والضرائب المضافة</h4>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">المبلغ الأصلي</label>
-                        <input type="number" id="dtPrice" class="form-control bg-light" placeholder="مثال: 1000">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">نسبة الخصم الممنوح (%)</label>
-                        <input type="number" id="dtDiscount" class="form-control bg-light" placeholder="مثال: 15" value="0">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">نسبة الضريبة (VAT) (%)</label>
-                        <input type="number" id="dtTax" class="form-control bg-light" placeholder="مثال: 16" value="0">
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcDtBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
-                </div>
-                <div id="dtResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
-            </div>
-
-            <div class="tab-pane fade" id="share" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">حاسبة حصص الأفراد والشركاء</h4>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">القيمة الإجمالية المراد تقسيمها</label>
-                        <input type="number" id="shareTotal" class="form-control bg-light" placeholder="مثال: 10000">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">آلية التقسيم المتبعة</label>
-                        <div class="input-group">
-                            <select id="shareType" class="form-select bg-light" style="max-width: 150px;">
-                                <option value="count">تقسيم على (عدد)</option>
-                                <option value="percent">استخراج (نسبة %)</option>
-                            </select>
-                            <input type="number" id="shareValue" class="form-control bg-light" placeholder="مثال: 4 شركاء أو 25%">
-                        </div>
-                    </div>
-                    <div class="col-12 text-end mt-4">
-                        <button id="calcShareBtn" class="btn btn-primary px-5 fw-bold">إجراء الحساب</button>
-                    </div>
-                </div>
-                <div id="shareResult" class="mt-4 d-none alert alert-success shadow-sm"></div>
-            </div>
-
-            <div class="tab-pane fade" id="inheritance" role="tabpanel">
-                <h4 class="mb-4 text-secondary border-bottom pb-2">محرك توزيع المواريث الشرعية</h4>
-                <p class="text-muted small mb-4">يتم الحساب وفقاً للأنصبة الشرعية متضمناً معالجة العول والتعصيب والحجب. يرجى إدخال التركة صافية (بعد سداد الديون والوصايا).</p>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-danger">صافي التركة (الوعاء الإرثي)</label>
-                        <input type="number" id="inhTotal" class="form-control bg-light border-danger" placeholder="مثال: 100000">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">جنس المتوفى</label>
-                        <select id="inhGender" class="form-select bg-light">
-                            <option value="male">ذكر</option>
-                            <option value="female">أنثى</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">الزوج / الزوجة (على قيد الحياة)</label>
-                        <select id="inhSpouse" class="form-select bg-light">
-                            <option value="0">لا يوجد</option>
-                            <option value="1">1 (زوجة/زوج)</option>
-                            <option value="2">2 (زوجتان)</option>
-                            <option value="3">3 (ثلاث زوجات)</option>
-                            <option value="4">4 (أربع زوجات)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">الأبناء (الذكور)</label>
-                        <input type="number" id="inhSons" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">البنات (الإناث)</label>
-                        <input type="number" id="inhDaughters" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">الأب (على قيد الحياة؟)</label>
-                        <select id="inhFather" class="form-select bg-light">
-                            <option value="0">متوفى</option>
-                            <option value="1">حي</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold">الأم (على قيد الحياة؟)</label>
-                        <select id="inhMother" class="form-select bg-light">
-                            <option value="0">متوفاة</option>
-                            <option value="1">حية</option>
-                        </select>
-                    </div>
+            if (shares.length === 0) {
+                html += `<div class="alert alert-warning"><i class="fas fa-info-circle me-1"></i> لا يوجد ورثة مستحقين بناءً على المدخلات المحددة.</div>`;
+            } else {
+                html += `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover text-center align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-navy text-start">صِفة الوارث وتفصيل حصة الفرد الواحد</th>
+                                <th class="text-navy">النصيب</th>
+                                <th class="text-navy">إجمالي حصة الصنف (د.أ)</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                shares.forEach(s => {
+                    let detailHtml = '';
                     
-                    <div class="col-12 mt-4">
-                        <h5 class="text-secondary border-bottom pb-2">طبقة الإخوة والأخوات</h5>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">إخوة أشقاء (ذكور)</label>
-                        <input type="number" id="inhBrothers" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">أخوات شقيقات (إناث)</label>
-                        <input type="number" id="inhSisters" class="form-control bg-light" value="0" min="0">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">إخوة/أخوات لأم (من الطرفين)</label>
-                        <input type="number" id="inhMaternalSiblings" class="form-control bg-light" value="0" min="0">
-                    </div>
+                    // توليد تفصيل الحصص (كم يأخذ الذكر وكم تأخذ الأنثى، أو كم يأخذ الفرد الواحد)
+                    if (s.isMixed) {
+                        if (s.maleCount > 0) {
+                            detailHtml += `<div class="text-primary small mt-1"><i class="fas fa-male me-1"></i> نصيب الذكر الواحد: <b>${s.maleAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</b> د.أ</div>`;
+                        }
+                        if (s.femaleCount > 0) {
+                            detailHtml += `<div class="text-danger small mt-1"><i class="fas fa-female me-1"></i> نصيب الأنثى الواحدة: <b>${s.femaleAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</b> د.أ</div>`;
+                        }
+                    } else if (s.count > 1) {
+                        detailHtml = `<div class="text-muted small mt-1"><i class="fas fa-user me-1"></i> نصيب الفرد الواحد: <b>${s.singleAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</b> د.أ</div>`;
+                    } else {
+                        detailHtml = `<div class="text-muted small mt-1"><i class="fas fa-user me-1"></i> يستحق المبلغ كاملاً المخصص لصفته</div>`;
+                    }
 
-                    <div class="col-12 text-end mt-4 border-top pt-3">
-                        <button id="calcInhBtn" class="btn btn-primary px-5 fw-bold">استخراج الفريضة الشرعية</button>
-                    </div>
-                </div>
-                <div id="inhResult" class="mt-4 d-none shadow-sm"></div>
-            </div>
+                    html += `
+                        <tr>
+                            <td class="text-start">
+                                <div class="fw-bold text-dark fs-6 mb-1">${s.title}</div>
+                                ${detailHtml}
+                            </td>
+                            <td><span class="badge bg-secondary px-3 py-2">${s.ratioText}</span></td>
+                            <td class="fw-bold text-success fs-5 bg-light">${s.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        </tr>`;
+                });
+                
+                html += `</tbody></table></div>`;
+            }
+            
+            // في حال وجود فائض لم يستغرقه أصحاب الفروض (يذهب للرد أو لبيت المال)
+            if (remaining > 0.05) { 
+                html += `
+                <div class="alert alert-warning small mt-3 mb-0">
+                    <i class="fas fa-exclamation-circle me-1"></i> يوجد باقي من التركة مقداره <b class="fs-6">${remaining.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</b> د.أ لم يتم توزيعه (يُرد على أصحاب الفروض، أو لذوي الأرحام، أو يؤول لبيت المال حسب قواعد الفقه).
+                </div>`;
+            }
 
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script src="js/loan.js"></script>
-    <script src="js/compound.js"></script>
-    <script src="js/breakeven.js"></script>
-    <script src="js/discount.js"></script>
-    <script src="js/share.js"></script>
-    <script src="js/inheritance.js"></script>
-</body>
-</html>
+            resultDiv.innerHTML = html;
+            resultDiv.classList.remove("d-none");
+        });
+    }
+});

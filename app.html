@@ -7,7 +7,7 @@
     <title>موكّل | لوحة التحكم</title>
     
     <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -17,7 +17,7 @@
 
     <div class="top-nav">
         <div class="top-nav-left d-flex align-items-center">
-            <h5 class="text-white mb-0 fw-bold"><i class="fas fa-balance-scale text-accent me-2"></i> موكّل</h5>
+            <h5 class="text-white mb-0 fw-bold" id="top-firm-name"><i class="fas fa-balance-scale text-accent me-2" id="top-firm-logo"></i> موكّل</h5>
         </div>
         <div class="user-menu d-flex align-items-center gap-3">
             <div class="dropdown">
@@ -122,6 +122,9 @@
                 <div class="user-avatar mx-auto mb-3" style="width:70px; height:70px; font-size:2rem;" id="prof-avatar">م</div>
                 <h4 class="fw-bold text-navy mb-1" id="welcome-name">الاسم</h4>
                 <p class="text-muted mb-3" id="welcome-role">الدور</p>
+                
+                <button id="firm-settings-btn" class="btn btn-outline-secondary w-100 fw-bold rounded-3 mb-2" onclick="openModal('settingsModal')" style="display:none;"><i class="fas fa-paint-brush me-1"></i> إعدادات وتخصيص المكتب</button>
+                
                 <button class="btn btn-danger w-100 fw-bold rounded-3 mb-2" onclick="logout()"><i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج</button>
                 <button id="install-pwa-btn" class="btn btn-success w-100 fw-bold rounded-3 d-none"><i class="fas fa-download me-1"></i> تثبيت التطبيق</button>
             </div>
@@ -173,9 +176,16 @@
                 <div class="modal-body">
                     <form id="clientForm" onsubmit="saveClient(event)">
                         <input type="text" id="client_full_name" class="form-control mb-2" placeholder="الاسم الرباعي *" required>
-                        <input type="tel" id="client_phone" class="form-control mb-2" placeholder="رقم الهاتف *" required>
-                        <input type="text" id="client_national_id" class="form-control mb-2" placeholder="الرقم الوطني">
-                        <input type="email" id="client_email" class="form-control mb-3" placeholder="البريد الإلكتروني">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><input type="tel" id="client_phone" class="form-control" placeholder="رقم الهاتف *" required></div>
+                            <div class="col-6"><input type="text" id="client_national_id" class="form-control" placeholder="الرقم الوطني"></div>
+                        </div>
+                        <input type="email" id="client_email" class="form-control mb-2" placeholder="البريد الإلكتروني">
+                        <input type="text" id="client_address" class="form-control mb-2" placeholder="العنوان بالتفصيل">
+                        <select id="client_type" class="form-select mb-3">
+                            <option value="فرد">أفراد (شخص طبيعي)</option>
+                            <option value="شركة">شركات ومؤسسات (شخص اعتباري)</option>
+                        </select>
                         <button type="submit" class="btn-primary-custom w-100">حفظ الموكل</button>
                     </form>
                 </div>
@@ -193,15 +203,37 @@
                 <div class="modal-body">
                     <form id="caseForm" onsubmit="saveCase(event)">
                         <select id="case_client_id" class="form-select mb-2" required><option value="">تحميل الموكلين...</option></select>
-                        <input type="text" id="case_internal_id" class="form-control mb-2" placeholder="رقم الملف الداخلي *" required>
-                        <input type="text" id="case_access_pin" class="form-control mb-3 border-warning" placeholder="رمز PIN للموكل *" required>
+                        <div class="row g-2 mb-2">
+                            <div class="col-7"><input type="text" id="case_internal_id" class="form-control" placeholder="رقم الملف الداخلي *" required></div>
+                            <div class="col-5"><input type="text" id="case_access_pin" class="form-control border-warning" placeholder="رمز PIN *" required></div>
+                        </div>
+                        
+                        <h6 class="fw-bold text-primary border-bottom pb-1 mt-2">بيانات المحكمة</h6>
                         <input type="text" id="case_type" class="form-control mb-2" placeholder="نوع الدعوى *" required>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><input type="text" id="case_current_court" class="form-control" placeholder="المحكمة"></div>
+                            <div class="col-6"><input type="text" id="case_court_case_number" class="form-control" placeholder="رقم الدعوى في المحكمة"></div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <select id="case_litigation_degree" class="form-select">
+                                    <option value="">درجة التقاضي...</option>
+                                    <option value="صلح">صلح</option>
+                                    <option value="بداية">بداية</option>
+                                    <option value="استئناف">استئناف</option>
+                                    <option value="تمييز">تمييز</option>
+                                    <option value="تنفيذ">تنفيذ</option>
+                                </select>
+                            </div>
+                            <div class="col-6"><input type="number" id="case_case_year" class="form-control" placeholder="سنة الدعوى (مثال: 2024)"></div>
+                        </div>
                         <input type="text" id="case_opponent_name" class="form-control mb-2" placeholder="اسم الخصم">
-                        <input type="text" id="case_current_court" class="form-control mb-2" placeholder="المحكمة">
                         
                         <h6 class="fw-bold text-primary border-bottom pb-1 mt-3">الوقائع ولائحة الدعوى</h6>
                         <textarea id="case_lawsuit_text" class="form-control mb-3" rows="4" placeholder="أدخل نص لائحة الدعوى أو وقائع القضية هنا... سيتم استخدام هذا النص للتحليل الذكي واستخراج التفاصيل."></textarea>
-                        <input type="number" id="case_agreed_fees" class="form-control mb-3" placeholder="الأتعاب">
+                        <input type="number" id="case_agreed_fees" class="form-control mb-3" placeholder="الأتعاب المتفق عليها (د.أ)">
+                        
+                        <label class="small text-muted fw-bold">المحامون المكلفون بالملف:</label>
                         <div id="case_assigned_lawyers_container" class="border p-2 rounded bg-light mb-3" style="max-height: 100px; overflow-y: auto;"></div>
                         <button type="submit" class="btn-primary-custom w-100">حفظ ملف القضية</button>
                     </form>
@@ -214,18 +246,61 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0" style="border-radius: 20px;">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-navy">جدولة موعد</h5>
+                    <h5 class="modal-title fw-bold text-navy">جدولة موعد أو مهمة</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="apptForm" onsubmit="saveAppointment(event)">
-                        <input type="text" id="appt_title" class="form-control mb-2" placeholder="عنوان الموعد *" required>
+                        <input type="text" id="appt_title" class="form-control mb-2" placeholder="السبب (مثال: اجتماع موكل، جلسة محكمة) *" required>
+                        <label class="small text-muted fw-bold">اليوم والساعة *</label>
                         <input type="datetime-local" id="appt_date" class="form-control mb-2" required>
-                        <select id="appt_type" class="form-select mb-3">
+                        <select id="appt_type" class="form-select mb-2">
+                            <option value="مهمة إدارية">مهمة إدارية / مكتبية</option>
                             <option value="جلسة محكمة">جلسة محكمة</option>
                             <option value="اجتماع موكل">اجتماع موكل</option>
                         </select>
+                        <label class="small text-muted fw-bold mt-1">إسناد المهمة إلى (سيصله إشعار):</label>
+                        <div id="appt_assigned_to_container" class="border p-2 rounded bg-light mb-3" style="max-height: 100px; overflow-y: auto;"></div>
+                        
                         <button type="submit" class="btn btn-warning w-100 fw-bold">حفظ الموعد</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="apptOutcomeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success"><i class="fas fa-check-circle me-1"></i> إغلاق المهمة / الموعد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form onsubmit="saveApptOutcome(event)">
+                        <input type="hidden" id="outcome_appt_id">
+                        <label class="small text-muted fw-bold mb-1">ماذا حدث بالاجتماع أو المهمة؟ (سيُحفظ في السجل)</label>
+                        <textarea id="outcome_text" class="form-control mb-3" rows="3" placeholder="اكتب ملخصاً لما تم إنجازه أو الاتفاق عليه..." required></textarea>
+                        <button type="submit" class="btn btn-success w-100 fw-bold">حفظ النتيجة وإغلاق</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="apptPostponeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-warning text-dark"><i class="fas fa-clock me-1"></i> تأجيل الموعد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form onsubmit="saveApptPostpone(event)">
+                        <input type="hidden" id="postpone_appt_id">
+                        <label class="small text-muted fw-bold mb-1">التاريخ والوقت الجديد</label>
+                        <input type="datetime-local" id="postpone_date" class="form-control mb-3" required>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">تأكيد التأجيل</button>
                     </form>
                 </div>
             </div>
@@ -250,6 +325,40 @@
                             <option value="مدير">مدير نظام</option>
                         </select>
                         <button type="submit" class="btn-primary-custom w-100">تسجيل الموظف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-navy"><i class="fas fa-paint-brush me-2"></i>تخصيص هوية المكتب</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="settingsForm" onsubmit="saveFirmSettings(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">اسم المكتب</label>
+                            <input type="text" id="firm_setting_name" class="form-control" placeholder="مثال: مكتب العدالة للمحاماة">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">رابط الشعار (صورة الأيقونة)</label>
+                            <input type="url" id="firm_setting_logo" class="form-control" placeholder="https://example.com/logo.png" dir="ltr">
+                        </div>
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">اللون الأساسي (Primary)</label>
+                                <input type="color" id="firm_setting_primary" class="form-control form-control-color w-100" value="#0a192f" title="اختر اللون الأساسي">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-muted">اللون الثانوي (Accent)</label>
+                                <input type="color" id="firm_setting_accent" class="form-control form-control-color w-100" value="#64ffda" title="اختر اللون الثانوي">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary-custom w-100"><i class="fas fa-save me-1"></i> حفظ الإعدادات</button>
                     </form>
                 </div>
             </div>
