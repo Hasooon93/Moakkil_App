@@ -364,7 +364,30 @@
             </div>
         </div>
     </div>
-
+<div class="modal fade" id="editStaffModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-warning text-dark"><i class="fas fa-user-edit me-1"></i> تعديل بيانات الموظف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editStaffForm" onsubmit="updateStaffDetails(event)">
+                        <input type="hidden" id="edit_staff_id">
+                        <input type="text" id="edit_staff_full_name" class="form-control mb-2" placeholder="اسم الموظف *" required>
+                        <input type="text" id="edit_staff_username" class="form-control mb-2" placeholder="اسم المستخدم *" required>
+                        <input type="password" id="edit_staff_password" class="form-control mb-2" placeholder="كلمة المرور (اتركها فارغة لعدم التغيير)">
+                        <select id="edit_staff_role" class="form-select mb-3">
+                            <option value="محامي">محامي</option>
+                            <option value="سكرتاريا">سكرتاريا</option>
+                            <option value="مدير">مدير نظام</option>
+                        </select>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold text-dark">حفظ التعديلات</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="alertBox" class="alert-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

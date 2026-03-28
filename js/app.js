@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم الشامل (يدعم الإشعارات، تثبيت PWA، تخصيص هوية المكتب، وإدارة دورة حياة المهام)
+// js/app.js - محرك لوحة التحكم الشامل (محدث: تصحيح إضافة القضايا والتأمين ضد أخطاء الحقول)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -56,9 +56,6 @@ function startRealtimeSync() {
     }, 5000);
 }
 
-// ----------------------------------------------------
-// نظام تخصيص هوية المكتب 
-// ----------------------------------------------------
 async function loadFirmSettings() {
     const localSettings = JSON.parse(localStorage.getItem('firm_settings'));
     if (localSettings) applyFirmSettings(localSettings);
@@ -82,10 +79,10 @@ async function loadFirmSettings() {
             localStorage.setItem('firm_settings', JSON.stringify(settings));
             applyFirmSettings(settings);
             
-            if(settings.firm_name) document.getElementById('firm_setting_name').value = settings.firm_name;
-            if(settings.logo_url) document.getElementById('firm_setting_logo').value = settings.logo_url;
-            if(settings.primary_color) document.getElementById('firm_setting_primary').value = settings.primary_color;
-            if(settings.accent_color) document.getElementById('firm_setting_accent').value = settings.accent_color;
+            if(document.getElementById('firm_setting_name')) document.getElementById('firm_setting_name').value = settings.firm_name || '';
+            if(document.getElementById('firm_setting_logo')) document.getElementById('firm_setting_logo').value = settings.logo_url || '';
+            if(document.getElementById('firm_setting_primary')) document.getElementById('firm_setting_primary').value = settings.primary_color || '#0a192f';
+            if(document.getElementById('firm_setting_accent')) document.getElementById('firm_setting_accent').value = settings.accent_color || '#64ffda';
         }
     } catch(e) {}
 }
@@ -121,9 +118,6 @@ async function saveFirmSettings(event) {
     showAlert('تم تطبيق وحفظ إعدادات الهوية البصرية بنجاح', 'success');
 }
 
-// ----------------------------------------------------
-// الإشعارات
-// ----------------------------------------------------
 async function loadNotifications(isSilent = false) {
     if (typeof API.getNotifications !== 'function') return;
     const notifications = await API.getNotifications();
@@ -176,9 +170,6 @@ async function handleNotificationClick(id, linkAction) {
 }
 async function markNotificationsAsRead() {}
 
-// ----------------------------------------------------
-// واجهة المستخدم والبيانات
-// ----------------------------------------------------
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role);
     const userName = currentUser.full_name || 'مستخدم';
@@ -319,9 +310,6 @@ function renderClientsList() {
     `).join('');
 }
 
-// ----------------------------------------------------
-// دورة حياة المواعيد (الإسناد، التنبيهات، والنتيجة)
-// ----------------------------------------------------
 function renderAgendaList() {
     const list = document.getElementById('agenda-list');
     if(!list) return;
@@ -333,7 +321,6 @@ function renderAgendaList() {
         const isPast = apptDate < new Date();
         const isScheduled = a.status === 'مجدول' || !a.status;
 
-        // أزرار الإجراءات تظهر فقط إذا كان الموعد في الماضي وما زال مجدولاً (لم يتم اتخاذ إجراء عليه)
         let actionButtons = '';
         if (isPast && isScheduled) {
             actionButtons = `
@@ -349,7 +336,7 @@ function renderAgendaList() {
         if (a.status === 'تم') statusBadge = '<span class="badge bg-success ms-2">منجز</span>';
         else if (a.status === 'مؤجل') statusBadge = '<span class="badge bg-warning text-dark ms-2">مؤجل</span>';
         else if (a.status === 'ملغي') statusBadge = '<span class="badge bg-danger ms-2">ملغي</span>';
-        else if (isPast) statusBadge = '<span class="badge bg-secondary ms-2 heartbeat-animation">بانتظار اتخاذ إجراء</span>';
+        else if (isPast) statusBadge = '<span class="badge bg-secondary ms-2 heartbeat-animation">بانتظار إجراء</span>';
         else statusBadge = '<span class="badge bg-info ms-2">قادم</span>';
 
         const dateStr = apptDate.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -436,8 +423,6 @@ async function cancelAppointment(id) {
         await loadAllData();
     }
 }
-
-// ----------------------------------------------------
 
 function renderStaffList() {
     const list = document.getElementById('staff-list');
@@ -560,27 +545,37 @@ async function saveCase(event) {
     const lawsuitTextElement = document.getElementById('case_lawsuit_text');
     const lawsuitText = lawsuitTextElement ? lawsuitTextElement.value : null;
 
+    // استخدام Optional Chaining لتفادي توقف الكود إذا لم يكن الحقل موجوداً في الواجهة
     const data = {
-        client_id: document.getElementById('case_client_id').value, access_pin: document.getElementById('case_access_pin').value,
-        case_internal_id: document.getElementById('case_internal_id').value, case_type: document.getElementById('case_type').value,
-        opponent_name: document.getElementById('case_opponent_name').value, current_court: document.getElementById('case_current_court').value,
-        current_judge: document.getElementById('case_current_judge').value, claim_amount: document.getElementById('case_claim_amount').value ? Number(document.getElementById('case_claim_amount').value) : null,
-        total_agreed_fees: document.getElementById('case_agreed_fees').value ? Number(document.getElementById('case_agreed_fees').value) : 0,
+        client_id: document.getElementById('case_client_id')?.value, 
+        access_pin: document.getElementById('case_access_pin')?.value,
+        case_internal_id: document.getElementById('case_internal_id')?.value, 
+        case_type: document.getElementById('case_type')?.value,
+        opponent_name: document.getElementById('case_opponent_name')?.value || null, 
+        current_court: document.getElementById('case_current_court')?.value || null,
+        court_case_number: document.getElementById('case_court_case_number')?.value || null,
+        case_year: document.getElementById('case_case_year')?.value ? Number(document.getElementById('case_case_year').value) : null,
+        litigation_degree: document.getElementById('case_litigation_degree')?.value || null,
+        current_judge: document.getElementById('case_current_judge')?.value || null, 
+        claim_amount: document.getElementById('case_claim_amount')?.value ? Number(document.getElementById('case_claim_amount').value) : null,
+        total_agreed_fees: document.getElementById('case_agreed_fees')?.value ? Number(document.getElementById('case_agreed_fees').value) : 0,
         assigned_lawyer_id: assignedLawyers.length > 0 ? assignedLawyers : null, 
-        created_by: currentUser.id, status: 'نشطة',
+        created_by: currentUser.id, 
+        status: 'نشطة',
         opponent_lawyer: document.getElementById('case_opponent_lawyer')?.value || null, 
         poa_details: document.getElementById('case_poa_details')?.value || null,
         deadline_date: document.getElementById('case_deadline_date')?.value || null, 
         success_probability: document.getElementById('case_success_probability')?.value ? Number(document.getElementById('case_success_probability').value) : null,
         parent_case_id: document.getElementById('case_parent_case_id')?.value || null,
-        lawsuit_text: lawsuitText, ai_entities: {} 
+        lawsuit_text: lawsuitText, 
+        ai_entities: {} 
     };
     
     const btn = document.querySelector('#caseModal button[type="submit"]');
     const originalBtnText = btn ? btn.innerHTML : '';
     
     if(btn && lawsuitText && lawsuitText.trim().length > 10) {
-        btn.innerHTML = '<i class="fas fa-brain fa-spin me-1"></i> جاري تحليل اللائحة وحفظ القضية...';
+        btn.innerHTML = '<i class="fas fa-brain fa-spin me-1"></i> جاري التحليل...';
         btn.disabled = true;
     }
 
@@ -596,9 +591,12 @@ async function saveAppointment(event) {
     else document.querySelectorAll('.appt-lawyer-cb:checked').forEach(cb => assignedStaff.push(cb.value));
 
     const data = {
-        title: document.getElementById('appt_title').value, appt_date: document.getElementById('appt_date').value,
-        type: document.getElementById('appt_type').value, assigned_to: assignedStaff.length > 0 ? assignedStaff : null, 
-        created_by: currentUser.id, status: 'مجدول'
+        title: document.getElementById('appt_title')?.value, 
+        appt_date: document.getElementById('appt_date')?.value,
+        type: document.getElementById('appt_type')?.value, 
+        assigned_to: assignedStaff.length > 0 ? assignedStaff : null, 
+        created_by: currentUser.id, 
+        status: 'مجدول'
     };
     if(await API.addAppointment(data)) { closeModal('apptModal'); document.getElementById('apptForm').reset(); await loadAllData(); showAlert('تم جدولة الموعد', 'success'); }
 }
