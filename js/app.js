@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم الشامل (محدث: تصحيح إضافة القضايا والتأمين ضد أخطاء الحقول)
+// js/app.js - محرك لوحة التحكم (تم تأمينه ضد أخطاء الربط مع قواعد البيانات)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -27,7 +27,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
         installBtn.onclick = async () => {
             installBtn.classList.add('d-none');
             deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
             deferredPrompt = null;
         };
     }
@@ -45,9 +44,15 @@ function startRealtimeSync() {
                 API.getCases(), API.getAppointments(), API.getClients()
             ]);
             let needsUpdate = false;
-            if(newCases && JSON.stringify(newCases) !== JSON.stringify(globalData.cases)) { filterAndSetCases(newCases); needsUpdate = true; }
-            if(newAppts && JSON.stringify(newAppts) !== JSON.stringify(globalData.appointments)) { filterAndSetAppointments(newAppts); needsUpdate = true; }
-            if(newClients && JSON.stringify(newClients) !== JSON.stringify(globalData.clients)) { filterAndSetClients(newClients); needsUpdate = true; }
+            
+            // التأكد من أن البيانات مصفوفة صالحة قبل المقارنة
+            const safeCases = Array.isArray(newCases) ? newCases : [];
+            const safeAppts = Array.isArray(newAppts) ? newAppts : [];
+            const safeClients = Array.isArray(newClients) ? newClients : [];
+
+            if(JSON.stringify(safeCases) !== JSON.stringify(globalData.cases)) { filterAndSetCases(safeCases); needsUpdate = true; }
+            if(JSON.stringify(safeAppts) !== JSON.stringify(globalData.appointments)) { filterAndSetAppointments(safeAppts); needsUpdate = true; }
+            if(JSON.stringify(safeClients) !== JSON.stringify(globalData.clients)) { filterAndSetClients(safeClients); needsUpdate = true; }
 
             if(needsUpdate) { renderDashboard(); renderCasesList(); renderClientsList(); renderAgendaList(); }
             
@@ -62,18 +67,7 @@ async function loadFirmSettings() {
 
     try {
         let res;
-        if(typeof API.getFirmSettings === 'function') {
-            res = await API.getFirmSettings();
-        } else {
-            const req = await fetch(`${CONFIG.API_URL}/api/firms?id=eq.${currentUser.firm_id}&select=*`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }
-            });
-            if(req.ok) {
-                const data = await req.json();
-                res = data[0];
-            }
-        }
-        
+        if(typeof API.getFirmSettings === 'function') res = await API.getFirmSettings();
         if (res) {
             const settings = { firm_name: res.firm_name || res.name, logo_url: res.logo_url, primary_color: res.primary_color, accent_color: res.accent_color };
             localStorage.setItem('firm_settings', JSON.stringify(settings));
@@ -111,18 +105,16 @@ async function saveFirmSettings(event) {
     
     try {
         if(typeof API.updateFirmSettings === 'function') await API.updateFirmSettings(data);
-        else await fetch(`${CONFIG.API_URL}/api/firms?id=eq.${currentUser.firm_id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }, body: JSON.stringify(data) });
     } catch(e) {}
 
     closeModal('settingsModal');
-    showAlert('تم تطبيق وحفظ إعدادات الهوية البصرية بنجاح', 'success');
+    showAlert('تم حفظ الإعدادات', 'success');
 }
 
 async function loadNotifications(isSilent = false) {
     if (typeof API.getNotifications !== 'function') return;
     const notifications = await API.getNotifications();
-    if (!notifications || notifications.error) return;
-    globalData.notifications = notifications;
+    globalData.notifications = Array.isArray(notifications) ? notifications : [];
     renderNotificationsDropdown();
 }
 
@@ -154,7 +146,7 @@ function renderNotificationsDropdown() {
             const timeString = new Date(n.created_at).toLocaleString('ar-EG', {hour: '2-digit', minute:'2-digit', day:'numeric', month:'numeric'});
             return `<li><a class="dropdown-item py-2 border-bottom ${bgClass}" href="#" onclick="handleNotificationClick('${n.id}', '${n.link}')">
                         <div class="d-flex justify-content-between"><span class="small ${fwClass}">${n.title}</span><small class="text-muted" style="font-size: 0.7rem;">${timeString}</small></div>
-                        <div class="small text-muted text-wrap mt-1" style="font-size: 0.8rem;">${n.body}</div></a></li>`;
+                        <div class="small text-muted text-wrap mt-1" style="font-size: 0.8rem;">${n.message || n.body}</div></a></li>`;
         }).join('');
     }
     list.innerHTML = html;
@@ -204,51 +196,68 @@ function applyRoleBasedUI() {
 
 function filterAndSetCases(rawCases) {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    let casesArray = Array.isArray(rawCases) ? rawCases : [];
+    
     if (isLawyer) {
-        globalData.cases = (rawCases || []).filter(c => {
+        globalData.cases = casesArray.filter(c => {
             let isAssigned = false;
             if (Array.isArray(c.assigned_lawyer_id)) isAssigned = c.assigned_lawyer_id.includes(currentUser.id);
             else if (c.assigned_lawyer_id) isAssigned = (c.assigned_lawyer_id === currentUser.id);
             return isAssigned || c.created_by == currentUser.id;
         });
-    } else globalData.cases = rawCases || [];
+    } else {
+        globalData.cases = casesArray;
+    }
 }
 
 function filterAndSetAppointments(rawAppointments) {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    let apptsArray = Array.isArray(rawAppointments) ? rawAppointments : [];
+    
     if (isLawyer) {
-        globalData.appointments = (rawAppointments || []).filter(a => {
+        globalData.appointments = apptsArray.filter(a => {
             let isAssigned = false;
             if (Array.isArray(a.assigned_to)) isAssigned = a.assigned_to.includes(currentUser.id);
             else if (a.assigned_to) isAssigned = (a.assigned_to === currentUser.id);
             return isAssigned || a.created_by == currentUser.id;
         });
-    } else globalData.appointments = rawAppointments || [];
+    } else {
+        globalData.appointments = apptsArray;
+    }
 }
 
 function filterAndSetClients(rawClients) {
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
+    let clientsArray = Array.isArray(rawClients) ? rawClients : [];
+    
     if (isLawyer) {
         const myClientIds = new Set(globalData.cases.map(c => c.client_id));
-        globalData.clients = (rawClients || []).filter(c => myClientIds.has(c.id) || c.created_by == currentUser.id);
-    } else globalData.clients = rawClients || [];
+        globalData.clients = clientsArray.filter(c => myClientIds.has(c.id) || c.created_by == currentUser.id);
+    } else {
+        globalData.clients = clientsArray;
+    }
 }
 
 async function loadAllData() {
-    const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
-        API.getClients(), API.getCases(), API.getStaff(), API.getAppointments()
-    ]);
-    globalData.staff = staff || [];
-    filterAndSetCases(rawCases);
-    filterAndSetAppointments(rawAppointments);
-    filterAndSetClients(rawClients);
+    try {
+        const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
+            API.getClients(), API.getCases(), API.getStaff(), API.getAppointments()
+        ]);
+        globalData.staff = Array.isArray(staff) ? staff : [];
+        
+        filterAndSetClients(rawClients);
+        filterAndSetCases(rawCases);
+        filterAndSetAppointments(rawAppointments);
 
-    renderDashboard();
-    renderCasesList();
-    renderClientsList();
-    renderAgendaList();
-    renderStaffList();
-    populateSelects();
+        renderDashboard();
+        renderCasesList();
+        renderClientsList();
+        renderAgendaList();
+        renderStaffList();
+        populateSelects();
+    } catch(e) {
+        showAlert('تأكد من الاتصال بالإنترنت لتحديث البيانات', 'warning');
+    }
 }
 
 function renderDashboard() {
@@ -267,7 +276,8 @@ function renderDashboard() {
 function renderCasesList() {
     const list = document.getElementById('cases-list');
     if(!list) return;
-    if (globalData.cases.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted">لا يوجد قضايا مسجلة</p>'; return; }
+    if (globalData.cases.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted border bg-white rounded">لا يوجد قضايا مسجلة</p>'; return; }
+    
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.cases.map(c => {
         let deadlineWarning = '';
@@ -276,6 +286,11 @@ function renderCasesList() {
             if(daysLeft <= 7 && daysLeft >= 0) deadlineWarning = `<span class="badge bg-danger ms-2 heartbeat-animation"><i class="fas fa-clock"></i> متبقي ${daysLeft} أيام</span>`;
             else if(daysLeft < 0) deadlineWarning = `<span class="badge bg-dark ms-2"><i class="fas fa-times-circle"></i> منتهي</span>`;
         }
+        
+        // الربط الذكي لاسم الموكل
+        const client = globalData.clients.find(cl => cl.id === c.client_id);
+        const clientName = client ? client.full_name : 'موكل غير محدد';
+
         return `
         <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-accent position-relative">
             <div class="d-flex justify-content-between align-items-center mb-1">
@@ -285,7 +300,7 @@ function renderCasesList() {
                     ${isAdmin ? `<button class="btn btn-sm text-danger p-0 ms-2" onclick="deleteRecord('case', '${c.id}')"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
-            <small class="text-muted d-block" onclick="viewClientProfile('${c.client_id}')" style="cursor:pointer;"><i class="fas fa-user me-1"></i> ${c.mo_clients?.full_name || 'موكل غير محدد'}</small>
+            <small class="text-muted d-block" onclick="viewClientProfile('${c.client_id}')" style="cursor:pointer;"><i class="fas fa-user me-1"></i> ${clientName}</small>
             <div class="d-flex justify-content-between align-items-center mt-2">
                 <small class="text-muted"><i class="fas fa-balance-scale me-1"></i> ${c.current_court || 'محكمة غير محددة'}</small>
                 <button class="btn btn-sm btn-outline-info py-0 px-2 fw-bold" onclick="copyClientDeepLink('${c.public_token}', '${c.access_pin}')"><i class="fas fa-share-alt"></i> إرسال للموكل</button>
@@ -297,13 +312,14 @@ function renderCasesList() {
 function renderClientsList() {
     const list = document.getElementById('clients-list');
     if(!list) return;
-    if (globalData.clients.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted">لا يوجد موكلين مسجلين لك</p>'; return; }
+    if (globalData.clients.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted border bg-white rounded">لا يوجد موكلين مسجلين لك</p>'; return; }
+    
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.clients.map(c => `
         <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center">
             <div>
                 <b class="text-navy" onclick="viewClientProfile('${c.id}')" style="cursor:pointer; font-size: 1.1rem;">${c.full_name}</b><br>
-                <small class="text-muted"><i class="fas fa-phone me-1"></i> ${c.phone}</small>
+                <small class="text-muted"><i class="fas fa-phone me-1"></i> ${c.phone || 'بدون هاتف'}</small>
             </div>
             ${isAdmin ? `<button class="btn btn-sm text-danger p-0" onclick="deleteRecord('client', '${c.id}')"><i class="fas fa-trash"></i></button>` : ''}
         </div>
@@ -313,9 +329,9 @@ function renderClientsList() {
 function renderAgendaList() {
     const list = document.getElementById('agenda-list');
     if(!list) return;
-    if (globalData.appointments.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted">لا توجد مواعيد مجدولة لك</p>'; return; }
-    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
+    if (globalData.appointments.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted border bg-white rounded">لا توجد مهام ومواعيد</p>'; return; }
     
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.appointments.map(a => {
         const apptDate = new Date(a.appt_date);
         const isPast = apptDate < new Date();
@@ -353,14 +369,11 @@ function renderAgendaList() {
             </div>
             <div class="text-muted small mb-1"><i class="fas fa-calendar-day me-1 text-primary"></i> ${dateStr}</div>
             <div class="text-muted small mb-2"><i class="fas fa-clock me-1 text-warning"></i> الساعة: ${timeStr}</div>
-            
             <div class="d-flex justify-content-between align-items-center">
-                <span class="badge bg-soft-primary text-primary">${a.type}</span>
+                <span class="badge bg-soft-primary text-primary">${a.type || 'مهمة'}</span>
                 <small class="text-muted"><i class="fas fa-user-check me-1"></i> إسناد: ${getAssignedNames(a.assigned_to)}</small>
             </div>
-            
             ${a.notes ? `<div class="mt-2 p-2 bg-light rounded small border-start border-success border-3"><b>مخرجات وتفاصيل:</b> <br>${a.notes.replace(/\n/g, '<br>')}</div>` : ''}
-            
             ${actionButtons}
         </div>
     `}).join('');
@@ -386,7 +399,6 @@ async function saveApptOutcome(event) {
     event.preventDefault();
     const id = document.getElementById('outcome_appt_id').value;
     const outcome = document.getElementById('outcome_text').value;
-    
     if(await API.updateAppointment(id, { status: 'تم', notes: outcome })) {
         closeModal('apptOutcomeModal');
         showAlert('تم تسجيل النتيجة بنجاح في السجل', 'success');
@@ -404,11 +416,9 @@ async function saveApptPostpone(event) {
     event.preventDefault();
     const id = document.getElementById('postpone_appt_id').value;
     const newDate = document.getElementById('postpone_date').value;
-    
     const appt = globalData.appointments.find(a => a.id === id);
     let newTitle = appt.title;
     if(!newTitle.includes('(مؤجل)')) newTitle += ' (مؤجل)';
-
     if(await API.updateAppointment(id, { status: 'مجدول', appt_date: newDate, title: newTitle })) {
         closeModal('apptPostponeModal');
         showAlert('تم تأجيل الموعد وإعادة جدولته بنجاح', 'success');
@@ -427,7 +437,7 @@ async function cancelAppointment(id) {
 function renderStaffList() {
     const list = document.getElementById('staff-list');
     if(!list) return;
-    if (globalData.staff.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted">لا يوجد موظفين</p>'; return; }
+    if (globalData.staff.length === 0) { list.innerHTML = '<p class="text-center p-3 text-muted border bg-white rounded">لا يوجد موظفين</p>'; return; }
     const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'مدير');
     list.innerHTML = globalData.staff.map(s => {
         const isMainAdmin = s.id === currentUser.id;
@@ -436,7 +446,6 @@ function renderStaffList() {
             <button class="btn btn-sm btn-outline-warning text-dark p-1 me-1" onclick="openEditStaffModal('${s.id}')"><i class="fas fa-pen"></i></button>
             <button class="btn btn-sm ${s.is_active === false ? 'btn-success' : 'btn-dark'} p-1" onclick="toggleStaffStatus('${s.id}', ${s.is_active})"><i class="fas ${s.is_active === false ? 'fa-user-check' : 'fa-user-lock'}"></i></button>
         ` : '';
-
         return `
         <div class="card-custom p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center ${s.is_active === false ? 'opacity-50' : ''}">
             <div><b class="text-navy">${s.full_name}</b> ${statusBadge}<br><small class="text-muted">${getRoleNameInArabic(s.role)} - @${s.username}</small></div>
@@ -456,7 +465,7 @@ function populateSelects() {
         lawyersContainer.innerHTML = activeStaff.length ? activeStaff.map(s => `
             <div class="form-check border-bottom pb-1 mb-1">
                 <input class="form-check-input case-lawyer-cb" type="checkbox" value="${s.id}" id="c_lawyer_${s.id}">
-                <label class="form-check-label small fw-bold" for="c_lawyer_${s.id}">${s.full_name} <span class="text-muted fw-normal">(${getRoleNameInArabic(s.role)})</span></label>
+                <label class="form-check-label small fw-bold" for="c_lawyer_${s.id}">${s.full_name}</label>
             </div>
         `).join('') : '<small class="text-muted">لا يوجد موظفين</small>';
     }
@@ -466,13 +475,10 @@ function populateSelects() {
         apptsContainer.innerHTML = activeStaff.length ? activeStaff.map(s => `
             <div class="form-check border-bottom pb-1 mb-1">
                 <input class="form-check-input appt-lawyer-cb" type="checkbox" value="${s.id}" id="a_lawyer_${s.id}">
-                <label class="form-check-label small fw-bold" for="a_lawyer_${s.id}">${s.full_name} <span class="text-muted fw-normal">(${getRoleNameInArabic(s.role)})</span></label>
+                <label class="form-check-label small fw-bold" for="a_lawyer_${s.id}">${s.full_name}</label>
             </div>
         `).join('') : '<small class="text-muted">لا يوجد موظفين</small>';
     }
-
-    const parentCaseSelect = document.getElementById('case_parent_case_id');
-    if(parentCaseSelect) parentCaseSelect.innerHTML = '<option value="">ارتباط بقضية سابقة (اختياري)...</option>' + globalData.cases.map(c => `<option value="${c.id}">${c.case_internal_id} - ${c.opponent_name || ''}</option>`).join('');
 }
 
 function filterCases() { const val = document.getElementById('search-cases').value.toLowerCase(); Array.from(document.getElementById('cases-list').children).forEach(card => card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none'); }
@@ -530,7 +536,7 @@ async function saveClient(event) {
     const data = {
         full_name: document.getElementById('client_full_name').value, phone: document.getElementById('client_phone').value,
         national_id: document.getElementById('client_national_id').value, email: document.getElementById('client_email').value,
-        client_type: 'فرد', created_by: currentUser.id
+        client_type: document.getElementById('client_type')?.value || 'فرد', created_by: currentUser.id
     };
     if(await API.addClient(data)) { closeModal('clientModal'); document.getElementById('clientForm').reset(); await loadAllData(); showAlert('تم إضافة الموكل بنجاح', 'success'); }
 }
@@ -545,12 +551,11 @@ async function saveCase(event) {
     const lawsuitTextElement = document.getElementById('case_lawsuit_text');
     const lawsuitText = lawsuitTextElement ? lawsuitTextElement.value : null;
 
-    // استخدام Optional Chaining لتفادي توقف الكود إذا لم يكن الحقل موجوداً في الواجهة
     const data = {
-        client_id: document.getElementById('case_client_id')?.value, 
-        access_pin: document.getElementById('case_access_pin')?.value,
-        case_internal_id: document.getElementById('case_internal_id')?.value, 
-        case_type: document.getElementById('case_type')?.value,
+        client_id: document.getElementById('case_client_id')?.value || null, 
+        access_pin: document.getElementById('case_access_pin')?.value || '',
+        case_internal_id: document.getElementById('case_internal_id')?.value || '', 
+        case_type: document.getElementById('case_type')?.value || '',
         opponent_name: document.getElementById('case_opponent_name')?.value || null, 
         current_court: document.getElementById('case_current_court')?.value || null,
         court_case_number: document.getElementById('case_court_case_number')?.value || null,
@@ -562,18 +567,12 @@ async function saveCase(event) {
         assigned_lawyer_id: assignedLawyers.length > 0 ? assignedLawyers : null, 
         created_by: currentUser.id, 
         status: 'نشطة',
-        opponent_lawyer: document.getElementById('case_opponent_lawyer')?.value || null, 
-        poa_details: document.getElementById('case_poa_details')?.value || null,
-        deadline_date: document.getElementById('case_deadline_date')?.value || null, 
-        success_probability: document.getElementById('case_success_probability')?.value ? Number(document.getElementById('case_success_probability').value) : null,
-        parent_case_id: document.getElementById('case_parent_case_id')?.value || null,
         lawsuit_text: lawsuitText, 
         ai_entities: {} 
     };
     
     const btn = document.querySelector('#caseModal button[type="submit"]');
     const originalBtnText = btn ? btn.innerHTML : '';
-    
     if(btn && lawsuitText && lawsuitText.trim().length > 10) {
         btn.innerHTML = '<i class="fas fa-brain fa-spin me-1"></i> جاري التحليل...';
         btn.disabled = true;
@@ -627,7 +626,7 @@ async function updateStaffDetails(event) {
     if(pw && pw.length >= 3) data.password = pw;
     
     const res = await API.updateStaff(id, data);
-    if(res && !res.error) { closeModal('editStaffModal'); showAlert('تم تعديل بيانات الموظف بنجاح', 'success'); await loadAllData(); } else { showAlert('خطأ أثناء التعديل', 'danger'); }
+    if(res && !res.error) { closeModal('editStaffModal'); showAlert('تم تعديل البيانات', 'success'); await loadAllData(); } else { showAlert('خطأ أثناء التعديل', 'danger'); }
 }
 
 async function deleteRecord(type, id) {
@@ -648,14 +647,12 @@ async function toggleStaffStatus(id, currentStatus) {
 function shareAppointment(apptId) {
     const appt = globalData.appointments.find(a => a.id === apptId);
     if(!appt) return;
-    
     let names = [];
     if (Array.isArray(appt.assigned_to)) { names = appt.assigned_to.map(id => { const s = globalData.staff.find(st => st.id === id); return s ? s.full_name : ''; }).filter(n => n); } 
     else if (appt.assigned_to) { const s = globalData.staff.find(st => st.id === appt.assigned_to); if(s) names.push(s.full_name); }
     
     const staffText = names.length > 0 ? `مع المحامي/ة: ${names.join(' و ')}` : 'مع فريق المكتب';
     const txt = `أهلاً بك،\nنود تذكيركم بموعدكم المجدول معنا:\n\n📌 بخصوص: ${appt.title}\n📅 التاريخ والوقت: ${new Date(appt.appt_date).toLocaleString('ar-EG')}\n👥 ${staffText}\n\nنرجو الالتزام بالموعد، ودمتم بخير.`;
-    
     if (navigator.share) navigator.share({ title: 'موعد جديد', text: txt }).catch(e => console.log(e));
     else window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
 }

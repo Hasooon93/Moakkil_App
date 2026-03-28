@@ -1,11 +1,11 @@
-// js/case-details.js - محرك التفاصيل المطور (يعالج الإسناد، القضايا المرتبطة، الفواتير، التفقيط، الـ QR، والذكاء الاصطناعي)
+// js/case-details.js - محرك التفاصيل المطور 
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
 let realtimeSyncTimer = null;
 
 window.onload = async () => {
-    applyFirmSettings(); // تطبيق هوية المكتب
+    applyFirmSettings(); 
     if (!currentCaseId) { window.location.href = 'app.html'; return; }
     await loadCaseFullDetails();
     startRealtimeSync();
@@ -27,10 +27,10 @@ function startRealtimeSync() {
                 fetchAPI(`/api/installments?case_id=${currentCaseId}`),
                 fetchAPI(`/api/expenses?case_id=${currentCaseId}`)
             ]);
-            renderTimeline(updates || []);
-            renderPayments(installments || []);
-            renderExpenses(expenses || []);
-            calculateFinances(installments || [], expenses || []);
+            renderTimeline(Array.isArray(updates) ? updates : []);
+            renderPayments(Array.isArray(installments) ? installments : []);
+            renderExpenses(Array.isArray(expenses) ? expenses : []);
+            calculateFinances(Array.isArray(installments) ? installments : [], Array.isArray(expenses) ? expenses : []);
         } catch(e) {}
     }, 5000);
 }
@@ -39,37 +39,45 @@ function goBack() { window.location.href = 'app.html'; }
 
 async function loadCaseFullDetails() {
     try {
-        const [allCases, updates, installments, expenses, files, staff] = await Promise.all([
+        const [allCasesReq, updatesReq, installmentsReq, expensesReq, filesReq, staffReq, clientsReq] = await Promise.all([
             API.getCases(), 
             fetchAPI(`/api/updates?case_id=${currentCaseId}`), 
             fetchAPI(`/api/installments?case_id=${currentCaseId}`),
             fetchAPI(`/api/expenses?case_id=${currentCaseId}`), 
             fetchAPI(`/api/files?case_id=${currentCaseId}`),
-            API.getStaff()
+            API.getStaff(),
+            API.getClients()
         ]);
         
-        window.firmStaff = staff || [];
-        window.firmCases = allCases || [];
+        window.firmStaff = Array.isArray(staffReq) ? staffReq : [];
+        window.firmCases = Array.isArray(allCasesReq) ? allCasesReq : [];
+        window.firmClients = Array.isArray(clientsReq) ? clientsReq : [];
         
-        caseObj = (allCases || []).find(c => c.id == currentCaseId);
+        caseObj = window.firmCases.find(c => c.id == currentCaseId);
         if (!caseObj) { window.location.href = 'app.html'; return; }
 
         renderHeaderAndSummary();
         renderAiAnalysis(); 
-        renderTimeline(updates || []);
-        renderPayments(installments || []);
-        renderExpenses(expenses || []);
-        renderFiles(files || []);
-        calculateFinances(installments || [], expenses || []);
+        renderTimeline(Array.isArray(updatesReq) ? updatesReq : []);
+        renderPayments(Array.isArray(installmentsReq) ? installmentsReq : []);
+        renderExpenses(Array.isArray(expensesReq) ? expensesReq : []);
+        renderFiles(Array.isArray(filesReq) ? filesReq : []);
+        calculateFinances(Array.isArray(installmentsReq) ? installmentsReq : [], Array.isArray(expensesReq) ? expensesReq : []);
         
-        document.getElementById('secret_notes_input').value = caseObj.secret_notes || '';
+        if(document.getElementById('secret_notes_input')) {
+            document.getElementById('secret_notes_input').value = caseObj.secret_notes || '';
+        }
         
-    } catch (error) { showAlert('حدث خطأ أثناء جلب التفاصيل', 'danger'); }
+    } catch (error) { showAlert('تأكد من الاتصال بالإنترنت', 'warning'); }
 }
 
 function renderHeaderAndSummary() {
     document.getElementById('case-title').innerText = `${caseObj.case_internal_id || 'ملف قضية'}`;
-    document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${caseObj.mo_clients?.full_name || "موكل غير محدد"}`;
+    
+    // الربط الذكي للموكل
+    const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
+    const clientName = client ? client.full_name : "موكل غير محدد";
+    document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${clientName}`;
     
     const lastSeenContainer = document.getElementById('client-last-seen-container');
     const lastSeenEl = document.getElementById('det-client-last-seen');
@@ -257,7 +265,10 @@ function printInvoice(amount, date, invoiceId) {
 
     document.getElementById('print-inv-date').innerText = date;
     document.getElementById('print-inv-case').innerText = caseObj.case_internal_id;
-    document.getElementById('print-inv-client').innerText = caseObj.mo_clients?.full_name || "موكل";
+    
+    const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
+    document.getElementById('print-inv-client').innerText = client ? client.full_name : "موكل";
+    
     document.getElementById('print-inv-amount').innerText = amount;
     
     const textAmount = tafqeet(parseInt(amount));
@@ -323,7 +334,12 @@ function openEditModal() {
     if(lawyerSelect && window.firmStaff) {
         lawyerSelect.innerHTML = '<option value="">بدون إسناد (لمكتب العمل)</option>' + 
             window.firmStaff.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
-        lawyerSelect.value = caseObj.assigned_lawyer_id || '';
+            
+        if (caseObj.assigned_lawyer_id) {
+            lawyerSelect.value = Array.isArray(caseObj.assigned_lawyer_id) ? caseObj.assigned_lawyer_id[0] : caseObj.assigned_lawyer_id;
+        } else {
+            lawyerSelect.value = '';
+        }
     }
     
     const parentSelect = document.getElementById('edit_parent_case_id');
@@ -338,32 +354,33 @@ function openEditModal() {
 
 async function updateCaseDetails(event) {
     event.preventDefault();
+    const assignedVal = document.getElementById('edit_assigned_lawyer')?.value;
+    
     const data = {
-        case_internal_id: document.getElementById('edit_internal_id').value, 
-        status: document.getElementById('edit_status').value,
-        access_pin: document.getElementById('edit_access_pin').value, 
-        current_court: document.getElementById('edit_court').value,
-        court_case_number: document.getElementById('edit_court_case_number').value, 
-        case_year: document.getElementById('edit_case_year').value ? Number(document.getElementById('edit_case_year').value) : null,
-        litigation_degree: document.getElementById('edit_litigation_degree').value, 
-        current_judge: document.getElementById('edit_judge').value,
-        case_type: document.getElementById('edit_type').value, 
-        opponent_name: document.getElementById('edit_opponent').value,
-        claim_amount: document.getElementById('edit_claim').value ? Number(document.getElementById('edit_claim').value) : null,
-        total_agreed_fees: document.getElementById('edit_fees').value ? Number(document.getElementById('edit_fees').value) : 0,
+        case_internal_id: document.getElementById('edit_internal_id')?.value, 
+        status: document.getElementById('edit_status')?.value,
+        access_pin: document.getElementById('edit_access_pin')?.value, 
+        current_court: document.getElementById('edit_court')?.value,
+        court_case_number: document.getElementById('edit_court_case_number')?.value, 
+        case_year: document.getElementById('edit_case_year')?.value ? Number(document.getElementById('edit_case_year').value) : null,
+        litigation_degree: document.getElementById('edit_litigation_degree')?.value, 
+        current_judge: document.getElementById('edit_judge')?.value,
+        case_type: document.getElementById('edit_type')?.value, 
+        opponent_name: document.getElementById('edit_opponent')?.value,
+        claim_amount: document.getElementById('edit_claim')?.value ? Number(document.getElementById('edit_claim').value) : null,
+        total_agreed_fees: document.getElementById('edit_fees')?.value ? Number(document.getElementById('edit_fees').value) : 0,
         
-        opponent_lawyer: document.getElementById('edit_opponent_lawyer').value || null,
-        poa_details: document.getElementById('edit_poa_details').value || null,
-        deadline_date: document.getElementById('edit_deadline_date').value || null,
-        success_probability: document.getElementById('edit_success_probability').value ? Number(document.getElementById('edit_success_probability').value) : null,
+        opponent_lawyer: document.getElementById('edit_opponent_lawyer')?.value || null,
+        poa_details: document.getElementById('edit_poa_details')?.value || null,
+        deadline_date: document.getElementById('edit_deadline_date')?.value || null,
+        success_probability: document.getElementById('edit_success_probability')?.value ? Number(document.getElementById('edit_success_probability').value) : null,
         
-        assigned_lawyer_id: document.getElementById('edit_assigned_lawyer').value || null,
-        parent_case_id: document.getElementById('edit_parent_case_id').value || null
+        assigned_lawyer_id: assignedVal ? [assignedVal] : null,
+        parent_case_id: document.getElementById('edit_parent_case_id')?.value || null
     };
     if(await API.updateCase(currentCaseId, data)) { closeModal('editCaseModal'); showAlert('تم التحديث بنجاح', 'success'); await loadCaseFullDetails(); }
 }
 
-// تعديل لفتح نافذة إضافة تحديث مع تعبئة قائمة المحامين للإسناد
 function openUpdateModal() {
     const lawyerSelect = document.getElementById('upd_assigned_lawyer');
     if(lawyerSelect && window.firmStaff) {
@@ -384,7 +401,7 @@ async function saveUpdate(event) {
         hearing_date: document.getElementById('upd_hearing_date').value || null, 
         next_hearing_date: document.getElementById('upd_next_hearing').value || null,
         is_visible_to_client: document.getElementById('upd_visible').checked,
-        assigned_to: assignedLawyer // إسناد المهمة/التحديث لمحامٍ
+        assigned_to: assignedLawyer ? [assignedLawyer] : null 
     };
     if(await API.addUpdate(data)) { closeModal('updateModal'); document.getElementById('updateForm').reset(); showAlert('تمت الإضافة وإرسال الإشعار', 'success'); await loadCaseFullDetails(); }
 }
@@ -437,25 +454,6 @@ function copyDeepLink() {
 }
 
 function goToClientProfile() { if (caseObj && caseObj.client_id) { localStorage.setItem('current_client_id', caseObj.client_id); window.location.href = 'client-details.html'; } }
-function openModal(id) { 
-    const el = document.getElementById(id);
-    if(el) { const m = new bootstrap.Modal(el); m.show(); }
-}
-function closeModal(id) { 
-    const el = document.getElementById(id);
-    if(el) {
-        const m = bootstrap.Modal.getInstance(el);
-        if(m) m.hide();
-        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-    }
-}
-function showAlert(message, type = 'info') {
-    const box = document.getElementById('alertBox'); if(!box) return;
-    const alertId = 'alert-' + Date.now();
-    let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
-    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${message}</span></div>`);
-    setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 3000);
-}
+function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
+function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
+function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${message}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }
