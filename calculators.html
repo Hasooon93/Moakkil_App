@@ -11,6 +11,8 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
     <link href="./css/style.css" rel="stylesheet">
 
     <style>
@@ -19,7 +21,6 @@
         .nav-pills-custom::-webkit-scrollbar-thumb { background-color: var(--navy); border-radius: 10px; }
         .nav-pills-custom .nav-link { white-space: nowrap; border-radius: 10px; color: var(--navy); font-weight: 700; border: 1px solid #e2e8f0; transition: 0.3s; background: white; }
         .nav-pills-custom .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); box-shadow: var(--shadow-sm); }
-        .calc-icon { width: 30px; text-align: center; }
         
         /* تصميم الشريط السفلي الموحد */
         .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1030; }
@@ -45,29 +46,29 @@
         
         <ul class="nav nav-pills nav-pills-custom mb-4" id="calculatorsTab" role="tablist">
             <li class="nav-item-tab" role="presentation">
-                <button class="nav-link active px-3" id="loan-tab" data-bs-toggle="pill" data-bs-target="#loan" type="button" role="tab"><i class="fas fa-hand-holding-usd me-1 text-success"></i> القروض</button>
+                <button class="nav-link active px-3 shadow-sm" id="loan-tab" data-bs-toggle="pill" data-bs-target="#loan" type="button" role="tab"><i class="fas fa-hand-holding-usd me-1 text-success"></i> القروض</button>
             </li>
             <li class="nav-item-tab" role="presentation">
-                <button class="nav-link px-3" id="compound-tab" data-bs-toggle="pill" data-bs-target="#compound" type="button" role="tab"><i class="fas fa-chart-line me-1 text-primary"></i> الفائدة المركبة</button>
+                <button class="nav-link px-3 shadow-sm" id="compound-tab" data-bs-toggle="pill" data-bs-target="#compound" type="button" role="tab"><i class="fas fa-chart-line me-1 text-primary"></i> الفائدة المركبة</button>
             </li>
             <li class="nav-item-tab" role="presentation">
-                <button class="nav-link px-3" id="breakeven-tab" data-bs-toggle="pill" data-bs-target="#breakeven" type="button" role="tab"><i class="fas fa-balance-scale me-1 text-warning"></i> نقطة التعادل</button>
+                <button class="nav-link px-3 shadow-sm" id="breakeven-tab" data-bs-toggle="pill" data-bs-target="#breakeven" type="button" role="tab"><i class="fas fa-balance-scale me-1 text-warning"></i> نقطة التعادل</button>
             </li>
             <li class="nav-item-tab" role="presentation">
-                <button class="nav-link px-3" id="discount-tab" data-bs-toggle="pill" data-bs-target="#discount" type="button" role="tab"><i class="fas fa-tags me-1 text-danger"></i> الخصم والضريبة</button>
+                <button class="nav-link px-3 shadow-sm" id="discount-tab" data-bs-toggle="pill" data-bs-target="#discount" type="button" role="tab"><i class="fas fa-tags me-1 text-danger"></i> الخصم والضريبة</button>
             </li>
             <li class="nav-item-tab" role="presentation">
-                <button class="nav-link px-3" id="share-tab" data-bs-toggle="pill" data-bs-target="#share" type="button" role="tab"><i class="fas fa-users me-1 text-info"></i> حصة الفرد</button>
+                <button class="nav-link px-3 shadow-sm" id="share-tab" data-bs-toggle="pill" data-bs-target="#share" type="button" role="tab"><i class="fas fa-users me-1 text-info"></i> حصة الفرد</button>
             </li>
             <li class="nav-item-tab" role="presentation">
-                <button class="nav-link px-3" id="inheritance-tab" data-bs-toggle="pill" data-bs-target="#inheritance" type="button" role="tab"><i class="fas fa-scroll me-1 text-dark"></i> المواريث الشامل</button>
+                <button class="nav-link px-3 shadow-sm" id="inheritance-tab" data-bs-toggle="pill" data-bs-target="#inheritance" type="button" role="tab"><i class="fas fa-scroll me-1 text-dark"></i> المواريث الشامل</button>
             </li>
         </ul>
 
         <div class="tab-content" id="calculatorsTabContent">
             
             <div class="tab-pane fade show active" id="loan" role="tabpanel">
-                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-success bg-white">
+                <div class="card-custom p-4 shadow-sm border-0 border-start border-4 border-success bg-white">
                     <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-hand-holding-usd me-2 text-success"></i> حاسبة القروض والتمويل</h5>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -83,7 +84,7 @@
                             <input type="number" id="loanTerm" class="form-control bg-light" placeholder="مثال: 60">
                         </div>
                         <div class="col-12 mt-4">
-                            <button id="calcLoanBtn" class="btn btn-success w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                            <button id="calcLoanBtn" class="btn btn-success w-100 fw-bold py-2 shadow-sm rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
                         </div>
                     </div>
                     <div id="loanResult" class="mt-4 d-none alert alert-success border-0 shadow-sm rounded-3"></div>
@@ -91,7 +92,7 @@
             </div>
 
             <div class="tab-pane fade" id="compound" role="tabpanel">
-                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-primary bg-white">
+                <div class="card-custom p-4 shadow-sm border-0 border-start border-4 border-primary bg-white">
                     <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-chart-line me-2 text-primary"></i> حاسبة الفائدة المركبة والعوائد</h5>
                     <div class="row g-3">
                         <div class="col-md-3">
@@ -111,7 +112,7 @@
                             <input type="number" id="compYears" class="form-control bg-light" placeholder="مثال: 10">
                         </div>
                         <div class="col-12 mt-4">
-                            <button id="calcCompBtn" class="btn btn-primary w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                            <button id="calcCompBtn" class="btn btn-primary w-100 fw-bold py-2 shadow-sm rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
                         </div>
                     </div>
                     <div id="compResult" class="mt-4 d-none alert alert-primary border-0 shadow-sm rounded-3"></div>
@@ -119,12 +120,12 @@
             </div>
 
             <div class="tab-pane fade" id="breakeven" role="tabpanel">
-                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-warning bg-white">
+                <div class="card-custom p-4 shadow-sm border-0 border-start border-4 border-warning bg-white">
                     <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-balance-scale me-2 text-warning"></i> حاسبة نقطة التعادل التجارية</h5>
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">التكاليف الثابتة الإجمالية</label>
-                            <input type="number" id="beFixedCosts" class="form-control bg-light border-warning" placeholder="مثال: 50000">
+                            <input type="number" id="beFixedCosts" class="form-control bg-light" placeholder="مثال: 50000">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">التكلفة المتغيرة للوحدة الواحدة</label>
@@ -132,10 +133,10 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted">سعر بيع الوحدة الواحدة</label>
-                            <input type="number" id="bePrice" class="form-control bg-light border-success" placeholder="مثال: 50">
+                            <input type="number" id="bePrice" class="form-control bg-light" placeholder="مثال: 50">
                         </div>
                         <div class="col-12 mt-4">
-                            <button id="calcBeBtn" class="btn btn-warning text-dark w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                            <button id="calcBeBtn" class="btn btn-warning text-dark w-100 fw-bold py-2 shadow-sm rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
                         </div>
                     </div>
                     <div id="beResult" class="mt-4 d-none alert alert-warning border-0 shadow-sm rounded-3"></div>
@@ -143,7 +144,7 @@
             </div>
 
             <div class="tab-pane fade" id="discount" role="tabpanel">
-                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-danger bg-white">
+                <div class="card-custom p-4 shadow-sm border-0 border-start border-4 border-danger bg-white">
                     <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-tags me-2 text-danger"></i> حاسبة الخصومات والضرائب المضافة</h5>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -159,7 +160,7 @@
                             <input type="number" id="dtTax" class="form-control bg-light border-danger" placeholder="مثال: 16" value="0">
                         </div>
                         <div class="col-12 mt-4">
-                            <button id="calcDtBtn" class="btn btn-danger w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                            <button id="calcDtBtn" class="btn btn-danger w-100 fw-bold py-2 shadow-sm rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
                         </div>
                     </div>
                     <div id="dtResult" class="mt-4 d-none alert alert-danger border-0 shadow-sm rounded-3"></div>
@@ -167,7 +168,7 @@
             </div>
 
             <div class="tab-pane fade" id="share" role="tabpanel">
-                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-info bg-white">
+                <div class="card-custom p-4 shadow-sm border-0 border-start border-4 border-info bg-white">
                     <h5 class="mb-4 text-navy fw-bold border-bottom pb-2"><i class="fas fa-users me-2 text-info"></i> حاسبة حصص الأفراد والشركاء</h5>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -185,7 +186,7 @@
                             </div>
                         </div>
                         <div class="col-12 mt-4">
-                            <button id="calcShareBtn" class="btn btn-info text-white w-100 fw-bold py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
+                            <button id="calcShareBtn" class="btn btn-info text-white w-100 fw-bold shadow-sm py-2 rounded-3"><i class="fas fa-calculator me-1"></i> إجراء الحساب</button>
                         </div>
                     </div>
                     <div id="shareResult" class="mt-4 d-none alert alert-info border-0 shadow-sm rounded-3"></div>
@@ -193,9 +194,9 @@
             </div>
 
             <div class="tab-pane fade" id="inheritance" role="tabpanel">
-                <div class="card-custom p-4 shadow-sm border-0 border-top border-4 border-dark bg-white">
+                <div class="card-custom p-4 shadow-sm border-0 border-start border-4 border-dark bg-white">
                     <h5 class="mb-2 text-navy fw-bold border-bottom pb-2"><i class="fas fa-scroll me-2 text-dark"></i> محرك توزيع المواريث الشرعية</h5>
-                    <p class="text-muted small mb-4 bg-light p-2 rounded-3 border"><i class="fas fa-info-circle text-info me-1"></i> يتم الحساب وفقاً للأنصبة الشرعية متضمناً معالجة العول والتعصيب والحجب. يرجى إدخال التركة صافية (بعد سداد الديون والوصايا).</p>
+                    <p class="text-muted small mb-4 bg-light p-2 rounded-3 border"><i class="fas fa-info-circle text-info me-1"></i> يتم الحساب وفقاً للأنصبة الشرعية. يرجى إدخال التركة صافية (بعد سداد الديون والوصايا).</p>
                     
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -260,7 +261,7 @@
                         </div>
 
                         <div class="col-12 mt-4 pt-3">
-                            <button id="calcInhBtn" class="btn btn-dark w-100 fw-bold py-2 rounded-3"><i class="fas fa-balance-scale-right me-1"></i> استخراج الفريضة الشرعية</button>
+                            <button id="calcInhBtn" class="btn btn-dark w-100 shadow-sm fw-bold py-2 rounded-3"><i class="fas fa-balance-scale-right me-1"></i> استخراج الفريضة الشرعية</button>
                         </div>
                     </div>
                     <div id="inhResult" class="mt-4 d-none border-0 shadow-sm rounded-3"></div>
@@ -270,25 +271,30 @@
         </div>
     </div>
 
-    <div class="bottom-nav d-flex justify-content-around">
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-home"></i> الرئيسية
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-gavel"></i> القضايا
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-users"></i> الموكلين
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-calendar-check"></i> الأجندة
-        </div>
-        <div class="nav-item active" onclick="window.location.href='app.html'">
-            <i class="fas fa-toolbox"></i> الأدوات
-        </div>
+    <div class="bottom-nav d-flex justify-content-around no-print">
+        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-home"></i> الرئيسية</div>
+        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-gavel"></i> القضايا</div>
+        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-users"></i> الموكلين</div>
+        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-calendar-check"></i> الأجندة</div>
+        <div class="nav-item active" onclick="window.location.href='app.html'"><i class="fas fa-toolbox"></i> الأدوات</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    
+    <script>
+        function showAlert(message, type = 'info') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true, position: 'top-end',
+                    icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
+                    title: message, showConfirmButton: false, timer: 3000, timerProgressBar: true
+                });
+            } else { alert(message); }
+        }
+    </script>
     
     <script src="./js/loan.js"></script>
     <script src="./js/compound.js"></script>

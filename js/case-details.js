@@ -1,4 +1,4 @@
-// js/case-details.js - محرك تفاصيل القضية (يشمل الذكاء الاصطناعي، الإملاء الصوتي، الواتساب، والتحقق الأمني، محمي ضد XSS)
+// js/case-details.js - محرك تفاصيل القضية (مع تحديثات SweetAlert2 و Share Modal)
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -153,7 +153,7 @@ async function saveSecretNotes() {
 
 function renderTimeline(updates) {
     const container = document.getElementById('timeline-container');
-    if (!updates || updates.length === 0) { container.innerHTML = '<div class="text-center p-4 text-muted small">لا يوجد وقائع.</div>'; return; }
+    if (!updates || updates.length === 0) { container.innerHTML = '<div class="text-center p-4 text-muted small bg-white rounded border">لا يوجد وقائع.</div>'; return; }
     container.innerHTML = updates.map(u => `
         <div class="timeline-item mb-3">
             <div class="card-custom p-3 shadow-sm bg-white border-end border-4 border-navy position-relative">
@@ -268,19 +268,31 @@ function calculateFinances(installments, expenses) {
     }
 }
 
-// دالة الحذف الموحدة
+// دالة الحذف الموحدة باستخدام SweetAlert2 لضمان الحماية
 async function deleteRecord(type, id) {
-    if(!confirm('هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    const confirmResult = await Swal.fire({
+        title: 'هل أنت متأكد؟',
+        text: "لا يمكن التراجع عن إجراء الحذف هذا!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذف',
+        cancelButtonText: 'إلغاء'
+    });
+
+    if(!confirmResult.isConfirmed) return;
+
     try {
-        if (type === 'update') await fetch(`${CONFIG.API_URL}/api/updates?id=eq.${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }});
+        if (type === 'update') await API.deleteUpdate(id);
         if (type === 'installment') await API.deleteInstallment(id, currentCaseId);
-        if (type === 'expense') await fetch(`${CONFIG.API_URL}/api/expenses?id=eq.${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }});
-        if (type === 'file') await fetch(`${CONFIG.API_URL}/api/files?id=eq.${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }});
+        if (type === 'expense') await API.deleteExpense(id);
+        if (type === 'file') await API.deleteFile(id);
         
         showAlert('تم الحذف بنجاح', 'success');
         await loadCaseFullDetails();
     } catch(e) {
-        showAlert('حدث خطأ أثناء الحذف', 'danger');
+        showAlert('حدث خطأ أثناء الحذف، تحقق من الصلاحيات', 'error');
     }
 }
 
@@ -309,7 +321,7 @@ function startDictation(elementId) {
     };
 
     recognition.onerror = function() {
-        showAlert('تم إيقاف الميكروفون أو حدث خطأ.', 'danger');
+        showAlert('تم إيقاف الميكروفون أو حدث خطأ.', 'error');
         textArea.placeholder = originalPlaceholder;
     };
 
@@ -319,7 +331,7 @@ function startDictation(elementId) {
     };
 }
 
-// ------------------- ميزة المولد الآلي للمسودات (AI) -------------------
+// ------------------- المولد الآلي للمسودات (AI) -------------------
 function openAiDraftModal() {
     document.getElementById('ai_draft_notes').value = '';
     document.getElementById('ai_draft_result_container').classList.add('d-none');
@@ -364,7 +376,7 @@ async function generateAiDraft() {
             throw new Error('لم يتم استلام رد من الذكاء الاصطناعي');
         }
     } catch (e) {
-        showAlert('فشل الاتصال بمحرك الذكاء الاصطناعي.', 'danger');
+        showAlert('فشل الاتصال بمحرك الذكاء الاصطناعي.', 'error');
     } finally {
         btn.innerHTML = '<i class="fas fa-robot me-1"></i> توليد المسودة الآن';
         btn.disabled = false;
@@ -464,7 +476,7 @@ function printInvoice(amount, date, invoiceId) {
 
 function printQRCode() {
     if(!caseObj.public_token) {
-        showAlert('لا يوجد رابط وصول عام لهذه القضية لتوليد الرمز.', 'danger');
+        showAlert('لا يوجد رابط وصول عام لهذه القضية لتوليد الرمز.', 'warning');
         return;
     }
     
@@ -495,6 +507,43 @@ function printQRCode() {
     }, 500);
 }
 
+// ------------------ إدارة مشاركة الرابط العميق (Deep Link Modal) ------------------
+let currentShareLink = '';
+function openShareModal() {
+    if(!caseObj.public_token) {
+        showAlert('لا يوجد رمز وصول عام متاح لهذه القضية، قد تحتاج لتحديث القضية لحفظ الرمز.', 'error');
+        return;
+    }
+
+    const baseUrl = window.location.origin + window.location.pathname.replace('case-details.html', 'client.html');
+    currentShareLink = `${baseUrl}?token=${caseObj.public_token}`;
+    
+    document.getElementById('share_link_input').value = currentShareLink;
+    document.getElementById('share_pin_input').value = caseObj.access_pin || 'لا يوجد';
+    
+    const qrContainer = document.getElementById('share-qrcode');
+    qrContainer.innerHTML = '';
+    new QRCode(qrContainer, { text: currentShareLink, width: 150, height: 150, colorDark: "#10b981" });
+    
+    openModal('shareModal');
+}
+
+function copyShareLink() {
+    const pin = document.getElementById('share_pin_input').value;
+    const textToCopy = `مرحباً، يمكنك متابعة تفاصيل قضيتك عبر الرابط التالي:\n${currentShareLink}\n\nالرمز السري الخاص بك: ${pin}`;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        showAlert('تم نسخ الرابط والرمز بنجاح', 'success');
+    });
+}
+
+function sendViaWhatsApp() {
+    const pin = document.getElementById('share_pin_input').value;
+    const textToCopy = `مرحباً، يمكنك متابعة تفاصيل قضيتك عبر الرابط التالي:\n${currentShareLink}\n\nالرمز السري (PIN): ${pin}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(textToCopy)}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+// ------------------ التعديلات و الإضافة ------------------
 function openEditModal() {
     document.getElementById('edit_internal_id').value = caseObj.case_internal_id || '';
     document.getElementById('edit_status').value = caseObj.status || 'نشطة';
@@ -588,7 +637,7 @@ async function saveUpdate(event) {
         is_visible_to_client: document.getElementById('upd_visible').checked,
         assigned_to: assignedLawyer ? [assignedLawyer] : null 
     };
-    if(await API.addUpdate(data)) { closeModal('updateModal'); document.getElementById('updateForm').reset(); showAlert('تمت الإضافة وإرسال الإشعار', 'success'); await loadCaseFullDetails(); }
+    if(await API.addUpdate(data)) { closeModal('updateModal'); document.getElementById('updateForm').reset(); showAlert('تمت الإضافة بنجاح', 'success'); await loadCaseFullDetails(); }
 }
 
 async function savePayment(event) {
@@ -616,6 +665,7 @@ async function saveFile(event) {
     const catInput = document.getElementById('file_category_input').value;
     const expiryInput = document.getElementById('file_expiry_date').value;
     const btn = document.getElementById('btn_upload');
+    
     if (!fileInput.files.length) return;
     const file = fileInput.files[0];
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
@@ -634,20 +684,26 @@ async function saveFile(event) {
                 closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ السحابي', 'success'); await loadCaseFullDetails();
             }
         }
-    } catch (err) { showAlert("فشل: " + err.message, 'danger'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; }
-}
-
-function copyDeepLink() {
-    if(!caseObj.public_token) { showAlert('لا يوجد رمز وصول آمن.', 'danger'); return; }
-    const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-    const deepLink = `${baseUrl}client.html?token=${caseObj.public_token}`;
-    const pin = caseObj.access_pin || 'غير محدد';
-    const shareText = `مرحباً، يمكنك متابعة قضيتك عبر الرابط:\n${deepLink}\n\nرمز الدخول PIN الخاص بك هو: ${pin}`;
-    if (navigator.share) navigator.share({ title: 'رابط القضية', text: shareText }).catch(err => console.log(err));
-    else window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    } catch (err) { showAlert("فشل: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; }
 }
 
 function goToClientProfile() { if (caseObj && caseObj.client_id) { localStorage.setItem('current_client_id', caseObj.client_id); window.location.href = 'client-details.html'; } }
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
-function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${escapeHTML(message)}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }
+
+// دالة التنبيهات الموحدة
+function showAlert(message, type = 'info') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type === 'danger' ? 'error' : type,
+            title: escapeHTML(message),
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(message);
+    }
+}

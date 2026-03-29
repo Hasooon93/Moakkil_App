@@ -1,50 +1,34 @@
-document.addEventListener("DOMContentLoaded", function() {
-    const calcBeBtn = document.getElementById("calcBeBtn");
-    
-    if(calcBeBtn) {
-        calcBeBtn.addEventListener("click", function() {
-            // جلب القيم من الحقول
+// js/breakeven.js
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("calcBeBtn");
+    if(btn) {
+        btn.addEventListener("click", () => {
             const fixedCosts = parseFloat(document.getElementById("beFixedCosts").value);
             const varCost = parseFloat(document.getElementById("beVarCost").value);
             const price = parseFloat(document.getElementById("bePrice").value);
-            const resultDiv = document.getElementById("beResult");
+            const resDiv = document.getElementById("beResult");
 
-            // التحقق من صحة المدخلات
-            if (isNaN(fixedCosts) || isNaN(varCost) || isNaN(price) || fixedCosts < 0 || varCost < 0 || price <= 0) {
-                resultDiv.className = "mt-4 alert alert-danger";
-                resultDiv.innerHTML = "يرجى إدخال أرقام صحيحة وموجبة في جميع الحقول.";
-                resultDiv.classList.remove("d-none");
+            if(isNaN(fixedCosts) || isNaN(varCost) || isNaN(price) || fixedCosts < 0 || varCost < 0 || price <= 0) {
+                showAlert("يرجى إدخال قيم صحيحة وموجبة", "warning");
+                resDiv.classList.add("d-none");
                 return;
             }
 
-            // التأكد من أن سعر البيع أعلى من التكلفة المتغيرة (هامش المساهمة موجب)
-            if (price <= varCost) {
-                resultDiv.className = "mt-4 alert alert-warning";
-                resultDiv.innerHTML = "سعر البيع يجب أن يكون أعلى من التكلفة المتغيرة، وإلا فلن تتحقق نقطة التعادل أبداً وستستمر الخسارة.";
-                resultDiv.classList.remove("d-none");
+            if(price <= varCost) {
+                showAlert("سعر البيع يجب أن يكون أكبر من التكلفة المتغيرة لتحقيق تعادل", "error");
+                resDiv.classList.add("d-none");
                 return;
             }
 
-            // الحسابات
-            const contributionMargin = price - varCost; // هامش المساهمة للوحدة
-            const breakEvenUnits = fixedCosts / contributionMargin; // نقطة التعادل بالوحدات
-            const breakEvenRevenue = breakEvenUnits * price; // نقطة التعادل بالقيمة (الإيرادات)
+            const breakevenUnits = fixedCosts / (price - varCost);
+            const breakevenSales = breakevenUnits * price;
 
-            // عرض النتيجة
-            resultDiv.className = "mt-4 alert alert-success";
-            resultDiv.innerHTML = `
-                <div class="row text-center">
-                    <div class="col-md-6 border-end border-success">
-                        <span class="d-block text-success mb-1" style="font-size: 0.9rem;">الكمية المطلوبة للتعادل</span>
-                        <strong class="fs-4">${Math.ceil(breakEvenUnits)} وحدة</strong>
-                    </div>
-                    <div class="col-md-6">
-                        <span class="d-block text-success mb-1" style="font-size: 0.9rem;">إجمالي الإيرادات عند التعادل</span>
-                        <strong class="fs-4">${breakEvenRevenue.toFixed(2)}</strong>
-                    </div>
-                </div>
+            resDiv.innerHTML = `
+                <h6 class="fw-bold mb-3 text-warning border-bottom pb-2 text-dark">نتيجة نقطة التعادل:</h6>
+                <div class="d-flex justify-content-between mb-2 text-dark"><span>الوحدات المطلوبة للتعادل:</span> <b>${Math.ceil(breakevenUnits)} وحدة</b></div>
+                <div class="d-flex justify-content-between text-dark"><span>قيمة مبيعات التعادل:</span> <b class="fs-5">${breakevenSales.toFixed(2)} د.أ</b></div>
             `;
-            resultDiv.classList.remove("d-none");
+            resDiv.classList.remove("d-none");
         });
     }
 });

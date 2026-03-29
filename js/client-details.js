@@ -1,10 +1,11 @@
-// js/client-details.js - محرك الملف الشخصي للموكل (يشمل كشف الحساب الموحد ومراسلة الواتساب، محمي ضد XSS ويدعم التعديل)
+// js/client-details.js - محرك الملف الشخصي للموكل (يشمل كشف الحساب الموحد ومراسلة الواتساب، محمي ضد XSS ويدعم التعديل وحماية SweetAlert)
 
 let currentClientId = localStorage.getItem('current_client_id');
 let clientObj = null;
 let clientCases = [];
 let clientInstallments = [];
 let clientExpenses = [];
+let currentUser = null;
 
 // دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
@@ -21,6 +22,12 @@ const escapeHTML = (str) => {
 };
 
 window.onload = async () => {
+    // جلب بيانات المستخدم الحالي للتحقق من الصلاحيات
+    const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+    if (userStr) {
+        currentUser = JSON.parse(userStr);
+    }
+
     if (!currentClientId) {
         window.location.href = 'app.html';
         return;
@@ -36,7 +43,7 @@ async function loadClientProfile() {
     try {
         const [clientsReq, casesReq, filesReq] = await Promise.all([
             API.getClients(),
-            API.getCases(), // جلب القضايا من المحرك لضمان تطبيق الصلاحيات
+            API.getCases(), 
             API.getFiles()
         ]);
 
@@ -64,6 +71,7 @@ async function loadClientProfile() {
             const caseIds = clientCases.map(c => c.id);
             const caseIdsQuery = caseIds.map(id => `"${id}"`).join(',');
             
+            // استخدام fetchAPI المباشر مع دعم التوكن
             const [instReq, expReq] = await Promise.all([
                 fetchAPI(`/api/installments?case_id=in.(${caseIdsQuery})`),
                 fetchAPI(`/api/expenses?case_id=in.(${caseIdsQuery})`)
@@ -77,7 +85,7 @@ async function loadClientProfile() {
         }
 
     } catch (error) {
-        showAlert('حدث خطأ أثناء جلب بيانات الموكل. تأكد من اتصالك بالإنترنت.', 'danger');
+        showAlert('حدث خطأ أثناء جلب بيانات الموكل. تأكد من اتصالك بالإنترنت.', 'error');
     }
 }
 
@@ -140,17 +148,21 @@ function renderClientFiles(files) {
         return;
     }
 
+    // السماح בחذف المستندات للمدير والمحامي فقط (RBAC)
+    const canDelete = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'lawyer'));
+
     list.innerHTML = files.map(f => {
         let icon = 'fa-file-alt text-secondary';
         if(f.file_type && f.file_type.includes('image')) icon = 'fa-image text-primary';
         if(f.file_type && f.file_type.includes('pdf')) icon = 'fa-file-pdf text-danger';
 
         const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger fw-bold" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
+        const delBtn = canDelete ? `<button class="btn btn-sm btn-light text-danger shadow-sm position-absolute top-0 start-0 m-1 rounded-circle" onclick="deleteRecord('file', '${f.id}')" title="حذف المستند"><i class="fas fa-trash"></i></button>` : '';
 
         return `
         <div class="col-6">
             <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative">
-                <button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteRecord('file', '${f.id}')"><i class="fas fa-trash"></i></button>
+                ${delBtn}
                 <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>
                 <i class="fas ${icon} fs-1 mb-2"></i>
                 <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
@@ -161,16 +173,29 @@ function renderClientFiles(files) {
     `}).join('');
 }
 
+// دالة الحذف الموحدة مع رسالة تأكيد احترافية (SweetAlert2)
 async function deleteRecord(type, id) {
-    if(!confirm('هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    const confirmResult = await Swal.fire({
+        title: 'هل أنت متأكد؟',
+        text: "لن تتمكن من التراجع عن الحذف!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذف!',
+        cancelButtonText: 'إلغاء'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
     try {
         if (type === 'file') {
-            await fetchAPI(`/api/files?id=eq.${id}`, 'DELETE');
+            await API.deleteFile(id);
         }
         showAlert('تم الحذف بنجاح', 'success');
         await loadClientProfile();
     } catch(e) {
-        showAlert('حدث خطأ أثناء الحذف', 'danger');
+        showAlert('حدث خطأ أثناء الحذف، تأكد من الصلاحيات', 'error');
     }
 }
 
@@ -210,7 +235,7 @@ async function uploadPersonalFile(event) {
             }
         }
     } catch (err) {
-        showAlert("فشل الرفع: " + err.message, 'danger');
+        showAlert("فشل الرفع: " + err.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي';
@@ -317,4 +342,20 @@ function goToCase(id) {
 
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
-function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${escapeHTML(message)}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }
+
+// دالة إظهار التنبيهات باستخدام SweetAlert2
+function showAlert(message, type = 'info') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
+            title: escapeHTML(message),
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(message);
+    }
+}

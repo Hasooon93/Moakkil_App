@@ -8,7 +8,10 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
     <link href="./css/style.css" rel="stylesheet">
+    
     <style>
         .report-card { border-radius: var(--radius-md); padding: 15px; color: white; box-shadow: var(--shadow-sm); }
         .bg-gradient-primary { background: linear-gradient(135deg, var(--navy) 0%, #1e3a8a 100%); }
@@ -76,7 +79,7 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
-            <h6 class="fw-bold text-navy mb-0"><i class="fas fa-chart-pie me-2 text-accent"></i> الملخص المالي للمكتب</h6>
+            <h6 class="fw-bold text-navy mb-0"><i class="fas fa-chart-pie me-2 text-accent"></i> الملخص المالي</h6>
             <span class="badge bg-navy px-3 py-2 shadow-sm" id="report-date">جاري التحميل...</span>
         </div>
 
@@ -101,7 +104,7 @@
             </div>
             <div class="col-6 col-md-3">
                 <div class="report-card bg-gradient-warning text-center h-100 position-relative border border-2 border-white">
-                    <small class="d-block text-dark opacity-75 fw-bold mb-1"><i class="fas fa-wallet"></i> الأرباح (صندوق)</small>
+                    <small class="d-block text-dark opacity-75 fw-bold mb-1"><i class="fas fa-wallet"></i> الأرباح المتبقية</small>
                     <h4 class="fw-bold text-dark mb-0" id="rep-net-profit">0</h4>
                 </div>
             </div>
@@ -148,22 +151,24 @@
             </div>
         </div>
 
-        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-users-cog me-2 text-info"></i> أداء المحامين والموظفين</h6>
-        <div class="card-custom p-0 overflow-hidden mb-4 border border-light shadow-sm">
-            <div class="table-responsive">
-                <table class="table table-custom table-hover table-borderless mb-0 text-center align-middle bg-white">
-                    <thead class="table-light border-bottom">
-                        <tr>
-                            <th class="text-start ps-3">اسم المحامي / الموظف</th>
-                            <th>حالة الحساب</th>
-                            <th>عدد القضايا</th>
-                            <th>الأتعاب المرتبطة (د.أ)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="lawyer-performance-body">
-                        <tr><td colspan="4" class="text-muted p-4"><i class="fas fa-spinner fa-spin me-2"></i> جاري الحساب وتحليل البيانات...</td></tr>
-                    </tbody>
-                </table>
+        <div id="staff-performance-section">
+            <h6 class="fw-bold text-navy mb-3"><i class="fas fa-users-cog me-2 text-info"></i> أداء المحامين والموظفين</h6>
+            <div class="card-custom p-0 overflow-hidden mb-4 border border-light shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-custom table-hover table-borderless mb-0 text-center align-middle bg-white">
+                        <thead class="table-light border-bottom">
+                            <tr>
+                                <th class="text-start ps-3">اسم المحامي / الموظف</th>
+                                <th>حالة الحساب</th>
+                                <th>عدد القضايا</th>
+                                <th>الأتعاب المرتبطة (د.أ)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lawyer-performance-body">
+                            <tr><td colspan="4" class="text-muted p-4"><i class="fas fa-spinner fa-spin me-2"></i> جاري الحساب وتحليل البيانات...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -187,9 +192,8 @@
         </div>
     </div>
 
-    <div id="alertBox" class="alert-container no-print"></div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>

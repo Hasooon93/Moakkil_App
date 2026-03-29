@@ -1,59 +1,31 @@
-document.addEventListener("DOMContentLoaded", function() {
-    const calcLoanBtn = document.getElementById("calcLoanBtn");
-    
-    if(calcLoanBtn) {
-        calcLoanBtn.addEventListener("click", function() {
-            // جلب القيم من الحقول
+// js/loan.js
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("calcLoanBtn");
+    if(btn) {
+        btn.addEventListener("click", () => {
             const amount = parseFloat(document.getElementById("loanAmount").value);
-            const annualRate = parseFloat(document.getElementById("loanRate").value);
-            const months = parseInt(document.getElementById("loanTerm").value);
-            const resultDiv = document.getElementById("loanResult");
+            const rate = parseFloat(document.getElementById("loanRate").value);
+            const term = parseInt(document.getElementById("loanTerm").value);
+            const resDiv = document.getElementById("loanResult");
 
-            // التحقق من صحة المدخلات
-            if (isNaN(amount) || isNaN(annualRate) || isNaN(months) || amount <= 0 || annualRate < 0 || months <= 0) {
-                resultDiv.className = "mt-4 alert alert-danger";
-                resultDiv.innerHTML = "يرجى إدخال أرقام صحيحة وموجبة في جميع الحقول.";
-                resultDiv.classList.remove("d-none");
+            if(isNaN(amount) || isNaN(rate) || isNaN(term) || amount <= 0 || rate <= 0 || term <= 0) {
+                showAlert("يرجى إدخال قيم صحيحة وموجبة لجميع الحقول", "warning");
+                resDiv.classList.add("d-none");
                 return;
             }
 
-            // الحسابات المالية
-            const monthlyRate = (annualRate / 100) / 12;
-            let monthlyPayment = 0;
-            let totalPayment = 0;
-            let totalInterest = 0;
+            const monthlyRate = (rate / 100) / 12;
+            const payment = (amount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+            const totalPaid = payment * term;
+            const totalInterest = totalPaid - amount;
 
-            if (monthlyRate === 0) {
-                // حالة القرض الحسن (بدون فائدة)
-                monthlyPayment = amount / months;
-                totalPayment = amount;
-                totalInterest = 0;
-            } else {
-                // معادلة القسط الشهري (Amortization Formula)
-                monthlyPayment = (amount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-                totalPayment = monthlyPayment * months;
-                totalInterest = totalPayment - amount;
-            }
-
-            // عرض النتيجة بشكل منظم
-            resultDiv.className = "mt-4 alert alert-success";
-            resultDiv.innerHTML = `
-                <div class="row text-center">
-                    <div class="col-md-4 border-end border-success">
-                        <span class="d-block text-success mb-1" style="font-size: 0.9rem;">القسط الشهري</span>
-                        <strong class="fs-4">${monthlyPayment.toFixed(2)}</strong>
-                    </div>
-                    <div class="col-md-4 border-end border-success">
-                        <span class="d-block text-success mb-1" style="font-size: 0.9rem;">إجمالي الفوائد</span>
-                        <strong class="fs-4">${totalInterest.toFixed(2)}</strong>
-                    </div>
-                    <div class="col-md-4">
-                        <span class="d-block text-success mb-1" style="font-size: 0.9rem;">إجمالي السداد</span>
-                        <strong class="fs-4">${totalPayment.toFixed(2)}</strong>
-                    </div>
-                </div>
+            resDiv.innerHTML = `
+                <h6 class="fw-bold mb-3 text-success border-bottom pb-2">نتيجة الحساب:</h6>
+                <div class="d-flex justify-content-between mb-2"><span>القسط الشهري:</span> <b class="fs-5">${payment.toFixed(2)} د.أ</b></div>
+                <div class="d-flex justify-content-between mb-2"><span>إجمالي الفوائد:</span> <b>${totalInterest.toFixed(2)} د.أ</b></div>
+                <div class="d-flex justify-content-between"><span>الإجمالي المسدد:</span> <b class="text-success">${totalPaid.toFixed(2)} د.أ</b></div>
             `;
-            resultDiv.classList.remove("d-none");
+            resDiv.classList.remove("d-none");
         });
     }
 });

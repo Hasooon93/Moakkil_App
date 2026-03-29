@@ -30,6 +30,10 @@
         
         /* تحسين مظهر تفاصيل سجل النشاطات */
         .history-details-pre { background: #f1f5f9; padding: 10px; border-radius: 8px; font-size: 0.8rem; text-align: left; direction: ltr; margin-top: 5px; display: none; }
+        
+        /* Case Filter Scrollbar */
+        .filter-scroll::-webkit-scrollbar { height: 4px; }
+        .filter-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body class="pb-5 mb-5">
@@ -159,6 +163,14 @@
                 <h5 class="fw-bold text-navy mb-0"><i class="fas fa-gavel text-accent me-2"></i> القضايا</h5>
                 <button class="btn btn-sm btn-primary-custom fw-bold px-3 shadow-sm" onclick="openModal('caseModal')"><i class="fas fa-plus me-1"></i> قضية</button>
             </div>
+            
+            <div class="d-flex gap-2 mb-3 overflow-auto pb-1 filter-scroll" style="white-space: nowrap;">
+                <button class="btn btn-sm btn-navy fw-bold rounded-pill shadow-sm px-3 filter-btn" data-status="" onclick="filterCasesByBtn(this, '')">الكل</button>
+                <button class="btn btn-sm btn-outline-navy fw-bold rounded-pill shadow-sm px-3 filter-btn" data-status="نشطة" onclick="filterCasesByBtn(this, 'نشطة')">نشطة</button>
+                <button class="btn btn-sm btn-outline-navy fw-bold rounded-pill shadow-sm px-3 filter-btn" data-status="مكتملة" onclick="filterCasesByBtn(this, 'مكتملة')">مكتملة</button>
+                <button class="btn btn-sm btn-outline-navy fw-bold rounded-pill shadow-sm px-3 filter-btn" data-status="استئناف" onclick="filterCasesByBtn(this, 'استئناف')">استئناف</button>
+            </div>
+
             <input type="text" class="form-control form-control-sm mb-3 shadow-sm border-0" placeholder="بحث برقم القضية أو اسم الخصم..." id="search-cases" onkeyup="filterCases()">
             <div id="cases-list"></div>
         </div>
@@ -260,12 +272,16 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label fw-bold small text-muted">رقم الهاتف</label>
-                                <input type="tel" id="client_phone" class="form-control border-0 shadow-sm" placeholder="079XXXXXXX">
+                                <input type="tel" id="client_phone" class="form-control border-0 shadow-sm" placeholder="079XXXXXXX" dir="ltr">
                             </div>
                             <div class="col-6">
                                 <label class="form-label fw-bold small text-muted">الرقم الوطني/الشركة</label>
                                 <input type="text" id="client_national_id" class="form-control border-0 shadow-sm" placeholder="اختياري">
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">البريد الإلكتروني (اختياري)</label>
+                            <input type="email" id="client_email" class="form-control border-0 shadow-sm" placeholder="example@email.com" dir="ltr">
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-muted">العنوان التفصيلي</label>
@@ -424,12 +440,12 @@
                             <input type="text" id="staff_full_name" class="form-control border-0 shadow-sm" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold small">اسم الدخول (Username)</label>
-                            <input type="text" id="staff_username" class="form-control border-0 shadow-sm" required>
+                            <label class="form-label fw-bold small">رقم الهاتف (للدخول)</label>
+                            <input type="tel" id="staff_phone" class="form-control border-0 shadow-sm" required placeholder="079..." dir="ltr">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold small">كلمة المرور</label>
-                            <input type="password" id="staff_password" class="form-control border-0 shadow-sm" required minlength="4">
+                            <label class="form-label fw-bold small">رقم التيليجرام (Telegram ID)</label>
+                            <input type="number" id="staff_telegram_id" class="form-control border-0 shadow-sm" placeholder="اختياري لاستلام الكود" dir="ltr">
                         </div>
                         <div class="mb-4">
                             <label class="form-label fw-bold small">الصلاحية / المنصب</label>
@@ -447,7 +463,7 @@
     </div>
 
     <div class="modal fade" id="settingsModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
                     <h5 class="modal-title fw-bold"><i class="fas fa-cogs text-accent me-2"></i> إعدادات المكتب والهوية البصرية</h5>
@@ -459,10 +475,19 @@
                             <label class="form-label fw-bold small">اسم المكتب / الشركة</label>
                             <input type="text" id="firm_setting_name" class="form-control border-0 shadow-sm" placeholder="سيظهر في التطبيق وللموكلين">
                         </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small">رقم هاتف المكتب</label>
+                                <input type="tel" id="firm_setting_phone" class="form-control border-0 shadow-sm" placeholder="للتواصل" dir="ltr">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small">العنوان</label>
+                                <input type="text" id="firm_setting_address" class="form-control border-0 shadow-sm" placeholder="الموقع للبطاقة">
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold small">رابط شعار المكتب (Logo URL)</label>
-                            <input type="url" id="firm_setting_logo" class="form-control border-0 shadow-sm" placeholder="https://example.com/logo.png">
-                            <small class="text-muted d-block mt-1">يجب أن يكون رابطاً مباشراً للصورة.</small>
+                            <input type="url" id="firm_setting_logo" class="form-control border-0 shadow-sm" placeholder="https://example.com/logo.png" dir="ltr">
                         </div>
                         <div class="row g-2 mb-4">
                             <div class="col-6">
@@ -474,7 +499,7 @@
                                 <input type="color" id="firm_setting_accent" class="form-control form-control-color w-100 border-0 shadow-sm" value="#64ffda">
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-check me-1"></i> حفظ وتطبيق الإعدادات</button>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-check me-1"></i> حفظ الإعدادات</button>
                     </form>
                 </div>
             </div>
@@ -540,6 +565,32 @@
         </div>
     </div>
 
+    <div class="modal fade" id="shareModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold fs-6"><i class="fas fa-share-alt text-accent me-2"></i> مشاركة بوابة الموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 text-center bg-light">
+                    <div id="share-qrcode" class="mb-3 d-flex justify-content-center p-2 bg-white rounded shadow-sm"></div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">الرابط المباشر:</label>
+                        <input type="text" id="share_link_input" class="form-control form-control-sm text-start bg-white border-0 shadow-sm" dir="ltr" readonly>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">الرمز السري (PIN):</label>
+                        <input type="text" id="share_pin_input" class="form-control text-center fw-bold text-danger fs-5 bg-white border-0 shadow-sm" readonly>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success w-50 fw-bold shadow-sm" onclick="sendViaWhatsApp()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
+                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLink()"><i class="fas fa-copy me-1"></i> نسخ النص</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="vCardModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 text-center p-4 shadow-lg" style="border-radius: 20px;">
@@ -553,6 +604,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>

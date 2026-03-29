@@ -6,6 +6,8 @@
     <title>ملف الموكل | نظام موكّل</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
     <link href="./css/style.css" rel="stylesheet">
     <style>
         .print-only { display: none; }
@@ -24,7 +26,7 @@
 </head>
 <body class="pb-5 bg-light">
 
-    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm sticky-top mb-3">
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm sticky-top mb-3" style="background: var(--navy); height: 65px;">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-sm btn-light border-0 rounded-circle text-navy shadow-sm" onclick="goBack()" style="width: 35px; height: 35px;"><i class="fas fa-arrow-right"></i></button>
             <h6 class="mb-0 fw-bold text-white text-truncate" style="max-width: 200px;">ملف الموكل</h6>
@@ -33,8 +35,6 @@
             <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" onclick="openEditClientModal()" title="تعديل بيانات الموكل"><i class="fas fa-edit"></i></button>
         </div>
     </div>
-
-    <div id="alertBox"></div>
 
     <div id="print-section" class="print-only bg-white text-dark" style="font-family: 'Cairo', sans-serif;">
         <div class="text-center mb-4 pb-3 border-bottom border-dark border-3">
@@ -128,7 +128,7 @@
     <div class="modal fade" id="uploadModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-warning text-dark border-0">
+                <div class="modal-header bg-warning text-dark border-0" style="border-radius: 15px 15px 0 0;">
                     <h5 class="modal-title fw-bold"><i class="fas fa-cloud-upload-alt me-2"></i> رفع مستند شخصي</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -180,7 +180,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label fw-bold small text-muted">رقم الهاتف</label>
-                                <input type="tel" id="edit_client_phone" class="form-control border-0 shadow-sm">
+                                <input type="tel" id="edit_client_phone" class="form-control border-0 shadow-sm" dir="ltr">
                             </div>
                             <div class="col-6">
                                 <label class="form-label fw-bold small text-muted">الرقم الوطني</label>
@@ -206,6 +206,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/client-details.js"></script>

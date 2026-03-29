@@ -1,12 +1,12 @@
 // js/api.js - المحرك الموحد المحدث (يدعم JWT، سجل النشاطات، استخراج الهويات، والبحث)
 
 async function fetchAPI(endpoint, method = 'GET', body = null) {
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     const headers = {
         'Content-Type': 'application/json'
     };
     
-    // تضمين توكن JWT الجديد في ترويسة الطلب
+    // تضمين توكن JWT في ترويسة الطلب لضمان المصادقة الصارمة
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
@@ -17,7 +17,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
     try {
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
         
-        // معالجة انتهاء أو تزوير الجلسة (JWT 401) بطرد المستخدم لحماية البيانات
+        // معالجة انتهاء أو تزوير الجلسة (JWT 401) بطرد المستخدم فوراً لحماية البيانات
         if (response.status === 401) {
             console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج...");
             localStorage.clear();
@@ -37,11 +37,11 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
 const API = {
     // إعدادات المكتب (تخصيص الهوية)
     getFirmSettings: () => {
-        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
         return fetchAPI(`/api/firms?id=eq.${currentUser.firm_id}`);
     },
     updateFirmSettings: (data) => {
-        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
         return fetchAPI(`/api/firms?id=eq.${currentUser.firm_id}`, 'PATCH', data);
     },
 
@@ -72,17 +72,19 @@ const API = {
     // المالية والمصروفات
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
-    deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=${caseId}`, 'DELETE'), // أضفنا الحذف لتحديث المبلغ الإجمالي
+    deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=${caseId}`, 'DELETE'),
     getExpenses: (caseId) => fetchAPI(caseId ? `/api/expenses?case_id=eq.${caseId}` : '/api/expenses'),
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
+    deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
     
     // الوقائع
     getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=${caseId}`),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
+    deleteUpdate: (id) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE'),
     
     // الأرشيف والذكاء الاصطناعي والبحث
     askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
-    readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base64: imageBase64 }), // استخراج الهويات
+    readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base64: imageBase64 }),
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     
     // فحص تعارض المصالح 
@@ -97,8 +99,9 @@ const API = {
 
     // إدارة الملفات والأرشيف السحابي
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=${caseId}` : '/api/files'),
+    deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
-        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
         const firmId = localStorage.getItem(CONFIG.FIRM_KEY);
         const payload = {
             ...data,

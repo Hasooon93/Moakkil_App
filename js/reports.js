@@ -2,6 +2,7 @@
 
 let rawData = { cases: [], staff: [], installments: [], expenses: [] };
 let charts = { finance: null, cases: null };
+let currentUser = null;
 
 // دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
@@ -26,13 +27,25 @@ window.onload = async () => {
         return;
     }
 
-    const user = JSON.parse(userStr);
+    currentUser = JSON.parse(userStr);
     
-    // حماية إضافية: صفحة التقارير للمدراء فقط
-    if (user.role !== 'admin' && user.role !== 'مدير') {
-        alert('غير مصرح لك بالوصول لصفحة التقارير');
-        window.location.href = 'app.html';
+    // الصلاحيات: السكرتاريا ممنوعة من رؤية التقارير
+    if (currentUser.role === 'secretary' || currentUser.role === 'سكرتاريا') {
+        Swal.fire({
+            icon: 'error',
+            title: 'وصول مرفوض',
+            text: 'ليس لديك الصلاحيات الكافية للوصول إلى لوحة التقارير المالية والإحصائية.',
+            confirmButtonText: 'العودة للرئيسية'
+        }).then(() => {
+            window.location.href = 'app.html';
+        });
         return;
+    }
+    
+    // إخفاء جدول أداء الموظفين إذا كان المستخدم محامياً عادياً (ليس مديراً)
+    if (currentUser.role === 'lawyer' || currentUser.role === 'محامي') {
+        const staffSection = document.getElementById('staff-performance-section');
+        if(staffSection) staffSection.style.display = 'none';
     }
     
     document.getElementById('report-date').innerText = new Date().toLocaleDateString('ar-EG');
@@ -41,27 +54,47 @@ window.onload = async () => {
 
 async function fetchAndRenderInitialData() {
     try {
-        // جلب جميع البيانات الأساسية للمكتب بالتوازي للسرعة
-        const [cases, staff, installments, expenses] = await Promise.all([
-            API.getCases(),
-            API.getStaff(),
+        // جلب جميع البيانات الأساسية للمكتب
+        const [casesRes, staffRes, instRes, expRes] = await Promise.all([
+            fetchAPI('/api/cases'),
+            fetchAPI('/api/users'),
             fetchAPI('/api/installments'), 
             fetchAPI('/api/expenses')      
         ]);
 
-        if (!cases) throw new Error("تعذر جلب البيانات الأساسية");
+        if (casesRes.error) throw new Error(casesRes.error);
 
-        // تخزين البيانات الخام لاستخدامها في الفلاتر لاحقاً
-        rawData.cases = cases || [];
-        rawData.staff = staff || [];
-        rawData.installments = installments || [];
-        rawData.expenses = expenses || [];
+        const allCases = Array.isArray(casesRes) ? casesRes : [];
+        const allInsts = Array.isArray(instRes) ? instRes : [];
+        const allExps = Array.isArray(expRes) ? expRes : [];
+        const allStaff = Array.isArray(staffRes) ? staffRes : [];
+
+        // تطبيق صلاحية الرؤية (المحامي يرى قضاياه فقط)
+        if (currentUser.role === 'lawyer' || currentUser.role === 'محامي') {
+            rawData.cases = allCases.filter(c => {
+                const assigned = Array.isArray(c.assigned_lawyer_id) ? c.assigned_lawyer_id : [c.assigned_lawyer_id];
+                return assigned.includes(currentUser.id) || c.created_by === currentUser.id;
+            });
+            
+            // جلب الـ IDs الخاصة بقضايا المحامي لفلترة مصاريفه ودفعاته فقط
+            const allowedCaseIds = rawData.cases.map(c => c.id);
+            
+            rawData.installments = allInsts.filter(i => allowedCaseIds.includes(i.case_id));
+            rawData.expenses = allExps.filter(e => allowedCaseIds.includes(e.case_id));
+        } else {
+            // المدير يرى كل شيء
+            rawData.cases = allCases;
+            rawData.installments = allInsts;
+            rawData.expenses = allExps;
+        }
+        
+        rawData.staff = allStaff;
 
         renderAllReports(rawData);
 
     } catch (error) {
         console.error("Reports Error:", error);
-        showAlert('حدث خطأ أثناء تحليل البيانات للتقرير', 'danger');
+        showAlert('حدث خطأ أثناء جلب وتحليل البيانات للتقرير', 'error');
     }
 }
 
@@ -110,7 +143,12 @@ function resetFilters() {
 function renderAllReports(data) {
     const financials = calculateFinancials(data.cases, data.installments, data.expenses);
     const caseStats = calculateCaseStats(data.cases);
-    calculateStaffPerformance(data.cases, data.staff);
+    
+    // حساب أداء الموظفين يظهر للمدراء فقط
+    if (currentUser.role === 'admin' || currentUser.role === 'مدير') {
+        calculateStaffPerformance(data.cases, data.staff);
+    }
+    
     renderCharts(financials, caseStats);
 }
 
@@ -128,7 +166,11 @@ function calculateFinancials(cases, installments, expenses) {
     document.getElementById('rep-total-agreed').innerText = totalAgreed.toLocaleString();
     document.getElementById('rep-total-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('rep-total-expenses').innerText = totalExpenses.toLocaleString();
-    document.getElementById('rep-net-profit').innerText = netProfit.toLocaleString();
+    
+    const profitEl = document.getElementById('rep-net-profit');
+    profitEl.innerText = netProfit.toLocaleString();
+    if(netProfit < 0) profitEl.classList.add('text-danger');
+    else profitEl.classList.remove('text-danger');
 
     return { totalAgreed, totalPaid, totalExpenses, netProfit };
 }
@@ -213,6 +255,7 @@ function getRoleNameInArabic(role) {
 }
 
 function renderCharts(finStats, caseStats) {
+    if (typeof Chart === 'undefined') return;
     Chart.defaults.font.family = "'Cairo', sans-serif";
     
     // جلب ألوان الهوية البصرية من CSS المتصفح لتوحيد ألوان الرسوم البيانية
@@ -271,11 +314,17 @@ function renderCharts(finStats, caseStats) {
 }
 
 function showAlert(message, type = 'info') {
-    const box = document.getElementById('alertBox');
-    if(!box) return;
-    const alertId = 'alert-' + Date.now();
-    let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
-    if(type === 'warning') typeClass = 'bg-warning text-dark border-warning';
-    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-info-circle text-info'}"></i><span>${escapeHTML(message)}</span></div>`);
-    setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 3000);
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
+            title: escapeHTML(message),
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(message);
+    }
 }

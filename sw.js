@@ -1,135 +1,117 @@
-// sw.js - Service Worker (المحدث لضمان تحميل النسخة الجديدة ودعم كافة الأدوات والذكاء الاصطناعي)
+// sw.js - Service Worker لمشروع موكّل الذكي (الكاش والإشعارات)
 
-const CACHE_NAME = 'moakkil-v14-ultimate'; // تم تحديث رقم الإصدار لضمان تحديث الكاش لدى المستخدمين
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './login.html',
-  './app.html',
-  './client.html',
-  './case-details.html',
-  './client-details.html',
-  './ai-chat.html',
-  './calculators.html',
-  './library.html',
-  './reports.html',
-  './verify.html',
-  './css/style.css',
-  './js/config.js',
-  './js/api.js',
-  './js/auth.js',
-  './js/app.js',
-  './js/case-details.js',
-  './js/client-details.js',
-  './js/reports.js',
-  './js/library.js',
-  './js/loan.js',
-  './js/compound.js',
-  './js/breakeven.js',
-  './js/discount.js',
-  './js/share.js',
-  './js/inheritance.js',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
-  'https://cdn.jsdelivr.net/npm/chart.js'
+const CACHE_NAME = 'moakkil-cache-v3.0'; // تم التحديث لضمان جلب النسخ الجديدة من الملفات
+const urlsToCache = [
+    './',
+    './index.html',
+    './login.html',
+    './app.html',
+    './client.html',
+    './library.html',
+    './calculators.html',
+    './reports.html',
+    './ai-chat.html',
+    './css/style.css',
+    './js/config.js',
+    './js/api.js',
+    './js/auth.js',
+    './js/app.js',
+    './icons/icon-192.png',
+    './icons/icon-512.png',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+    'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css',
+    'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap'
 ];
 
-// 1. تثبيت الـ Service Worker وتخزين الملفات في الكاش
-self.addEventListener('install', (event) => {
-  self.skipWaiting(); // تفعيل النسخة الجديدة فوراً بمجرد تحميلها
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache: ' + CACHE_NAME);
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
+// تنصيب الـ Service Worker وحفظ الملفات في الكاش
+self.addEventListener('install', event => {
+    self.skipWaiting();
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => {
+                console.log('Opened cache');
+                return cache.addAll(urlsToCache);
+            })
+    );
 });
 
-// 2. تنظيف الكاش القديم عند التحديث (Activation Phase)
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Deleting old cache version:', cache);
-            return caches.delete(cache);
-          }
+// تنشيط وحذف الكاش القديم
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        console.log('Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
         })
-      );
-    })
-  );
-  self.clients.claim();
+    );
+    self.clients.claim();
 });
 
-// 3. استراتيجية جلب الملفات (Network First then Cache)
-// تضمن هذه الاستراتيجية تحميل أحدث نسخة من السيرفر، وفي حال انقطاع الإنترنت يتم استخدام الكاش
-self.addEventListener('fetch', (event) => {
-  // استثناء طلبات الـ API تماماً من الكاش لضمان جلب البيانات الحية من السيرفر دائماً
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
-  
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
-  );
+// استراتيجية جلب البيانات (الشبكة أولاً للـ API، والكاش كخيار احتياطي للصفحات)
+self.addEventListener('fetch', event => {
+    // تجاوز طلبات الـ API لتذهب للشبكة دائماً ولا تحفظ في الكاش (لضمان البيانات اللحظية)
+    if (event.request.url.includes('/api/')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request).catch(() => {
+            return caches.match(event.request);
+        })
+    );
 });
 
-// 4. معالجة إشعارات الـ Push في الخلفية (Push Notifications)
-self.addEventListener('push', function(event) {
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      const options = {
-        body: data.body || data.message || 'لديك إشعار جديد في نظام موكّل',
+// التعامل مع استقبال الإشعارات (Push Notifications)
+self.addEventListener('push', event => {
+    let data = { title: 'إشعار من موكّل', body: 'لديك تنبيه جديد في النظام.' };
+    
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch(e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.message || data.body,
         icon: './icons/icon-192.png',
         badge: './icons/icon-192.png',
-        vibrate: [200, 100, 200, 100, 200, 100, 200],
+        vibrate: [200, 100, 200, 100, 200, 100, 200], // اهتزاز قوي للتنبيهات القانونية
         data: {
-          url: data.url || './app.html'
+            url: data.url || './app.html'
         },
-        requireInteraction: true
-      };
+        requireInteraction: true // يبقى الإشعار ظاهراً حتى يتفاعل معه المستخدم
+    };
 
-      event.waitUntil(
-        self.registration.showNotification(data.title || 'نظام موكّل', options)
-      );
-    } catch (e) {
-      // في حال كان الإشعار نصاً بسيطاً
-      const options = {
-        body: event.data.text(),
-        icon: './icons/icon-192.png',
-        vibrate: [200, 100, 200]
-      };
-      event.waitUntil(
-        self.registration.showNotification('إشعار من موكّل', options)
-      );
-    }
-  }
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
 });
 
-// 5. التحكم في التفاعل عند النقر على الإشعار
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close(); // إغلاق الإشعار فور النقر عليه
-  
-  const targetUrl = event.notification.data ? event.notification.data.url : './app.html';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // البحث عن أي نافذة مفتوحة للتطبيق لنقل المستخدم إليها
-      for (let i = 0; i < windowClients.length; i++) {
-        const client = windowClients[i];
-        if (client.url.includes(targetUrl) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // إذا لم يكن التطبيق مفتوحاً، افتحه في نافذة جديدة
-      if (clients.openWindow) {
-        return clients.openWindow(targetUrl);
-      }
-    })
-  );
+// عند النقر على الإشعار
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then(windowClients => {
+            // التحقق مما إذا كان التطبيق مفتوحاً بالفعل
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if (client.url.includes('app.html') && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // إذا لم يكن مفتوحاً، افتح نافذة جديدة
+            if (clients.openWindow) {
+                return clients.openWindow(event.notification.data.url);
+            }
+        })
+    );
 });

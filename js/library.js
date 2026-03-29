@@ -1,6 +1,7 @@
-// js/library.js - محرك المكتبة القانونية الذكية (محمي ضد XSS ويدعم الحذف)
+// js/library.js - محرك المكتبة القانونية الذكية (تحديث شامل للاتصال المباشر و SweetAlert)
 
 let currentUser = null;
+let currentToken = null;
 
 // دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
@@ -17,35 +18,46 @@ const escapeHTML = (str) => {
 };
 
 window.onload = async () => {
-    const userStr = localStorage.getItem(CONFIG.USER_KEY);
-    if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !userStr) {
+    const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+    currentToken = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    
+    if (!currentToken || !userStr) {
         window.location.href = 'login.html';
         return;
     }
 
     currentUser = JSON.parse(userStr);
 
-    // إخفاء زر "إضافة نموذج" للسكرتاريا فقط (المدير والمحامي يمكنهم الرفع دائماً)
-    if (currentUser.role === 'secretary' || currentUser.role === 'سكرتاريا') {
+    // إظهار زر "إضافة نموذج" للمدير والمحامي فقط (إخفاء للسكرتاريا)
+    if (currentUser.role === 'admin' || currentUser.role === 'lawyer') {
         const btnAdd = document.getElementById('btn-add-template');
-        if (btnAdd) btnAdd.style.display = 'none';
+        if (btnAdd) btnAdd.style.display = 'block';
     }
 
     await loadLibrary();
 };
 
+// دالة جلب الملفات من الخادم مباشرة مع تمرير التوكن الصريح
 async function loadLibrary() {
     try {
-        // جلب الملفات التي تم حفظها كقوالب (is_template = true)
-        // نستخدم fetchAPI مباشرة لأنها مجهزة بتمرير التوكن في api.js
-        const files = await fetchAPI('/api/files?is_template=true');
+        const response = await fetch(`${CONFIG.API_URL}/api/files?is_template=true`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+            }
+        });
+
+        if (!response.ok) throw new Error("فشل الاتصال بالخادم لجلب المكتبة");
+        
+        const files = await response.json();
         
         const contracts = [];
         const poas = [];
         const pleadings = [];
         const laws = [];
 
-        if (files && files.length > 0) {
+        if (Array.isArray(files) && files.length > 0) {
             files.forEach(f => {
                 if (f.file_category === 'عقود') contracts.push(f);
                 else if (f.file_category === 'وكالات') poas.push(f);
@@ -61,42 +73,43 @@ async function loadLibrary() {
         renderCategory('list-laws', laws, 'نصوص قانونية');
 
     } catch (error) {
-        showAlert('حدث خطأ أثناء جلب ملفات المكتبة', 'danger');
+        showAlert('حدث خطأ أثناء جلب ملفات المكتبة، يرجى التحقق من اتصالك بالإنترنت.', 'error');
     }
 }
 
+// رسم بطاقات الملفات في الواجهة
 function renderCategory(elementId, items, emptyMsg) {
     const container = document.getElementById(elementId);
     if (items.length === 0) {
-        container.innerHTML = `<div class="col-12"><div class="text-center p-4 text-muted small bg-white rounded shadow-sm border">لا يوجد ${escapeHTML(emptyMsg)} مرفوعة حالياً.</div></div>`;
+        container.innerHTML = `<div class="col-12"><div class="text-center p-5 text-muted small bg-white rounded shadow-sm border"><i class="fas fa-folder-open fa-2x mb-3 opacity-50"></i><br>لا يوجد ${escapeHTML(emptyMsg)} مرفوعة حالياً في مكتبتك.</div></div>`;
         return;
     }
 
     // السماح بالحذف للمدير والمحامي فقط
-    const canDelete = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.role === 'lawyer' || currentUser.role === 'محامي'));
+    const canDelete = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'lawyer'));
 
     container.innerHTML = items.map(f => {
-        // تحديد الأيقونة بناءً على امتداد الملف
+        // تحديد الأيقونة بناءً على امتداد/نوع الملف
         const isWord = f.file_name.toLowerCase().includes('.doc');
         const icon = isWord ? 'fa-file-word text-info' : 'fa-file-pdf text-danger';
         
-        const delBtn = canDelete ? `<button class="btn btn-sm text-danger px-2 py-0" onclick="deleteTemplate('${f.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
+        const delBtn = canDelete ? `<button class="btn btn-sm btn-light text-danger shadow-sm px-2 py-1 position-absolute top-0 end-0 m-2 rounded-circle" onclick="deleteTemplate('${f.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
 
         return `
         <div class="col-12 col-md-6">
-            <div class="card-custom template-card p-3 bg-white shadow-sm border position-relative">
-                <div class="position-absolute top-0 end-0 m-2">
-                    ${delBtn}
-                </div>
+            <div class="card-custom template-card p-3 bg-white shadow-sm position-relative">
+                ${delBtn}
                 <div class="d-flex flex-row align-items-center justify-content-between mt-2">
-                    <div class="d-flex align-items-center" style="width: 75%; overflow:hidden;">
-                        <i class="fas ${icon} fs-2 me-3"></i>
+                    <div class="d-flex align-items-center" style="width: 70%; overflow:hidden;">
+                        <div class="bg-light p-3 rounded-circle me-3 text-center" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas ${icon} fs-4"></i>
+                        </div>
                         <div class="text-truncate">
                             <h6 class="fw-bold mb-1 text-navy text-truncate" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
                             <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> ${escapeHTML(new Date(f.created_at).toLocaleDateString('ar-EG'))}</small>
                         </div>
                     </div>
-                    <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-outline-navy btn-sm fw-bold rounded-pill px-3"><i class="fas fa-download"></i> فتح</a>
+                    <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-outline-navy btn-sm fw-bold rounded-pill px-3 shadow-sm"><i class="fas fa-cloud-download-alt me-1"></i> تحميل</a>
                 </div>
             </div>
         </div>
@@ -104,17 +117,42 @@ function renderCategory(elementId, items, emptyMsg) {
     }).join('');
 }
 
+// دالة حذف النموذج مع الاتصال المباشر بالخادم
 async function deleteTemplate(id) {
-    if(!confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) return;
+    const confirmResult = await Swal.fire({
+        title: 'هل أنت متأكد؟',
+        text: "سيتم حذف هذا النموذج من المكتبة نهائياً!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذفه!',
+        cancelButtonText: 'إلغاء'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
     try {
-        await fetchAPI(`/api/files?id=eq.${id}`, 'DELETE');
-        showAlert('تم حذف النموذج بنجاح', 'success');
-        await loadLibrary();
+        const response = await fetch(`${CONFIG.API_URL}/api/files?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+            }
+        });
+
+        if (response.ok) {
+            showAlert('تم حذف النموذج بنجاح', 'success');
+            await loadLibrary(); // تحديث الواجهة
+        } else {
+            throw new Error("فشل الحذف من الخادم");
+        }
     } catch(e) {
-        showAlert('حدث خطأ أثناء الحذف', 'danger');
+        showAlert('حدث خطأ أثناء الحذف، تأكد من صلاحياتك.', 'error');
     }
 }
 
+// دالة حفظ ورفع النموذج (مربوطة بـ Google Apps Script ثم الخادم السحابي)
 async function saveTemplate(event) {
     event.preventDefault();
     const fileInput = document.getElementById('tpl_file');
@@ -129,7 +167,7 @@ async function saveTemplate(event) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للسحابة...';
 
     try {
-        // رفع الملف لـ Google Drive تحت مجلد "مكتبة" عام
+        // 1. رفع الملف لـ Google Drive عبر API (الموجودة في api.js)
         const driveRes = await API.uploadToDrive(file, 'مكتبة_موكّل');
         
         if(driveRes && driveRes.url) {
@@ -141,27 +179,38 @@ async function saveTemplate(event) {
                 is_template: true 
             };
             
-            const dbRes = await API.addFileRecord(payload);
+            // 2. إرسال البيانات لقاعدة البيانات عبر طلب مباشر موثق
+            const response = await fetch(`${CONFIG.API_URL}/api/files`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify(payload)
+            });
             
-            if(dbRes && !dbRes.error) {
+            if(response.ok) {
                 closeModal('uploadTemplateModal');
                 document.getElementById('templateForm').reset();
-                showAlert('تم إضافة النموذج للمكتبة بنجاح', 'success');
+                showAlert('تم أرشفة النموذج في المكتبة بنجاح', 'success');
                 await loadLibrary(); // تحديث القائمة
             } else {
-                showAlert(dbRes.error || "حدث خطأ أثناء الحفظ في قاعدة البيانات", 'danger');
+                const errData = await response.json();
+                throw new Error(errData.error || "فشل تسجيل الملف في قاعدة البيانات");
             }
+        } else {
+             throw new Error("فشل رفع الملف إلى Google Drive");
         }
     } catch (err) { 
-        showAlert("فشل الرفع: " + err.message, 'danger'); 
+        showAlert(err.message || "حدث خطأ غير متوقع أثناء الرفع", 'error'); 
     } finally { 
         btn.disabled = false; 
-        btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> رفع وأرشفة النموذج'; 
+        btn.innerHTML = '<i class="fas fa-save me-1"></i> رفع وأرشفة النموذج'; 
     }
 }
 
 // -----------------------------------------------------------------
-// دوال النوافذ المنبثقة المحسنة لتجنب أخطاء (backdrop)
+// دوال النوافذ المنبثقة (Modals & Alerts) الموحدة
 // -----------------------------------------------------------------
 function openModal(id) { 
     const el = document.getElementById(id);
@@ -177,7 +226,7 @@ function closeModal(id) {
         const m = bootstrap.Modal.getInstance(el);
         if(m) m.hide();
         
-        // إزالة الخلفية السوداء يدوياً لضمان عدم تعليق الشاشة
+        // تنظيف الخلفية السوداء لضمان عدم التعليق
         document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
@@ -185,11 +234,19 @@ function closeModal(id) {
     }
 }
 
-function showAlert(message, type = 'info') {
-    const box = document.getElementById('alertBox'); 
-    if(!box) return;
-    const alertId = 'alert-' + Date.now();
-    let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
-    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${escapeHTML(message)}</span></div>`);
-    setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 3000);
+// دالة إظهار التنبيهات باستخدام SweetAlert2 (و Fallback كإجراء احتياطي)
+function showAlert(message, type = 'success') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type,
+            title: escapeHTML(message),
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(message);
+    }
 }

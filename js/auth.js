@@ -1,18 +1,30 @@
-// js/auth.js - نظام الدخول المزدوج (مدير + موظفين)
+// js/auth.js - نظام الدخول الموحد (OTP لجميع المستخدمين)
 
 /**
- * 1. طلب كود الدخول للمدير (Telegram OTP)
+ * 1. طلب كود الدخول (OTP)
+ * يتصل بمسار: /api/auth/request-otp
  */
 async function requestOTP() {
-    const phone = document.getElementById('phone').value;
-    if (!phone) return alert("يرجى إدخال رقم الهاتف أولاً");
+    const phoneInput = document.getElementById('phone');
+    const phone = phoneInput.value.trim();
+    
+    if (!phone) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'تنبيه',
+            text: 'يرجى إدخال رقم الهاتف المسجل في النظام أولاً.',
+            confirmButtonText: 'حسناً'
+        });
+        phoneInput.focus();
+        return;
+    }
 
-    const btn = document.querySelector('#admin-login-view button');
+    const btn = document.getElementById('btn-request-otp');
     btn.disabled = true;
-    btn.innerText = "جاري الإرسال...";
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الإرسال...';
 
     try {
-        const response = await fetch(`${CONFIG.API_URL}/api/auth/admin/request-otp`, {
+        const response = await fetch(`${CONFIG.API_URL}/api/auth/request-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone })
@@ -20,31 +32,72 @@ async function requestOTP() {
 
         const data = await response.json();
 
-        if (response.ok) {
-            // الانتقال لشاشة إدخال الكود
+        if (response.ok && data.success) {
+            // إخفاء نافذة الهاتف وإظهار نافذة الكود
             document.getElementById('phone-section').classList.add('d-none');
             document.getElementById('otp-section').classList.remove('d-none');
-            console.log("✅ OTP Sent to Telegram");
+            document.getElementById('otp').focus();
+            
+            // تنبيه نجاح الإرسال
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            Toast.fire({
+                icon: 'success',
+                title: data.message || 'تم إرسال الكود بنجاح'
+            });
+
         } else {
-            alert(data.error || "خطأ في إرسال الكود");
+            Swal.fire({
+                icon: 'error',
+                title: 'فشل الإرسال!',
+                text: data.error || 'حدث خطأ غير معروف، يرجى مراجعة مدير النظام.',
+                confirmButtonText: 'حسناً'
+            });
         }
     } catch (error) {
-        alert("تعذر الاتصال بالسيرفر، تأكد من تشغيل الـ Worker");
+        Swal.fire({
+            icon: 'error',
+            title: 'خطأ في الاتصال',
+            text: 'تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت وأن النظام يعمل.',
+            confirmButtonText: 'حسناً'
+        });
     } finally {
         btn.disabled = false;
-        btn.innerText = "إرسال كود الدخول";
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> إرسال رمز التحقق';
     }
 }
 
 /**
- * 2. التحقق من الكود والدخول للمدير
+ * 2. التحقق من الكود (OTP) وإتمام الدخول
+ * يتصل بمسار: /api/auth/verify-otp
  */
 async function verifyOTP() {
-    const phone = document.getElementById('phone').value;
-    const otp = document.getElementById('otp').value;
+    const phone = document.getElementById('phone').value.trim();
+    const otpInput = document.getElementById('otp');
+    const otp = otpInput.value.trim();
+
+    if (!otp || otp.length < 4) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'تنبيه',
+            text: 'يرجى إدخال رمز التحقق بشكل صحيح.',
+            confirmButtonText: 'حسناً'
+        });
+        otpInput.focus();
+        return;
+    }
+
+    const btn = document.getElementById('btn-verify-otp');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحقق...';
 
     try {
-        const response = await fetch(`${CONFIG.API_URL}/api/auth/admin/verify-otp`, {
+        const response = await fetch(`${CONFIG.API_URL}/api/auth/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone, otp })
@@ -53,45 +106,40 @@ async function verifyOTP() {
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // حفظ البيانات والتوجه للوحة التحكم
-            localStorage.setItem(CONFIG.TOKEN_KEY, data.token);
-            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(data.user));
-            window.location.href = 'app.html';
+            // حفظ التوكن وبيانات المستخدم في التخزين المحلي
+            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
+            localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+            
+            // رسالة نجاح وانتقال سلس
+            Swal.fire({
+                icon: 'success',
+                title: `أهلاً بك، ${data.user.full_name}`,
+                text: 'جاري تحويلك إلى لوحة التحكم...',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => {
+                window.location.href = 'app.html';
+            });
+            
         } else {
-            alert(data.error || "الكود غير صحيح");
+            Swal.fire({
+                icon: 'error',
+                title: 'خطأ!',
+                text: data.error || 'الكود غير صحيح أو منتهي الصلاحية.',
+                confirmButtonText: 'المحاولة مجدداً'
+            });
+            otpInput.value = '';
+            otpInput.focus();
         }
     } catch (error) {
-        alert("خطأ في عملية التحقق");
-    }
-}
-
-/**
- * 3. دخول الموظفين (اسم مستخدم وكلمة مرور)
- */
-async function staffLogin() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    if (!username || !password) return alert("يرجى إدخال كافة البيانات");
-
-    try {
-        // نستخدم نفس مسار التحقق ولكن الخادم سيميزه من البيانات المرسلة
-        const response = await fetch(`${CONFIG.API_URL}/api/auth/staff/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+        Swal.fire({
+            icon: 'error',
+            title: 'خطأ في الاتصال',
+            text: 'تعذر الاتصال بالخادم أثناء التحقق.',
+            confirmButtonText: 'حسناً'
         });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            localStorage.setItem(CONFIG.TOKEN_KEY, data.token);
-            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(data.user));
-            window.location.href = 'app.html';
-        } else {
-            alert(data.error || "بيانات الدخول خاطئة");
-        }
-    } catch (error) {
-        alert("خطأ في الاتصال بسيرفر الموظفين");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i> تأكيد الدخول';
     }
 }

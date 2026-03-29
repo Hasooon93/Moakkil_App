@@ -6,6 +6,8 @@
     <title>تفاصيل القضية | نظام موكّل</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
     <link href="./css/style.css" rel="stylesheet">
     <style>
         .timeline { border-right: 3px solid #e2e8f0; padding-right: 20px; position: relative; }
@@ -27,20 +29,18 @@
         .whatsapp-btn:hover { background-color: #128C7E; color: white; }
     </style>
 </head>
-<body class="pb-5">
+<body class="pb-5 bg-light">
 
-    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm sticky-top mb-3">
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm sticky-top mb-3" style="background: var(--navy); height: 65px;">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-sm btn-light border-0 rounded-circle text-navy shadow-sm" onclick="goBack()" style="width: 35px; height: 35px;"><i class="fas fa-arrow-right"></i></button>
             <h6 class="mb-0 fw-bold text-white text-truncate" style="max-width: 200px;" id="case-title">جاري التحميل...</h6>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" onclick="openEditModal()"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-sm btn-outline-light border-0 fw-bold shadow-sm" onclick="copyDeepLink()"><i class="fas fa-share-alt"></i></button>
+            <button class="btn btn-sm btn-outline-light border-0 fw-bold shadow-sm" onclick="openShareModal()"><i class="fas fa-share-alt"></i></button>
         </div>
     </div>
-
-    <div id="alertBox"></div>
 
     <div id="print-section" class="print-only bg-white text-dark text-center" style="font-family: 'Cairo', sans-serif;">
         <div id="invoice-print-container">
@@ -56,9 +56,7 @@
                 <div class="col-12 mb-3"><b>المبلغ بالحروف:</b> <span id="print-inv-tafqeet" class="fst-italic text-decoration-underline"></span></div>
                 <div class="col-12 mt-4 text-center"><b>التوقيع والختم</b><br><br>......................................</div>
             </div>
-            
-            <div id="invoice-verification-qr" class="text-center mx-auto mt-5" style="width: fit-content; padding-top: 15px; border-top: 1px dashed #000;">
-            </div>
+            <div id="invoice-verification-qr" class="text-center mx-auto mt-5" style="width: fit-content; padding-top: 15px; border-top: 1px dashed #000;"></div>
         </div>
 
         <div id="qr-print-container" style="display:none; margin-top: 100px;">
@@ -73,8 +71,7 @@
     </div>
 
     <div class="container mt-2">
-        
-        <div class="card-custom p-3 mb-3 shadow-sm border-0 position-relative">
+        <div class="card-custom p-3 mb-3 shadow-sm border-0 bg-white position-relative">
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
                 <span class="badge bg-success fs-6" id="case-status">--</span>
                 <span class="badge bg-light text-dark border border-secondary shadow-sm fs-6" id="case-pin">PIN: --</span>
@@ -114,11 +111,11 @@
             </div>
         </div>
 
-        <ul class="nav nav-pills mb-3 justify-content-center" id="pills-tab" role="tablist">
-            <li class="nav-item"><button class="nav-link active shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-updates">الوقائع</button></li>
-            <li class="nav-item"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-finance">المالية</button></li>
-            <li class="nav-item"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-files">الأرشيف</button></li>
-            <li class="nav-item"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-notes">السرية و AI</button></li>
+        <ul class="nav nav-pills mb-3 justify-content-center flex-nowrap overflow-auto pb-1" id="pills-tab" role="tablist" style="white-space: nowrap;">
+            <li class="nav-item-tab"><button class="nav-link active shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-updates">الوقائع</button></li>
+            <li class="nav-item-tab"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-finance">المالية</button></li>
+            <li class="nav-item-tab"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-files">الأرشيف</button></li>
+            <li class="nav-item-tab"><button class="nav-link shadow-sm px-3" data-bs-toggle="pill" data-bs-target="#tab-notes">السرية و AI</button></li>
         </ul>
 
         <div class="tab-content pb-4">
@@ -161,9 +158,9 @@
             </div>
 
             <div class="tab-pane fade" id="tab-notes">
-                <div class="card-custom p-3 shadow-sm border-start border-4 border-dark mb-4">
+                <div class="card-custom p-3 bg-white shadow-sm border-start border-4 border-dark mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold text-dark mb-0"><i class="fas fa-user-secret me-2"></i> ملاحظات المحامي السرية (لا تظهر للموكل)</h6>
+                        <h6 class="fw-bold text-dark mb-0"><i class="fas fa-user-secret me-2"></i> ملاحظات المحامي السرية</h6>
                         <button class="btn btn-sm btn-outline-danger rounded-pill shadow-sm" onclick="startDictation('secret_notes_input')" title="تسجيل ملاحظة صوتية"><i class="fas fa-microphone"></i></button>
                     </div>
                     <textarea id="secret_notes_input" class="form-control border-0 bg-light mb-3" rows="4" placeholder="اكتب أو سجل صوتياً ملاحظاتك واستراتيجياتك هنا..."></textarea>
@@ -176,6 +173,32 @@
                     <div class="mb-2"><small class="text-muted fw-bold d-block">التواريخ الهامة:</small> <span id="ai-dates" class="text-danger fw-bold"></span></div>
                     <div class="mb-2"><small class="text-muted fw-bold d-block">المواد القانونية:</small> <span id="ai-articles" class="text-primary"></span></div>
                     <div class="mb-0"><small class="text-muted fw-bold d-block">ملخص الوقائع:</small> <span id="ai-summary" class="small text-dark bg-light p-2 rounded d-block mt-1 border"></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="shareModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold fs-6"><i class="fas fa-share-alt text-accent me-2"></i> مشاركة بوابة الموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 text-center bg-light">
+                    <div id="share-qrcode" class="mb-3 d-flex justify-content-center p-2 bg-white rounded shadow-sm"></div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">الرابط المباشر:</label>
+                        <input type="text" id="share_link_input" class="form-control form-control-sm text-start bg-white border-0 shadow-sm" dir="ltr" readonly>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">الرمز السري (PIN):</label>
+                        <input type="text" id="share_pin_input" class="form-control text-center fw-bold text-danger fs-5 bg-white border-0 shadow-sm" readonly>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success w-50 fw-bold shadow-sm" onclick="sendViaWhatsApp()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
+                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLink()"><i class="fas fa-copy me-1"></i> نسخ النص</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -422,6 +445,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/case-details.js"></script>
