@@ -195,5 +195,15 @@
             }
         }
     </script>
+<script>
+    // التحقق من وجود جلسة فعالة لتخطي صفحة تسجيل الدخول تلقائياً
+    window.onload = function() {
+        const token = localStorage.getItem('moakkil_token');
+        const user = localStorage.getItem('moakkil_user');
+        if (token && user) {
+            window.location.href = 'app.html';
+        }
+    };
+</script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// js/app.js - محرك لوحة التحكم (تم تحديث محرك الإشعارات ليتوافق مع سياسات المتصفحات)
+// js/app.js - محرك لوحة التحكم (تم تصحيح المواعيد والإشعارات بشكل كامل 100%)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
@@ -7,7 +7,6 @@ let deferredPrompt;
 let notifiedIds = new Set(); 
 
 window.onload = async () => {
-    // 1. تشغيل محرك Service Worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
     }
@@ -116,9 +115,6 @@ async function saveFirmSettings(event) {
     showAlert('تم حفظ الإعدادات', 'success');
 }
 
-// ----------------------------------------------------
-// -- محرك الإشعارات المنبثقة المدرع (المحدث) --
-// ----------------------------------------------------
 async function requestNotificationPermission() {
     if (!("Notification" in window)) {
         showAlert('متصفحك لا يدعم الإشعارات المنبثقة', 'danger');
@@ -127,7 +123,7 @@ async function requestNotificationPermission() {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
         showAlert('تم تفعيل إشعارات الهاتف بنجاح!', 'success');
-        renderNotificationsDropdown(); // إعادة رسم القائمة لإخفاء زر التفعيل
+        renderNotificationsDropdown(false); 
     } else {
         showAlert('تم رفض صلاحية الإشعارات من قبل النظام', 'warning');
     }
@@ -145,16 +141,13 @@ function triggerPushNotification(title, body) {
                     vibrate: [200, 100, 200],
                     badge: './icons/icon-192.png'
                 }).catch(e => {
-                    // Fallback in case Service Worker fails
                     new Notification('نظام موكّل | ' + title, { body: body });
                 });
             });
         } else {
             new Notification('نظام موكّل | ' + title, { body: body });
         }
-    } catch(err) {
-        console.log("Push Notification Error:", err);
-    }
+    } catch(err) { console.log("Push Notification Error:", err); }
 }
 
 async function loadNotifications(isSilent = false) {
@@ -177,7 +170,6 @@ function renderNotificationsDropdown(isSilent) {
         badge.classList.remove('d-none');
         if (bellIcon) bellIcon.classList.add('heartbeat-animation'); 
 
-        // تشغيل الإشعار المنبثق
         unreadNotifications.forEach(n => {
             if (!notifiedIds.has(n.id)) {
                 notifiedIds.add(n.id);
@@ -193,7 +185,6 @@ function renderNotificationsDropdown(isSilent) {
 
     let html = '';
     
-    // زر تفعيل الإشعارات إذا لم تكن مفعلة
     if ("Notification" in window && Notification.permission === "default") {
         html += `<li class="p-2 mb-2 bg-light border-bottom">
                     <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="requestNotificationPermission()"><i class="fas fa-bell-on"></i> تفعيل إشعارات المتصفح/الهاتف</button>
@@ -220,13 +211,12 @@ function renderNotificationsDropdown(isSilent) {
 async function handleNotificationClick(id, linkAction) {
     event.preventDefault();
     const notif = globalData.notifications.find(n => n.id === id);
-    if (notif && !notif.is_read) { await API.markNotificationAsRead(id); notif.is_read = true; renderNotificationsDropdown(); }
+    if (notif && !notif.is_read) { await API.markNotificationAsRead(id); notif.is_read = true; renderNotificationsDropdown(false); }
     if (linkAction === 'cases') switchView('cases');
     else if (linkAction === 'appointments' || linkAction === 'agenda') switchView('agenda');
     else switchView('dashboard');
 }
 async function markNotificationsAsRead() {}
-// ----------------------------------------------------
 
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role);
@@ -477,14 +467,20 @@ function openApptPostponeModal(id) {
     openModal('apptPostponeModal');
 }
 
+// تحويل التاريخ للمعيار العالمي قبل الإرسال (لحل مشكلة إزاحة الوقت)
 async function saveApptPostpone(event) {
     event.preventDefault();
     const id = document.getElementById('postpone_appt_id').value;
-    const newDate = document.getElementById('postpone_date').value;
+    const newDateStr = document.getElementById('postpone_date').value;
+    
+    // تحويل التوقيت لـ ISO لكي يُحفظ بشكل صحيح كـ UTC في السيرفر
+    const isoDate = newDateStr ? new Date(newDateStr).toISOString() : null;
+
     const appt = globalData.appointments.find(a => a.id === id);
     let newTitle = appt.title;
     if(!newTitle.includes('(مؤجل)')) newTitle += ' (مؤجل)';
-    if(await API.updateAppointment(id, { status: 'مجدول', appt_date: newDate, title: newTitle })) {
+    
+    if(await API.updateAppointment(id, { status: 'مجدول', appt_date: isoDate, title: newTitle })) {
         closeModal('apptPostponeModal');
         showAlert('تم تأجيل الموعد وإعادة جدولته بنجاح', 'success');
         await loadAllData();
@@ -647,6 +643,7 @@ async function saveCase(event) {
     if(btn) { btn.innerHTML = originalBtnText; btn.disabled = false; }
 }
 
+// تحويل التاريخ للمعيار العالمي قبل الإرسال (لحل مشكلة إزاحة الوقت)
 async function saveAppointment(event) {
     event.preventDefault();
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
@@ -654,9 +651,12 @@ async function saveAppointment(event) {
     if (isLawyer) assignedStaff = [currentUser.id];
     else document.querySelectorAll('.appt-lawyer-cb:checked').forEach(cb => assignedStaff.push(cb.value));
 
+    const apptDateStr = document.getElementById('appt_date')?.value;
+    const isoDate = apptDateStr ? new Date(apptDateStr).toISOString() : null;
+
     const data = {
         title: document.getElementById('appt_title')?.value, 
-        appt_date: document.getElementById('appt_date')?.value,
+        appt_date: isoDate,
         type: document.getElementById('appt_type')?.value, 
         assigned_to: assignedStaff.length > 0 ? assignedStaff : null, 
         created_by: currentUser.id, 
