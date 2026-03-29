@@ -1,17 +1,25 @@
-// js/api.js - المحرك الموحد المحدث (يدعم فحص التعارض، والبحث، الإشعارات، والتعديل الشامل)
+// js/api.js - المحرك الموحد المحدث (يدعم JWT، سجل النشاطات، استخراج الهويات، والبحث)
 
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
     const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
     };
+    
+    // تضمين توكن JWT الجديد في ترويسة الطلب
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const options = { method, headers };
     if (body) options.body = JSON.stringify(body);
     
     try {
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
+        
+        // معالجة انتهاء أو تزوير الجلسة (JWT 401) بطرد المستخدم لحماية البيانات
         if (response.status === 401) {
+            console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج...");
             localStorage.clear();
             window.location.href = 'login.html';
             return null;
@@ -64,6 +72,7 @@ const API = {
     // المالية والمصروفات
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
+    deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=${caseId}`, 'DELETE'), // أضفنا الحذف لتحديث المبلغ الإجمالي
     getExpenses: (caseId) => fetchAPI(caseId ? `/api/expenses?case_id=eq.${caseId}` : '/api/expenses'),
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     
@@ -73,15 +82,20 @@ const API = {
     
     // الأرشيف والذكاء الاصطناعي والبحث
     askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
+    readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base64: imageBase64 }), // استخراج الهويات
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     
     // فحص تعارض المصالح 
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
 
-    // الإشعارات الداخلية (الميزة الجديدة)
+    // الإشعارات الداخلية 
     getNotifications: () => fetchAPI('/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
 
+    // سجل النشاطات (Audit Trail للمدير)
+    getHistory: () => fetchAPI('/api/history'),
+
+    // إدارة الملفات والأرشيف السحابي
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=${caseId}` : '/api/files'),
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));

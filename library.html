@@ -16,6 +16,13 @@
         .template-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
         .btn-outline-navy { color: var(--navy); border-color: var(--navy); }
         .btn-outline-navy:hover { background-color: var(--navy); color: white; }
+
+        /* تصميم الشريط السفلي الموحد */
+        .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1030; }
+        .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.75rem; font-weight: 700; transition: all 0.3s ease; border-radius: 15px; padding: 8px 0; cursor: pointer; }
+        .nav-item.active { color: var(--navy); background-color: #f1f5f9; transform: translateY(-3px); }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--accent); transform: scale(1.1); }
     </style>
 </head>
 <body style="background: var(--bg-light); padding-bottom: 80px;">
@@ -30,12 +37,12 @@
         </button>
     </div>
 
-    <div class="container mt-4">
+    <div class="container mt-4 mb-5 pb-4">
         <ul class="nav nav-pills mb-4 flex-nowrap overflow-auto pb-2" style="white-space: nowrap;" id="library-tabs" role="tablist">
-            <li class="nav-item"><button class="nav-link active shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-contracts">عقود</button></li>
-            <li class="nav-item"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-poa">وكالات</button></li>
-            <li class="nav-item"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-pleadings">لوائح</button></li>
-            <li class="nav-item"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-laws">قوانين</button></li>
+            <li class="nav-item-tab"><button class="nav-link active shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-contracts">عقود</button></li>
+            <li class="nav-item-tab"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-poa">وكالات</button></li>
+            <li class="nav-item-tab"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-pleadings">لوائح</button></li>
+            <li class="nav-item-tab"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-laws">قوانين</button></li>
         </ul>
 
         <div class="tab-content" id="library-content">
@@ -46,9 +53,22 @@
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-home"></i><span>الرئيسية</span></div>
-        <div class="nav-item active"><i class="fas fa-book"></i><span>المكتبة</span></div>
+    <div class="bottom-nav d-flex justify-content-around">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> الرئيسية
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item active" onclick="window.location.href='app.html'">
+            <i class="fas fa-toolbox"></i> الأدوات
+        </div>
     </div>
 
     <div class="modal fade" id="uploadTemplateModal" tabindex="-1">
@@ -58,17 +78,17 @@
                     <h5 class="modal-title fw-bold text-navy">إضافة نموذج للمكتبة</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body text-center">
+                <div class="modal-body text-center p-4">
                     <form id="templateForm" onsubmit="saveTemplate(event)">
-                        <input type="text" id="tpl_title" class="form-control mb-2" placeholder="اسم النموذج (مثال: عقد إيجار شقة) *" required>
-                        <select id="tpl_category" class="form-select mb-2" required>
+                        <input type="text" id="tpl_title" class="form-control border-0 shadow-sm mb-3" placeholder="اسم النموذج (مثال: عقد إيجار شقة) *" required>
+                        <select id="tpl_category" class="form-select border-0 shadow-sm mb-3" required>
                             <option value="عقود">عقود جاهزة</option>
                             <option value="وكالات">نماذج وكالات</option>
                             <option value="لوائح">لوائح ومذكرات</option>
                             <option value="قوانين">نصوص قانونية / تشريعات</option>
                         </select>
-                        <input type="file" id="tpl_file" class="form-control mb-3" accept=".pdf,.doc,.docx" required>
-                        <button type="submit" id="btn_upload_tpl" class="btn btn-warning w-100 fw-bold py-2 text-dark" style="border-radius: 10px;">
+                        <input type="file" id="tpl_file" class="form-control border-0 shadow-sm bg-white mb-4" accept=".pdf,.doc,.docx" required>
+                        <button type="submit" id="btn_upload_tpl" class="btn btn-warning w-100 fw-bold py-2 text-dark shadow" style="border-radius: 10px;">
                             <i class="fas fa-cloud-upload-alt me-1"></i> رفع وأرشفة النموذج
                         </button>
                     </form>

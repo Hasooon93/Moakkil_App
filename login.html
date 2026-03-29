@@ -194,16 +194,15 @@
                 document.getElementById('staff-login-view').classList.remove('d-none');
             }
         }
+
+        // التحقق من وجود جلسة فعالة باستخدام المفاتيح الجديدة المحدثة
+        window.onload = function() {
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+            const user = localStorage.getItem(CONFIG.USER_KEY);
+            if (token && user) {
+                window.location.href = 'app.html';
+            }
+        };
     </script>
-<script>
-    // التحقق من وجود جلسة فعالة لتخطي صفحة تسجيل الدخول تلقائياً
-    window.onload = function() {
-        const token = localStorage.getItem('moakkil_token');
-        const user = localStorage.getItem('moakkil_user');
-        if (token && user) {
-            window.location.href = 'app.html';
-        }
-    };
-</script>
 </body>
 </html>

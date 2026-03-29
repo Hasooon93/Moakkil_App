@@ -1,12 +1,29 @@
-// js/library.js - محرك المكتبة القانونية الذكية
+// js/library.js - محرك المكتبة القانونية الذكية (محمي ضد XSS ويدعم الحذف)
 
-let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+let currentUser = null;
+
+// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+};
 
 window.onload = async () => {
-    if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !currentUser) {
+    const userStr = localStorage.getItem(CONFIG.USER_KEY);
+    if (!localStorage.getItem(CONFIG.TOKEN_KEY) || !userStr) {
         window.location.href = 'login.html';
         return;
     }
+
+    currentUser = JSON.parse(userStr);
 
     // إخفاء زر "إضافة نموذج" للسكرتاريا فقط (المدير والمحامي يمكنهم الرفع دائماً)
     if (currentUser.role === 'secretary' || currentUser.role === 'سكرتاريا') {
@@ -20,7 +37,8 @@ window.onload = async () => {
 async function loadLibrary() {
     try {
         // جلب الملفات التي تم حفظها كقوالب (is_template = true)
-        const files = await fetchAPI('/api/files?is_template=eq.true&order=created_at.desc');
+        // نستخدم fetchAPI مباشرة لأنها مجهزة بتمرير التوكن في api.js
+        const files = await fetchAPI('/api/files?is_template=true');
         
         const contracts = [];
         const poas = [];
@@ -50,30 +68,51 @@ async function loadLibrary() {
 function renderCategory(elementId, items, emptyMsg) {
     const container = document.getElementById(elementId);
     if (items.length === 0) {
-        container.innerHTML = `<div class="col-12"><div class="text-center p-4 text-muted small bg-white rounded shadow-sm border">لا يوجد ${emptyMsg} مرفوعة حالياً.</div></div>`;
+        container.innerHTML = `<div class="col-12"><div class="text-center p-4 text-muted small bg-white rounded shadow-sm border">لا يوجد ${escapeHTML(emptyMsg)} مرفوعة حالياً.</div></div>`;
         return;
     }
+
+    // السماح بالحذف للمدير والمحامي فقط
+    const canDelete = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.role === 'lawyer' || currentUser.role === 'محامي'));
 
     container.innerHTML = items.map(f => {
         // تحديد الأيقونة بناءً على امتداد الملف
         const isWord = f.file_name.toLowerCase().includes('.doc');
         const icon = isWord ? 'fa-file-word text-info' : 'fa-file-pdf text-danger';
+        
+        const delBtn = canDelete ? `<button class="btn btn-sm text-danger px-2 py-0" onclick="deleteTemplate('${f.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
 
         return `
         <div class="col-12 col-md-6">
-            <div class="card-custom template-card p-3 d-flex flex-row align-items-center justify-content-between bg-white shadow-sm border">
-                <div class="d-flex align-items-center" style="width: 75%; overflow:hidden;">
-                    <i class="fas ${icon} fs-2 me-3"></i>
-                    <div class="text-truncate">
-                        <h6 class="fw-bold mb-1 text-navy text-truncate" title="${f.file_name}">${f.file_name}</h6>
-                        <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> ${new Date(f.created_at).toLocaleDateString('ar-EG')}</small>
-                    </div>
+            <div class="card-custom template-card p-3 bg-white shadow-sm border position-relative">
+                <div class="position-absolute top-0 end-0 m-2">
+                    ${delBtn}
                 </div>
-                <a href="${f.drive_file_id}" target="_blank" class="btn btn-outline-navy btn-sm fw-bold rounded-pill px-3"><i class="fas fa-download"></i> فتح</a>
+                <div class="d-flex flex-row align-items-center justify-content-between mt-2">
+                    <div class="d-flex align-items-center" style="width: 75%; overflow:hidden;">
+                        <i class="fas ${icon} fs-2 me-3"></i>
+                        <div class="text-truncate">
+                            <h6 class="fw-bold mb-1 text-navy text-truncate" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
+                            <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> ${escapeHTML(new Date(f.created_at).toLocaleDateString('ar-EG'))}</small>
+                        </div>
+                    </div>
+                    <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-outline-navy btn-sm fw-bold rounded-pill px-3"><i class="fas fa-download"></i> فتح</a>
+                </div>
             </div>
         </div>
         `;
     }).join('');
+}
+
+async function deleteTemplate(id) {
+    if(!confirm('هل أنت متأكد من حذف هذا النموذج نهائياً؟')) return;
+    try {
+        await fetchAPI(`/api/files?id=eq.${id}`, 'DELETE');
+        showAlert('تم حذف النموذج بنجاح', 'success');
+        await loadLibrary();
+    } catch(e) {
+        showAlert('حدث خطأ أثناء الحذف', 'danger');
+    }
 }
 
 async function saveTemplate(event) {
@@ -151,6 +190,6 @@ function showAlert(message, type = 'info') {
     if(!box) return;
     const alertId = 'alert-' + Date.now();
     let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
-    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${message}</span></div>`);
+    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${escapeHTML(message)}</span></div>`);
     setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 3000);
 }

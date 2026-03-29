@@ -1,14 +1,35 @@
-// js/reports.js - محرك التقارير المتقدم (المالية، الإحصائيات، أداء الفريق، المخططات والفلاتر)
+// js/reports.js - محرك التقارير المتقدم (المالية، الإحصائيات، أداء الفريق، المخططات والفلاتر، محمي ضد XSS)
 
 let rawData = { cases: [], staff: [], installments: [], expenses: [] };
 let charts = { finance: null, cases: null };
 
+// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+};
+
 window.onload = async () => {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
-    const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+    const userStr = localStorage.getItem(CONFIG.USER_KEY);
+    
+    if (!token || !userStr) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    const user = JSON.parse(userStr);
     
     // حماية إضافية: صفحة التقارير للمدراء فقط
-    if (!token || !user || (user.role !== 'admin' && user.role !== 'مدير')) {
+    if (user.role !== 'admin' && user.role !== 'مدير') {
         alert('غير مصرح لك بالوصول لصفحة التقارير');
         window.location.href = 'app.html';
         return;
@@ -158,16 +179,19 @@ function calculateStaffPerformance(cases, staff) {
             ? '<span class="badge bg-danger">معطل</span>' 
             : '<span class="badge bg-success">فعال</span>';
 
+        const safeName = escapeHTML(member.full_name);
+        const safeRole = escapeHTML(getRoleNameInArabic(member.role));
+
         rowsHtml += `
             <tr class="${member.is_active === false ? 'opacity-50' : ''}">
                 <td class="text-start ps-3">
                     <div class="d-flex align-items-center">
                         <div class="bg-light text-navy fw-bold rounded-circle d-flex align-items-center justify-content-center me-2 border" style="width:35px; height:35px;">
-                            ${member.full_name.charAt(0)}
+                            ${safeName.charAt(0)}
                         </div>
                         <div>
-                            <b class="text-navy d-block">${member.full_name}</b>
-                            <small class="text-muted">${getRoleNameInArabic(member.role)}</small>
+                            <b class="text-navy d-block">${safeName}</b>
+                            <small class="text-muted">${safeRole}</small>
                         </div>
                     </div>
                 </td>
@@ -252,6 +276,6 @@ function showAlert(message, type = 'info') {
     const alertId = 'alert-' + Date.now();
     let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom';
     if(type === 'warning') typeClass = 'bg-warning text-dark border-warning';
-    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-info-circle text-info'}"></i><span>${message}</span></div>`);
+    box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-info-circle text-info'}"></i><span>${escapeHTML(message)}</span></div>`);
     setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 3000);
 }

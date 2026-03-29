@@ -1,8 +1,22 @@
-// js/case-details.js - محرك تفاصيل القضية (يشمل الذكاء الاصطناعي، الإملاء الصوتي، الواتساب، والتحقق الأمني)
+// js/case-details.js - محرك تفاصيل القضية (يشمل الذكاء الاصطناعي، الإملاء الصوتي، الواتساب، والتحقق الأمني، محمي ضد XSS)
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
 let realtimeSyncTimer = null;
+
+// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+};
 
 window.onload = async () => {
     applyFirmSettings(); 
@@ -23,9 +37,9 @@ function startRealtimeSync() {
     realtimeSyncTimer = setInterval(async () => {
         try {
             const [updates, installments, expenses] = await Promise.all([
-                fetchAPI(`/api/updates?case_id=${currentCaseId}`),
-                fetchAPI(`/api/installments?case_id=${currentCaseId}`),
-                fetchAPI(`/api/expenses?case_id=${currentCaseId}`)
+                API.getUpdates(currentCaseId),
+                API.getInstallments(currentCaseId),
+                API.getExpenses(currentCaseId)
             ]);
             renderTimeline(Array.isArray(updates) ? updates : []);
             renderPayments(Array.isArray(installments) ? installments : []);
@@ -41,10 +55,10 @@ async function loadCaseFullDetails() {
     try {
         const [allCasesReq, updatesReq, installmentsReq, expensesReq, filesReq, staffReq, clientsReq] = await Promise.all([
             API.getCases(), 
-            fetchAPI(`/api/updates?case_id=${currentCaseId}`), 
-            fetchAPI(`/api/installments?case_id=${currentCaseId}`),
-            fetchAPI(`/api/expenses?case_id=${currentCaseId}`), 
-            fetchAPI(`/api/files?case_id=${currentCaseId}`),
+            API.getUpdates(currentCaseId), 
+            API.getInstallments(currentCaseId),
+            API.getExpenses(currentCaseId), 
+            API.getFiles(currentCaseId),
             API.getStaff(),
             API.getClients()
         ]);
@@ -72,10 +86,10 @@ async function loadCaseFullDetails() {
 }
 
 function renderHeaderAndSummary() {
-    document.getElementById('case-title').innerText = `${caseObj.case_internal_id || 'ملف قضية'}`;
+    document.getElementById('case-title').innerText = `${escapeHTML(caseObj.case_internal_id || 'ملف قضية')}`;
     
     const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
-    const clientName = client ? client.full_name : "موكل غير محدد";
+    const clientName = client ? escapeHTML(client.full_name) : "موكل غير محدد";
     document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${clientName}`;
     
     const lastSeenContainer = document.getElementById('client-last-seen-container');
@@ -87,19 +101,19 @@ function renderHeaderAndSummary() {
         if(lastSeenContainer) lastSeenContainer.classList.add('d-none');
     }
 
-    document.getElementById('det-court').innerText = caseObj.current_court || "--";
-    document.getElementById('det-court-num').innerText = caseObj.court_case_number || "--";
-    document.getElementById('det-judge').innerText = caseObj.current_judge || "--";
-    document.getElementById('det-type').innerText = caseObj.case_type || "--";
-    document.getElementById('det-opponent').innerText = caseObj.opponent_name || "--";
+    document.getElementById('det-court').innerText = escapeHTML(caseObj.current_court || "--");
+    document.getElementById('det-court-num').innerText = escapeHTML(caseObj.court_case_number || "--");
+    document.getElementById('det-judge').innerText = escapeHTML(caseObj.current_judge || "--");
+    document.getElementById('det-type').innerText = escapeHTML(caseObj.case_type || "--");
+    document.getElementById('det-opponent').innerText = escapeHTML(caseObj.opponent_name || "--");
     
-    document.getElementById('det-opp-lawyer').innerText = caseObj.opponent_lawyer || "غير محدد";
-    document.getElementById('det-poa').innerText = caseObj.poa_details || "غير محدد";
-    document.getElementById('det-success').innerText = caseObj.success_probability ? `${caseObj.success_probability}%` : "غير محدد";
+    document.getElementById('det-opp-lawyer').innerText = escapeHTML(caseObj.opponent_lawyer || "غير محدد");
+    document.getElementById('det-poa').innerText = escapeHTML(caseObj.poa_details || "غير محدد");
+    document.getElementById('det-success').innerText = caseObj.success_probability ? `${escapeHTML(caseObj.success_probability)}%` : "غير محدد";
     
     const deadlineEl = document.getElementById('det-deadline');
     if (caseObj.deadline_date) {
-        deadlineEl.innerText = caseObj.deadline_date;
+        deadlineEl.innerText = escapeHTML(caseObj.deadline_date);
         const daysLeft = Math.ceil((new Date(caseObj.deadline_date) - new Date()) / (1000 * 60 * 60 * 24));
         if(daysLeft <= 7 && daysLeft > 0) deadlineEl.className = "text-danger fw-bold heartbeat-animation fs-6";
         else if (daysLeft < 0) deadlineEl.innerHTML = `<span class="text-dark"><i class="fas fa-times"></i> منتهي</span>`;
@@ -108,9 +122,9 @@ function renderHeaderAndSummary() {
         deadlineEl.innerText = "غير محدد";
     }
 
-    document.getElementById('case-pin').innerHTML = `<i class="fas fa-key text-warning"></i> PIN: ${caseObj.access_pin || 'غير محدد'}`;
+    document.getElementById('case-pin').innerHTML = `<i class="fas fa-key text-warning"></i> PIN: ${escapeHTML(caseObj.access_pin || 'غير محدد')}`;
     const statusEl = document.getElementById('case-status');
-    statusEl.innerText = caseObj.status || "نشطة";
+    statusEl.innerText = escapeHTML(caseObj.status || "نشطة");
     statusEl.className = `badge fs-6 ${caseObj.status === 'نشطة' ? 'bg-success' : 'bg-danger'}`;
 }
 
@@ -125,10 +139,10 @@ function renderAiAnalysis() {
     aiContainer.classList.remove('d-none');
     const ai = caseObj.ai_entities;
     
-    document.getElementById('ai-names').innerText = (ai.names && ai.names.length > 0) ? ai.names.join('، ') : '--';
-    document.getElementById('ai-dates').innerText = (ai.dates && ai.dates.length > 0) ? ai.dates.join('، ') : '--';
-    document.getElementById('ai-articles').innerText = (ai.legal_articles && ai.legal_articles.length > 0) ? ai.legal_articles.join('، ') : '--';
-    document.getElementById('ai-summary').innerText = ai.facts_summary || 'لا يوجد ملخص متاح.';
+    document.getElementById('ai-names').innerText = (ai.names && ai.names.length > 0) ? escapeHTML(ai.names.join('، ')) : '--';
+    document.getElementById('ai-dates').innerText = (ai.dates && ai.dates.length > 0) ? escapeHTML(ai.dates.join('، ')) : '--';
+    document.getElementById('ai-articles').innerText = (ai.legal_articles && ai.legal_articles.length > 0) ? escapeHTML(ai.legal_articles.join('، ')) : '--';
+    document.getElementById('ai-summary').innerText = escapeHTML(ai.facts_summary || 'لا يوجد ملخص متاح.');
 }
 
 async function saveSecretNotes() {
@@ -142,11 +156,12 @@ function renderTimeline(updates) {
     if (!updates || updates.length === 0) { container.innerHTML = '<div class="text-center p-4 text-muted small">لا يوجد وقائع.</div>'; return; }
     container.innerHTML = updates.map(u => `
         <div class="timeline-item mb-3">
-            <div class="card-custom p-3 shadow-sm bg-white border-end border-4 border-navy">
+            <div class="card-custom p-3 shadow-sm bg-white border-end border-4 border-navy position-relative">
+                <button class="btn btn-sm text-danger position-absolute top-0 end-0 mt-2 me-2" onclick="deleteRecord('update', '${u.id}')"><i class="fas fa-trash"></i></button>
                 <small class="text-primary fw-bold">${new Date(u.created_at).toLocaleDateString('ar-EG')}</small>
-                <h6 class="fw-bold text-navy mt-1">${u.update_title}</h6>
-                <p class="mb-0 small">${u.update_details}</p>
-                ${u.hearing_date ? `<small class="d-block mt-2 text-muted"><i class="fas fa-calendar-check text-success"></i> الجلسة: ${u.hearing_date}</small>` : ''}
+                <h6 class="fw-bold text-navy mt-1">${escapeHTML(u.update_title)}</h6>
+                <p class="mb-0 small">${escapeHTML(u.update_details)}</p>
+                ${u.hearing_date ? `<small class="d-block mt-2 text-muted"><i class="fas fa-calendar-check text-success"></i> الجلسة: ${escapeHTML(u.hearing_date)}</small>` : ''}
             </div>
         </div>
     `).join('');
@@ -158,19 +173,21 @@ function renderPayments(installments) {
     
     container.innerHTML = installments.map(i => {
         const isPaid = i.status === 'مدفوعة';
-        const printBtn = isPaid ? `<button class="btn btn-sm btn-outline-success py-0 px-2 fw-bold ms-1 shadow-sm" onclick="printInvoice('${i.amount}', '${i.due_date || i.created_at.split('T')[0]}', '${i.id}')" title="إصدار فاتورة"><i class="fas fa-print"></i></button>` : '';
-        const waBtn = !isPaid ? `<button class="btn btn-sm whatsapp-btn py-0 px-2 ms-1 shadow-sm" onclick="sendWhatsAppReminder('${i.amount}', '${i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG')}')" title="إرسال تذكير بالدفع عبر واتساب"><i class="fab fa-whatsapp"></i></button>` : '';
+        const printBtn = isPaid ? `<button class="btn btn-sm btn-outline-success py-0 px-2 fw-bold ms-1 shadow-sm" onclick="printInvoice('${escapeHTML(i.amount)}', '${escapeHTML(i.due_date || i.created_at.split('T')[0])}', '${i.id}')" title="إصدار فاتورة"><i class="fas fa-print"></i></button>` : '';
+        const waBtn = !isPaid ? `<button class="btn btn-sm whatsapp-btn py-0 px-2 ms-1 shadow-sm" onclick="sendWhatsAppReminder('${escapeHTML(i.amount)}', '${escapeHTML(i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG'))}')" title="إرسال تذكير بالدفع عبر واتساب"><i class="fab fa-whatsapp"></i></button>` : '';
+        const delBtn = `<button class="btn btn-sm text-danger py-0 px-2 ms-1 shadow-sm" onclick="deleteRecord('installment', '${i.id}')" title="حذف الدفعة"><i class="fas fa-trash"></i></button>`;
 
         return `
         <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 ${isPaid ? 'border-success' : 'border-warning'} bg-white">
             <div>
                 <b class="fs-5 ${isPaid ? 'text-success' : 'text-dark'}">${Number(i.amount).toLocaleString()} د.أ</b>
-                <small class="d-block text-muted">تاريخ: ${i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG')}</small>
+                <small class="d-block text-muted">تاريخ: ${escapeHTML(i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG'))}</small>
             </div>
             <div>
-                <span class="badge ${isPaid ? 'bg-success' : 'bg-warning text-dark'}">${i.status}</span>
+                <span class="badge ${isPaid ? 'bg-success' : 'bg-warning text-dark'}">${escapeHTML(i.status)}</span>
                 ${printBtn}
                 ${waBtn}
+                ${delBtn}
             </div>
         </div>
     `}).join('');
@@ -182,7 +199,6 @@ function sendWhatsAppReminder(amount, dueDate) {
         showAlert('لا يوجد رقم هاتف مسجل للموكل في النظام.', 'warning');
         return;
     }
-    // تحضير رقم الهاتف بصيغة دولية (افتراض الأردن، يمكن تعديله لاحقاً)
     let phoneStr = String(client.phone);
     if (phoneStr.startsWith('0')) phoneStr = '962' + phoneStr.substring(1);
     
@@ -194,15 +210,19 @@ function renderExpenses(expenses) {
     const container = document.getElementById('expenses-container');
     if (!expenses || expenses.length === 0) { container.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد مصروفات.</div>'; return; }
     container.innerHTML = expenses.map(e => {
-        const receiptLink = e.receipt_url ? `<a href="${e.receipt_url}" target="_blank" class="btn btn-sm btn-outline-secondary mt-1 py-0 px-2" title="عرض الإيصال المرفق"><i class="fas fa-paperclip"></i> مرفق</a>` : '';
+        const receiptLink = e.receipt_url ? `<a href="${escapeHTML(e.receipt_url)}" target="_blank" class="btn btn-sm btn-outline-secondary mt-1 py-0 px-2" title="عرض الإيصال المرفق"><i class="fas fa-paperclip"></i> مرفق</a>` : '';
+        const delBtn = `<button class="btn btn-sm text-danger py-0 px-2 ms-1 shadow-sm" onclick="deleteRecord('expense', '${e.id}')" title="حذف المصروف"><i class="fas fa-trash"></i></button>`;
         return `
         <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-danger bg-white">
             <div>
                 <b class="fs-5 text-danger">${Number(e.amount).toLocaleString()} د.أ</b>
-                <small class="d-block text-muted">${e.description}</small>
+                <small class="d-block text-muted">${escapeHTML(e.description)}</small>
                 ${receiptLink}
             </div>
-            <small class="text-muted"><i class="fas fa-calendar-alt"></i> ${e.expense_date}</small>
+            <div>
+                <small class="text-muted d-block mb-1"><i class="fas fa-calendar-alt"></i> ${escapeHTML(e.expense_date)}</small>
+                <div class="text-end">${delBtn}</div>
+            </div>
         </div>
     `}).join('');
 }
@@ -213,16 +233,17 @@ function renderFiles(files) {
     container.innerHTML = files.map(f => {
         const isImage = f.file_type && f.file_type.includes('image');
         const iconHtml = (isImage && f.drive_file_id) ? `<i class="fas fa-image fs-1 text-primary mb-2"></i>` : `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
-        const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${f.expiry_date}</small>` : '';
+        const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
         return `
         <div class="col-6">
-            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white">
-                <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${f.file_category || 'مستند'}</span>
+            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative">
+                <button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteRecord('file', '${f.id}')"><i class="fas fa-trash"></i></button>
+                <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>
                 ${iconHtml}
-                <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${f.file_name}">${f.file_name}</h6>
+                <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
                 ${expiryBadge}
                 <div class="d-flex gap-1 mt-2">
-                    <a href="${f.drive_file_id}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>
+                    <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>
                 </div>
             </div>
         </div>
@@ -243,7 +264,23 @@ function calculateFinances(installments, expenses) {
     const netEl = document.getElementById('sum-net');
     if(netEl) {
         netEl.innerText = clientRemaining.toLocaleString();
-        netEl.className = clientRemaining > 0 ? 'text-danger' : 'text-success';
+        netEl.className = clientRemaining > 0 ? 'text-danger fw-bold fs-5' : 'text-success fw-bold fs-5';
+    }
+}
+
+// دالة الحذف الموحدة
+async function deleteRecord(type, id) {
+    if(!confirm('هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    try {
+        if (type === 'update') await fetch(`${CONFIG.API_URL}/api/updates?id=eq.${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }});
+        if (type === 'installment') await API.deleteInstallment(id, currentCaseId);
+        if (type === 'expense') await fetch(`${CONFIG.API_URL}/api/expenses?id=eq.${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }});
+        if (type === 'file') await fetch(`${CONFIG.API_URL}/api/files?id=eq.${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` }});
+        
+        showAlert('تم الحذف بنجاح', 'success');
+        await loadCaseFullDetails();
+    } catch(e) {
+        showAlert('حدث خطأ أثناء الحذف', 'danger');
     }
 }
 
@@ -317,18 +354,10 @@ async function generateAiDraft() {
 اكتب المسودة بشكل رسمي وجاهز للطباعة والتوقيع. لا تكتب أي مقدمات أو ردود أو شروحات خارج النص القانوني. ابدأ بالبسملة والنص مباشرة.`;
 
     try {
-        const res = await fetch(`${CONFIG.API_URL}/api/ai/chat`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}`
-            },
-            body: JSON.stringify({ prompt: promptText })
-        });
-        const data = await res.json();
+        const res = await API.askAI(promptText);
         
-        if (data.reply) {
-            document.getElementById('ai_draft_result').value = data.reply;
+        if (res && res.reply) {
+            document.getElementById('ai_draft_result').value = res.reply;
             document.getElementById('ai_draft_result_container').classList.remove('d-none');
             showAlert('تم توليد المسودة بنجاح! يمكنك مراجعتها ونسخها.', 'success');
         } else {
@@ -488,7 +517,7 @@ function openEditModal() {
     const lawyerSelect = document.getElementById('edit_assigned_lawyer');
     if(lawyerSelect && window.firmStaff) {
         lawyerSelect.innerHTML = '<option value="">بدون إسناد (لمكتب العمل)</option>' + 
-            window.firmStaff.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+            window.firmStaff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
             
         if (caseObj.assigned_lawyer_id) {
             lawyerSelect.value = Array.isArray(caseObj.assigned_lawyer_id) ? caseObj.assigned_lawyer_id[0] : caseObj.assigned_lawyer_id;
@@ -497,12 +526,20 @@ function openEditModal() {
         }
     }
     
+    const parentCaseSelect = document.getElementById('edit_parent_case_id');
+    if(parentCaseSelect && window.firmCases) {
+        parentCaseSelect.innerHTML = '<option value="">لا يوجد (قضية رئيسية)</option>' + 
+            window.firmCases.filter(c => c.id !== currentCaseId).map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id)}</option>`).join('');
+        if (caseObj.parent_case_id) parentCaseSelect.value = caseObj.parent_case_id;
+    }
+    
     openModal('editCaseModal');
 }
 
 async function updateCaseDetails(event) {
     event.preventDefault();
     const assignedVal = document.getElementById('edit_assigned_lawyer')?.value;
+    const parentCaseVal = document.getElementById('edit_parent_case_id')?.value;
     
     const data = {
         case_internal_id: document.getElementById('edit_internal_id')?.value, 
@@ -523,7 +560,8 @@ async function updateCaseDetails(event) {
         deadline_date: document.getElementById('edit_deadline_date')?.value || null,
         success_probability: document.getElementById('edit_success_probability')?.value ? Number(document.getElementById('edit_success_probability').value) : null,
         
-        assigned_lawyer_id: assignedVal ? [assignedVal] : null
+        assigned_lawyer_id: assignedVal ? [assignedVal] : null,
+        parent_case_id: parentCaseVal || null
     };
     if(await API.updateCase(currentCaseId, data)) { closeModal('editCaseModal'); showAlert('تم التحديث بنجاح', 'success'); await loadCaseFullDetails(); }
 }
@@ -532,7 +570,7 @@ function openUpdateModal() {
     const lawyerSelect = document.getElementById('upd_assigned_lawyer');
     if(lawyerSelect && window.firmStaff) {
         lawyerSelect.innerHTML = '<option value="">لا يوجد إسناد محدد</option>' + 
-            window.firmStaff.map(s => `<option value="${s.id}">${s.full_name}</option>`).join('');
+            window.firmStaff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
     }
     openModal('updateModal');
 }
@@ -612,4 +650,4 @@ function copyDeepLink() {
 function goToClientProfile() { if (caseObj && caseObj.client_id) { localStorage.setItem('current_client_id', caseObj.client_id); window.location.href = 'client-details.html'; } }
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
-function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${message}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }
+function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${escapeHTML(message)}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }

@@ -1,4 +1,4 @@
-// js/config.js - ملف الإعدادات المركزية
+// js/config.js - ملف الإعدادات المركزية (محدث لدعم نظام التشفير الجديد JWT)
 const CONFIG = {
     // رابط السيرفر الخاص بك على كلود فلير (Worker)
     API_URL: "https://curly-pond-9975.hassan-alsakka.workers.dev",

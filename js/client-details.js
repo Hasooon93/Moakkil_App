@@ -1,10 +1,24 @@
-// js/client-details.js - محرك الملف الشخصي للموكل (يشمل كشف الحساب الموحد ومراسلة الواتساب)
+// js/client-details.js - محرك الملف الشخصي للموكل (يشمل كشف الحساب الموحد ومراسلة الواتساب، محمي ضد XSS ويدعم التعديل)
 
 let currentClientId = localStorage.getItem('current_client_id');
 let clientObj = null;
 let clientCases = [];
 let clientInstallments = [];
 let clientExpenses = [];
+
+// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+};
 
 window.onload = async () => {
     if (!currentClientId) {
@@ -22,20 +36,24 @@ async function loadClientProfile() {
     try {
         const [clientsReq, casesReq, filesReq] = await Promise.all([
             API.getClients(),
-            fetchAPI(`/api/cases?client_id=${currentClientId}`), 
-            fetchAPI(`/api/files?client_id=${currentClientId}`) 
+            API.getCases(), // جلب القضايا من المحرك لضمان تطبيق الصلاحيات
+            API.getFiles()
         ]);
 
         const clients = Array.isArray(clientsReq) ? clientsReq : [];
-        clientCases = Array.isArray(casesReq) ? casesReq : [];
-        const files = Array.isArray(filesReq) ? filesReq : [];
-
         clientObj = clients.find(c => c.id == currentClientId);
         
         if (!clientObj) {
             window.location.href = 'app.html';
             return;
         }
+
+        // تصفية القضايا والملفات لتطابق الموكل الحالي فقط
+        const allCases = Array.isArray(casesReq) ? casesReq : [];
+        clientCases = allCases.filter(c => c.client_id == currentClientId);
+        
+        const allFiles = Array.isArray(filesReq) ? filesReq : [];
+        const files = allFiles.filter(f => f.client_id == currentClientId);
 
         renderClientHeader();
         renderClientCases(clientCases);
@@ -53,6 +71,9 @@ async function loadClientProfile() {
             
             clientInstallments = Array.isArray(instReq) ? instReq : [];
             clientExpenses = Array.isArray(expReq) ? expReq : [];
+        } else {
+            clientInstallments = [];
+            clientExpenses = [];
         }
 
     } catch (error) {
@@ -61,10 +82,15 @@ async function loadClientProfile() {
 }
 
 function renderClientHeader() {
-    document.getElementById('cd-name').innerText = clientObj.full_name || 'بدون اسم';
-    document.getElementById('cd-type').innerText = clientObj.client_type || 'فرد';
-    document.getElementById('cd-phone').innerText = clientObj.phone || '--';
-    document.getElementById('cd-national').innerText = clientObj.national_id || '--';
+    document.getElementById('cd-name').innerText = escapeHTML(clientObj.full_name || 'بدون اسم');
+    document.getElementById('cd-type').innerText = escapeHTML(clientObj.client_type || 'فرد');
+    document.getElementById('cd-phone').innerText = escapeHTML(clientObj.phone || '--');
+    document.getElementById('cd-national').innerText = escapeHTML(clientObj.national_id || '--');
+    
+    const addressEl = document.getElementById('cd-address');
+    if (addressEl) {
+        addressEl.innerText = escapeHTML(clientObj.address || '--');
+    }
 }
 
 function sendWhatsApp() {
@@ -96,12 +122,12 @@ function renderClientCases(cases) {
         return `
         <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-navy bg-white" onclick="goToCase('${c.id}')" style="cursor:pointer">
             <div class="d-flex justify-content-between align-items-center mb-1">
-                <b class="text-navy fs-6">${c.case_internal_id || 'بدون رقم'} ${deadlineWarning}</b>
-                <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}">${c.status}</span>
+                <b class="text-navy fs-6">${escapeHTML(c.case_internal_id || 'بدون رقم')} ${deadlineWarning}</b>
+                <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}">${escapeHTML(c.status)}</span>
             </div>
             <div class="d-flex justify-content-between align-items-center mt-2">
-                <small class="text-muted"><i class="fas fa-balance-scale me-1"></i> ${c.current_court || 'محكمة غير محددة'}</small>
-                <small class="text-danger fw-bold"><i class="fas fa-user-shield me-1"></i> الخصم: ${c.opponent_name || '--'}</small>
+                <small class="text-muted"><i class="fas fa-balance-scale me-1"></i> ${escapeHTML(c.current_court || 'محكمة غير محددة')}</small>
+                <small class="text-danger fw-bold"><i class="fas fa-user-shield me-1"></i> الخصم: ${escapeHTML(c.opponent_name || '--')}</small>
             </div>
         </div>
     `}).join('');
@@ -119,19 +145,33 @@ function renderClientFiles(files) {
         if(f.file_type && f.file_type.includes('image')) icon = 'fa-image text-primary';
         if(f.file_type && f.file_type.includes('pdf')) icon = 'fa-file-pdf text-danger';
 
-        const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger fw-bold" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${f.expiry_date}</small>` : '';
+        const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger fw-bold" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
 
         return `
         <div class="col-6">
-            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white">
-                <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${f.file_category || 'مستند'}</span>
+            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative">
+                <button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteRecord('file', '${f.id}')"><i class="fas fa-trash"></i></button>
+                <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>
                 <i class="fas ${icon} fs-1 mb-2"></i>
-                <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${f.file_name}">${f.file_name}</h6>
+                <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
                 ${expiryBadge}
-                <a href="${f.drive_file_id}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold mt-2"><i class="fas fa-eye"></i> عرض</a>
+                <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold mt-2"><i class="fas fa-eye"></i> عرض</a>
             </div>
         </div>
     `}).join('');
+}
+
+async function deleteRecord(type, id) {
+    if(!confirm('هل أنت متأكد من الحذف؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    try {
+        if (type === 'file') {
+            await fetchAPI(`/api/files?id=eq.${id}`, 'DELETE');
+        }
+        showAlert('تم الحذف بنجاح', 'success');
+        await loadClientProfile();
+    } catch(e) {
+        showAlert('حدث خطأ أثناء الحذف', 'danger');
+    }
 }
 
 async function uploadPersonalFile(event) {
@@ -184,11 +224,11 @@ function generateStatement() {
     }
 
     const firmSettings = JSON.parse(localStorage.getItem('firm_settings')) || {};
-    document.getElementById('print-firm-name').innerText = firmSettings.firm_name || 'مكتب المحاماة';
+    document.getElementById('print-firm-name').innerText = escapeHTML(firmSettings.firm_name || 'مكتب المحاماة');
     
-    document.getElementById('print-client-name').innerText = clientObj.full_name;
-    document.getElementById('print-client-phone').innerText = clientObj.phone || '--';
-    document.getElementById('print-client-id').innerText = clientObj.national_id || '--';
+    document.getElementById('print-client-name').innerText = escapeHTML(clientObj.full_name);
+    document.getElementById('print-client-phone').innerText = escapeHTML(clientObj.phone || '--');
+    document.getElementById('print-client-id').innerText = escapeHTML(clientObj.national_id || '--');
     document.getElementById('print-date').innerText = new Date().toLocaleDateString('ar-EG');
 
     const tbody = document.getElementById('statement-table-body');
@@ -220,7 +260,7 @@ function generateStatement() {
 
         tbody.innerHTML += `
             <tr>
-                <td class="text-start fw-bold">${c.case_internal_id || 'بدون رقم'} <br><small class="text-muted fw-normal">الخصم: ${c.opponent_name || '--'}</small></td>
+                <td class="text-start fw-bold">${escapeHTML(c.case_internal_id || 'بدون رقم')} <br><small class="text-muted fw-normal">الخصم: ${escapeHTML(c.opponent_name || '--')}</small></td>
                 <td class="text-primary">${caseAgreed.toLocaleString()}</td>
                 <td class="text-danger">${caseTotalExp.toLocaleString()}</td>
                 <td class="text-success">${caseTotalPaid.toLocaleString()}</td>
@@ -239,6 +279,37 @@ function generateStatement() {
     setTimeout(() => { document.getElementById('print-section').style.display = 'none'; }, 1000);
 }
 
+function openEditClientModal() {
+    if (!clientObj) return;
+    document.getElementById('edit_client_full_name').value = clientObj.full_name || '';
+    document.getElementById('edit_client_phone').value = clientObj.phone || '';
+    document.getElementById('edit_client_national_id').value = clientObj.national_id || '';
+    document.getElementById('edit_client_type').value = clientObj.client_type || 'فرد';
+    
+    if (document.getElementById('edit_client_address')) {
+        document.getElementById('edit_client_address').value = clientObj.address || '';
+    }
+    
+    openModal('editClientModal');
+}
+
+async function updateClientDetails(event) {
+    event.preventDefault();
+    const data = {
+        full_name: document.getElementById('edit_client_full_name').value,
+        phone: document.getElementById('edit_client_phone').value,
+        national_id: document.getElementById('edit_client_national_id').value,
+        client_type: document.getElementById('edit_client_type').value,
+        address: document.getElementById('edit_client_address') ? document.getElementById('edit_client_address').value : ''
+    };
+    
+    if(await API.updateClient(currentClientId, data)) {
+        closeModal('editClientModal');
+        showAlert('تم تحديث بيانات الموكل بنجاح', 'success');
+        await loadClientProfile();
+    }
+}
+
 function goToCase(id) {
     localStorage.setItem('current_case_id', id);
     window.location.href = 'case-details.html';
@@ -246,4 +317,4 @@ function goToCase(id) {
 
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
-function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${message}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }
+function showAlert(message, type = 'info') { const box = document.getElementById('alertBox'); if(!box) return; const alertId = 'alert-' + Date.now(); let typeClass = type === 'success' ? 'alert-success-custom' : 'alert-danger-custom'; if(type === 'warning') typeClass = 'bg-warning text-dark border-warning'; box.insertAdjacentHTML('beforeend', `<div id="${alertId}" class="alert-custom ${typeClass}"><span>${escapeHTML(message)}</span></div>`); setTimeout(() => { const el = document.getElementById(alertId); if(el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); } }, 4000); }

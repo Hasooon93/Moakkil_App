@@ -29,6 +29,9 @@
             <button class="btn btn-sm btn-light border-0 rounded-circle text-navy shadow-sm" onclick="goBack()" style="width: 35px; height: 35px;"><i class="fas fa-arrow-right"></i></button>
             <h6 class="mb-0 fw-bold text-white text-truncate" style="max-width: 200px;">ملف الموكل</h6>
         </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" onclick="openEditClientModal()" title="تعديل بيانات الموكل"><i class="fas fa-edit"></i></button>
+        </div>
     </div>
 
     <div id="alertBox"></div>
@@ -58,7 +61,7 @@
                 </tr>
             </thead>
             <tbody id="statement-table-body">
-                </tbody>
+            </tbody>
             <tfoot class="table-light border-dark fw-bold fs-5">
                 <tr>
                     <td class="text-end">الإجمالي الكلي:</td>
@@ -99,6 +102,10 @@
                 <div class="col-6">
                     <small class="text-muted fw-bold d-block"><i class="fas fa-id-card me-1 text-warning"></i> الرقم الوطني</small>
                     <b class="fs-6" id="cd-national">--</b>
+                </div>
+                <div class="col-12 mt-2 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block"><i class="fas fa-map-marker-alt me-1 text-danger"></i> العنوان التفصيلي</small>
+                    <b class="fs-6" id="cd-address">--</b>
                 </div>
             </div>
 
@@ -151,6 +158,47 @@
                             <small class="text-muted d-block mt-1" style="font-size:0.7rem;">(هام جداً للوكالات والسجلات التجارية للتنبيه قبل انتهائها)</small>
                         </div>
                         <button type="submit" id="btn_upload" class="btn btn-warning w-100 fw-bold shadow text-dark"><i class="fas fa-upload me-1"></i> بدء الرفع السحابي</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editClientModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-user-edit me-2 text-accent"></i> تعديل بيانات الموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <form onsubmit="updateClientDetails(event)">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">اسم الموكل / الشركة <span class="text-danger">*</span></label>
+                            <input type="text" id="edit_client_full_name" class="form-control form-control-lg border-0 shadow-sm" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">رقم الهاتف</label>
+                                <input type="tel" id="edit_client_phone" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الرقم الوطني</label>
+                                <input type="text" id="edit_client_national_id" class="form-control border-0 shadow-sm">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">العنوان التفصيلي</label>
+                            <textarea id="edit_client_address" class="form-control border-0 shadow-sm" rows="2" placeholder="المدينة، المنطقة، الشارع..."></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold small text-muted">صفة الموكل</label>
+                            <select id="edit_client_type" class="form-select border-0 shadow-sm">
+                                <option value="فرد">أفراد (شخص طبيعي)</option>
+                                <option value="شركة">شركات (شخص اعتباري)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-save me-1"></i> حفظ التعديلات</button>
                     </form>
                 </div>
             </div>
