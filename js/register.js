@@ -1,4 +1,18 @@
-// js/register.js - محرك تأسيس المكاتب (Super Admin)
+// js/register.js - محرك تأسيس المكاتب (Super Admin) مع حماية XSS
+
+// دالة الحماية من ثغرات الحقن (XSS)
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
+};
 
 async function handleSuperRegister(event) {
     event.preventDefault();
@@ -31,7 +45,8 @@ async function handleSuperRegister(event) {
 
         if (response.ok && result.success) {
             msgBox.classList.add('text-success');
-            msgBox.innerHTML = `✅ تم إنشاء المكتب (${result.firm.firm_name}) بنجاح!<br>يمكن للمدير الدخول برقم الهاتف الآن.`;
+            // تنظيف اسم المكتب القادم من السيرفر لمنع ثغرات XSS
+            msgBox.innerHTML = `✅ تم إنشاء المكتب (${escapeHTML(result.firm.firm_name)}) بنجاح!<br>يمكن للمدير الدخول برقم الهاتف الآن.`;
             document.getElementById('superRegisterForm').reset();
             
             // تحويل اختياري لصفحة الدخول بعد 3 ثواني
@@ -40,7 +55,8 @@ async function handleSuperRegister(event) {
             }, 3000);
         } else {
             msgBox.classList.add('text-danger');
-            msgBox.innerHTML = `❌ فشل الإنشاء: ${result.error}`;
+            // تنظيف رسالة الخطأ القادمة من السيرفر
+            msgBox.innerHTML = `❌ فشل الإنشاء: ${escapeHTML(result.error || 'خطأ غير معروف')}`;
         }
     } catch (error) {
         msgBox.classList.add('text-danger');

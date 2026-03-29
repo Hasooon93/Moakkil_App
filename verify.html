@@ -122,6 +122,20 @@
 
     <script src="./js/config.js"></script>
     <script>
+        // دالة الحماية من ثغرات الحقن (XSS)
+        const escapeHTML = (str) => {
+            if (str === null || str === undefined) return '';
+            return str.toString().replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        };
+
         window.onload = async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
@@ -157,9 +171,9 @@
 
                 if (!res.ok || !data.installments) throw new Error("لا توجد استجابة صالحة من السيرفر");
 
-                // تحديث اسم المكتب إذا كان متوفراً
+                // تحديث اسم المكتب إذا كان متوفراً (مع الحماية من XSS)
                 if (data.firm && data.firm.firm_name) {
-                    document.getElementById('res-firm-name').innerHTML = `<i class="fas fa-balance-scale text-accent me-2"></i> ${data.firm.firm_name}`;
+                    document.getElementById('res-firm-name').innerHTML = `<i class="fas fa-balance-scale text-accent me-2"></i> ${escapeHTML(data.firm.firm_name)}`;
                 }
 
                 // البحث عن الفاتورة برقمها والتأكد أنها "مدفوعة" فعلاً
