@@ -1,7 +1,7 @@
 // js/config.js - الإعدادات العامة والمتغيرات المركزية للنظام
 
 // 1. ضع رابط الـ Cloudflare Worker الخاص بك هنا (بدون / في النهاية)
-const API_BASE_URL = "https://your-worker-name.your-subdomain.workers.dev"; 
+const API_BASE_URL = "https://curly-pond-9975.hassan-alsakka.workers.dev"; 
 
 // 2. إعدادات النظام الداخلية (متوافقة مع جميع ملفات JS التي قمنا ببرمجتها)
 const CONFIG = {
