@@ -1,10 +1,11 @@
-// js/app.js - محرك لوحة التحكم (تم تصحيح المواعيد والإشعارات بشكل كامل 100%)
+// js/app.js - محرك لوحة التحكم الشامل (يحتوي على الإملاء الصوتي، OCR، لوحة كانبان، والمهام الآلية)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
 let realtimeSyncTimer = null;
 let deferredPrompt; 
 let notifiedIds = new Set(); 
+let isKanbanView = false; // تتبع حالة عرض الأجندة
 
 window.onload = async () => {
     if ('serviceWorker' in navigator) {
@@ -58,7 +59,12 @@ function startRealtimeSync() {
             if(JSON.stringify(safeAppts) !== JSON.stringify(globalData.appointments)) { filterAndSetAppointments(safeAppts); needsUpdate = true; }
             if(JSON.stringify(safeClients) !== JSON.stringify(globalData.clients)) { filterAndSetClients(safeClients); needsUpdate = true; }
 
-            if(needsUpdate) { renderDashboard(); renderCasesList(); renderClientsList(); renderAgendaList(); }
+            if(needsUpdate) { 
+                renderDashboard(); 
+                renderCasesList(); 
+                renderClientsList(); 
+                if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+            }
             
             await loadNotifications(true);
         } catch(e) {}
@@ -115,6 +121,35 @@ async function saveFirmSettings(event) {
     showAlert('تم حفظ الإعدادات', 'success');
 }
 
+// ------------------ نظام vCard الذكي ------------------
+function showVCard() {
+    const modal = document.getElementById('vCardModal');
+    if(!modal) return;
+    
+    const qrContainer = document.getElementById('vcard-qrcode');
+    qrContainer.innerHTML = ''; 
+    
+    const firmSettings = JSON.parse(localStorage.getItem('firm_settings')) || {};
+    const firmName = firmSettings.firm_name || 'مكتب المحاماة';
+    const userName = currentUser.full_name || '';
+    const phone = currentUser.phone || '';
+    const url = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+
+    const vcardText = `BEGIN:VCARD\nVERSION:3.0\nFN:${userName}\nORG:${firmName}\nTEL:${phone}\nURL:${url}\nEND:VCARD`;
+
+    new QRCode(qrContainer, {
+        text: vcardText,
+        width: 200,
+        height: 200,
+        colorDark : "#0a192f",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.M
+    });
+
+    openModal('vCardModal');
+}
+
+// ------------------ نظام الإشعارات ------------------
 async function requestNotificationPermission() {
     if (!("Notification" in window)) {
         showAlert('متصفحك لا يدعم الإشعارات المنبثقة', 'danger');
@@ -131,7 +166,6 @@ async function requestNotificationPermission() {
 
 function triggerPushNotification(title, body) {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
-    
     try {
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then(registration => {
@@ -216,7 +250,6 @@ async function handleNotificationClick(id, linkAction) {
     else if (linkAction === 'appointments' || linkAction === 'agenda') switchView('agenda');
     else switchView('dashboard');
 }
-async function markNotificationsAsRead() {}
 
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role);
@@ -308,7 +341,9 @@ async function loadAllData() {
         renderDashboard();
         renderCasesList();
         renderClientsList();
-        renderAgendaList();
+        
+        if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+        
         renderStaffList();
         populateSelects();
     } catch(e) {
@@ -381,6 +416,26 @@ function renderClientsList() {
     `).join('');
 }
 
+// ------------------ نظام الأجندة ولوحة كانبان ------------------
+function toggleAgendaView() {
+    isKanbanView = !isKanbanView;
+    const listContainer = document.getElementById('agenda-list');
+    const kanbanContainer = document.getElementById('kanban-board');
+    const toggleBtn = document.getElementById('btn-toggle-agenda');
+
+    if (isKanbanView) {
+        listContainer.classList.add('d-none');
+        kanbanContainer.classList.remove('d-none');
+        toggleBtn.innerHTML = '<i class="fas fa-list"></i>';
+        renderKanbanBoard();
+    } else {
+        listContainer.classList.remove('d-none');
+        kanbanContainer.classList.add('d-none');
+        toggleBtn.innerHTML = '<i class="fas fa-columns"></i>';
+        renderAgendaList();
+    }
+}
+
 function renderAgendaList() {
     const list = document.getElementById('agenda-list');
     if(!list) return;
@@ -434,6 +489,48 @@ function renderAgendaList() {
     `}).join('');
 }
 
+function renderKanbanBoard() {
+    const kanbanContainer = document.getElementById('kanban-board');
+    if (!kanbanContainer) return;
+
+    const statuses = [
+        { id: 'todo', label: 'مطلوبة / قادمة', class: 'border-primary', bg: 'bg-soft-primary', condition: a => (!a.status || a.status === 'مجدول' || a.status === 'مؤجل') },
+        { id: 'done', label: 'تم الإنجاز', class: 'border-success', bg: 'bg-soft-success', condition: a => a.status === 'تم' },
+        { id: 'cancelled', label: 'ملغاة', class: 'border-danger', bg: 'bg-soft-danger', condition: a => a.status === 'ملغي' }
+    ];
+
+    let html = '';
+    statuses.forEach(col => {
+        const colAppts = globalData.appointments.filter(col.condition);
+        
+        let cardsHtml = colAppts.map(a => {
+            const dateStr = new Date(a.appt_date).toLocaleDateString('ar-EG', {month: 'short', day: 'numeric'});
+            return `
+            <div class="card-custom p-2 mb-2 shadow-sm border-start border-3 ${col.class} cursor-pointer bg-white" onclick="openApptOutcomeModal('${a.id}')" title="اضغط لتغيير الحالة">
+                <small class="fw-bold text-navy d-block text-truncate">${a.title}</small>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                    <span class="badge bg-light text-dark" style="font-size: 0.6rem;">${dateStr}</span>
+                    <small class="text-muted" style="font-size: 0.65rem;">${getAssignedNames(a.assigned_to).split('،')[0]}</small>
+                </div>
+            </div>`;
+        }).join('');
+
+        if(colAppts.length === 0) cardsHtml = `<div class="text-center text-muted small p-3 opacity-50 border rounded bg-light">لا يوجد مهام</div>`;
+
+        html += `
+        <div class="col-10 col-md-4" style="min-width: 280px;">
+            <div class="kanban-col shadow-sm border border-2 border-white ${col.bg}">
+                <div class="kanban-header text-navy"><i class="fas fa-circle me-1" style="font-size:8px;"></i> ${col.label} <span class="badge bg-white text-dark ms-1">${colAppts.length}</span></div>
+                <div class="kanban-items-container">
+                    ${cardsHtml}
+                </div>
+            </div>
+        </div>`;
+    });
+
+    kanbanContainer.innerHTML = html;
+}
+
 function getAssignedNames(assigned_to) {
     if (!assigned_to) return 'عام للمكتب';
     let ids = Array.isArray(assigned_to) ? assigned_to : [assigned_to];
@@ -467,13 +564,11 @@ function openApptPostponeModal(id) {
     openModal('apptPostponeModal');
 }
 
-// تحويل التاريخ للمعيار العالمي قبل الإرسال (لحل مشكلة إزاحة الوقت)
 async function saveApptPostpone(event) {
     event.preventDefault();
     const id = document.getElementById('postpone_appt_id').value;
     const newDateStr = document.getElementById('postpone_date').value;
     
-    // تحويل التوقيت لـ ISO لكي يُحفظ بشكل صحيح كـ UTC في السيرفر
     const isoDate = newDateStr ? new Date(newDateStr).toISOString() : null;
 
     const appt = globalData.appointments.find(a => a.id === id);
@@ -494,6 +589,87 @@ async function cancelAppointment(id) {
         await loadAllData();
     }
 }
+
+// ------------------ الميزات الجديدة الذكية ------------------
+
+// 1. نظام قراءة الهوية الذكي (OCR Scanner)
+async function processIdImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const btn = event.target.previousElementSibling;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري القراءة...';
+    btn.disabled = true;
+
+    try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Image = e.target.result;
+            const res = await fetch(`${CONFIG.API_URL}/api/ai/ocr`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}`
+                },
+                body: JSON.stringify({ image_base64: base64Image })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            if (data.full_name) document.getElementById('client_full_name').value = data.full_name;
+            if (data.national_id) document.getElementById('client_national_id').value = data.national_id;
+
+            showAlert('تم استخراج بيانات الموكل من الهوية بنجاح!', 'success');
+        };
+        reader.readAsDataURL(file);
+    } catch (err) {
+        showAlert(err.message || 'فشل في قراءة الهوية، يرجى التصوير بوضوح أكثر.', 'danger');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        event.target.value = ''; 
+    }
+}
+
+// 2. الإملاء الصوتي (Voice Dictation)
+function startDictation(elementId) {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showAlert('عذراً، متصفحك الحالي لا يدعم الإملاء الصوتي. يرجى استخدام جوجل كروم أو سفاري المحدث.', 'warning');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-JO'; 
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    const textArea = document.getElementById(elementId);
+    const originalPlaceholder = textArea.placeholder;
+    textArea.placeholder = "الميكروفون يعمل.. تحدث الآن ليتم تحويل كلامك لنص...";
+    
+    showAlert('جاري الاستماع... يمكنك التحدث الآن', 'info');
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        textArea.value += (textArea.value ? ' ' : '') + transcript;
+    };
+
+    recognition.onerror = function(event) {
+        showAlert('حدث خطأ أثناء الاستماع أو تم إلغاء الصلاحية.', 'danger');
+        textArea.placeholder = originalPlaceholder;
+    };
+
+    recognition.onend = function() {
+        textArea.placeholder = originalPlaceholder;
+        showAlert('تم إيقاف التسجيل وإدراج النص.', 'success');
+    };
+}
+
+// -----------------------------------------------------------
 
 function renderStaffList() {
     const list = document.getElementById('staff-list');
@@ -602,6 +778,7 @@ async function saveClient(event) {
     if(await API.addClient(data)) { closeModal('clientModal'); document.getElementById('clientForm').reset(); await loadAllData(); showAlert('تم إضافة الموكل بنجاح', 'success'); }
 }
 
+// تعديل حفظ القضية ليتضمن نظام المهام التلقائية (Workflow)
 async function saveCase(event) {
     event.preventDefault();
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');
@@ -611,6 +788,9 @@ async function saveCase(event) {
     
     const lawsuitTextElement = document.getElementById('case_lawsuit_text');
     const lawsuitText = lawsuitTextElement ? lawsuitTextElement.value : null;
+
+    const autoTasksCheckbox = document.getElementById('case_auto_tasks');
+    const generateTasks = autoTasksCheckbox ? autoTasksCheckbox.checked : false;
 
     const data = {
         client_id: document.getElementById('case_client_id')?.value || null, 
@@ -639,11 +819,42 @@ async function saveCase(event) {
         btn.disabled = true;
     }
 
-    if(await API.addCase(data)) { closeModal('caseModal'); document.getElementById('caseForm').reset(); await loadAllData(); showAlert('تم إنشاء القضية بنجاح', 'success'); }
+    if(await API.addCase(data)) { 
+        closeModal('caseModal'); 
+        document.getElementById('caseForm').reset(); 
+
+        // توليد المهام التلقائية إذا كان الخيار مفعلاً
+        if (generateTasks) {
+            const caseIdLabel = data.case_internal_id || 'ملف جديد';
+            const tasks = [
+                { title: `دراسة وتجهيز اللائحة - ${caseIdLabel}`, type: 'مهمة مكتبية (صياغة)' },
+                { title: `تسجيل الدعوى ودفع الرسوم - ${caseIdLabel}`, type: 'مراجعة دائرة' },
+                { title: `متابعة إجراءات التبليغ للخصم - ${caseIdLabel}`, type: 'مراجعة دائرة' }
+            ];
+
+            for (let i = 0; i < tasks.length; i++) {
+                const taskDate = new Date();
+                taskDate.setDate(taskDate.getDate() + (i + 1) * 2); // توزيع المهام على الأيام القادمة
+                
+                await API.addAppointment({
+                    title: tasks[i].title,
+                    appt_date: taskDate.toISOString(),
+                    type: tasks[i].type,
+                    assigned_to: assignedLawyers.length > 0 ? assignedLawyers : null,
+                    created_by: currentUser.id,
+                    status: 'مجدول'
+                });
+            }
+            showAlert('تم إنشاء القضية وتوليد المهام التلقائية (Workflow) بنجاح!', 'success');
+        } else {
+            showAlert('تم إنشاء القضية بنجاح', 'success');
+        }
+        
+        await loadAllData(); 
+    }
     if(btn) { btn.innerHTML = originalBtnText; btn.disabled = false; }
 }
 
-// تحويل التاريخ للمعيار العالمي قبل الإرسال (لحل مشكلة إزاحة الوقت)
 async function saveAppointment(event) {
     event.preventDefault();
     const isLawyer = (currentUser.role === 'lawyer' || currentUser.role === 'محامي');

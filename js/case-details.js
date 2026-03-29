@@ -1,4 +1,4 @@
-// js/case-details.js - محرك التفاصيل المطور 
+// js/case-details.js - محرك تفاصيل القضية (يشمل الذكاء الاصطناعي، الإملاء الصوتي، الواتساب، والتحقق الأمني)
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -74,7 +74,6 @@ async function loadCaseFullDetails() {
 function renderHeaderAndSummary() {
     document.getElementById('case-title').innerText = `${caseObj.case_internal_id || 'ملف قضية'}`;
     
-    // الربط الذكي للموكل
     const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
     const clientName = client ? client.full_name : "موكل غير محدد";
     document.getElementById('case-client-name').innerHTML = `<i class="fas fa-user-tie me-2 text-info"></i> ${clientName}`;
@@ -102,8 +101,9 @@ function renderHeaderAndSummary() {
     if (caseObj.deadline_date) {
         deadlineEl.innerText = caseObj.deadline_date;
         const daysLeft = Math.ceil((new Date(caseObj.deadline_date) - new Date()) / (1000 * 60 * 60 * 24));
-        if(daysLeft <= 7 && daysLeft > 0) deadlineEl.className = "text-danger fw-bold heartbeat-animation";
+        if(daysLeft <= 7 && daysLeft > 0) deadlineEl.className = "text-danger fw-bold heartbeat-animation fs-6";
         else if (daysLeft < 0) deadlineEl.innerHTML = `<span class="text-dark"><i class="fas fa-times"></i> منتهي</span>`;
+        else deadlineEl.className = "fs-6";
     } else {
         deadlineEl.innerText = "غير محدد";
     }
@@ -134,7 +134,7 @@ function renderAiAnalysis() {
 async function saveSecretNotes() {
     const notes = document.getElementById('secret_notes_input').value;
     const res = await API.updateCase(currentCaseId, { secret_notes: notes });
-    if (res) showAlert('تم حفظ الملاحظات السرية', 'success');
+    if (res) showAlert('تم حفظ الملاحظات السرية بنجاح', 'success');
 }
 
 function renderTimeline(updates) {
@@ -154,31 +154,49 @@ function renderTimeline(updates) {
 
 function renderPayments(installments) {
     const container = document.getElementById('payments-container');
-    if (!installments || installments.length === 0) { container.innerHTML = '<div class="text-center p-3 text-muted small border bg-white">لا توجد دفعات.</div>'; return; }
+    if (!installments || installments.length === 0) { container.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد دفعات.</div>'; return; }
     
     container.innerHTML = installments.map(i => {
-        const printBtn = i.status === 'مدفوعة' ? `<button class="btn btn-sm btn-outline-success fw-bold ms-2" onclick="printInvoice('${i.amount}', '${i.due_date || i.created_at.split('T')[0]}', '${i.id}')" title="إصدار فاتورة"><i class="fas fa-print"></i> فاتورة</button>` : '';
+        const isPaid = i.status === 'مدفوعة';
+        const printBtn = isPaid ? `<button class="btn btn-sm btn-outline-success py-0 px-2 fw-bold ms-1 shadow-sm" onclick="printInvoice('${i.amount}', '${i.due_date || i.created_at.split('T')[0]}', '${i.id}')" title="إصدار فاتورة"><i class="fas fa-print"></i></button>` : '';
+        const waBtn = !isPaid ? `<button class="btn btn-sm whatsapp-btn py-0 px-2 ms-1 shadow-sm" onclick="sendWhatsAppReminder('${i.amount}', '${i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG')}')" title="إرسال تذكير بالدفع عبر واتساب"><i class="fab fa-whatsapp"></i></button>` : '';
+
         return `
-        <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 ${i.status === 'مدفوعة' ? 'border-success' : 'border-warning'}">
+        <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 ${isPaid ? 'border-success' : 'border-warning'} bg-white">
             <div>
-                <b class="fs-5 text-success">${Number(i.amount).toLocaleString()} د.أ</b>
-                <small class="d-block text-muted">تاريخ: ${i.due_date || new Date(i.created_at).toLocaleDateString()}</small>
+                <b class="fs-5 ${isPaid ? 'text-success' : 'text-dark'}">${Number(i.amount).toLocaleString()} د.أ</b>
+                <small class="d-block text-muted">تاريخ: ${i.due_date || new Date(i.created_at).toLocaleDateString('ar-EG')}</small>
             </div>
             <div>
-                <span class="badge ${i.status === 'مدفوعة' ? 'bg-success' : 'bg-warning text-dark'}">${i.status}</span>
+                <span class="badge ${isPaid ? 'bg-success' : 'bg-warning text-dark'}">${i.status}</span>
                 ${printBtn}
+                ${waBtn}
             </div>
         </div>
     `}).join('');
 }
 
+function sendWhatsAppReminder(amount, dueDate) {
+    const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
+    if (!client || !client.phone) {
+        showAlert('لا يوجد رقم هاتف مسجل للموكل في النظام.', 'warning');
+        return;
+    }
+    // تحضير رقم الهاتف بصيغة دولية (افتراض الأردن، يمكن تعديله لاحقاً)
+    let phoneStr = String(client.phone);
+    if (phoneStr.startsWith('0')) phoneStr = '962' + phoneStr.substring(1);
+    
+    const text = `تحية طيبة السيد/ة ${client.full_name}،\n\nنود تذكيركم باستحقاق دفعة مالية مستحقة بقيمة *${amount} دينار أردني*، بتاريخ (${dueDate}).\nيرجى التواصل معنا لترتيب عملية السداد.\n\nمع التحية،\nإدارة المكتب.`;
+    window.open(`https://wa.me/${phoneStr}?text=${encodeURIComponent(text)}`, '_blank');
+}
+
 function renderExpenses(expenses) {
     const container = document.getElementById('expenses-container');
-    if (!expenses || expenses.length === 0) { container.innerHTML = '<div class="text-center p-3 text-muted small border bg-white">لا توجد مصروفات.</div>'; return; }
+    if (!expenses || expenses.length === 0) { container.innerHTML = '<div class="text-center p-3 text-muted small border bg-white rounded">لا توجد مصروفات.</div>'; return; }
     container.innerHTML = expenses.map(e => {
         const receiptLink = e.receipt_url ? `<a href="${e.receipt_url}" target="_blank" class="btn btn-sm btn-outline-secondary mt-1 py-0 px-2" title="عرض الإيصال المرفق"><i class="fas fa-paperclip"></i> مرفق</a>` : '';
         return `
-        <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-danger">
+        <div class="card-custom p-3 mb-2 d-flex justify-content-between align-items-center border-start border-4 border-danger bg-white">
             <div>
                 <b class="fs-5 text-danger">${Number(e.amount).toLocaleString()} د.أ</b>
                 <small class="d-block text-muted">${e.description}</small>
@@ -191,16 +209,18 @@ function renderExpenses(expenses) {
 
 function renderFiles(files) {
     const container = document.getElementById('files-container');
-    if (!files || files.length === 0) { container.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white">الأرشيف فارغ.</div>'; return; }
+    if (!files || files.length === 0) { container.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white rounded">الأرشيف فارغ.</div>'; return; }
     container.innerHTML = files.map(f => {
         const isImage = f.file_type && f.file_type.includes('image');
         const iconHtml = (isImage && f.drive_file_id) ? `<i class="fas fa-image fs-1 text-primary mb-2"></i>` : `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
+        const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${f.expiry_date}</small>` : '';
         return `
         <div class="col-6">
-            <div class="card-custom p-3 text-center border shadow-sm h-100">
+            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white">
                 <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${f.file_category || 'مستند'}</span>
                 ${iconHtml}
-                <h6 class="small fw-bold text-truncate" title="${f.file_name}">${f.file_name}</h6>
+                <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${f.file_name}">${f.file_name}</h6>
+                ${expiryBadge}
                 <div class="d-flex gap-1 mt-2">
                     <a href="${f.drive_file_id}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>
                 </div>
@@ -214,20 +234,123 @@ function calculateFinances(installments, expenses) {
     const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const agreedFees = Number(caseObj.total_agreed_fees) || 0;
     
-    // المتبقي على الموكل = (الأتعاب المتفق عليها + المصاريف) - المسدد
     const clientRemaining = (agreedFees + totalExpenses) - totalPaid;
 
     document.getElementById('sum-agreed').innerText = agreedFees.toLocaleString();
     document.getElementById('sum-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('sum-expenses').innerText = totalExpenses.toLocaleString();
     
-    // تغيير خانة "الصافي" لتعرض "المتبقي على الموكل" لأنها الأهم في سياق القضية
     const netEl = document.getElementById('sum-net');
     if(netEl) {
         netEl.innerText = clientRemaining.toLocaleString();
         netEl.className = clientRemaining > 0 ? 'text-danger' : 'text-success';
     }
-}function tafqeet(number) {
+}
+
+// ------------------- ميزة الإملاء الصوتي -------------------
+function startDictation(elementId) {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showAlert('عذراً، متصفحك لا يدعم الإملاء الصوتي. يرجى التحديث.', 'warning');
+        return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ar-JO'; 
+    recognition.interimResults = false;
+
+    const textArea = document.getElementById(elementId);
+    const originalPlaceholder = textArea.placeholder;
+    textArea.placeholder = "جاري الاستماع... تحدث الآن.";
+    
+    showAlert('الميكروفون يعمل.. تحدث الآن', 'info');
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        textArea.value += (textArea.value ? ' ' : '') + event.results[0][0].transcript;
+    };
+
+    recognition.onerror = function() {
+        showAlert('تم إيقاف الميكروفون أو حدث خطأ.', 'danger');
+        textArea.placeholder = originalPlaceholder;
+    };
+
+    recognition.onend = function() {
+        textArea.placeholder = originalPlaceholder;
+        showAlert('تم إدراج النص الصوتي بنجاح.', 'success');
+    };
+}
+
+// ------------------- ميزة المولد الآلي للمسودات (AI) -------------------
+function openAiDraftModal() {
+    document.getElementById('ai_draft_notes').value = '';
+    document.getElementById('ai_draft_result_container').classList.add('d-none');
+    document.getElementById('ai_draft_result').value = '';
+    openModal('aiDraftModal');
+}
+
+async function generateAiDraft() {
+    const btn = document.getElementById('btn_generate_draft');
+    const draftType = document.getElementById('ai_draft_type').value;
+    const extraNotes = document.getElementById('ai_draft_notes').value;
+    
+    const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
+    const clientName = client ? client.full_name : 'الموكل';
+    const opponent = caseObj.opponent_name || 'الخصم';
+    const claim = caseObj.claim_amount || 'غير محدد';
+    const court = caseObj.current_court || 'المحكمة المختصة';
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري توليد المسودة...';
+    btn.disabled = true;
+    document.getElementById('ai_draft_result_container').classList.add('d-none');
+
+    const promptText = `أنت محامي أردني محترف. قم بصياغة مسودة قانونية رسمية من نوع: (${draftType}).
+البيانات المتوفرة للدمج:
+- الطرف الأول (الموكل): ${clientName}
+- الطرف الثاني (الخصم): ${opponent}
+- المحكمة المختصة: ${court}
+- المطالبة المالية: ${claim} دينار أردني
+- ملاحظات إضافية من المحامي: ${extraNotes}
+
+المطلوب:
+اكتب المسودة بشكل رسمي وجاهز للطباعة والتوقيع. لا تكتب أي مقدمات أو ردود أو شروحات خارج النص القانوني. ابدأ بالبسملة والنص مباشرة.`;
+
+    try {
+        const res = await fetch(`${CONFIG.API_URL}/api/ai/chat`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}`
+            },
+            body: JSON.stringify({ prompt: promptText })
+        });
+        const data = await res.json();
+        
+        if (data.reply) {
+            document.getElementById('ai_draft_result').value = data.reply;
+            document.getElementById('ai_draft_result_container').classList.remove('d-none');
+            showAlert('تم توليد المسودة بنجاح! يمكنك مراجعتها ونسخها.', 'success');
+        } else {
+            throw new Error('لم يتم استلام رد من الذكاء الاصطناعي');
+        }
+    } catch (e) {
+        showAlert('فشل الاتصال بمحرك الذكاء الاصطناعي.', 'danger');
+    } finally {
+        btn.innerHTML = '<i class="fas fa-robot me-1"></i> توليد المسودة الآن';
+        btn.disabled = false;
+    }
+}
+
+function copyToClipboard(elementId) {
+    const el = document.getElementById(elementId);
+    el.select();
+    el.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    showAlert("تم نسخ النص للحافظة بنجاح!", "success");
+}
+
+function tafqeet(number) {
     const units = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"];
     const tens = ["", "عشرة", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
     const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
@@ -264,6 +387,7 @@ function calculateFinances(installments, expenses) {
     return words;
 }
 
+// دالة الطباعة المتطورة (تتضمن الفاتورة و الـ QR للتحقق)
 function printInvoice(amount, date, invoiceId) {
     document.getElementById('print-section').style.display = 'block';
     document.getElementById('qr-print-container').style.display = 'none';
@@ -279,6 +403,31 @@ function printInvoice(amount, date, invoiceId) {
     
     const textAmount = tafqeet(parseInt(amount));
     document.getElementById('print-inv-tafqeet').innerText = textAmount + " دينار أردني";
+
+    const qrContainer = document.getElementById("invoice-verification-qr");
+    if (qrContainer && caseObj.public_token) {
+        qrContainer.innerHTML = "";
+        const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+        const verifyUrl = `${baseUrl}verify.html?token=${caseObj.public_token}&inv=${invoiceId}`;
+        
+        new QRCode(qrContainer, {
+            text: verifyUrl,
+            width: 100,
+            height: 100,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.L
+        });
+        
+        let note = document.createElement('div');
+        note.style.fontSize = "11px";
+        note.style.marginTop = "8px";
+        note.style.color = "#555";
+        note.innerHTML = "<b>حماية المستندات:</b> امسح الرمز أعلاه بكاميرا هاتفك للتحقق من أن هذا السند أصلي ومسجل.";
+        qrContainer.appendChild(note);
+    } else if (qrContainer) {
+        qrContainer.innerHTML = "<small>لا يمكن توليد رمز التحقق.</small>";
+    }
 
     window.print();
     setTimeout(() => { document.getElementById('print-section').style.display = 'none'; }, 1000);
@@ -348,13 +497,6 @@ function openEditModal() {
         }
     }
     
-    const parentSelect = document.getElementById('edit_parent_case_id');
-    if(parentSelect && window.firmCases) {
-        parentSelect.innerHTML = '<option value="">لا يوجد ارتباط</option>' + 
-            window.firmCases.filter(c => c.id !== currentCaseId).map(c => `<option value="${c.id}">${c.case_internal_id} - ${c.opponent_name || ''}</option>`).join('');
-        parentSelect.value = caseObj.parent_case_id || '';
-    }
-
     openModal('editCaseModal');
 }
 
@@ -381,8 +523,7 @@ async function updateCaseDetails(event) {
         deadline_date: document.getElementById('edit_deadline_date')?.value || null,
         success_probability: document.getElementById('edit_success_probability')?.value ? Number(document.getElementById('edit_success_probability').value) : null,
         
-        assigned_lawyer_id: assignedVal ? [assignedVal] : null,
-        parent_case_id: document.getElementById('edit_parent_case_id')?.value || null
+        assigned_lawyer_id: assignedVal ? [assignedVal] : null
     };
     if(await API.updateCase(currentCaseId, data)) { closeModal('editCaseModal'); showAlert('تم التحديث بنجاح', 'success'); await loadCaseFullDetails(); }
 }
@@ -435,6 +576,7 @@ async function saveFile(event) {
     const fileInput = document.getElementById('file_input');
     const titleInput = document.getElementById('file_title_input').value;
     const catInput = document.getElementById('file_category_input').value;
+    const expiryInput = document.getElementById('file_expiry_date').value;
     const btn = document.getElementById('btn_upload');
     if (!fileInput.files.length) return;
     const file = fileInput.files[0];
@@ -442,11 +584,19 @@ async function saveFile(event) {
     try {
         const driveRes = await API.uploadToDrive(file, caseObj.case_internal_id);
         if(driveRes && driveRes.url) {
-            if(await API.addFileRecord({ case_id: currentCaseId, file_name: titleInput || file.name, file_type: file.type, file_category: catInput, drive_file_id: driveRes.url, is_template: false })) {
-                closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ', 'success'); await loadCaseFullDetails();
+            if(await API.addFileRecord({ 
+                case_id: currentCaseId, 
+                file_name: titleInput || file.name, 
+                file_type: file.type, 
+                file_category: catInput, 
+                drive_file_id: driveRes.url, 
+                is_template: false,
+                expiry_date: expiryInput || null
+            })) {
+                closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ السحابي', 'success'); await loadCaseFullDetails();
             }
         }
-    } catch (err) { showAlert("فشل: " + err.message, 'danger'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> بدء الرفع'; }
+    } catch (err) { showAlert("فشل: " + err.message, 'danger'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; }
 }
 
 function copyDeepLink() {
