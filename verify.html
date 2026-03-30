@@ -2,198 +2,122 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a192f">
-    <title>التحقق الأمني من المستندات | نظام موكّل</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>التحقق من صحة السند | موكّل</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        
-        :root {
-            --navy: #0a192f;
-            --accent: #64ffda;
-        }
-        
-        body { 
-            background-color: #f8fafc; 
-            font-family: 'Cairo', sans-serif; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        
-        .verify-card { 
-            max-width: 500px; 
-            width: 100%; 
-            border-radius: 20px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
-            background: white; 
-            padding: 40px 30px; 
-            text-align: center; 
-            border-top: 8px solid #64748b;
-            transition: all 0.3s ease;
-        }
-        
-        .status-icon { 
-            font-size: 5rem; 
-            margin-bottom: 20px; 
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-        
-        .spinner-border { 
-            width: 4rem; 
-            height: 4rem; 
-            color: var(--navy); 
-            border-width: 0.3em;
-        }
-
-        .firm-brand {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px dashed #e2e8f0;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        
-        .detail-row:last-child {
-            border-bottom: none;
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0); opacity: 0; }
-            80% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .verify-card { background: white; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 100%; max-width: 450px; padding: 30px; border-top: 8px solid #10b981; text-align: center; }
+        .status-icon { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 40px; }
+        .status-valid { background-color: #d1fae5; color: #10b981; }
+        .status-invalid { background-color: #fee2e2; color: #ef4444; border-top: 8px solid #ef4444 !important; }
+        .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #e2e8f0; }
+        .data-row:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
 
-    <div class="verify-card" id="verify-box">
-        
-        <div class="firm-brand d-none" id="firm-info">
-            <h5 class="fw-bold text-navy mb-0" id="res-firm-name"><i class="fas fa-balance-scale text-accent me-2"></i> نظام موكّل</h5>
-            <small class="text-muted">نظام التحقق الإلكتروني من صحة المستندات</small>
-        </div>
-
+    <div id="verify-content" class="verify-card shadow-lg">
         <div id="loading-state">
-            <div class="spinner-border mb-4" role="status"></div>
-            <h4 class="fw-bold text-navy">جاري فحص المستند الأمني...</h4>
-            <p class="text-muted small">يرجى الانتظار بينما يتواصل النظام مع قواعد البيانات المشفرة.</p>
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5 class="fw-bold">جاري التحقق من سجلات السحاب...</h5>
         </div>
 
         <div id="result-state" class="d-none">
-            <i id="res-icon" class="status-icon"></i>
-            <h3 id="res-title" class="fw-bold mb-3"></h3>
+            <div id="status-icon-div" class="status-icon"></div>
+            <h3 id="status-title" class="fw-bold mb-1">نتيجة التحقق</h3>
+            <p id="status-desc" class="text-muted small mb-4">تفاصيل السند المستخرجة من النظام</p>
             
-            <div id="res-details" class="text-start bg-light p-4 rounded-4 border mb-4 d-none shadow-sm">
-                <div class="detail-row">
-                    <span class="text-muted small"><i class="fas fa-file-invoice-dollar me-1"></i> نوع المستند:</span>
-                    <b class="text-dark">سند قبض / فاتورة</b>
+            <div id="data-container" class="text-start bg-light p-3 rounded-3 border">
                 </div>
-                <div class="detail-row">
-                    <span class="text-muted small"><i class="fas fa-money-bill-wave me-1"></i> المبلغ المعتمد:</span>
-                    <b class="text-success fs-5" id="res-amount">--</b>
-                </div>
-                <div class="detail-row">
-                    <span class="text-muted small"><i class="fas fa-calendar-check me-1"></i> تاريخ الإصدار/التسجيل:</span>
-                    <b class="text-dark" id="res-date">--</b>
-                </div>
-                <div class="detail-row">
-                    <span class="text-muted small"><i class="fas fa-shield-alt me-1"></i> حالة المستند:</span>
-                    <span class="badge bg-success px-3 py-2">أصلي وموثوق</span>
-                </div>
-            </div>
 
-            <p id="res-message" class="text-muted small mb-0 px-2"></p>
+            <div class="mt-4 pt-3 border-top">
+                <img src="./icons/icon-192.png" width="30" class="mb-2">
+                <p class="small text-muted mb-0">نظام موكّل للتحقق الأمني الرقمي</p>
+            </div>
         </div>
     </div>
 
     <script src="./js/config.js"></script>
     <script>
-        // دالة الحماية من ثغرات الحقن (XSS)
-        const escapeHTML = (str) => {
-            if (str === null || str === undefined) return '';
-            return str.toString().replace(/[&<>'"]/g, 
-                tag => ({
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    "'": '&#39;',
-                    '"': '&quot;'
-                }[tag] || tag)
-            );
-        };
-
         window.onload = async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const token = urlParams.get('token');
-            const invId = urlParams.get('inv');
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const invId = params.get('inv');
 
-            const box = document.getElementById('verify-box');
-            const loading = document.getElementById('loading-state');
-            const result = document.getElementById('result-state');
-            const firmInfo = document.getElementById('firm-info');
-            
-            const showResult = (isSuccess, title, msg) => {
-                loading.classList.add('d-none');
-                result.classList.remove('d-none');
-                firmInfo.classList.remove('d-none');
-                
-                document.getElementById('res-icon').className = isSuccess ? 'status-icon fas fa-check-circle text-success' : 'status-icon fas fa-times-circle text-danger';
-                document.getElementById('res-title').innerText = title;
-                document.getElementById('res-title').className = isSuccess ? 'fw-bold mb-3 text-success' : 'fw-bold mb-3 text-danger';
-                document.getElementById('res-message').innerText = msg;
-                box.style.borderColor = isSuccess ? '#10b981' : '#ef4444';
-            };
-
-            // التحقق من وجود المعطيات في الرابط
             if (!token || !invId) {
-                showResult(false, 'مستند غير صالح', 'الرمز الممسوح ضوئياً غير مكتمل، تالف، أو تم التلاعب به.');
+                showError("رابط التحقق غير مكتمل أو تالف.");
                 return;
             }
 
             try {
-                // الاتصال بالسيرفر للتحقق
+                // الاتصال بمسار بوابة الموكل العامة لجلب بيانات المالية
                 const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${token}`);
                 const data = await res.json();
 
-                if (!res.ok || !data.installments) throw new Error("لا توجد استجابة صالحة من السيرفر");
+                if (res.ok && data.installments) {
+                    // البحث عن الدفعة المحددة (السند)
+                    const invoice = data.installments.find(i => i.id === invId);
 
-                // تحديث اسم المكتب إذا كان متوفراً (مع الحماية من XSS)
-                if (data.firm && data.firm.firm_name) {
-                    document.getElementById('res-firm-name').innerHTML = `<i class="fas fa-balance-scale text-accent me-2"></i> ${escapeHTML(data.firm.firm_name)}`;
-                }
-
-                // البحث عن الفاتورة برقمها والتأكد أنها "مدفوعة" فعلاً
-                const invoice = data.installments.find(i => i.id === invId && i.status === 'مدفوعة');
-                
-                if (invoice) {
-                    document.getElementById('res-details').classList.remove('d-none');
-                    document.getElementById('res-amount').innerText = Number(invoice.amount).toLocaleString() + ' د.أ';
-                    
-                    const dateObj = invoice.due_date ? new Date(invoice.due_date) : new Date(invoice.created_at);
-                    document.getElementById('res-date').innerText = dateObj.toLocaleDateString('ar-EG');
-
-                    showResult(true, 'مستند أصلي وموثوق', 'تم التحقق من قاعدة البيانات بنجاح. هذا السند صادر بشكل رسمي ومسجل في الحسابات.');
+                    if (invoice && invoice.status === 'مدفوعة') {
+                        showSuccess(invoice, data.cases[0], data.firm);
+                    } else {
+                        showError("لم يتم العثور على هذا السند في سجلات المكتب، أو أنه لم يُسدد بعد.");
+                    }
                 } else {
-                    showResult(false, 'مستند غير معتمد', 'تحذير أمني: هذا السند غير مسجل في النظام كدفعة مستلمة، أو تم إلغاؤه، أو قد يكون مزوراً. يرجى مراجعة إدارة المكتب فوراً.');
+                    showError("فشل الوصول لقاعدة البيانات المركزية.");
                 }
-            } catch (err) {
-                showResult(false, 'فشل الاتصال', 'تعذر الاتصال بالخادم للتحقق من المستند. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.');
+            } catch (e) {
+                showError("خطأ في الاتصال بالخادم السحابي.");
             }
         };
+
+        function showSuccess(inv, caseData, firm) {
+            document.getElementById('loading-state').classList.add('d-none');
+            const resState = document.getElementById('result-state');
+            resState.classList.remove('d-none');
+
+            const iconDiv = document.getElementById('status-icon-div');
+            iconDiv.className = "status-icon status-valid";
+            iconDiv.innerHTML = '<i class="fas fa-check-circle"></i>';
+
+            document.getElementById('status-title').innerText = "سند أصلي ومعتمد";
+            document.getElementById('status-title').className = "fw-bold mb-1 text-success";
+
+            const container = document.getElementById('data-container');
+            container.innerHTML = `
+                <div class="data-row"><span>جهة الإصدار:</span> <b class="text-navy">${firm.firm_name}</b></div>
+                <div class="data-row"><span>رقم الملف:</span> <b>${caseData.case_internal_id}</b></div>
+                <div class="data-row"><span>قيمة السند:</span> <b class="text-success">${inv.amount} د.أ</b></div>
+                <div class="data-row"><span>تاريخ السداد:</span> <b>${inv.due_date || inv.created_at.split('T')[0]}</b></div>
+                <div class="data-row"><span>حالة السند:</span> <span class="badge bg-success">مسجل ومقبوض</span></div>
+            `;
+        }
+
+        function showError(msg) {
+            document.getElementById('loading-state').classList.add('d-none');
+            const resState = document.getElementById('result-state');
+            resState.classList.remove('d-none');
+            
+            const card = document.querySelector('.verify-card');
+            card.classList.add('status-invalid');
+
+            const iconDiv = document.getElementById('status-icon-div');
+            iconDiv.className = "status-icon status-invalid";
+            iconDiv.innerHTML = '<i class="fas fa-times-circle"></i>';
+
+            document.getElementById('status-title').innerText = "تحذير: سند غير موثق";
+            document.getElementById('status-title').className = "fw-bold mb-1 text-danger";
+            document.getElementById('status-desc').innerText = msg;
+            
+            document.getElementById('data-container').innerHTML = `
+                <div class="alert alert-danger mb-0 small text-center fw-bold">
+                    يرجى مراجعة إدارة المكتب فوراً. لم يتم العثور على هذا السند في النظام الرقمي المعتمد.
+                </div>
+            `;
+        }
     </script>
 </body>
 </html>
