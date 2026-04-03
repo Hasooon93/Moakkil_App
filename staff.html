@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>إدارة الموظفين (HR) | نظام موكّل</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .staff-card {
+            transition: all 0.3s ease;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        .staff-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            border-color: var(--accent);
+        }
+        .staff-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent);
+            background-color: var(--navy);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0 auto;
+        }
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            color: #64748b;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: var(--navy);
+            color: white;
+        }
+        .doc-item {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="bg-light pb-5 mb-5">
+
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between">
+        <button class="btn btn-link text-white p-0" onclick="window.location.href='app.html'"><i class="fas fa-arrow-right fs-4"></i></button>
+        <h5 class="mb-0 fw-bold text-white text-truncate mx-2">الموارد البشرية (فريق العمل)</h5>
+        <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm" onclick="loadStaff()"><i class="fas fa-sync"></i></button>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold text-navy mb-0"><i class="fas fa-users-cog me-2"></i> دليل الموظفين والمحامين</h5>
+            <button class="btn btn-primary-custom shadow-sm fw-bold" onclick="openStaffModal()"><i class="fas fa-user-plus me-1"></i> إضافة موظف</button>
+        </div>
+
+        <div class="row g-3" id="staff-container">
+            <div class="col-12 text-center p-5 text-muted bg-white rounded border shadow-sm">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>جاري تحميل بيانات الفريق...
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="staffModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold" id="staffModalLabel"><i class="fas fa-id-card me-2 text-accent"></i> ملف الموظف</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 bg-light">
+                    
+                    <ul class="nav nav-pills bg-white p-2 border-bottom overflow-auto flex-nowrap" id="staffTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active px-3" data-bs-toggle="pill" data-bs-target="#tab-personal" type="button">الشخصية</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#tab-professional" type="button">المهنية والنقابة</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#tab-financial" type="button">الرواتب والطوارئ</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#tab-documents" type="button">الأرشيف والوثائق</button></li>
+                    </ul>
+
+                    <form id="staffForm" onsubmit="saveStaff(event)" class="p-3">
+                        <input type="hidden" id="staff_id">
+                        <div class="tab-content">
+                            
+                            <div class="tab-pane fade show active" id="tab-personal">
+                                <div class="alert alert-info border-0 shadow-sm mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div><i class="fas fa-magic text-primary me-1"></i> <b>التعبئة الذكية:</b> انسخ نص الهوية (OCR) للذكاء الاصطناعي لملء الحقول آلياً.</div>
+                                        <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="openAiIdModal()">استخراج <i class="fas fa-robot"></i></button>
+                                    </div>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">الاسم الرباعي <span class="text-danger">*</span></label><input type="text" class="form-control border-0 shadow-sm" id="s_full_name" required></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رقم الهاتف <span class="text-danger">*</span></label><input type="tel" class="form-control border-0 shadow-sm" id="s_phone" dir="ltr" required placeholder="مثال: 079..."></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">معرف تيليغرام (للتنبيهات)</label><input type="number" class="form-control border-0 shadow-sm" id="s_telegram_id" dir="ltr" placeholder="اختياري"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">تاريخ الميلاد</label><input type="date" class="form-control border-0 shadow-sm" id="s_dob"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رابط صورة شخصية</label><input type="url" class="form-control border-0 shadow-sm" id="s_avatar" dir="ltr" placeholder="https://..."></div>
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">عنوان السكن</label><input type="text" class="form-control border-0 shadow-sm" id="s_address" placeholder="المدينة، المنطقة، الشارع..."></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="tab-professional">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">الدور والصلاحيات <span class="text-danger">*</span></label>
+                                        <select class="form-select border-0 shadow-sm" id="s_role" required>
+                                            <option value="lawyer">محامي مزاول</option>
+                                            <option value="secretary">سكرتير تنفيذي</option>
+                                            <option value="admin">مدير / شريك</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">المسمى الوظيفي / التخصص</label><input type="text" class="form-control border-0 shadow-sm" id="s_specialization" placeholder="مثال: محامي شركات، متدرب..."></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">تاريخ الانضمام للمكتب</label><input type="date" class="form-control border-0 shadow-sm" id="s_join_date"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">سنوات الخبرة</label><input type="number" class="form-control border-0 shadow-sm" id="s_experience" min="0" value="0"></div>
+                                    <hr class="mt-4 mb-2">
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رقم الهوية النقابية</label><input type="text" class="form-control border-0 shadow-sm" id="s_syndicate_num"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted text-danger">تاريخ انتهاء النقابة (للتذكير)</label><input type="date" class="form-control border-0 shadow-sm" id="s_syndicate_expiry"></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="tab-financial">
+                                <div class="row g-3 mb-3">
+                                    <h6 class="text-navy fw-bold border-bottom pb-2">التفاصيل المالية</h6>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">الراتب الأساسي (د.أ)</label><input type="number" class="form-control border-0 shadow-sm" id="s_salary" min="0"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">نسبة العمولة (%)</label><input type="number" class="form-control border-0 shadow-sm" id="s_commission" min="0" max="100" placeholder="مثال: 10"></div>
+                                    
+                                    <h6 class="text-navy fw-bold border-bottom pb-2 mt-4">جهة الاتصال للطوارئ</h6>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">اسم شخص للطوارئ</label><input type="text" class="form-control border-0 shadow-sm" id="s_em_name"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رقم هاتفه</label><input type="tel" class="form-control border-0 shadow-sm" id="s_em_phone" dir="ltr"></div>
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">صلة القرابة</label><input type="text" class="form-control border-0 shadow-sm" id="s_em_relation"></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="tab-documents">
+                                <div class="alert alert-warning border-0 shadow-sm small fw-bold">
+                                    <i class="fas fa-exclamation-triangle"></i> يرجى حفظ بيانات الموظف (الأساسية) أولاً لتتمكن من رفع وإدارة الوثائق.
+                                </div>
+                                <div id="documents-area" class="d-none">
+                                    <div class="mb-3 p-3 bg-white border rounded shadow-sm">
+                                        <label class="form-label fw-bold text-navy small">رفع مستند جديد (هوية، شهادة، عقد...)</label>
+                                        <div class="input-group">
+                                            <input type="text" id="doc_name" class="form-control" placeholder="اسم الوثيقة">
+                                            <input type="file" id="doc_file" class="form-control">
+                                            <button type="button" class="btn btn-warning text-dark fw-bold" id="btnUploadDoc" onclick="uploadStaffDoc()"><i class="fas fa-upload"></i> رفع</button>
+                                        </div>
+                                    </div>
+                                    <h6 class="fw-bold text-muted border-bottom pb-2">سجل الوثائق المحفوظة</h6>
+                                    <div id="staff-docs-list"></div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold mt-4 shadow" id="btn_save_staff"><i class="fas fa-save me-1"></i> حفظ بيانات الموظف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="aiIdModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-info text-white border-0">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-robot me-2"></i> المحلل الذكي للهويات</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 bg-light">
+                    <p class="small text-muted fw-bold mb-2">قم بنسخ ولصق النص المستخرج من صورة الهوية أو البطاقة النقابية هنا، وسيقوم الذكاء الاصطناعي بفرزه تلقائياً.</p>
+                    <textarea class="form-control border-0 shadow-sm mb-3" id="ai_id_text" rows="5" placeholder="الصق نص الهوية هنا..."></textarea>
+                    <button class="btn btn-info text-white w-100 fw-bold shadow-sm" id="btn_process_id" onclick="processIdAI()"><i class="fas fa-magic me-1"></i> تحليل وملء الحقول</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/staff.js"></script>
+</body>
+</html>

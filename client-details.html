@@ -33,6 +33,7 @@
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" onclick="openEditClientModal()" title="تعديل بيانات الموكل"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-sm btn-danger fw-bold shadow-sm" onclick="deleteClientProfile()" title="حذف الموكل"><i class="fas fa-trash"></i></button>
         </div>
     </div>
 
@@ -107,6 +108,31 @@
                     <small class="text-muted fw-bold d-block"><i class="fas fa-map-marker-alt me-1 text-danger"></i> العنوان التفصيلي</small>
                     <b class="fs-6" id="cd-address">--</b>
                 </div>
+
+                <div class="col-4 mt-3 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block">تاريخ الميلاد</small>
+                    <b class="fs-6 text-dark" id="cd-dob">--</b>
+                </div>
+                <div class="col-4 mt-3 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block">مكان الولادة</small>
+                    <b class="fs-6 text-dark" id="cd-pob">--</b>
+                </div>
+                <div class="col-4 mt-3 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block">اسم الأم</small>
+                    <b class="fs-6 text-dark" id="cd-mother">--</b>
+                </div>
+                <div class="col-4 mt-3 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block">الجنسية</small>
+                    <b class="fs-6 text-dark" id="cd-nationality">--</b>
+                </div>
+                <div class="col-4 mt-3 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block">الحالة الاجتماعية</small>
+                    <b class="fs-6 text-dark" id="cd-marital">--</b>
+                </div>
+                <div class="col-4 mt-3 pt-2 border-top">
+                    <small class="text-muted fw-bold d-block">المهنة</small>
+                    <b class="fs-6 text-dark" id="cd-profession">--</b>
+                </div>
             </div>
 
             <div class="d-flex gap-2">
@@ -173,6 +199,14 @@
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <form onsubmit="updateClientDetails(event)">
+                        
+                        <div class="alert alert-info border-0 shadow-sm mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div><i class="fas fa-magic text-primary me-1"></i> <b>التعبئة الذكية:</b> الصق نص الهوية لملء الحقول آلياً.</div>
+                                <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="openAiIdModal()">استخراج <i class="fas fa-robot"></i></button>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-muted">اسم الموكل / الشركة <span class="text-danger">*</span></label>
                             <input type="text" id="edit_client_full_name" class="form-control form-control-lg border-0 shadow-sm" required>
@@ -187,19 +221,74 @@
                                 <input type="text" id="edit_client_national_id" class="form-control border-0 shadow-sm">
                             </div>
                         </div>
-                        <div class="mb-3">
+
+                        <div class="row g-2 mb-3 border-top pt-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">اسم الأم</label>
+                                <input type="text" id="edit_client_mother" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">تاريخ الميلاد</label>
+                                <input type="date" id="edit_client_dob" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">مكان الولادة</label>
+                                <input type="text" id="edit_client_pob" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الجنسية</label>
+                                <input type="text" id="edit_client_nationality" class="form-control border-0 shadow-sm" value="أردني">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الحالة الاجتماعية</label>
+                                <select id="edit_client_marital" class="form-select border-0 shadow-sm">
+                                    <option value="">غير محدد</option><option value="أعزب">أعزب</option><option value="متزوج">متزوج</option><option value="مطلق">مطلق</option><option value="أرمل">أرمل</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">المهنة</label>
+                                <input type="text" id="edit_client_profession" class="form-control border-0 shadow-sm">
+                            </div>
+                        </div>
+
+                        <div class="mb-3 border-top pt-3">
                             <label class="form-label fw-bold small text-muted">العنوان التفصيلي</label>
                             <textarea id="edit_client_address" class="form-control border-0 shadow-sm" rows="2" placeholder="المدينة، المنطقة، الشارع..."></textarea>
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small text-muted">صفة الموكل</label>
-                            <select id="edit_client_type" class="form-select border-0 shadow-sm">
-                                <option value="فرد">أفراد (شخص طبيعي)</option>
-                                <option value="شركة">شركات (شخص اعتباري)</option>
-                            </select>
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">صفة الموكل</label>
+                                <select id="edit_client_type" class="form-select border-0 shadow-sm">
+                                    <option value="فرد">أفراد (شخص طبيعي)</option>
+                                    <option value="شركة">شركات (شخص اعتباري)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية</label>
+                                <select id="edit_client_confidentiality" class="form-select border-0 shadow-sm">
+                                    <option value="عادي">عادي (متاح للمكتب)</option>
+                                    <option value="سري">سري (للمدير والمحامي المسؤول)</option>
+                                </select>
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-save me-1"></i> حفظ التعديلات</button>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="aiIdModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-info text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-robot me-2"></i> المحلل الذكي للهويات</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <p class="small text-muted fw-bold mb-3">قم بنسخ ولصق النص المستخرج من صورة الهوية (OCR) هنا، وسيقوم الذكاء الاصطناعي بفرز الحقول وتعبئة النموذج آلياً.</p>
+                    <textarea class="form-control border-0 shadow-sm mb-3" id="ai_id_text" rows="5" placeholder="الصق نص الهوية هنا..."></textarea>
+                    <button class="btn btn-info text-white w-100 fw-bold shadow-sm py-2" id="btn_process_id" onclick="processIdAI()"><i class="fas fa-magic me-1"></i> تحليل وملء الحقول</button>
                 </div>
             </div>
         </div>

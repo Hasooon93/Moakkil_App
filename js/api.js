@@ -1,4 +1,4 @@
-// js/api.js - المحرك الموحد المحدث (يدعم JWT، سجل النشاطات، استخراج الهويات، والبحث)
+// js/api.js - المحرك الموحد المحدث (يدعم JWT، سجل النشاطات، الاستخلاص الذكي الديناميكي، والبصمة، المزامنة السحابية الذكية)
 
 async function fetchAPI(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
@@ -20,7 +20,8 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
         // معالجة انتهاء أو تزوير الجلسة (JWT 401) بطرد المستخدم فوراً لحماية البيانات
         if (response.status === 401) {
             console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج...");
-            localStorage.clear();
+            localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+            localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
             window.location.href = 'login.html';
             return null;
         }
@@ -51,13 +52,13 @@ const API = {
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
     deleteClient: (id) => fetchAPI(`/api/clients?id=eq.${id}`, 'DELETE'),
     
-    // القضايا
+    // القضايا (دعم التدرج القضائي والمحامين المتعددين)
     getCases: () => fetchAPI('/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
     deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
     
-    // الموظفين
+    // الموظفين (HR)
     getStaff: () => fetchAPI('/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
@@ -70,35 +71,45 @@ const API = {
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
     
     // المالية والمصروفات
-    getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=${caseId}`),
+    getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=eq.${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
-    deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=${caseId}`, 'DELETE'),
+    deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
     getExpenses: (caseId) => fetchAPI(caseId ? `/api/expenses?case_id=eq.${caseId}` : '/api/expenses'),
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
     
-    // الوقائع
-    getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=${caseId}`),
+    // التحديثات والوقائع (تم تجهيزها لدعم المرفقات attachment_url)
+    getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=eq.${caseId}`),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
     deleteUpdate: (id) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE'),
     
-    // الأرشيف والذكاء الاصطناعي والبحث
-    askAI: (prompt) => fetchAPI('/api/ai/chat', 'POST', { prompt }),
+    // الأرشيف والذكاء الاصطناعي المزدوج
+    askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
+    
+    // **[التعديل الهام هنا]** جعل المتغير type ديناميكياً ليقبل id_extractor الخاص بالموظفين
+    extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
+    
     readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base64: imageBase64 }),
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     
     // فحص تعارض المصالح 
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
 
-    // الإشعارات الداخلية 
+    // الإشعارات الداخلية وتسجيل أجهزة الـ Push
     getNotifications: () => fetchAPI('/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
+    subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
 
-    // سجل النشاطات (Audit Trail للمدير)
-    getHistory: () => fetchAPI('/api/history'),
+    // نظام تسجيل البصمة (WebAuthn)
+    registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
+
+    // سجل النشاطات (Audit Trail) - تم التحديث ليدعم الفلترة حسب القضية (entity_id)
+    getHistory: (entityId = null) => {
+        return fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history');
+    },
 
     // إدارة الملفات والأرشيف السحابي
-    getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=${caseId}` : '/api/files'),
+    getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -111,7 +122,8 @@ const API = {
         return fetchAPI('/api/files', 'POST', payload);
     },
 
-    uploadToDrive: async (file, caseInternalId) => {
+    // تم التحديث: دعم توجيه الملفات إلى المجلد الصحيح في درايف (Drive Folder Hierarchy)
+    uploadToDrive: async (file, caseInternalId, driveFolderId = null) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async () => {
@@ -121,7 +133,8 @@ const API = {
                         fileName: file.name,
                         mimeType: file.type,
                         fileData: base64Data,
-                        caseNumber: caseInternalId || "عام"
+                        caseNumber: caseInternalId || "عام",
+                        driveFolderId: driveFolderId // إذا تم تمريره، سيقوم سكربت جوجل بوضعه داخل المجلد
                     };
                     const res = await fetch(CONFIG.GAS_URL, {
                         method: 'POST',
@@ -145,4 +158,4 @@ const API = {
     }
 };
 
-console.log("✅ API Engine Ready");
+console.log("✅ API Engine Ready (V2.2 - Dynamic AI Types & HR System Supported)");

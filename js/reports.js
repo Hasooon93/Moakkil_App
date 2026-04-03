@@ -1,4 +1,4 @@
-// js/reports.js - محرك التقارير المتقدم (المالية، الإحصائيات، أداء الفريق، المخططات والفلاتر، محمي ضد XSS)
+// js/reports.js - محرك التقارير المتقدم (المالية، الإحصائيات، أداء الفريق، دعم المحامين المتعددين، محمي ضد XSS)
 
 let rawData = { cases: [], staff: [], installments: [], expenses: [] };
 let charts = { finance: null, cases: null };
@@ -72,7 +72,7 @@ async function fetchAndRenderInitialData() {
         // تطبيق صلاحية الرؤية (المحامي يرى قضاياه فقط)
         if (currentUser.role === 'lawyer' || currentUser.role === 'محامي') {
             rawData.cases = allCases.filter(c => {
-                const assigned = Array.isArray(c.assigned_lawyer_id) ? c.assigned_lawyer_id : [c.assigned_lawyer_id];
+                const assigned = Array.isArray(c.assigned_lawyer_id) ? c.assigned_lawyer_id : (c.assigned_lawyer_id ? [c.assigned_lawyer_id] : []);
                 return assigned.includes(currentUser.id) || c.created_by === currentUser.id;
             });
             
@@ -98,7 +98,7 @@ async function fetchAndRenderInitialData() {
     }
 }
 
-// دالة تطبيق الفلتر الزمني
+// دالة تطبيق الفلتر الزمني الديناميكي
 function applyFilters() {
     const startDate = document.getElementById('filter-start').value;
     const endDate = document.getElementById('filter-end').value;
@@ -144,7 +144,7 @@ function renderAllReports(data) {
     const financials = calculateFinancials(data.cases, data.installments, data.expenses);
     const caseStats = calculateCaseStats(data.cases);
     
-    // حساب أداء الموظفين يظهر للمدراء فقط
+    // حساب أداء الموظفين يظهر للمدراء فقط بناءً على الفلتر المطبق
     if (currentUser.role === 'admin' || currentUser.role === 'مدير') {
         calculateStaffPerformance(data.cases, data.staff);
     }
@@ -157,7 +157,12 @@ function calculateFinancials(cases, installments, expenses) {
     let totalPaid = 0;
     let totalExpenses = 0;
 
-    cases.forEach(c => { totalAgreed += Number(c.total_agreed_fees) || 0; });
+    // تم التحديث: إضافة رسوم المحاكم المدفوعة من القضية إلى إجمالي مصاريف المكتب
+    cases.forEach(c => { 
+        totalAgreed += Number(c.total_agreed_fees) || 0; 
+        totalExpenses += Number(c.court_fees_paid) || 0; // التحديث المالي الجديد
+    });
+    
     installments.forEach(i => { if (i.status === 'مدفوعة') totalPaid += Number(i.amount) || 0; });
     expenses.forEach(e => { totalExpenses += Number(e.amount) || 0; });
 
@@ -180,7 +185,7 @@ function calculateCaseStats(cases) {
 
     cases.forEach(c => {
         if (c.status === 'نشطة') active++;
-        else if (c.status === 'مغلقة' || c.status === 'محفوظة') closed++;
+        else if (c.status === 'مغلقة' || c.status === 'مكتملة' || c.status === 'محفوظة') closed++;
         else if (c.status === 'قيد الاستئناف' || c.litigation_degree === 'استئناف' || c.litigation_degree === 'تمييز') appeal++;
     });
 
@@ -207,11 +212,10 @@ function calculateStaffPerformance(cases, staff) {
         let associatedFees = 0;
 
         cases.forEach(c => {
-            let isAssigned = false;
-            if (Array.isArray(c.assigned_lawyer_id)) isAssigned = c.assigned_lawyer_id.includes(member.id);
-            else if (c.assigned_lawyer_id) isAssigned = (c.assigned_lawyer_id === member.id);
+            // دعم مصفوفة المحامين المتعددين
+            const assignedArray = Array.isArray(c.assigned_lawyer_id) ? c.assigned_lawyer_id : (c.assigned_lawyer_id ? [c.assigned_lawyer_id] : []);
             
-            if (isAssigned || c.created_by === member.id) {
+            if (assignedArray.includes(member.id) || c.created_by === member.id) {
                 assignedCasesCount++;
                 associatedFees += Number(c.total_agreed_fees) || 0;
             }
@@ -274,7 +278,7 @@ function renderCharts(finStats, caseStats) {
     charts.finance = new Chart(ctxFinance, {
         type: 'bar',
         data: {
-            labels: ['إجمالي الأتعاب', 'المحصل الفعلي', 'المصروفات'],
+            labels: ['إجمالي الأتعاب', 'المحصل الفعلي', 'المصروفات والرسوم'],
             datasets: [{
                 label: 'المبالغ (د.أ)',
                 data: [finStats.totalAgreed, finStats.totalPaid, finStats.totalExpenses],
@@ -295,7 +299,7 @@ function renderCharts(finStats, caseStats) {
     charts.cases = new Chart(ctxCases, {
         type: 'doughnut',
         data: {
-            labels: ['نشطة', 'قيد الاستئناف', 'مغلقة'],
+            labels: ['نشطة', 'استئناف / تمييز', 'مغلقة'],
             datasets: [{
                 data: [caseStats.active, caseStats.appeal, caseStats.closed],
                 backgroundColor: [colorSuccess, colorWarning, colorDanger],

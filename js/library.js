@@ -1,7 +1,8 @@
 // js/library.js - محرك المكتبة القانونية الذكية (تحديث شامل للاتصال المباشر و SweetAlert)
 
 let currentUser = null;
-let currentToken = null;
+let allTemplates = [];
+let currentFilter = 'عقود'; // التبويب الافتراضي
 
 // دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
@@ -19,7 +20,7 @@ const escapeHTML = (str) => {
 
 window.onload = async () => {
     const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
-    currentToken = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    const currentToken = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     
     if (!currentToken || !userStr) {
         window.location.href = 'login.html';
@@ -29,87 +30,89 @@ window.onload = async () => {
     currentUser = JSON.parse(userStr);
 
     // إظهار زر "إضافة نموذج" للمدير والمحامي فقط (إخفاء للسكرتاريا)
-    if (currentUser.role === 'admin' || currentUser.role === 'lawyer') {
+    if (currentUser.role === 'admin' || currentUser.role === 'lawyer' || currentUser.role === 'مدير' || currentUser.role === 'محامي') {
         const btnAdd = document.getElementById('btn-add-template');
         if (btnAdd) btnAdd.style.display = 'block';
     }
 
-    await loadLibrary();
+    await loadTemplates();
 };
 
-// دالة جلب الملفات من الخادم مباشرة مع تمرير التوكن الصريح
-async function loadLibrary() {
+async function loadTemplates() {
     try {
-        const response = await fetch(`${CONFIG.API_URL}/api/files?is_template=true`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentToken}`
-            }
-        });
-
-        if (!response.ok) throw new Error("فشل الاتصال بالخادم لجلب المكتبة");
-        
-        const files = await response.json();
-        
-        const contracts = [];
-        const poas = [];
-        const pleadings = [];
-        const laws = [];
-
-        if (Array.isArray(files) && files.length > 0) {
-            files.forEach(f => {
-                if (f.file_category === 'عقود') contracts.push(f);
-                else if (f.file_category === 'وكالات') poas.push(f);
-                else if (f.file_category === 'لوائح') pleadings.push(f);
-                else if (f.file_category === 'قوانين') laws.push(f);
-                else contracts.push(f); 
-            });
-        }
-
-        renderCategory('list-contracts', contracts, 'عقود جاهزة');
-        renderCategory('list-poa', poas, 'نماذج وكالات');
-        renderCategory('list-pleadings', pleadings, 'لوائح ومذكرات');
-        renderCategory('list-laws', laws, 'نصوص قانونية');
-
+        // جلب الملفات المحددة كـ قوالب/نماذج (is_template = true)
+        const files = await fetchAPI('/api/files?is_template=eq.true');
+        allTemplates = Array.isArray(files) ? files : [];
+        renderTemplates();
     } catch (error) {
-        showAlert('حدث خطأ أثناء جلب ملفات المكتبة، يرجى التحقق من اتصالك بالإنترنت.', 'error');
+        document.getElementById('templates-container').innerHTML = `
+            <div class="col-12 text-center p-4 text-danger fw-bold bg-white rounded shadow-sm border">
+                <i class="fas fa-exclamation-circle fa-2x mb-2"></i><br>
+                حدث خطأ أثناء الاتصال بالخادم. يرجى التأكد من الإنترنت.
+            </div>
+        `;
     }
 }
 
-// رسم بطاقات الملفات في الواجهة
-function renderCategory(elementId, items, emptyMsg) {
-    const container = document.getElementById(elementId);
-    if (items.length === 0) {
-        container.innerHTML = `<div class="col-12"><div class="text-center p-5 text-muted small bg-white rounded shadow-sm border"><i class="fas fa-folder-open fa-2x mb-3 opacity-50"></i><br>لا يوجد ${escapeHTML(emptyMsg)} مرفوعة حالياً في مكتبتك.</div></div>`;
+function filterTemplates(category) {
+    currentFilter = category;
+    document.getElementById('search-input').value = '';
+    renderTemplates();
+}
+
+function searchTemplates() {
+    renderTemplates();
+}
+
+function renderTemplates() {
+    const container = document.getElementById('templates-container');
+    const searchQuery = document.getElementById('search-input').value.toLowerCase();
+    
+    // فلترة حسب التبويب النشط وحسب البحث النصي
+    const filtered = allTemplates.filter(t => {
+        const matchCategory = t.file_category === currentFilter;
+        const matchSearch = t.file_name && t.file_name.toLowerCase().includes(searchQuery);
+        return matchCategory && matchSearch;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center p-5 text-muted bg-white rounded shadow-sm border">
+                <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+                <br>لا توجد نماذج متوفرة في هذا القسم حالياً.
+            </div>
+        `;
         return;
     }
 
-    // السماح بالحذف للمدير والمحامي فقط
-    const canDelete = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'lawyer'));
+    // السماح بالحذف للمدير وصاحب الملف
+    const canDelete = (fileOwnerId) => {
+        return currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.id === fileOwnerId;
+    };
 
-    container.innerHTML = items.map(f => {
-        // تحديد الأيقونة بناءً على امتداد/نوع الملف
-        const isWord = f.file_name.toLowerCase().includes('.doc');
-        const icon = isWord ? 'fa-file-word text-info' : 'fa-file-pdf text-danger';
-        
-        const delBtn = canDelete ? `<button class="btn btn-sm btn-light text-danger shadow-sm px-2 py-1 position-absolute top-0 end-0 m-2 rounded-circle" onclick="deleteTemplate('${f.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
+    container.innerHTML = filtered.map(t => {
+        let icon = 'fa-file-alt text-secondary';
+        if (t.file_type && t.file_type.includes('pdf')) icon = 'fa-file-pdf text-danger';
+        else if (t.file_type && (t.file_type.includes('word') || t.file_type.includes('document'))) icon = 'fa-file-word text-primary';
+
+        const delBtn = canDelete(t.added_by) ? 
+            `<button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm" onclick="deleteRecord('${t.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
 
         return `
         <div class="col-12 col-md-6">
-            <div class="card-custom template-card p-3 bg-white shadow-sm position-relative">
+            <div class="template-card">
                 ${delBtn}
-                <div class="d-flex flex-row align-items-center justify-content-between mt-2">
-                    <div class="d-flex align-items-center" style="width: 70%; overflow:hidden;">
-                        <div class="bg-light p-3 rounded-circle me-3 text-center" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas ${icon} fs-4"></i>
-                        </div>
-                        <div class="text-truncate">
-                            <h6 class="fw-bold mb-1 text-navy text-truncate" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
-                            <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> ${escapeHTML(new Date(f.created_at).toLocaleDateString('ar-EG'))}</small>
-                        </div>
+                <div class="d-flex align-items-center">
+                    <i class="fas ${icon} fa-3x me-3"></i>
+                    <div class="flex-grow-1 text-truncate">
+                        <h6 class="fw-bold text-navy mb-1 text-truncate" title="${escapeHTML(t.file_name)}">${escapeHTML(t.file_name)}</h6>
+                        <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> ${new Date(t.created_at).toLocaleDateString('ar-EG')}</small>
                     </div>
-                    <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-outline-navy btn-sm fw-bold rounded-pill px-3 shadow-sm"><i class="fas fa-cloud-download-alt me-1"></i> تحميل</a>
+                </div>
+                <div class="mt-3 text-end">
+                    <a href="${escapeHTML(t.drive_file_id)}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
+                        <i class="fas fa-download me-1"></i> تحميل أو عرض
+                    </a>
                 </div>
             </div>
         </div>
@@ -117,95 +120,85 @@ function renderCategory(elementId, items, emptyMsg) {
     }).join('');
 }
 
-// دالة حذف النموذج مع الاتصال المباشر بالخادم
-async function deleteTemplate(id) {
-    const confirmResult = await Swal.fire({
-        title: 'هل أنت متأكد؟',
-        text: "سيتم حذف هذا النموذج من المكتبة نهائياً!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'نعم، احذفه!',
-        cancelButtonText: 'إلغاء'
-    });
-
-    if (!confirmResult.isConfirmed) return;
-
-    try {
-        const response = await fetch(`${CONFIG.API_URL}/api/files?id=eq.${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentToken}`
-            }
-        });
-
-        if (response.ok) {
-            showAlert('تم حذف النموذج بنجاح', 'success');
-            await loadLibrary(); // تحديث الواجهة
-        } else {
-            throw new Error("فشل الحذف من الخادم");
-        }
-    } catch(e) {
-        showAlert('حدث خطأ أثناء الحذف، تأكد من صلاحياتك.', 'error');
-    }
-}
-
-// دالة حفظ ورفع النموذج (مربوطة بـ Google Apps Script ثم الخادم السحابي)
-async function saveTemplate(event) {
+async function uploadTemplate(event) {
     event.preventDefault();
-    const fileInput = document.getElementById('tpl_file');
+    
     const titleInput = document.getElementById('tpl_title').value;
     const catInput = document.getElementById('tpl_category').value;
+    const fileInput = document.getElementById('tpl_file');
     const btn = document.getElementById('btn_upload_tpl');
 
-    if (!fileInput.files.length) return;
+    if (!fileInput.files.length) {
+        showAlert('يرجى اختيار ملف للرفع', 'warning');
+        return;
+    }
+
     const file = fileInput.files[0];
     
-    btn.disabled = true; 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للسحابة...';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي...';
 
     try {
-        // 1. رفع الملف لـ Google Drive عبر API (الموجودة في api.js)
-        const driveRes = await API.uploadToDrive(file, 'مكتبة_موكّل');
+        // 1. رفع الملف لجوجل درايف عبر دالة الـ API
+        const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
         
-        if(driveRes && driveRes.url) {
-            const payload = {
-                file_name: titleInput || file.name,
-                file_type: file.type,
-                file_category: catInput,
-                drive_file_id: driveRes.url,
-                is_template: true 
+        if (driveRes && driveRes.url) {
+            // 2. تسجيل الملف في قاعدة البيانات كنماذج مكتبة (is_template = true)
+            const payload = { 
+                file_name: titleInput || file.name, 
+                file_type: file.type, 
+                file_category: catInput, 
+                drive_file_id: driveRes.url, 
+                is_template: true, // مهم جداً لتصنيفه في المكتبة
+                case_id: null,
+                client_id: null
             };
+
+            const res = await API.addFileRecord(payload);
             
-            // 2. إرسال البيانات لقاعدة البيانات عبر طلب مباشر موثق
-            const response = await fetch(`${CONFIG.API_URL}/api/files`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentToken}`
-                },
-                body: JSON.stringify(payload)
-            });
-            
-            if(response.ok) {
-                closeModal('uploadTemplateModal');
-                document.getElementById('templateForm').reset();
-                showAlert('تم أرشفة النموذج في المكتبة بنجاح', 'success');
-                await loadLibrary(); // تحديث القائمة
+            if (res && !res.error) {
+                closeModal('uploadModal');
+                document.getElementById('uploadForm').reset();
+                showAlert('تم حفظ النموذج في المكتبة بنجاح', 'success');
+                await loadTemplates(); // تحديث العرض
             } else {
-                const errData = await response.json();
-                throw new Error(errData.error || "فشل تسجيل الملف في قاعدة البيانات");
+                throw new Error(res.error || "خطأ أثناء تسجيل الملف في قاعدة البيانات");
             }
         } else {
-             throw new Error("فشل رفع الملف إلى Google Drive");
+            throw new Error("فشل إرجاع رابط الملف من الخادم السحابي");
         }
     } catch (err) { 
         showAlert(err.message || "حدث خطأ غير متوقع أثناء الرفع", 'error'); 
     } finally { 
         btn.disabled = false; 
         btn.innerHTML = '<i class="fas fa-save me-1"></i> رفع وأرشفة النموذج'; 
+    }
+}
+
+async function deleteRecord(id) {
+    const confirmResult = await Swal.fire({
+        title: 'هل أنت متأكد؟',
+        text: "لن تتمكن من استعادة هذا النموذج!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذف',
+        cancelButtonText: 'إلغاء'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+        const res = await API.deleteFile(id);
+        if(res && !res.error) {
+            showAlert('تم حذف النموذج بنجاح', 'success');
+            await loadTemplates();
+        } else {
+            showAlert(res.error || 'فشل الحذف', 'error');
+        }
+    } catch(e) {
+        showAlert('حدث خطأ أثناء الاتصال بالخادم', 'error');
     }
 }
 
@@ -226,7 +219,6 @@ function closeModal(id) {
         const m = bootstrap.Modal.getInstance(el);
         if(m) m.hide();
         
-        // تنظيف الخلفية السوداء لضمان عدم التعليق
         document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
@@ -234,13 +226,12 @@ function closeModal(id) {
     }
 }
 
-// دالة إظهار التنبيهات باستخدام SweetAlert2 (و Fallback كإجراء احتياطي)
 function showAlert(message, type = 'success') {
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             toast: true,
             position: 'top-end',
-            icon: type,
+            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
             title: escapeHTML(message),
             showConfirmButton: false,
             timer: 3000,

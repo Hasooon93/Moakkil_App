@@ -1,4 +1,4 @@
-// js/client-details.js - محرك الملف الشخصي للموكل (يشمل كشف الحساب الموحد ومراسلة الواتساب، محمي ضد XSS ويدعم التعديل وحماية SweetAlert)
+// js/client-details.js - محرك الملف الشخصي للموكل (تحديث 2026: KYC، استخراج الهوية الذكي، حماية الحذف، السرية العالية)
 
 let currentClientId = localStorage.getItem('current_client_id');
 let clientObj = null;
@@ -7,55 +7,41 @@ let clientInstallments = [];
 let clientExpenses = [];
 let currentUser = null;
 
-// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
     if (str === null || str === undefined) return '';
     return str.toString().replace(/[&<>'"]/g, 
-        tag => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
-        }[tag] || tag)
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
 };
 
 window.onload = async () => {
-    // جلب بيانات المستخدم الحالي للتحقق من الصلاحيات
     const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
-    if (userStr) {
-        currentUser = JSON.parse(userStr);
-    }
+    if (userStr) currentUser = JSON.parse(userStr);
 
-    if (!currentClientId) {
-        window.location.href = 'app.html';
-        return;
-    }
+    if (!currentClientId) { window.location.href = 'app.html'; return; }
     await loadClientProfile();
 };
 
-function goBack() { 
-    window.location.href = 'app.html'; 
-}
+function goBack() { window.location.href = 'app.html'; }
 
 async function loadClientProfile() {
     try {
-        const [clientsReq, casesReq, filesReq] = await Promise.all([
+        const [clientsReq, casesReq, filesReq, staffReq] = await Promise.all([
             API.getClients(),
             API.getCases(), 
-            API.getFiles()
+            API.getFiles(),
+            API.getStaff()
         ]);
 
+        window.firmStaff = Array.isArray(staffReq) ? staffReq : [];
         const clients = Array.isArray(clientsReq) ? clientsReq : [];
         clientObj = clients.find(c => c.id == currentClientId);
         
-        if (!clientObj) {
-            window.location.href = 'app.html';
-            return;
+        if (!clientObj) { 
+            Swal.fire({icon: 'error', title: 'غير مصرح', text: 'هذا الموكل غير موجود أو لا تملك صلاحية الوصول إليه (سري).', confirmButtonText: 'عودة'}).then(() => window.location.href = 'app.html');
+            return; 
         }
 
-        // تصفية القضايا والملفات لتطابق الموكل الحالي فقط
         const allCases = Array.isArray(casesReq) ? casesReq : [];
         clientCases = allCases.filter(c => c.client_id == currentClientId);
         
@@ -66,12 +52,10 @@ async function loadClientProfile() {
         renderClientCases(clientCases);
         renderClientFiles(files);
 
-        // جلب جميع الدفعات والمصاريف الخاصة بقضايا هذا الموكل لغايات كشف الحساب الموحد
         if (clientCases.length > 0) {
             const caseIds = clientCases.map(c => c.id);
             const caseIdsQuery = caseIds.map(id => `"${id}"`).join(',');
             
-            // استخدام fetchAPI المباشر مع دعم التوكن
             const [instReq, expReq] = await Promise.all([
                 fetchAPI(`/api/installments?case_id=in.(${caseIdsQuery})`),
                 fetchAPI(`/api/expenses?case_id=in.(${caseIdsQuery})`)
@@ -91,21 +75,28 @@ async function loadClientProfile() {
 
 function renderClientHeader() {
     document.getElementById('cd-name').innerText = escapeHTML(clientObj.full_name || 'بدون اسم');
+    
+    // إضافة شارة السرية
+    if (clientObj.confidentiality_level === 'سري') {
+        document.getElementById('cd-name').innerHTML += ' <span class="badge bg-dark ms-2 fs-6 shadow-sm"><i class="fas fa-lock text-warning"></i> سري جداً</span>';
+    }
+
     document.getElementById('cd-type').innerText = escapeHTML(clientObj.client_type || 'فرد');
     document.getElementById('cd-phone').innerText = escapeHTML(clientObj.phone || '--');
     document.getElementById('cd-national').innerText = escapeHTML(clientObj.national_id || '--');
+    if (document.getElementById('cd-address')) document.getElementById('cd-address').innerText = escapeHTML(clientObj.address || '--');
     
-    const addressEl = document.getElementById('cd-address');
-    if (addressEl) {
-        addressEl.innerText = escapeHTML(clientObj.address || '--');
-    }
+    // الحقول الجديدة لبيانات الهوية (KYC)
+    if(document.getElementById('cd-nationality')) document.getElementById('cd-nationality').innerText = escapeHTML(clientObj.nationality || '--');
+    if(document.getElementById('cd-dob')) document.getElementById('cd-dob').innerText = escapeHTML(clientObj.date_of_birth || '--');
+    if(document.getElementById('cd-pob')) document.getElementById('cd-pob').innerText = escapeHTML(clientObj.place_of_birth || '--');
+    if(document.getElementById('cd-mother')) document.getElementById('cd-mother').innerText = escapeHTML(clientObj.mother_name || '--');
+    if(document.getElementById('cd-profession')) document.getElementById('cd-profession').innerText = escapeHTML(clientObj.profession || '--');
+    if(document.getElementById('cd-marital')) document.getElementById('cd-marital').innerText = escapeHTML(clientObj.marital_status || '--');
 }
 
 function sendWhatsApp() {
-    if (!clientObj.phone) {
-        showAlert('عذراً، لا يوجد رقم هاتف مسجل لهذا الموكل.', 'warning');
-        return;
-    }
+    if (!clientObj.phone) { showAlert('عذراً، لا يوجد رقم هاتف مسجل لهذا الموكل.', 'warning'); return; }
     let phoneStr = String(clientObj.phone);
     if (phoneStr.startsWith('0')) phoneStr = '962' + phoneStr.substring(1);
     
@@ -127,16 +118,38 @@ function renderClientCases(cases) {
             if(daysLeft <= 7 && daysLeft >= 0) deadlineWarning = `<span class="badge bg-danger ms-2"><i class="fas fa-clock"></i> ${daysLeft} أيام</span>`;
         }
 
+        let litigationText = escapeHTML(c.litigation_degree || 'غير محدد');
+
+        let lawyersHtml = '';
+        if (c.assigned_lawyer_id && Array.isArray(c.assigned_lawyer_id) && window.firmStaff) {
+            lawyersHtml = c.assigned_lawyer_id.map(id => {
+                const staff = window.firmStaff.find(s => s.id === id);
+                return staff ? `<span class="badge bg-light text-primary border me-1"><i class="fas fa-user-tie"></i> ${escapeHTML(staff.full_name)}</span>` : '';
+            }).join('');
+        }
+
+        const prob = c.success_probability || 0;
+        let probColor = prob < 40 ? 'bg-danger' : prob < 75 ? 'bg-warning' : 'bg-success';
+        const probBarHtml = `
+            <div class="progress mt-2 shadow-sm" style="height: 4px; background-color: #e9ecef;">
+                <div class="progress-bar ${probColor}" role="progressbar" style="width: ${prob}%" title="نسبة النجاح المتوقعة: ${prob}%"></div>
+            </div>
+        `;
+
         return `
-        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-navy bg-white" onclick="goToCase('${c.id}')" style="cursor:pointer">
+        <div class="card-custom p-3 mb-3 shadow-sm border-start border-4 border-navy bg-white position-relative" onclick="goToCase('${c.id}')" style="cursor:pointer">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <b class="text-navy fs-6">${escapeHTML(c.case_internal_id || 'بدون رقم')} ${deadlineWarning}</b>
-                <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'}">${escapeHTML(c.status)}</span>
+                <span class="badge ${c.status === 'نشطة' ? 'bg-success' : 'bg-secondary'} shadow-sm">${escapeHTML(c.status)}</span>
             </div>
-            <div class="d-flex justify-content-between align-items-center mt-2">
-                <small class="text-muted"><i class="fas fa-balance-scale me-1"></i> ${escapeHTML(c.current_court || 'محكمة غير محددة')}</small>
-                <small class="text-danger fw-bold"><i class="fas fa-user-shield me-1"></i> الخصم: ${escapeHTML(c.opponent_name || '--')}</small>
+            <div class="d-flex justify-content-between align-items-center mt-2 mb-1">
+                <small class="text-muted"><i class="fas fa-balance-scale me-1 text-secondary"></i> ${escapeHTML(c.current_court || 'محكمة غير محددة')} <span class="badge bg-light text-dark border ms-1">${litigationText}</span></small>
+                <small class="text-danger fw-bold"><i class="fas fa-user-shield me-1"></i> ${escapeHTML(c.opponent_name || '--')}</small>
             </div>
+            <div class="mt-1">
+                ${lawyersHtml}
+            </div>
+            ${probBarHtml}
         </div>
     `}).join('');
 }
@@ -148,7 +161,6 @@ function renderClientFiles(files) {
         return;
     }
 
-    // السماح בחذف المستندات للمدير والمحامي فقط (RBAC)
     const canDelete = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'lawyer'));
 
     list.innerHTML = files.map(f => {
@@ -173,30 +185,51 @@ function renderClientFiles(files) {
     `}).join('');
 }
 
-// دالة الحذف الموحدة مع رسالة تأكيد احترافية (SweetAlert2)
 async function deleteRecord(type, id) {
+    const confirmResult = await Swal.fire({ title: 'هل أنت متأكد؟', text: "لن تتمكن من التراجع عن الحذف!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف', cancelButtonText: 'إلغاء' });
+    if (!confirmResult.isConfirmed) return;
+    try {
+        if (type === 'file') await API.deleteFile(id);
+        showAlert('تم الحذف بنجاح', 'success');
+        await loadClientProfile();
+    } catch(e) { showAlert('حدث خطأ أثناء الحذف', 'error'); }
+}
+
+async function deleteClientProfile() {
+    // نظام الحماية الذكي: منع حذف موكل لديه قضايا (Frontend check - already protected in Backend)
+    if (clientCases && clientCases.length > 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'إجراء مرفوض',
+            text: 'لا يمكن حذف الموكل لوجود قضايا (نشطة أو مغلقة) مرتبطة به في النظام. يرجى حذف القضايا أولاً للحفاظ على الأرشيف والسلامة المالية للمكتب.',
+            confirmButtonText: 'حسناً فهمت'
+        });
+        return;
+    }
+
     const confirmResult = await Swal.fire({
-        title: 'هل أنت متأكد؟',
-        text: "لن تتمكن من التراجع عن الحذف!",
+        title: 'هل أنت متأكد من حذف الموكل؟',
+        text: "سيتم حذف ملف الموكل وكافة بياناته الشخصية نهائياً ولن تتمكن من استرجاعها!",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'نعم، احذف!',
+        confirmButtonText: '<i class="fas fa-trash"></i> نعم، احذف نهائياً',
         cancelButtonText: 'إلغاء'
     });
 
     if (!confirmResult.isConfirmed) return;
 
     try {
-        if (type === 'file') {
-            await API.deleteFile(id);
+        const res = await API.deleteClient(currentClientId);
+        if(!res.error) {
+            Swal.fire({ icon: 'success', title: 'تم الحذف', text: 'تم حذف الموكل بنجاح', timer: 2000, showConfirmButton: false }).then(() => {
+                window.location.href = 'app.html';
+            });
+        } else {
+            showAlert(res.error, 'error');
         }
-        showAlert('تم الحذف بنجاح', 'success');
-        await loadClientProfile();
-    } catch(e) {
-        showAlert('حدث خطأ أثناء الحذف، تأكد من الصلاحيات', 'error');
-    }
+    } catch(e) { showAlert('حدث خطأ أثناء الاتصال بالخادم للحذف', 'error'); }
 }
 
 async function uploadPersonalFile(event) {
@@ -210,47 +243,27 @@ async function uploadPersonalFile(event) {
     if (!fileInput.files.length) return;
     
     const file = fileInput.files[0];
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
 
     try {
         const driveRes = await API.uploadToDrive(file, `Client_${clientObj.full_name}`);
-        
         if(driveRes && driveRes.url) {
-            const dbRes = await API.addFileRecord({
-                client_id: currentClientId,
-                file_name: titleInput || file.name,
-                file_type: file.type,
-                file_category: catInput,
-                drive_file_id: driveRes.url,
-                is_template: false,
-                expiry_date: expiryInput || null
-            });
-            
-            if(dbRes) {
-                closeModal('uploadModal');
-                document.getElementById('uploadForm').reset();
-                showAlert('تم حفظ المستند في ملف الموكل بنجاح', 'success');
-                await loadClientProfile(); 
+            if(await API.addFileRecord({ client_id: currentClientId, file_name: titleInput || file.name, file_type: file.type, file_category: catInput, drive_file_id: driveRes.url, is_template: false, expiry_date: expiryInput || null })) {
+                closeModal('uploadModal'); document.getElementById('uploadForm').reset(); showAlert('تم الحفظ بنجاح', 'success'); await loadClientProfile(); 
             }
         }
-    } catch (err) {
-        showAlert("فشل الرفع: " + err.message, 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي';
-    }
+    } catch (err) { showAlert("فشل الرفع: " + err.message, 'error'); } 
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; }
 }
 
 function generateStatement() {
-    if (clientCases.length === 0) {
-        showAlert('لا يوجد قضايا مالية لاستخراج كشف حساب.', 'warning');
-        return;
-    }
+    if (clientCases.length === 0) { showAlert('لا يوجد قضايا مالية لاستخراج كشف حساب.', 'warning'); return; }
+
+    const printBtn = document.getElementById('print-btn');
+    if(printBtn) { printBtn.disabled = true; printBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحضير...'; }
 
     const firmSettings = JSON.parse(localStorage.getItem('firm_settings')) || {};
     document.getElementById('print-firm-name').innerText = escapeHTML(firmSettings.firm_name || 'مكتب المحاماة');
-    
     document.getElementById('print-client-name').innerText = escapeHTML(clientObj.full_name);
     document.getElementById('print-client-phone').innerText = escapeHTML(clientObj.phone || '--');
     document.getElementById('print-client-id').innerText = escapeHTML(clientObj.national_id || '--');
@@ -258,30 +271,19 @@ function generateStatement() {
 
     const tbody = document.getElementById('statement-table-body');
     tbody.innerHTML = '';
-
-    let grandAgreed = 0;
-    let grandExpenses = 0;
-    let grandPaid = 0;
-    let grandRem = 0;
+    let grandAgreed = 0, grandExpenses = 0, grandPaid = 0, grandRem = 0;
 
     clientCases.forEach(c => {
         const caseAgreed = Number(c.total_agreed_fees) || 0;
-        
-        // حساب المصاريف لهذه القضية فقط
         const caseExps = clientExpenses.filter(e => e.case_id === c.id);
         const caseTotalExp = caseExps.reduce((sum, e) => sum + Number(e.amount), 0);
         
-        // حساب المدفوعات المسددة لهذه القضية فقط
         const caseInsts = clientInstallments.filter(i => i.case_id === c.id && i.status === 'مدفوعة');
         const caseTotalPaid = caseInsts.reduce((sum, i) => sum + Number(i.amount), 0);
         
-        // الرصيد المتبقي للقضية = الأتعاب + المصاريف - المسدد
         const caseRem = (caseAgreed + caseTotalExp) - caseTotalPaid;
 
-        grandAgreed += caseAgreed;
-        grandExpenses += caseTotalExp;
-        grandPaid += caseTotalPaid;
-        grandRem += caseRem;
+        grandAgreed += caseAgreed; grandExpenses += caseTotalExp; grandPaid += caseTotalPaid; grandRem += caseRem;
 
         tbody.innerHTML += `
             <tr>
@@ -301,20 +303,31 @@ function generateStatement() {
 
     document.getElementById('print-section').style.display = 'block';
     window.print();
-    setTimeout(() => { document.getElementById('print-section').style.display = 'none'; }, 1000);
+    
+    setTimeout(() => { 
+        document.getElementById('print-section').style.display = 'none'; 
+        if(printBtn) { printBtn.disabled = false; printBtn.innerHTML = '<i class="fas fa-print"></i> طباعة الكشف'; }
+    }, 1000);
 }
 
 function openEditClientModal() {
     if (!clientObj) return;
+    
     document.getElementById('edit_client_full_name').value = clientObj.full_name || '';
     document.getElementById('edit_client_phone').value = clientObj.phone || '';
     document.getElementById('edit_client_national_id').value = clientObj.national_id || '';
     document.getElementById('edit_client_type').value = clientObj.client_type || 'فرد';
+    if (document.getElementById('edit_client_address')) document.getElementById('edit_client_address').value = clientObj.address || '';
     
-    if (document.getElementById('edit_client_address')) {
-        document.getElementById('edit_client_address').value = clientObj.address || '';
-    }
-    
+    // الحقول الجديدة الخاصة بالهوية (KYC)
+    document.getElementById('edit_client_mother').value = clientObj.mother_name || '';
+    document.getElementById('edit_client_dob').value = clientObj.date_of_birth || '';
+    document.getElementById('edit_client_pob').value = clientObj.place_of_birth || '';
+    document.getElementById('edit_client_nationality').value = clientObj.nationality || 'أردني';
+    document.getElementById('edit_client_marital').value = clientObj.marital_status || '';
+    document.getElementById('edit_client_profession').value = clientObj.profession || '';
+    document.getElementById('edit_client_confidentiality').value = clientObj.confidentiality_level || 'عادي';
+
     openModal('editClientModal');
 }
 
@@ -325,37 +338,61 @@ async function updateClientDetails(event) {
         phone: document.getElementById('edit_client_phone').value,
         national_id: document.getElementById('edit_client_national_id').value,
         client_type: document.getElementById('edit_client_type').value,
-        address: document.getElementById('edit_client_address') ? document.getElementById('edit_client_address').value : ''
+        address: document.getElementById('edit_client_address') ? document.getElementById('edit_client_address').value : '',
+        
+        mother_name: document.getElementById('edit_client_mother').value || null,
+        date_of_birth: document.getElementById('edit_client_dob').value || null,
+        place_of_birth: document.getElementById('edit_client_pob').value || null,
+        nationality: document.getElementById('edit_client_nationality').value || null,
+        marital_status: document.getElementById('edit_client_marital').value || null,
+        profession: document.getElementById('edit_client_profession').value || null,
+        confidentiality_level: document.getElementById('edit_client_confidentiality').value || 'عادي'
     };
-    
-    if(await API.updateClient(currentClientId, data)) {
-        closeModal('editClientModal');
-        showAlert('تم تحديث بيانات الموكل بنجاح', 'success');
-        await loadClientProfile();
+    if(await API.updateClient(currentClientId, data)) { closeModal('editClientModal'); showAlert('تم تحديث بيانات الموكل', 'success'); await loadClientProfile(); }
+}
+
+// ----------------- الذكاء الاصطناعي (AI ID Scanner) -----------------
+function openAiIdModal() {
+    document.getElementById('ai_id_text').value = '';
+    openModal('aiIdModal');
+}
+
+async function processIdAI() {
+    const text = document.getElementById('ai_id_text').value.trim();
+    if (!text) { Swal.fire('تنبيه', 'يرجى لصق نص الهوية أولاً', 'warning'); return; }
+
+    const btn = document.getElementById('btn_process_id');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحليل الذكي...';
+
+    try {
+        const aiRes = await API.extractDataAI(text, 'id_extractor');
+        if (aiRes && aiRes.extracted_json) {
+            const data = aiRes.extracted_json;
+            
+            // تعبئة الحقول إذا وجدت البيانات
+            if (data.full_name) document.getElementById('edit_client_full_name').value = data.full_name;
+            if (data.national_id) document.getElementById('edit_client_national_id').value = data.national_id;
+            if (data.date_of_birth) document.getElementById('edit_client_dob').value = data.date_of_birth;
+            if (data.address) document.getElementById('edit_client_address').value = data.address;
+            if (data.mother_name) document.getElementById('edit_client_mother').value = data.mother_name;
+            if (data.place_of_birth) document.getElementById('edit_client_pob').value = data.place_of_birth;
+            if (data.nationality) document.getElementById('edit_client_nationality').value = data.nationality;
+            if (data.marital_status) document.getElementById('edit_client_marital').value = data.marital_status;
+            if (data.profession) document.getElementById('edit_client_profession').value = data.profession;
+            
+            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تم التعبئة التلقائية', showConfirmButton: false, timer: 2000});
+            closeModal('aiIdModal');
+        } else {
+            Swal.fire('خطأ', 'لم يتمكن الذكاء الاصطناعي من فهم النص، تأكد من وضوح النص المنسوخ.', 'error');
+        }
+    } catch (err) {
+        Swal.fire('خطأ', 'فشل الاتصال بالمحرك الذكي. راجع اتصالك بالإنترنت.', 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic me-1"></i> تحليل وملء الحقول';
     }
 }
 
-function goToCase(id) {
-    localStorage.setItem('current_case_id', id);
-    window.location.href = 'case-details.html';
-}
-
+function goToCase(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
-
-// دالة إظهار التنبيهات باستخدام SweetAlert2
-function showAlert(message, type = 'info') {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
-            title: escapeHTML(message),
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-    } else {
-        alert(message);
-    }
-}
+function showAlert(message, type = 'info') { if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type), title: escapeHTML(message), showConfirmButton: false, timer: 3000, timerProgressBar: true }); else alert(message); }

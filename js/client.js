@@ -1,4 +1,4 @@
-// js/client.js - محرك بوابة الموكل العامة (التحقق بالرقم السري وعرض البيانات بأمان)
+// js/client.js - محرك بوابة الموكل العامة (التحقق بالرقم السري وعرض البيانات المتطورة بأمان)
 
 let publicData = null;
 
@@ -16,7 +16,7 @@ window.onload = async () => {
     const token = urlParams.get('token');
 
     if (!token) {
-        document.getElementById('loader').innerHTML = '<div class="alert alert-danger text-center w-75 fw-bold">الرابط غير صالح أو منتهي الصلاحية.</div>';
+        document.getElementById('loader').innerHTML = '<div class="alert alert-danger text-center w-75 fw-bold shadow-sm">الرابط غير صالح أو منتهي الصلاحية.</div>';
         return;
     }
 
@@ -25,7 +25,8 @@ window.onload = async () => {
         const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${token}`);
         const data = await res.json();
 
-        if (res.ok && data.cases && data.cases.length > 0) {
+        // التوافق مع التعديلات البرمجية (دعم object مباشر أو مصفوفة)
+        if (res.ok && (data.case || (data.cases && data.cases.length > 0))) {
             publicData = data;
             
             // تطبيق هوية المكتب (الألوان واللوغو) إن وجدت
@@ -39,7 +40,7 @@ window.onload = async () => {
             throw new Error(data.error || "الملف غير موجود");
         }
     } catch (error) {
-        document.getElementById('loader').innerHTML = `<div class="alert alert-danger text-center w-75 fw-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i> تعذر الوصول للملف: ${escapeHTML(error.message)}</div>`;
+        document.getElementById('loader').innerHTML = `<div class="alert alert-danger text-center w-75 fw-bold shadow-sm"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i> تعذر الوصول للملف: ${escapeHTML(error.message)}</div>`;
     }
 };
 
@@ -62,7 +63,10 @@ function applyFirmIdentity(firm) {
 function verifyAccess(event) {
     event.preventDefault();
     const enteredPin = document.getElementById('pin_input').value;
-    const actualPin = publicData.cases[0].access_pin;
+    
+    // استخراج بيانات القضية بأمان
+    const caseData = publicData.case || publicData.cases[0] || {};
+    const actualPin = caseData.access_pin; 
     
     const btn = document.getElementById('btn-verify');
     btn.disabled = true;
@@ -70,9 +74,8 @@ function verifyAccess(event) {
 
     // محاكاة وقت التحقق لتعزيز الشعور بالأمان للموكل
     setTimeout(() => {
-        // إذا كان لا يوجد PIN للقضية أصلاً، سنسمح بالدخول، وإلا نتحقق من المطابقة
+        // إذا قام الباك إند بمسح الـ PIN لحمايته أو تطابق الرمزين، نسمح بالدخول
         if (!actualPin || enteredPin === actualPin) {
-            // نجاح التحقق
             document.getElementById('security-layer').classList.add('d-none');
             document.getElementById('main-content').classList.remove('d-none');
             renderClientPortal();
@@ -81,7 +84,6 @@ function verifyAccess(event) {
                 toast: true, position: 'top-end', icon: 'success', title: 'تم التحقق بنجاح', showConfirmButton: false, timer: 2000
             });
         } else {
-            // فشل التحقق
             Swal.fire('رمز خاطئ!', 'الرمز السري الذي أدخلته غير صحيح. يرجى التأكد من محاميك.', 'error');
             document.getElementById('pin_input').value = '';
             document.getElementById('pin_input').focus();
@@ -95,17 +97,37 @@ function verifyAccess(event) {
 function renderClientPortal() {
     const firm = publicData.firm || {};
     const client = publicData.client || {};
-    const caseData = publicData.cases[0] || {};
+    const caseData = publicData.case || publicData.cases[0] || {};
     const updates = publicData.updates || [];
     const files = publicData.files || [];
     const installments = publicData.installments || [];
     const expenses = publicData.expenses || [];
 
-    // الترويسة
+    // الترويسة وشريط التقدم (Progress Bar)
     document.getElementById('ui-firm-name').innerText = escapeHTML(firm.firm_name || 'مكتب المحاماة');
     document.getElementById('ui-client-name').innerText = escapeHTML(client.full_name || 'الموكل الكريم');
     document.getElementById('ui-case-status').innerText = escapeHTML(caseData.status || 'نشطة');
     
+    let progress = 50;
+    let progressText = 'العمل جاري في القضية';
+    let progressColor = 'bg-primary';
+
+    if (caseData.status === 'مغلقة' || caseData.status === 'مكتملة' || caseData.status === 'محفوظة') {
+        progress = 100; progressText = 'مكتملة ومغلقة'; progressColor = 'bg-success';
+    } else if (caseData.status === 'قيد الاستئناف' || caseData.litigation_degree === 'استئناف' || caseData.litigation_degree === 'تمييز') {
+        progress = 75; progressText = 'مراحل التقاضي العليا'; progressColor = 'bg-warning';
+    } else {
+        progress = 50; progressText = 'نشطة وقيد المتابعة'; progressColor = 'bg-accent';
+    }
+
+    const pBar = document.getElementById('ui-progress-bar');
+    if (pBar) {
+        pBar.style.width = progress + '%';
+        pBar.className = `progress-bar progress-bar-striped progress-bar-animated ${progressColor}`;
+    }
+    const pText = document.getElementById('ui-progress-text');
+    if (pText) pText.innerText = progressText;
+
     if(firm.logo_url) {
         document.getElementById('ui-firm-logo').src = escapeHTML(firm.logo_url);
         document.getElementById('ui-firm-logo-container').classList.remove('d-none');
@@ -113,23 +135,40 @@ function renderClientPortal() {
 
     // معلومات القضية
     document.getElementById('ui-case-id').innerText = escapeHTML(caseData.case_internal_id || '--');
-    document.getElementById('ui-court-num').innerText = escapeHTML(caseData.court_case_number || '--');
+    document.getElementById('ui-litigation').innerText = escapeHTML(caseData.litigation_degree || '--');
     document.getElementById('ui-court-name').innerText = escapeHTML(caseData.current_court || '--');
     document.getElementById('ui-opponent').innerText = escapeHTML(caseData.opponent_name || '--');
 
-    // الإجراءات (تظهر فقط الإجراءات التي سمح المحامي بظهورها للموكل)
+    // البيانات الشخصية (KYC) الجديدة التي أضفناها في client.html
+    if (document.getElementById('ui-client-phone')) document.getElementById('ui-client-phone').innerText = escapeHTML(client.phone || '--');
+    if (document.getElementById('ui-client-national')) document.getElementById('ui-client-national').innerText = escapeHTML(client.national_id || '--');
+    if (document.getElementById('ui-client-nationality')) document.getElementById('ui-client-nationality').innerText = escapeHTML(client.nationality || 'أردني');
+    if (document.getElementById('ui-client-dob')) document.getElementById('ui-client-dob').innerText = escapeHTML(client.date_of_birth || '--');
+    if (document.getElementById('ui-client-address')) document.getElementById('ui-client-address').innerText = escapeHTML(client.address || '--');
+
+    // الإجراءات مع بطاقات الذكاء الاصطناعي
     const timelineContainer = document.getElementById('ui-timeline-container');
     if (updates.length > 0) {
-        timelineContainer.innerHTML = updates.map(u => `
+        timelineContainer.innerHTML = updates.map(u => {
+            let aiHtml = '';
+            if (u.ai_extracted_entities && Object.keys(u.ai_extracted_entities).length > 0) {
+                const ai = u.ai_extracted_entities;
+                aiHtml = `<div class="mt-2 p-2 bg-light border border-info rounded" style="font-size: 0.8rem;">
+                            <b class="text-info"><i class="fas fa-robot"></i> استخلاص آلي:</b>
+                            ${ai.next_hearing_date ? `<span class="badge bg-white text-dark border ms-1 mt-1">موعد الجلسة: ${escapeHTML(ai.next_hearing_date)}</span>` : ''}
+                          </div>`;
+            }
+            return `
             <div class="timeline-item">
                 <small class="text-primary fw-bold">${new Date(u.created_at).toLocaleDateString('ar-EG')}</small>
                 <h6 class="fw-bold mb-1 mt-1" style="color: var(--firm-primary);">${escapeHTML(u.update_title)}</h6>
                 <p class="small text-muted mb-0">${escapeHTML(u.update_details)}</p>
-                ${u.hearing_date ? `<small class="text-success fw-bold d-block mt-2"><i class="fas fa-calendar-check"></i> الجلسة القادمة: ${escapeHTML(u.hearing_date)}</small>` : ''}
-            </div>
-        `).join('');
+                ${u.hearing_date ? `<small class="text-success fw-bold d-block mt-2"><i class="fas fa-calendar-check"></i> الجلسة المحددة: ${escapeHTML(u.hearing_date)}</small>` : ''}
+                ${aiHtml}
+            </div>`;
+        }).join('');
     } else {
-        timelineContainer.innerHTML = '<div class="alert alert-light text-center small text-muted border">لا توجد إجراءات مسجلة حتى الآن.</div>';
+        timelineContainer.innerHTML = '<div class="alert alert-light text-center small text-muted border shadow-sm">لا توجد إجراءات مسجلة حتى الآن.</div>';
     }
 
     // المالية (ملخص دقيق للعميل)
@@ -157,7 +196,7 @@ function renderClientPortal() {
             </div>`;
         }).join('');
     } else {
-        payContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-light rounded">لا توجد دفعات مسجلة.</div>';
+        payContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-light rounded shadow-sm">لا توجد دفعات مسجلة.</div>';
     }
 
     // المصروفات
@@ -173,7 +212,7 @@ function renderClientPortal() {
             </div>
         `).join('');
     } else {
-        expContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-light rounded">لا توجد مصروفات مسجلة.</div>';
+        expContainer.innerHTML = '<div class="text-center p-3 text-muted small border bg-light rounded shadow-sm">لا توجد مصروفات مسجلة.</div>';
     }
 
     // المستندات والأرشيف

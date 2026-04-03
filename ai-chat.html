@@ -6,55 +6,136 @@
     <meta name="theme-color" content="#0a192f">
     <title>موكّل | المساعد القانوني الذكي (AI)</title>
     
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icons/icon-192.png">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    
     <link href="./css/style.css" rel="stylesheet">
     
     <style>
-        body { background: #f8fafc; font-family: 'Cairo', sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
+        body { 
+            background: #f8fafc; 
+            font-family: 'Cairo', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            margin: 0; 
+            overflow: hidden; 
+        }
         
-        .top-nav { background: var(--navy); height: 65px; display: flex; align-items: center; padding: 0 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 10; flex-shrink: 0; }
+        .top-nav { background: var(--navy); height: 65px; z-index: 1040; position: relative;}
         
-        .chat-container { flex-grow: 1; overflow-y: auto; padding: 20px; padding-bottom: 20px; scroll-behavior: smooth; display: flex; flex-direction: column; }
-        
-        .chat-bubble { max-width: 85%; padding: 15px 20px; border-radius: 20px; margin-bottom: 15px; font-size: 0.95rem; line-height: 1.7; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.03); word-wrap: break-word; }
-        .chat-bubble.ai { background-color: white; color: var(--navy); border: 1px solid #e2e8f0; border-top-right-radius: 0; align-self: flex-start; }
-        .chat-bubble.user { background: linear-gradient(135deg, var(--navy) 0%, #1e3a8a 100%); color: white; border-top-left-radius: 0; align-self: flex-end; margin-left: auto; }
-        
-        .chat-input-area { background: white; padding: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); z-index: 10; display: flex; gap: 10px; align-items: flex-end; border-top: 1px solid #e2e8f0; flex-shrink: 0; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
-        
-        .chat-input { flex-grow: 1; border-radius: 20px; border: 1px solid #e2e8f0; padding: 12px 20px; font-size: 0.95rem; background: #f8fafc; transition: 0.3s; resize: none; overflow-y: auto; min-height: 50px; max-height: 120px; font-family: 'Cairo', sans-serif; }
-        .chat-input:focus { outline: none; border-color: var(--accent); background: white; box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.2); }
-        
-        .btn-send { background-color: var(--navy); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.3s; flex-shrink: 0; }
-        .btn-send:hover { background-color: var(--accent); color: var(--navy); transform: scale(1.05); }
-        .btn-send:disabled { background-color: #cbd5e1; cursor: not-allowed; transform: none; color: white; }
-        
-        .typing-indicator { display: none; padding: 15px 20px; background: white; border-radius: 20px; border-top-right-radius: 0; width: fit-content; border: 1px solid #e2e8f0; margin-bottom: 15px; align-self: flex-start; }
-        .typing-indicator span { display: inline-block; width: 8px; height: 8px; background-color: var(--navy); border-radius: 50%; margin: 0 2px; animation: typing 1.4s infinite ease-in-out both; }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-        
-        /* تنسيقات مخرجات الـ AI */
-        .ai-text p { margin-bottom: 10px; }
-        .ai-text p:last-child { margin-bottom: 0; }
-        .ai-text ul { padding-right: 20px; margin-bottom: 10px; }
-        .ai-text strong { color: #0a192f; }
-        
-        /* تخصيص الـ Scrollbar */
-        .chat-container::-webkit-scrollbar { width: 6px; }
-        .chat-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .chat-input::-webkit-scrollbar { width: 4px; }
-        .chat-input::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-    </style>
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 100px; /* مساحة لحقل الإدخال */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            scroll-behavior: smooth;
+        }
 
+        .chat-bubble {
+            max-width: 85%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            word-wrap: break-word;
+        }
+
+        .chat-user {
+            align-self: flex-start;
+            background: var(--navy);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-ai {
+            align-self: flex-end;
+            background: white;
+            color: #1e293b;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .chat-ai b { color: var(--navy); }
+
+        .input-area {
+            position: fixed;
+            bottom: 65px; /* يرتفع عن شريط التنقل السفلي */
+            left: 0;
+            width: 100%;
+            background: white;
+            padding: 10px 15px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            z-index: 1030;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 10px 15px;
+            background: #f1f5f9;
+            resize: none;
+            max-height: 120px;
+            min-height: 45px;
+            font-size: 0.95rem;
+        }
+
+        .chat-input:focus { outline: none; border-color: var(--accent); background: white; }
+
+        .btn-send {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--navy);
+            color: var(--accent);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: 0.3s;
+        }
+
+        .btn-send:active { transform: scale(0.9); }
+        .btn-mic { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            align-self: flex-end;
+            width: fit-content;
+            border: 1px solid #e2e8f0;
+        }
+
+        .typing-dot {
+            width: 8px; height: 8px; background: var(--navy); border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* Bottom Nav الموحد */
+        .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1040; display: flex; justify-content: space-around; }
+        .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.75rem; font-weight: 700; transition: all 0.3s ease; border-radius: 15px; padding: 8px 0; cursor: pointer; }
+        .nav-item.active { color: var(--navy); background-color: #f1f5f9; transform: translateY(-3px); }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--accent); transform: scale(1.1); }
+    </style>
+    
     <script>
         const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
         if (fwSettings) {
@@ -65,78 +146,84 @@
 </head>
 <body>
 
-    <div class="top-nav">
-        <button class="btn btn-link text-white text-decoration-none me-2 p-0" onclick="window.location.href='app.html'">
-            <i class="fas fa-arrow-right fs-4"></i>
-        </button>
-        <h6 class="text-white mb-0 fw-bold d-flex align-items-center">
-            <i class="fas fa-robot text-accent me-2 fa-lg"></i> المساعد القانوني (AI)
-        </h6>
-        <button class="btn btn-sm btn-outline-light ms-auto rounded-pill px-3 shadow-sm" onclick="clearChat()" title="محادثة جديدة">
-            <i class="fas fa-trash-alt me-1"></i> مسح
-        </button>
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-sm btn-light border-0 rounded-circle text-navy shadow-sm" onclick="window.location.href='app.html'" style="width: 35px; height: 35px;">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            <div>
+                <h6 class="mb-0 fw-bold text-white"><i class="fas fa-robot me-2 text-accent"></i> المستشار الذكي</h6>
+                <small class="text-white-50" style="font-size: 0.7rem;">مدعوم بقاعدة بيانات القوانين الأردنية</small>
+            </div>
+        </div>
+        <button class="btn btn-sm btn-outline-light border-0" onclick="clearChat()" title="مسح المحادثة"><i class="fas fa-trash-alt"></i></button>
     </div>
 
     <div class="chat-container" id="chat-box">
-        <div class="chat-bubble ai">
-            <div class="d-flex align-items-center mb-2 pb-2 border-bottom">
-                <i class="fas fa-robot text-accent me-2 fs-5"></i>
-                <h6 class="fw-bold mb-0 text-navy">موكّل الذكي</h6>
-            </div>
-            <div class="ai-text text-muted">
-                أهلاً بك يا أستاذ. أنا مساعدك القانوني الذكي المدعوم بـ Cloudflare AI.<br>
-                يمكنني مساعدتك في صياغة اللوائح، تلخيص الوقائع، استخراج القوانين، أو الإجابة على استفساراتك القانونية. كيف يمكنني خدمتك اليوم؟
-            </div>
-        </div>
-        
-        <div class="typing-indicator" id="typing-indicator">
-            <span></span><span></span><span></span>
+        <div class="chat-bubble chat-ai shadow-sm">
+            <h6 class="fw-bold mb-1"><i class="fas fa-balance-scale me-1 text-primary"></i> أهلاً بك يا أستاذ!</h6>
+            أنا مساعدك القانوني الذكي. أنا متصل الآن بقاعدة بيانات <b>القوانين الأردنية</b>. 
+            <br><br>اسألني أي سؤال قانوني وسأقوم بالبحث في النصوص وتزويدك برقم المادة والقانون بدقة.
         </div>
     </div>
 
-    <div class="chat-input-area">
-        <button class="btn btn-light text-navy rounded-circle shadow-sm" style="width: 45px; height: 45px; flex-shrink: 0;" onclick="startDictation()" title="إملاء صوتي">
-            <i class="fas fa-microphone fs-5"></i>
+    <div class="input-area">
+        <button class="btn-send btn-mic shadow-sm" id="btn-mic" onclick="startDictation()" title="تحدث">
+            <i class="fas fa-microphone"></i>
         </button>
-        <textarea id="chat-input" class="chat-input shadow-sm" placeholder="اكتب سؤالك أو استشارتك هنا..." rows="1" oninput="autoResize(this)" onkeydown="handleEnter(event)"></textarea>
-        <button id="btn-send" class="btn-send shadow" onclick="sendMessage()">
+        <textarea id="chat-input" class="chat-input" rows="1" placeholder="اكتب سؤالك القانوني هنا..." oninput="autoResize(this)" onkeypress="handleEnter(event)"></textarea>
+        <button class="btn-send shadow-sm" id="btn-send" onclick="sendMessage()" title="إرسال">
             <i class="fas fa-paper-plane"></i>
         </button>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> الرئيسية
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item active" onclick="window.location.href='app.html'">
+            <i class="fas fa-toolbox"></i> الأدوات
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
-    <script src="./js/api.js"></script>
     
     <script>
-        // التحقق من الجلسة
-        window.onload = () => {
-            if (!localStorage.getItem(CONFIG.TOKEN_KEY)) {
-                window.location.href = 'login.html';
-            }
-            loadChatHistory();
-            scrollToBottom();
-        };
+        // الرابط الخاص بالمساعد القانوني الذكي المربوط بالقوانين الأردنية
+        const AI_WORKER_URL = "https://smartlow.hassan-alsakka.workers.dev";
+        const chatBox = document.getElementById('chat-box');
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
 
-        // دالة الحماية من XSS
-        const escapeHTML = (str) => {
-            if (!str) return '';
-            return str.toString().replace(/[&<>'"]/g, tag => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-            }[tag] || tag));
-        };
-
-        // التوسيع التلقائي لمربع النص
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = (textarea.scrollHeight) + 'px';
-            if (textarea.value.trim() === '') {
-                textarea.style.height = '50px';
-            }
+        // الحماية من XSS وتنسيق الردود (Markdown بسيط)
+        function formatText(text) {
+            if (!text) return '';
+            let formatted = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            // تحويل **نص** إلى <b>نص</b>
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            // تحويل الأسطر الجديدة
+            formatted = formatted.replace(/\n/g, '<br>');
+            return formatted;
         }
 
-        // إرسال بالضغط على Enter (بدون Shift)
+        // تمدد حقل النص تلقائياً
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight < 120 ? textarea.scrollHeight : 120) + 'px';
+        }
+
+        // الإرسال عند الضغط على Enter (بدون Shift)
         function handleEnter(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -144,122 +231,82 @@
             }
         }
 
-        // النزول لأسفل المحادثة
+        function clearChat() {
+            chatBox.innerHTML = `
+                <div class="chat-bubble chat-ai shadow-sm">
+                    <h6 class="fw-bold mb-1"><i class="fas fa-balance-scale me-1 text-primary"></i> أهلاً بك يا أستاذ!</h6>
+                    أنا مساعدك القانوني الذكي. متصل بقاعدة بيانات القوانين الأردنية. تفضل بسؤالي.
+                </div>
+            `;
+        }
+
         function scrollToBottom() {
-            const chatBox = document.getElementById('chat-box');
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // تنسيق النصوص القادمة من الذكاء الاصطناعي (Markdown بسيط)
-        function formatAIText(text) {
-            let formatted = escapeHTML(text);
-            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
-            formatted = formatted.replace(/\n/g, '<br>'); // New lines
-            return `<div class="ai-text">${formatted}</div>`;
+        function appendMessage(text, sender) {
+            const div = document.createElement('div');
+            div.className = `chat-bubble ${sender === 'user' ? 'chat-user' : 'chat-ai'}`;
+            div.innerHTML = formatText(text);
+            chatBox.appendChild(div);
+            scrollToBottom();
         }
 
-        // حفظ وجلب سجل المحادثة المحلي
-        function saveToHistory(role, content) {
-            let history = JSON.parse(localStorage.getItem('ai_chat_history')) || [];
-            history.push({ role, content });
-            // الاحتفاظ بآخر 20 رسالة فقط لتوفير المساحة
-            if(history.length > 20) history = history.slice(history.length - 20);
-            localStorage.setItem('ai_chat_history', JSON.stringify(history));
+        function showTyping() {
+            const div = document.createElement('div');
+            div.className = 'typing-indicator';
+            div.id = 'typing';
+            div.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+            chatBox.appendChild(div);
+            scrollToBottom();
         }
 
-        function loadChatHistory() {
-            const history = JSON.parse(localStorage.getItem('ai_chat_history')) || [];
-            const chatBox = document.getElementById('chat-box');
-            const indicator = document.getElementById('typing-indicator');
-            
-            history.forEach(msg => {
-                const div = document.createElement('div');
-                if (msg.role === 'user') {
-                    div.className = 'chat-bubble user';
-                    div.innerText = msg.content;
-                } else {
-                    div.className = 'chat-bubble ai shadow-sm';
-                    div.innerHTML = formatAIText(msg.content);
-                    // إضافة زر النسخ لرسائل الـ AI
-                    div.innerHTML += `<button class="btn btn-sm btn-light border position-absolute bottom-0 start-0 m-2 py-0 px-2 text-muted shadow-sm" onclick="navigator.clipboard.writeText('${escapeHTML(msg.content).replace(/'/g, "\\'")}').then(() => Swal.fire({toast:true, position:'top-end', icon:'success', title:'تم النسخ!', showConfirmButton:false, timer:1500}))" title="نسخ الرد"><i class="fas fa-copy"></i></button>`;
-                }
-                chatBox.insertBefore(div, indicator);
-            });
+        function removeTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
         }
 
-        function clearChat() {
-            Swal.fire({
-                title: 'هل أنت متأكد؟',
-                text: "سيتم مسح سجل هذه المحادثة محلياً.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'نعم، امسح',
-                cancelButtonText: 'إلغاء'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    localStorage.removeItem('ai_chat_history');
-                    location.reload();
-                }
-            });
-        }
-
-        // الإرسال الفعلي للسيرفر
+        // الإرسال والاتصال بالخادم
         async function sendMessage() {
-            const inputEl = document.getElementById('chat-input');
-            const text = inputEl.value.trim();
-            const btn = document.getElementById('btn-send');
-            const indicator = document.getElementById('typing-indicator');
-            const chatBox = document.getElementById('chat-box');
-
+            const text = chatInput.value.trim();
             if (!text) return;
 
-            // 1. إضافة رسالة المستخدم للواجهة
-            inputEl.value = '';
-            inputEl.style.height = '50px';
-            btn.disabled = true;
-
-            const userDiv = document.createElement('div');
-            userDiv.className = 'chat-bubble user fade-in';
-            userDiv.innerText = text;
-            chatBox.insertBefore(userDiv, indicator);
-            saveToHistory('user', text);
-            scrollToBottom();
+            // 1. إضافة رسالة المستخدم
+            appendMessage(text, 'user');
+            chatInput.value = '';
+            autoResize(chatInput);
+            chatInput.focus();
 
             // 2. إظهار مؤشر الكتابة
-            indicator.style.display = 'block';
-            scrollToBottom();
+            showTyping();
+            btnSend.disabled = true;
 
             try {
-                // 3. الاتصال بمحرك Cloudflare AI عبر الدالة الموحدة
-                const response = await API.askAI(text);
-
-                // 4. إخفاء المؤشر وعرض النتيجة
-                indicator.style.display = 'none';
-
-                if (response && response.reply) {
-                    const aiDiv = document.createElement('div');
-                    aiDiv.className = 'chat-bubble ai fade-in shadow-sm';
-                    aiDiv.innerHTML = formatAIText(response.reply);
-                    // إضافة زر النسخ
-                    aiDiv.innerHTML += `<button class="btn btn-sm btn-light border position-absolute bottom-0 start-0 m-2 py-0 px-2 text-muted shadow-sm" onclick="navigator.clipboard.writeText('${escapeHTML(response.reply).replace(/'/g, "\\'")}').then(() => Swal.fire({toast:true, position:'top-end', icon:'success', title:'تم النسخ!', showConfirmButton:false, timer:1500}))" title="نسخ الرد"><i class="fas fa-copy"></i></button>`;
-                    
-                    chatBox.insertBefore(aiDiv, indicator);
-                    saveToHistory('ai', response.reply);
-                } else {
-                    throw new Error("لم يتم استلام رد صحيح من السيرفر");
-                }
-            } catch (error) {
-                indicator.style.display = 'none';
-                Swal.fire({
-                    toast: true, position: 'top-end', icon: 'error',
-                    title: 'فشل الاتصال بالذكاء الاصطناعي', showConfirmButton: false, timer: 3000
+                // 3. الاتصال بالوركر المخصص للذكاء الاصطناعي (GLM-4)
+                const response = await fetch(AI_WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: text })
                 });
+
+                const data = await response.json();
+                removeTyping();
+
+                // 4. معالجة الرد 
+                if (data.error && data.message) {
+                    appendMessage("⚠️ " + data.message, 'ai');
+                } else if (data.choices && data.choices.length > 0) {
+                    // استخراج الرد من صيغة GLM-4
+                    appendMessage(data.choices[0].message.content, 'ai');
+                } else {
+                    appendMessage("⚠️ عذراً، لم أتمكن من استلام إجابة صحيحة من الخادم.", 'ai');
+                }
+
+            } catch (error) {
+                removeTyping();
+                appendMessage("❌ حدث خطأ في الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت.", 'ai');
             } finally {
-                btn.disabled = false;
-                scrollToBottom();
-                inputEl.focus();
+                btnSend.disabled = false;
             }
         }
 
@@ -275,26 +322,25 @@
             recognition.lang = 'ar-JO';
             recognition.interimResults = false;
 
-            const inputEl = document.getElementById('chat-input');
-            const originalPlaceholder = inputEl.placeholder;
-            inputEl.placeholder = "جاري الاستماع... تحدث الآن.";
+            const originalPlaceholder = chatInput.placeholder;
+            chatInput.placeholder = "جاري الاستماع... تحدث الآن.";
             
             Swal.fire({toast:true, position:'top-end', icon:'info', title:'الميكروفون يعمل.. تحدث الآن', showConfirmButton:false, timer:2000});
 
             recognition.start();
 
             recognition.onresult = function(event) {
-                inputEl.value += (inputEl.value ? ' ' : '') + event.results[0][0].transcript;
-                autoResize(inputEl);
+                chatInput.value += (chatInput.value ? ' ' : '') + event.results[0][0].transcript;
+                autoResize(chatInput);
             };
 
             recognition.onerror = function() {
                 Swal.fire({toast:true, position:'top-end', icon:'error', title:'تم إيقاف الميكروفون أو حدث خطأ.', showConfirmButton:false, timer:2000});
-                inputEl.placeholder = originalPlaceholder;
+                chatInput.placeholder = originalPlaceholder;
             };
 
             recognition.onend = function() {
-                inputEl.placeholder = originalPlaceholder;
+                chatInput.placeholder = originalPlaceholder;
             };
         }
     </script>

@@ -52,16 +52,29 @@
             transition: 0.3s;
         }
         
+        /* إصلاح اللوغو: منع الانضغاط والمحافظة على الأبعاد */
         .brand-logo-box {
             background: var(--navy);
             width: 45px;
             height: 45px;
+            min-width: 45px;
+            flex-shrink: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             border-radius: 12px;
             margin-left: 10px;
+            overflow: hidden;
+            padding: 5px; /* مسافة داخلية صغيرة لجمالية الشعار */
         }
+        
+        /* منع تمطط الصور داخل الشعار في حال استخدام صورة بدلاً من الأيقونة */
+        .brand-logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
         .navbar-brand {
             font-size: 1.8rem;
             font-weight: 900;
@@ -69,6 +82,7 @@
             letter-spacing: -0.5px;
             display: flex;
             align-items: center;
+            white-space: nowrap; /* منع انكسار النص */
         }
         
         .btn-login {
@@ -79,6 +93,7 @@
             font-weight: 700;
             transition: 0.3s;
             border: 2px solid var(--navy);
+            white-space: nowrap;
         }
         .btn-login:hover {
             background-color: transparent;
@@ -91,9 +106,10 @@
             border-radius: 10px;
             padding: 10px 20px;
             font-weight: 800;
-            display: none;
+            display: inline-block; /* إظهار الزر بشكل دائم بناء على طلبك */
             transition: 0.3s;
             border: none;
+            white-space: nowrap;
         }
         .btn-install:hover {
             background-color: #ffffff;
@@ -192,6 +208,7 @@
             border-radius: 30px; 
             font-weight: 800; 
             font-size: 0.9rem; 
+            white-space: nowrap;
         }
         .price { font-size: 3.5rem; font-weight: 900; color: var(--navy); }
         .currency { font-size: 1.5rem; vertical-align: top; margin-left: 5px; color: #64748b; }
@@ -230,7 +247,7 @@
     <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
         <div class="container">
             <a class="navbar-brand text-decoration-none" href="#">
-                <div class="brand-logo-box"><i class="fas fa-balance-scale text-accent fs-5"></i></div>
+                <div class="brand-logo-box"><img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png" alt="موكّل"></div>
                 موكّل
             </a>
             <div class="d-flex gap-2 align-items-center">
@@ -305,7 +322,7 @@
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card text-center">
                         <h4 class="fw-bold text-navy mb-4">الباقة الشهرية</h4>
-                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>299<span class="duration">/شهرياً</span></div>
+                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>199<span class="duration">/شهرياً</span></div>
                         <ul class="pricing-list">
                             <li><i class="fas fa-check"></i> عدد غير محدود من القضايا</li>
                             <li><i class="fas fa-check"></i> عدد غير محدود من الموكلين</li>
@@ -319,7 +336,7 @@
                 <div class="col-lg-4 col-md-6">
                     <div class="pricing-card popular text-center">
                         <h4 class="fw-bold text-navy mb-4">الباقة السنوية</h4>
-                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>2999<span class="duration">/سنوياً</span></div>
+                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>1999<span class="duration">/سنوياً</span></div>
                         <ul class="pricing-list">
                             <li><i class="fas fa-check"></i> <strong>توفير قيمة شهرين مجاناً</strong></li>
                             <li><i class="fas fa-check"></i> جميع ميزات الباقة الشهرية</li>
@@ -337,7 +354,7 @@
     <footer class="footer-unified">
         <div class="container">
             <div class="footer-brand">
-                <div class="brand-logo-box me-2"><i class="fas fa-balance-scale text-accent fs-4"></i></div>
+                <div class="brand-logo-box me-2"><img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png" alt="موكّل"></div>
                 موكّل ERP
             </div>
             <p class="mb-0 mt-3">المنصة السحابية الأولى لإدارة المكاتب القانونية بذكاء وأمان تام.</p>
@@ -367,10 +384,11 @@
             });
         }
 
+        // كود الـ PWA لزر تثبيت التطبيق
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            installBtn.style.display = 'block';
+            // لم نعد بحاجة لتغيير الـ display هنا لأننا جعلناه ظاهراً دائماً في الأعلى كما طلبت
         });
 
         installBtn.addEventListener('click', async () => {
@@ -379,6 +397,9 @@
                 const { outcome } = await deferredPrompt.userChoice;
                 if (outcome === 'accepted') installBtn.style.display = 'none';
                 deferredPrompt = null;
+            } else {
+                // إذا تم الضغط عليه ولم يكن المتصفح جاهزاً بعد
+                alert("يرجى إضافة الموقع إلى الشاشة الرئيسية من إعدادات المتصفح الخاص بك لتثبيت التطبيق.");
             }
         });
 

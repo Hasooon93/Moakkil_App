@@ -11,6 +11,10 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
     <link href="./css/style.css" rel="stylesheet">
     
     <style>
@@ -20,20 +24,21 @@
         .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
         .nav-item.active i { color: var(--accent); transform: scale(1.1); }
         
-        /* Kanban Board Styles */
-        .kanban-col { background: #f8fafc; border-radius: 12px; padding: 15px; min-height: 300px; }
-        .kanban-header { font-weight: bold; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 15px; }
+        /* Kanban Board Styles - محسنة */
+        .kanban-col { background: #f8fafc; border-radius: 12px; padding: 15px; min-height: 350px; min-width: 280px; border: 1px solid #e2e8f0; }
+        .kanban-header { font-weight: bold; border-bottom: 3px solid; padding-bottom: 10px; margin-bottom: 15px; font-size: 1.1rem; }
         
         /* Floating Action Button */
         .fab-main { position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--navy), #1e3a8a); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 15px rgba(10, 25, 47, 0.4); border: none; cursor: pointer; z-index: 1000; transition: transform 0.2s; }
         .fab-main:hover { transform: scale(1.05); }
         
-        /* تحسين مظهر تفاصيل سجل النشاطات */
         .history-details-pre { background: #f1f5f9; padding: 10px; border-radius: 8px; font-size: 0.8rem; text-align: left; direction: ltr; margin-top: 5px; display: none; }
-        
-        /* Case Filter Scrollbar */
         .filter-scroll::-webkit-scrollbar { height: 4px; }
         .filter-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* تجميل البطاقات */
+        .client-card, .case-card, .appt-card { transition: all 0.3s ease; border: 1px solid #f1f5f9; }
+        .client-card:hover, .case-card:hover, .appt-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; border-color: var(--accent); }
     </style>
 </head>
 <body class="pb-5 mb-5">
@@ -47,22 +52,25 @@
             </div>
         </div>
         <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light text-white fw-bold position-relative shadow-sm" id="btn_sync_dashboard" onclick="manualSync()" title="مزامنة البيانات">
+                <i class="fas fa-sync"></i>
+            </button>
             <button class="btn btn-sm btn-light text-navy fw-bold position-relative shadow-sm" onclick="showVCard()" title="بطاقة العمل الذكية">
                 <i class="fas fa-qrcode"></i>
             </button>
             <div class="dropdown">
-                <button class="btn btn-sm btn-light text-navy fw-bold position-relative shadow-sm" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="btn btn-sm btn-light text-navy fw-bold position-relative shadow-sm" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" onclick="markNotificationsRead()">
                     <i class="fas fa-bell"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notification-badge">0</span>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0 notification-dropdown" aria-labelledby="notificationDropdown" id="notifications-list" style="width: 320px; max-height: 400px; overflow-y: auto; border-radius: 15px;">
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 notification-dropdown" aria-labelledby="notificationDropdown" id="notifications-list" style="width: 320px; max-height: 400px; overflow-y: auto; border-radius: 15px;">
+                    <li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>
                 </ul>
             </div>
             <div class="dropdown">
                 <button class="btn btn-sm btn-outline-light border-0" type="button" data-bs-toggle="dropdown"><i class="fas fa-bars fs-5"></i></button>
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 15px;">
                     <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="openModal('settingsModal')" id="firm-settings-btn" style="display:none;"><i class="fas fa-cog text-muted me-2"></i>إعدادات المكتب</a></li>
-                    <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="runConflictCheckModal()"><i class="fas fa-shield-alt text-warning me-2"></i>فحص تعارض المصالح</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item py-2 fw-bold text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>تسجيل خروج</a></li>
                 </ul>
@@ -115,10 +123,10 @@
                     </div>
                 </div>
                 <div class="col-6" id="stat-staff-card" style="display:none;">
-                    <div class="card-custom p-3 text-center shadow-sm h-100" onclick="document.getElementById('staff-management-section').scrollIntoView({behavior:'smooth'})" style="cursor:pointer">
+                    <div class="card-custom p-3 text-center shadow-sm h-100" onclick="window.location.href='staff.html'" style="cursor:pointer">
                         <div class="icon-box bg-light text-dark mx-auto mb-2"><i class="fas fa-user-tie fs-4"></i></div>
                         <h3 class="fw-bold text-navy mb-0" id="stat-staff">0</h3>
-                        <small class="text-muted fw-bold">الموظفين</small>
+                        <small class="text-muted fw-bold">الموارد البشرية</small>
                     </div>
                 </div>
             </div>
@@ -141,27 +149,19 @@
             </div>
             
             <div id="install-pwa-container" class="text-center mb-4">
-                <button id="install-pwa-btn" class="btn btn-outline-navy fw-bold rounded-pill px-4 shadow-sm d-none">
-                    <i class="fas fa-download me-1"></i> تثبيت التطبيق على الهاتف
+                <button id="install-pwa-btn" class="btn btn-outline-navy fw-bold rounded-pill px-4 shadow-sm d-none" onclick="requestPushPermission()">
+                    <i class="fas fa-bell me-1"></i> تفعيل إشعارات الهاتف
                 </button>
-            </div>
-
-            <div id="staff-management-section" class="mb-4 d-none">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="fw-bold text-navy mb-0"><i class="fas fa-users-cog text-primary me-2"></i> إدارة فريق العمل</h6>
-                    <div>
-                        <button class="btn btn-sm btn-outline-info me-1 fw-bold shadow-sm" onclick="loadAndShowHistory()"><i class="fas fa-history"></i> سجل النشاطات</button>
-                        <button class="btn btn-sm btn-primary-custom shadow-sm fw-bold" onclick="openModal('staffModal')"><i class="fas fa-plus"></i> موظف</button>
-                    </div>
-                </div>
-                <ul class="list-group shadow-sm border-0" id="staff-list"></ul>
             </div>
         </div>
 
         <div id="cases-view" class="view fade-in d-none">
             <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-light pb-2 pt-2" style="z-index: 10;">
                 <h5 class="fw-bold text-navy mb-0"><i class="fas fa-gavel text-accent me-2"></i> القضايا</h5>
-                <button class="btn btn-sm btn-primary-custom fw-bold px-3 shadow-sm" onclick="openModal('caseModal')"><i class="fas fa-plus me-1"></i> قضية</button>
+                <div>
+                    <button class="btn btn-sm btn-danger fw-bold px-2 shadow-sm me-1" onclick="openModal('conflictModal')" title="فحص تعارض المصالح"><i class="fas fa-shield-alt"></i></button>
+                    <button class="btn btn-sm btn-primary-custom fw-bold px-3 shadow-sm" onclick="openModal('caseModal')"><i class="fas fa-plus me-1"></i> قضية</button>
+                </div>
             </div>
             
             <div class="d-flex gap-2 mb-3 overflow-auto pb-1 filter-scroll" style="white-space: nowrap;">
@@ -180,7 +180,18 @@
                 <h5 class="fw-bold text-navy mb-0"><i class="fas fa-users text-success me-2"></i> الموكلين</h5>
                 <button class="btn btn-sm btn-success fw-bold px-3 shadow-sm" onclick="openModal('clientModal')"><i class="fas fa-plus me-1"></i> موكل</button>
             </div>
-            <input type="text" class="form-control form-control-sm mb-3 shadow-sm border-0" placeholder="بحث باسم الموكل أو رقمه..." id="search-clients" onkeyup="filterClients()">
+            
+            <div class="row g-2 mb-3">
+                <div class="col-8">
+                    <input type="text" class="form-control form-control-sm shadow-sm border-0" placeholder="بحث باسم الموكل أو رقمه..." id="search-clients" onkeyup="filterClients()">
+                </div>
+                <div class="col-4">
+                    <select class="form-select form-select-sm shadow-sm border-0 fw-bold text-muted" id="sort-clients" onchange="filterClients()">
+                        <option value="newest">الأحدث</option>
+                        <option value="alpha">أ - ي</option>
+                    </select>
+                </div>
+            </div>
             <div id="clients-list"></div>
         </div>
 
@@ -188,15 +199,24 @@
             <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-light pb-2 pt-2" style="z-index: 10;">
                 <h5 class="fw-bold text-navy mb-0"><i class="fas fa-calendar-alt text-warning me-2"></i> الأجندة والمهام</h5>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-secondary fw-bold shadow-sm" onclick="toggleAgendaView()" id="btn-toggle-agenda" title="تبديل العرض"><i class="fas fa-columns"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary fw-bold shadow-sm" onclick="toggleAgendaView()" id="btn-toggle-agenda" title="تبديل العرض (قائمة/لوحة)"><i class="fas fa-columns"></i></button>
                     <button class="btn btn-sm btn-warning fw-bold px-3 shadow-sm text-dark" onclick="openModal('apptModal')"><i class="fas fa-plus me-1"></i> موعد</button>
+                </div>
+            </div>
+            
+            <div class="row g-2 mb-3">
+                <div class="col-7">
+                    <input type="text" class="form-control form-control-sm shadow-sm border-0" placeholder="بحث في المواعيد..." id="search-agenda" onkeyup="filterAgenda()">
+                </div>
+                <div class="col-5">
+                    <input type="date" class="form-control form-control-sm shadow-sm border-0 text-muted" id="filter-date-agenda" onchange="filterAgenda()">
                 </div>
             </div>
             
             <div id="agenda-list"></div>
 
-            <div id="kanban-board" class="row g-3 d-none flex-nowrap overflow-auto pb-3" style="min-height: 70vh;">
-            </div>
+            <div id="kanban-board" class="row d-none flex-nowrap overflow-auto pb-3" style="min-height: 70vh; gap: 15px; padding-right: 10px;">
+                </div>
         </div>
 
         <div id="tools-view" class="view fade-in d-none">
@@ -279,7 +299,37 @@
                                 <input type="text" id="client_national_id" class="form-control border-0 shadow-sm" placeholder="اختياري">
                             </div>
                         </div>
-                        <div class="mb-3">
+
+                        <div class="row g-2 mb-3 border-top pt-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">اسم الأم</label>
+                                <input type="text" id="client_mother" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">تاريخ الميلاد</label>
+                                <input type="date" id="client_dob" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">مكان الولادة</label>
+                                <input type="text" id="client_pob" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الجنسية</label>
+                                <input type="text" id="client_nationality" class="form-control border-0 shadow-sm" value="أردني">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الحالة الاجتماعية</label>
+                                <select id="client_marital" class="form-select border-0 shadow-sm">
+                                    <option value="">غير محدد</option><option value="أعزب">أعزب</option><option value="متزوج">متزوج</option><option value="مطلق">مطلق</option><option value="أرمل">أرمل</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">المهنة</label>
+                                <input type="text" id="client_profession" class="form-control border-0 shadow-sm">
+                            </div>
+                        </div>
+
+                        <div class="mb-3 border-top pt-3">
                             <label class="form-label fw-bold small text-muted">البريد الإلكتروني (اختياري)</label>
                             <input type="email" id="client_email" class="form-control border-0 shadow-sm" placeholder="example@email.com" dir="ltr">
                         </div>
@@ -287,12 +337,21 @@
                             <label class="form-label fw-bold small text-muted">العنوان التفصيلي</label>
                             <textarea id="client_address" class="form-control border-0 shadow-sm" rows="2" placeholder="المدينة، المنطقة، الشارع..."></textarea>
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small text-muted">صفة الموكل</label>
-                            <select id="client_type" class="form-select border-0 shadow-sm">
-                                <option value="فرد">أفراد (شخص طبيعي)</option>
-                                <option value="شركة">شركات (شخص اعتباري)</option>
-                            </select>
+                        <div class="row g-2 mb-4 border-top pt-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">صفة الموكل</label>
+                                <select id="client_type" class="form-select border-0 shadow-sm">
+                                    <option value="فرد">أفراد (شخص طبيعي)</option>
+                                    <option value="شركة">شركات (شخص اعتباري)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية</label>
+                                <select id="client_confidentiality" class="form-select border-0 shadow-sm">
+                                    <option value="عادي">عادي (متاح للمكتب)</option>
+                                    <option value="سري">سري (للمدير والمحامي المسؤول)</option>
+                                </select>
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-save me-1"></i> حفظ بيانات الموكل</button>
                     </form>
@@ -334,6 +393,39 @@
                             <input type="text" id="case_opponent_name" class="form-control border-0 shadow-sm" placeholder="اسم الخصم (لغايات فحص التعارض)">
                         </div>
                         
+                        <div class="row g-2 mb-3 border-top pt-2">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">درجة التقاضي</label>
+                                <select id="case_litigation_degree" class="form-select border-0 shadow-sm">
+                                    <option value="">غير محدد</option>
+                                    <option value="صلح">صلح</option>
+                                    <option value="بداية">بداية</option>
+                                    <option value="استئناف">استئناف</option>
+                                    <option value="تمييز">تمييز</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">قضية رئيسية (ربط)</label>
+                                <select id="case_parent_id" class="form-select border-0 shadow-sm"></select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted text-danger">الموعد النهائي</label>
+                                <input type="date" id="case_deadline_date" class="form-control border-0 shadow-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted text-success">نسبة النجاح (%)</label>
+                                <input type="number" id="case_success_prob" class="form-control border-0 shadow-sm" min="0" max="100">
+                            </div>
+                            
+                            <div class="col-12 mt-3"> 
+                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية للملف</label>
+                                <select id="case_confidentiality" class="form-select border-0 shadow-sm">
+                                    <option value="عادي">عادي (متاح لمحامين المكتب)</option>
+                                    <option value="سري">سري (متاح للمدير والمحامين المسندين فقط)</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fw-bold small text-muted d-flex justify-content-between align-items-center">
                                 <span>وقائع / لائحة الدعوى (للذكاء الاصطناعي)</span>
@@ -361,10 +453,12 @@
                                 <input type="number" id="case_claim_amount" class="form-control border-0 shadow-sm" placeholder="0">
                             </div>
                         </div>
+                        
                         <div id="case-assign-wrapper" class="mb-4">
                             <label class="form-label fw-bold small text-muted">إسناد القضية لـ (المحامين)</label>
-                            <div class="bg-white p-2 border rounded shadow-sm" style="max-height: 120px; overflow-y: auto;" id="case_assigned_lawyers_container"></div>
+                            <select class="form-control" id="case_assigned_lawyers" multiple></select>
                         </div>
+
                         <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-save me-1"></i> حفظ وتوليد الملف</button>
                     </form>
                 </div>
@@ -399,63 +493,13 @@
                                 <option value="أخرى">أخرى</option>
                             </select>
                         </div>
+                        
                         <div id="appt-assign-wrapper" class="mb-4">
                             <label class="form-label fw-bold small text-muted">إسناد المهمة لـ (المحامين)</label>
-                            <div class="bg-white p-2 border rounded shadow-sm" style="max-height: 120px; overflow-y: auto;" id="appt_assigned_to_container"></div>
+                            <select class="form-control" id="appt_assigned_to" multiple></select>
                         </div>
+
                         <button type="submit" class="btn btn-warning w-100 py-2 fw-bold text-dark shadow"><i class="fas fa-save me-1"></i> جدولة وتفعيل التنبيهات</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="historyModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-info text-white border-0" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-history me-2"></i> سجل نشاطات النظام</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-3 bg-light">
-                    <div id="history-list" class="list-group">
-                        <div class="text-center p-4 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>جاري جلب السجلات...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="staffModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-dark text-white border-0" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2 text-warning"></i> إضافة موظف جديد</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4 bg-light">
-                    <form id="staffForm" onsubmit="saveStaff(event)">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">الاسم الكامل</label>
-                            <input type="text" id="staff_full_name" class="form-control border-0 shadow-sm" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">رقم الهاتف (للدخول)</label>
-                            <input type="tel" id="staff_phone" class="form-control border-0 shadow-sm" required placeholder="079..." dir="ltr">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">رقم التيليجرام (Telegram ID)</label>
-                            <input type="number" id="staff_telegram_id" class="form-control border-0 shadow-sm" placeholder="اختياري لاستلام الكود" dir="ltr">
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold small">الصلاحية / المنصب</label>
-                            <select id="staff_role" class="form-select border-0 shadow-sm">
-                                <option value="lawyer">محامي (يصل لقضاياه فقط)</option>
-                                <option value="secretary">سكرتاريا (وصول عام دون تقارير)</option>
-                                <option value="admin">مدير (وصول كامل)</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-dark w-100 py-2 fw-bold shadow"><i class="fas fa-user-check me-1"></i> حفظ وتفعيل</button>
                     </form>
                 </div>
             </div>
@@ -530,15 +574,15 @@
     <div class="modal fade" id="apptOutcomeModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-success text-white border-0">
+                <div class="modal-header bg-success text-white border-0" style="border-radius: 15px 15px 0 0;">
                     <h5 class="modal-title fw-bold fs-6"><i class="fas fa-check-circle me-2"></i> إنجاز المهمة</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-3">
+                <div class="modal-body p-3 bg-light">
                     <form onsubmit="saveApptOutcome(event)">
                         <input type="hidden" id="outcome_appt_id">
                         <label class="form-label small fw-bold text-muted">مخرجات / تفاصيل الإنجاز (اختياري)</label>
-                        <textarea id="outcome_text" class="form-control mb-3 shadow-sm" rows="3" placeholder="اكتب ما تم إنجازه في هذه الجلسة أو الموعد..."></textarea>
+                        <textarea id="outcome_text" class="form-control border-0 mb-3 shadow-sm" rows="3" placeholder="اكتب ما تم إنجازه في هذه الجلسة أو الموعد..."></textarea>
                         <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">تأكيد الإنجاز</button>
                     </form>
                 </div>
@@ -549,15 +593,15 @@
     <div class="modal fade" id="apptPostponeModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-warning text-dark border-0">
+                <div class="modal-header bg-warning text-dark border-0" style="border-radius: 15px 15px 0 0;">
                     <h5 class="modal-title fw-bold fs-6"><i class="fas fa-clock me-2"></i> تأجيل وجدولة</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-3">
+                <div class="modal-body p-3 bg-light">
                     <form onsubmit="saveApptPostpone(event)">
                         <input type="hidden" id="postpone_appt_id">
                         <label class="form-label small fw-bold text-muted">تاريخ ووقت الموعد الجديد <span class="text-danger">*</span></label>
-                        <input type="datetime-local" id="postpone_date" class="form-control mb-3 shadow-sm" required>
+                        <input type="datetime-local" id="postpone_date" class="form-control border-0 mb-3 shadow-sm" required>
                         <button type="submit" class="btn btn-warning text-dark w-100 fw-bold shadow-sm">حفظ التأجيل</button>
                     </form>
                 </div>
@@ -573,7 +617,7 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-3 text-center bg-light">
-                    <div id="share-qrcode" class="mb-3 d-flex justify-content-center p-2 bg-white rounded shadow-sm"></div>
+                    <div id="share-qrcode" class="mb-3 d-flex justify-content-center p-2 bg-white rounded shadow-sm mx-auto" style="width: fit-content;"></div>
                     <div class="mb-3 text-start">
                         <label class="form-label small fw-bold text-muted">الرابط المباشر:</label>
                         <input type="text" id="share_link_input" class="form-control form-control-sm text-start bg-white border-0 shadow-sm" dir="ltr" readonly>
@@ -583,8 +627,8 @@
                         <input type="text" id="share_pin_input" class="form-control text-center fw-bold text-danger fs-5 bg-white border-0 shadow-sm" readonly>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-success w-50 fw-bold shadow-sm" onclick="sendViaWhatsApp()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
-                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLink()"><i class="fas fa-copy me-1"></i> نسخ النص</button>
+                        <button class="btn btn-success w-50 fw-bold shadow-sm" onclick="sendShareViaWhatsApp()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
+                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLinkApp()"><i class="fas fa-copy me-1"></i> نسخ النص</button>
                     </div>
                 </div>
             </div>
@@ -596,7 +640,7 @@
             <div class="modal-content border-0 text-center p-4 shadow-lg" style="border-radius: 20px;">
                 <h5 class="fw-bold text-navy mb-1"><i class="fas fa-id-badge text-accent me-1"></i> بطاقة المكتب الذكية</h5>
                 <p class="text-muted small mb-3">دع العميل يمسح الكود بكاميرا هاتفه ليتم حفظ بيانات المكتب ورقمه في جهات اتصاله فوراً.</p>
-                <div id="vcard-qrcode" class="d-flex justify-content-center mb-3 p-2 bg-white border rounded shadow-sm"></div>
+                <div id="vcard-qrcode" class="d-flex justify-content-center mb-3 p-2 bg-white border rounded shadow-sm mx-auto" style="width: fit-content;"></div>
                 <button class="btn btn-light text-navy fw-bold w-100 border shadow-sm" data-bs-dismiss="modal">إغلاق</button>
             </div>
         </div>
@@ -610,36 +654,5 @@
     <script src="./js/api.js"></script>
     <script src="./js/app.js"></script>
 
-    <script>
-        // سكربت خاص لجلب سجل النشاطات للمدير وعرضه بشكل جميل
-        async function loadAndShowHistory() {
-            openModal('historyModal');
-            const list = document.getElementById('history-list');
-            list.innerHTML = '<div class="text-center p-4 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>جاري جلب السجلات...</div>';
-            
-            try {
-                const data = await API.getHistory();
-                if (!data || data.length === 0) {
-                    list.innerHTML = '<div class="text-center text-muted p-4">لا يوجد نشاطات مسجلة حتى الآن</div>';
-                    return;
-                }
-                
-                list.innerHTML = data.map((item, index) => `
-                    <div class="list-group-item list-group-item-action shadow-sm mb-2 border-0 rounded" onclick="document.getElementById('hist-det-${index}').style.display = document.getElementById('hist-det-${index}').style.display === 'none' ? 'block' : 'none'" style="cursor:pointer;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <b class="text-navy"><i class="fas fa-bolt text-warning me-1"></i> ${escapeHTML(item.action_type)}</b>
-                                <br><small class="text-muted" style="font-size:11px;"><i class="fas fa-clock"></i> ${new Date(item.created_at).toLocaleString('ar-EG')}</small>
-                            </div>
-                            <i class="fas fa-chevron-down text-muted small"></i>
-                        </div>
-                        <pre id="hist-det-${index}" class="history-details-pre text-muted">${escapeHTML(JSON.stringify(item.details, null, 2))}</pre>
-                    </div>
-                `).join('');
-            } catch(e) {
-                list.innerHTML = '<div class="text-center text-danger p-4">حدث خطأ أثناء جلب السجلات</div>';
-            }
-        }
-    </script>
 </body>
 </html>

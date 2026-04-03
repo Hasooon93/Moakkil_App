@@ -84,8 +84,8 @@
                                 <tr>
                                     <th>اسم المكتب</th>
                                     <th>حالة الاشتراك</th>
-                                    <th>المستخدمين (الحالي/الأقصى)</th>
-                                    <th>تاريخ الانضمام</th>
+                                    <th>انتهاء الاشتراك</th>
+                                    <th>الكوتا (مستخدمين)</th>
                                     <th>الإجراءات</th>
                                 </tr>
                             </thead>
@@ -107,15 +107,24 @@
                 </div>
                 <div class="modal-body p-4">
                     <form id="addFirmForm">
-                        <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold">بيانات المكتب والكوتا</h6>
+                        <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold">بيانات المكتب والاشتراك</h6>
                         <div class="mb-3">
                             <label class="form-label">اسم المكتب</label>
                             <input type="text" class="form-control" id="newFirmName" required placeholder="مثال: مكتب العدالة للمحاماة">
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label">الحد الأقصى للمستخدمين (الكوتا)</label>
-                            <input type="number" class="form-control" id="newFirmMaxUsers" value="5" min="1" required>
-                            <div class="form-text text-muted">عدد الحسابات المسموح إنشاؤها لهذا المكتب.</div>
+                        <div class="row mb-4 g-2">
+                            <div class="col-6">
+                                <label class="form-label">مدة الاشتراك</label>
+                                <select class="form-select" id="newFirmDuration">
+                                    <option value="1">شهر واحد (تجريبي/شهري)</option>
+                                    <option value="6">6 أشهر</option>
+                                    <option value="12" selected>سنة كاملة</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">الحد الأقصى للموظفين</label>
+                                <input type="number" class="form-control" id="newFirmMaxUsers" value="5" min="1" required>
+                            </div>
                         </div>
 
                         <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold">حساب الإدارة (المدير الأول)</h6>
@@ -128,9 +137,8 @@
                             <input type="tel" class="form-control" id="newAdminPhone" required placeholder="رقم الهاتف بدون فواصل (مثال: 079...)" dir="ltr" style="text-align: left;">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">معرف التيليجرام (لاستلام كود الدخول OTP)</label>
-                            <input type="number" class="form-control" id="newAdminTg" placeholder="Telegram ID (اختياري)" dir="ltr" style="text-align: left;">
-                            <div class="form-text text-muted">مهم جداً: لكي يتمكن من استلام رمز التحقق وتفعيل النظام.</div>
+                            <label class="form-label">معرف التيليجرام (Telegram ID)</label>
+                            <input type="number" class="form-control" id="newAdminTg" placeholder="اختياري (لكنه مفضل للإشعارات)" dir="ltr" style="text-align: left;">
                         </div>
                     </form>
                 </div>
@@ -159,11 +167,12 @@
                             <input type="number" class="form-control" id="editFirmMaxUsers" min="1" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">حالة الاشتراك</label>
+                            <label class="form-label">الإيقاف اليدوي (Override)</label>
                             <select class="form-select" id="editFirmStatus">
                                 <option value="true">مكتب فعال (يُسمح بالدخول)</option>
-                                <option value="false">مكتب معطل (إيقاف الاشتراك)</option>
+                                <option value="false">مكتب معطل (إيقاف إجباري)</option>
                             </select>
+                            <small class="text-danger d-block mt-1">ملاحظة: الإيقاف بسبب انتهاء الاشتراك يتم أوتوماتيكياً ولا يحتاج لتعديل يدوي.</small>
                         </div>
                     </form>
                 </div>
@@ -171,6 +180,38 @@
                     <button type="button" class="btn btn-secondary shadow-sm" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-warning fw-bold shadow-sm text-dark" id="btnSubmitEditFirm">
                         <i class="fas fa-check me-1"></i> حفظ التغييرات
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="renewFirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-success text-white border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-sync-alt me-2"></i> تجديد الاشتراك</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <h6 class="fw-bold text-navy mb-3" id="renewFirmNameLabel">اسم المكتب</h6>
+                    <form id="renewFirmForm">
+                        <input type="hidden" id="renewFirmIdInput">
+                        <div class="mb-3 text-start">
+                            <label class="form-label fw-bold">إضافة مدة جديدة:</label>
+                            <select class="form-select" id="renewDuration">
+                                <option value="1">شهر واحد</option>
+                                <option value="6">6 أشهر</option>
+                                <option value="12" selected>سنة كاملة</option>
+                            </select>
+                        </div>
+                    </form>
+                    <p class="text-muted small mb-0">سيتم تمديد تاريخ الانتهاء الحالي أو البدء من اليوم إذا كان منتهياً.</p>
+                </div>
+                <div class="modal-footer border-0 bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary shadow-sm" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-success fw-bold shadow-sm" id="btnSubmitRenewFirm">
+                        <i class="fas fa-check-circle me-1"></i> تأكيد التجديد
                     </button>
                 </div>
             </div>

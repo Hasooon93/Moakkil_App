@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a192f">
     <title>دخول نظام موكّل 2.0</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -20,85 +21,85 @@
         body { 
             font-family: 'Cairo', sans-serif; 
             background: linear-gradient(135deg, var(--navy) 0%, #1e293b 100%);
-            min-height: 100vh; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px;
-        }
-        
-        .login-card { 
-            width: 100%; 
-            max-width: 420px; 
-            padding: 2.5rem 2rem; 
-            border-radius: 20px; 
-            background: #ffffff; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3); 
-            position: relative;
-        }
-        
-        .brand-logo-box {
-            background: var(--navy);
-            width: 70px;
-            height: 70px;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             border-radius: 20px;
-            margin: -60px auto 15px auto;
-            box-shadow: 0 10px 20px rgba(10, 25, 47, 0.2);
-            border: 4px solid white;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        
-        .brand-title { 
-            font-size: 1.8rem; 
-            font-weight: 900; 
-            color: var(--navy); 
-            text-align: center; 
-            margin-bottom: 0.2rem; 
+
+        .logo-circle {
+            width: 90px;
+            height: 90px;
+            background: var(--navy);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 25px rgba(10, 25, 47, 0.3);
+            border: 3px solid var(--accent);
         }
-        
-        .form-control { 
-            border-radius: 12px; 
-            padding: 12px; 
-            border: 2px solid #eef2f6; 
-            font-weight: 600; 
-            text-align: center; 
-            background-color: #fcfcfc;
-            transition: 0.3s;
+
+        .form-control {
+            background: var(--light-bg);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s;
         }
+
         .form-control:focus {
             border-color: var(--navy);
-            background-color: white;
-            box-shadow: none;
+            box-shadow: 0 0 0 4px rgba(10, 25, 47, 0.1);
+            background: #fff;
         }
-        
-        .btn-navy { 
-            background-color: var(--navy); 
-            color: white; 
-            border-radius: 12px; 
-            padding: 14px; 
-            font-weight: 800; 
-            width: 100%; 
-            transition: 0.3s; 
+
+        .btn-primary-custom {
+            background: var(--navy);
+            color: white;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s;
             border: none;
-            margin-top: 10px;
         }
-        .btn-navy:hover { 
-            background-color: var(--accent); 
-            color: var(--navy); 
+
+        .btn-primary-custom:hover, .btn-primary-custom:active {
+            background: #1e3a8a;
             transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(10, 25, 47, 0.2);
         }
-        
-        .form-label { font-size: 0.9rem; color: #475569; }
-        
+
+        .otp-input {
+            letter-spacing: 12px;
+            font-size: 1.5rem;
+            text-align: center;
+            font-weight: 900;
+        }
+
         .btn-back-home {
             color: #64748b;
-            font-weight: 700;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
             text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: 0.3s;
         }
+
         .btn-back-home:hover {
             color: var(--navy);
         }
@@ -107,31 +108,31 @@
 <body>
 
     <div class="login-card">
-        <div class="brand-logo-box">
-            <i class="fas fa-balance-scale fs-2" style="color: var(--accent);"></i>
+        <div class="text-center mb-4">
+            <div class="logo-circle">
+                <i class="fas fa-balance-scale fa-3x" style="color: var(--accent);"></i>
+            </div>
+            <h3 class="fw-bold text-navy mb-1" style="color: var(--navy);">نظام موكّل</h3>
+            <p class="text-muted small fw-bold">تسجيل الدخول الآمن للمحامين والموظفين</p>
         </div>
-        <div class="brand-title">موكّل ERP</div>
-        <p class="text-center text-muted mb-4 small fw-bold">بوابة الوصول الموحدة الآمنة</p>
 
         <div id="phone-section">
-            <div class="mb-3">
-                <label class="form-label fw-bold">رقم الهاتف المسجل</label>
-                <input type="tel" id="phone" class="form-control fs-5" placeholder="07XXXXXXXX" dir="ltr">
+            <div class="mb-4 position-relative">
+                <label class="form-label small fw-bold text-muted">رقم الهاتف <span class="text-danger">*</span></label>
+                <input type="tel" id="phone" class="form-control text-center" placeholder="أدخل رقم الهاتف المسجل بالنظام..." required autocomplete="tel" dir="ltr">
+                <small class="text-muted d-block mt-2 text-center" style="font-size: 0.75rem;">سيصلك رمز التحقق عبر تيليغرام أو رسالة نصية</small>
             </div>
-            <button id="btn-request-otp" onclick="requestOTP()" class="btn btn-navy shadow-sm">
+            <button class="btn btn-primary-custom w-100 shadow-sm" id="btn-request-otp" onclick="requestOTP()">
                 <i class="fas fa-paper-plane me-2"></i> إرسال رمز التحقق
             </button>
         </div>
 
-        <div id="otp-section" class="d-none">
-            <div class="alert alert-success text-center py-2 mb-3 fw-bold" style="font-size: 0.85rem;">
-                <i class="fas fa-check-circle me-1"></i> تم إرسال الرمز للتيليجرام بنجاح
+        <div id="otp-section" class="d-none fade-in">
+            <div class="mb-4">
+                <label class="form-label small fw-bold text-muted text-center w-100">أدخل الرمز السري <span class="text-danger">*</span></label>
+                <input type="text" id="otp" class="form-control otp-input text-navy" placeholder="------" maxlength="6" required autocomplete="one-time-code" dir="ltr">
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold">كود التحقق (OTP)</label>
-                <input type="text" id="otp" class="form-control fs-3" placeholder="------" maxlength="6" style="letter-spacing: 12px;">
-            </div>
-            <button id="btn-verify-otp" onclick="verifyOTP()" class="btn btn-success w-100 py-3 rounded-3 fw-bold mb-3 shadow-sm" style="background-color: #10b981; border:none;">
+            <button class="btn btn-primary-custom w-100 shadow-sm mb-3" id="btn-verify-otp" onclick="verifyOTP()">
                 <i class="fas fa-shield-alt me-1"></i> تأكيد الدخول
             </button>
             <button onclick="location.reload()" class="btn btn-link btn-sm w-100 text-decoration-none fw-bold" style="color: #64748b;">
@@ -140,31 +141,42 @@
         </div>
         
         <div class="text-center mt-4 pt-3 border-top">
-            <a href="index.html" class="btn-back-home"><i class="fas fa-home me-1"></i> العودة للرئيسية</a>
+            <a href="index.html" class="btn-back-home d-block mb-3"><i class="fas fa-home me-1"></i> العودة للصفحة الرئيسية للمكتب</a>
+            <a href="register.html" class="btn-back-home d-block opacity-75"><i class="fas fa-shield-alt me-1"></i> الدخول للإدارة العليا (المنصة المركزية)</a>
         </div>
 
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
     <script src="./js/auth.js"></script>
 
     <script>
-        // التحقق من وجود جلسة فعالة لتوجيه المستخدم مباشرة للوحة
+        // 1. التحقق من وجود جلسة فعالة لتوجيه المستخدم مباشرة للوحة (للحفاظ على تجربة مستخدم سريعة)
         window.onload = function() {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             const user = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
             if (token && user) {
                 window.location.href = 'app.html';
             }
+            
+            // تهيئة إعدادات الهوية البصرية إذا كانت مخزنة في المتصفح
+            const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
+            if (fwSettings) {
+                if (fwSettings.primary_color) document.documentElement.style.setProperty('--navy', fwSettings.primary_color);
+                if (fwSettings.accent_color) document.documentElement.style.setProperty('--accent', fwSettings.accent_color);
+            }
         };
 
-        // تفعيل النقر على زر Enter للإرسال السريع
-        document.getElementById('phone').addEventListener('keypress', function (e) {
+        // 2. تفعيل النقر على زر Enter للإرسال السريع لتسهيل عمل الموظفين
+        document.getElementById('phone').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') requestOTP();
         });
-        document.getElementById('otp').addEventListener('keypress', function (e) {
+
+        document.getElementById('otp').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') verifyOTP();
         });
     </script>

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a192f">
     <title>المكتبة القانونية | موكّل</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -14,81 +15,84 @@
     <style>
         .nav-pills .nav-link { border-radius: 10px; color: var(--navy); font-weight: 700; border: 1px solid #e2e8f0; margin-left: 5px; transition: 0.3s; background: white;}
         .nav-pills .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); }
-        .template-card { border-right: 4px solid var(--accent); transition: 0.3s; border-radius: 12px; }
-        .template-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .btn-outline-navy { color: var(--navy); border-color: var(--navy); }
-        .btn-outline-navy:hover { background-color: var(--navy); color: white; }
-
+        .template-card { border-right: 4px solid var(--accent); transition: 0.3s; border-radius: 12px; background: white; padding: 15px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .template-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        
         /* تصميم الشريط السفلي الموحد */
         .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1030; }
         .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.75rem; font-weight: 700; transition: all 0.3s ease; border-radius: 15px; padding: 8px 0; cursor: pointer; }
         .nav-item.active { color: var(--navy); background-color: #f1f5f9; transform: translateY(-3px); }
         .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
         .nav-item.active i { color: var(--accent); transform: scale(1.1); }
-        
-        /* تحسين التمرير للأقسام */
-        .nav-scroll::-webkit-scrollbar { height: 4px; }
-        .nav-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
-</head>
-<body style="background: #f8fafc; padding-bottom: 80px; font-family: 'Cairo', sans-serif;">
 
-    <div class="top-nav d-flex align-items-center px-3 shadow-sm position-relative" style="height: 65px; background: var(--navy);">
-        <button class="btn btn-link text-white text-decoration-none p-0 position-absolute start-0 ms-3" onclick="window.location.href='app.html'">
-            <i class="fas fa-arrow-right fs-4"></i>
-        </button>
-        <h6 class="text-white mb-0 fw-bold mx-auto"><i class="fas fa-book-open text-accent me-2"></i> المكتبة القانونية</h6>
-        <button class="btn btn-sm btn-warning text-dark fw-bold position-absolute end-0 me-3 shadow-sm" onclick="openModal('uploadTemplateModal')" id="btn-add-template" style="display: none;">
-            <i class="fas fa-plus"></i> رفع ملف
+    <script>
+        const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
+        if (fwSettings) {
+            if (fwSettings.primary_color) document.documentElement.style.setProperty('--navy', fwSettings.primary_color);
+            if (fwSettings.accent_color) document.documentElement.style.setProperty('--accent', fwSettings.accent_color);
+        }
+    </script>
+</head>
+<body class="pb-5 mb-5 bg-light">
+
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm sticky-top mb-3" style="background: var(--navy); height: 65px;">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-sm btn-light border-0 rounded-circle text-navy shadow-sm" onclick="window.location.href='app.html'" style="width: 35px; height: 35px;">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            <h6 class="mb-0 fw-bold text-white"><i class="fas fa-book me-2 text-accent"></i> المكتبة والنماذج</h6>
+        </div>
+        <button id="btn-add-template" class="btn btn-sm btn-accent fw-bold shadow-sm text-navy" style="display: none;" onclick="openModal('uploadModal')">
+            <i class="fas fa-plus"></i> نموذج
         </button>
     </div>
 
-    <div class="container mt-4 mb-5 pb-4">
-        <ul class="nav nav-pills mb-4 flex-nowrap overflow-auto pb-2 nav-scroll" id="library-tabs" role="tablist">
-            <li class="nav-item-tab"><button class="nav-link active shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-contracts">عقود جاهزة</button></li>
-            <li class="nav-item-tab"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-poa">نماذج وكالات</button></li>
-            <li class="nav-item-tab"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-pleadings">لوائح ومذكرات</button></li>
-            <li class="nav-item-tab"><button class="nav-link shadow-sm px-4" data-bs-toggle="pill" data-bs-target="#cat-laws">نصوص وقوانين</button></li>
+    <div class="container mt-3">
+        <div class="alert alert-info border-info bg-white text-center shadow-sm fw-bold small">
+            <i class="fas fa-info-circle me-1"></i> هذه المكتبة مشتركة وتظهر لجميع المحامين والموظفين في المكتب للوصول السريع للنماذج والتشريعات.
+        </div>
+
+        <ul class="nav nav-pills mb-4 justify-content-center flex-nowrap overflow-auto pb-2" id="pills-tab" role="tablist" style="white-space: nowrap;">
+            <li class="nav-item-tab">
+                <button class="nav-link active px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-contracts" onclick="filterTemplates('عقود')">عقود</button>
+            </li>
+            <li class="nav-item-tab">
+                <button class="nav-link px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-poa" onclick="filterTemplates('وكالات')">وكالات</button>
+            </li>
+            <li class="nav-item-tab">
+                <button class="nav-link px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-lawsuits" onclick="filterTemplates('لوائح')">لوائح</button>
+            </li>
+            <li class="nav-item-tab">
+                <button class="nav-link px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-laws" onclick="filterTemplates('قوانين')">تشريعات</button>
+            </li>
         </ul>
 
-        <div class="tab-content" id="library-content">
-            <div class="tab-pane fade show active" id="cat-contracts"><div class="row g-3" id="list-contracts"></div></div>
-            <div class="tab-pane fade" id="cat-poa"><div class="row g-3" id="list-poa"></div></div>
-            <div class="tab-pane fade" id="cat-pleadings"><div class="row g-3" id="list-pleadings"></div></div>
-            <div class="tab-pane fade" id="cat-laws"><div class="row g-3" id="list-laws"></div></div>
+        <div class="mb-3 position-relative">
+            <input type="text" class="form-control form-control-lg border-0 shadow-sm" id="search-input" placeholder="ابحث عن نموذج، وكالة، أو قانون..." onkeyup="searchTemplates()" style="border-radius: 15px;">
+            <i class="fas fa-search text-muted position-absolute" style="top: 50%; right: 15px; transform: translateY(-50%);"></i>
+        </div>
+
+        <div class="row g-3" id="templates-container">
+            <div class="col-12 text-center p-5 text-muted">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <br>جاري جلب المكتبة...
+            </div>
         </div>
     </div>
 
-    <div class="bottom-nav d-flex justify-content-around">
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-home"></i> الرئيسية
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-gavel"></i> القضايا
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-users"></i> الموكلين
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
-            <i class="fas fa-calendar-check"></i> الأجندة
-        </div>
-        <div class="nav-item active" onclick="window.location.href='app.html'">
-            <i class="fas fa-toolbox"></i> الأدوات
-        </div>
-    </div>
-
-    <div class="modal fade" id="uploadTemplateModal" tabindex="-1">
+    <div class="modal fade" id="uploadModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold text-navy"><i class="fas fa-cloud-upload-alt text-accent me-2"></i> إضافة ملف للمكتبة</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-cloud-upload-alt me-2 text-accent"></i> إضافة نموذج للمكتبة</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body text-center p-4">
-                    <form id="templateForm" onsubmit="saveTemplate(event)">
+                <div class="modal-body p-4 bg-light">
+                    <form id="uploadForm" onsubmit="uploadTemplate(event)">
                         <div class="mb-3 text-start">
-                            <label class="form-label small fw-bold text-muted">اسم النموذج / الملف <span class="text-danger">*</span></label>
-                            <input type="text" id="tpl_title" class="form-control border-0 shadow-sm" placeholder="مثال: عقد إيجار شقة سكني" required>
+                            <label class="form-label small fw-bold text-muted">اسم النموذج / التشريع <span class="text-danger">*</span></label>
+                            <input type="text" id="tpl_title" class="form-control border-0 shadow-sm" required placeholder="مثال: عقد إيجار تجاري...">
                         </div>
                         <div class="mb-3 text-start">
                             <label class="form-label small fw-bold text-muted">التصنيف <span class="text-danger">*</span></label>
@@ -109,6 +113,24 @@
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav d-flex justify-content-around">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> الرئيسية
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item active" onclick="window.location.href='app.html'">
+            <i class="fas fa-toolbox"></i> الأدوات
         </div>
     </div>
 

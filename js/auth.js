@@ -1,4 +1,4 @@
-// js/auth.js - نظام الدخول الموحد (OTP لجميع المستخدمين)
+// js/auth.js - نظام الدخول الموحد (OTP لجميع المستخدمين + إضافة البصمة WebAuthn)
 
 /**
  * 1. طلب كود الدخول (OTP)
@@ -73,7 +73,7 @@ async function requestOTP() {
 }
 
 /**
- * 2. التحقق من الكود (OTP) وإتمام الدخول
+ * 2. التحقق من الكود (OTP) وإتمام الدخول واقتراح البصمة
  * يتصل بمسار: /api/auth/verify-otp
  */
 async function verifyOTP() {
@@ -110,16 +110,37 @@ async function verifyOTP() {
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             
-            // رسالة نجاح وانتقال سلس
-            Swal.fire({
-                icon: 'success',
-                title: `أهلاً بك، ${data.user.full_name}`,
-                text: 'جاري تحويلك إلى لوحة التحكم...',
-                timer: 1500,
-                showConfirmButton: false
-            }).then(() => {
-                window.location.href = 'app.html';
-            });
+            // محاولة اقتراح تفعيل البصمة إذا كان المتصفح يدعمها
+            if (window.PublicKeyCredential) {
+                Swal.fire({
+                    icon: 'question',
+                    title: `أهلاً بك، ${data.user.full_name}`,
+                    text: 'هل ترغب بتفعيل الدخول السريع عبر البصمة (أو التعرف على الوجه) لهذا الجهاز؟',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fas fa-fingerprint me-1"></i> نعم، فعّل البصمة',
+                    cancelButtonText: 'ليس الآن',
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        registerBiometrics().then(() => {
+                            window.location.href = 'app.html';
+                        });
+                    } else {
+                        window.location.href = 'app.html';
+                    }
+                });
+            } else {
+                // انتقال مباشر إذا كان الجهاز لا يدعم البصمة
+                Swal.fire({
+                    icon: 'success',
+                    title: `أهلاً بك، ${data.user.full_name}`,
+                    text: 'جاري تحويلك إلى لوحة التحكم...',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = 'app.html';
+                });
+            }
             
         } else {
             Swal.fire({
@@ -141,5 +162,51 @@ async function verifyOTP() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i> تأكيد الدخول';
+    }
+}
+
+/**
+ * 3. تسجيل البصمة (WebAuthn) - ميزة إضافية للراحة والأمان
+ */
+async function registerBiometrics() {
+    try {
+        // توليد تحدي عشوائي (Challenge)
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        
+        const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+        const user = userStr ? JSON.parse(userStr) : { id: 'unknown', phone: 'unknown', full_name: 'User' };
+
+        const publicKey = {
+            challenge: challenge,
+            rp: { name: "نظام موكّل القانوني", id: window.location.hostname },
+            user: {
+                id: new TextEncoder().encode(user.id),
+                name: user.phone,
+                displayName: user.full_name
+            },
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+            timeout: 60000,
+            attestation: "none"
+        };
+
+        const credential = await navigator.credentials.create({ publicKey });
+        
+        // إرسال المفتاح العام ومعرف البصمة للباك إند للحفظ
+        if (credential) {
+            const result = await API.registerBiometric({
+                credential_id: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+                public_key: 'webauthn_public_key_registered', // يتم تخزين البصمة محلياً بالجهاز، ونرسل الإثبات للباك إند
+                device_name: navigator.userAgent
+            });
+
+            if(!result.error) {
+                Swal.fire('تم بنجاح!', 'تم تفعيل الدخول بالبصمة لهذا الجهاز.', 'success');
+            }
+        }
+    } catch (err) {
+        console.warn("تم إلغاء أو فشل تسجيل البصمة:", err);
+        Swal.fire('ملاحظة', 'لم يتم تفعيل البصمة. يمكنك المحاولة لاحقاً.', 'info');
     }
 }

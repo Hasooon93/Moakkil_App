@@ -46,7 +46,7 @@
         .client-header {
             background: var(--firm-primary);
             color: white;
-            padding: 30px 20px;
+            padding: 30px 20px 40px 20px;
             border-radius: 0 0 30px 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             position: relative;
@@ -104,7 +104,7 @@
 
     <div id="loader" class="loader-overlay">
         <div class="spinner"></div>
-        <h5 class="mt-3 fw-bold text-navy" style="color: var(--firm-primary);">جاري جلب بيانات القضية...</h5>
+        <h5 class="mt-3 fw-bold text-navy" style="color: var(--firm-primary);">جاري جلب بيانات الملف...</h5>
     </div>
 
     <div id="security-layer" class="d-none">
@@ -132,38 +132,73 @@
     <div id="main-content" class="d-none">
         
         <div class="client-header">
-            <div class="d-flex justify-content-between align-items-start position-relative z-1">
+            <div class="d-flex justify-content-between align-items-start position-relative z-1 mb-3">
                 <div>
                     <h6 class="text-white-50 mb-1" id="ui-firm-name">مكتب المحاماة</h6>
                     <h3 class="fw-bold mb-2">أهلاً، <span id="ui-client-name">--</span></h3>
-                    <span class="badge bg-success" style="font-size: 0.9rem;" id="ui-case-status">حالة القضية</span>
+                    <span class="badge bg-success shadow-sm" style="font-size: 0.9rem;" id="ui-case-status">حالة القضية</span>
                 </div>
                 <div id="ui-firm-logo-container" class="bg-white p-1 rounded d-none shadow-sm">
                     <img id="ui-firm-logo" src="" style="width: 50px; height: 50px; object-fit: contain;">
+                </div>
+            </div>
+            
+            <div class="position-relative z-1">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-white-50 fw-bold" id="ui-progress-text">جاري العمل على الملف...</small>
+                </div>
+                <div class="progress shadow-sm" style="height: 8px; background-color: rgba(255,255,255,0.2);">
+                    <div id="ui-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-accent" role="progressbar" style="width: 50%;"></div>
                 </div>
             </div>
         </div>
 
         <div class="container mt-4">
             
-            <div class="info-card position-relative z-1" style="margin-top: -30px;">
+            <div class="info-card position-relative z-1" style="margin-top: -35px;">
                 <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--firm-primary);"><i class="fas fa-gavel me-2 text-warning"></i> تفاصيل القضية</h5>
                 <div class="row g-3">
                     <div class="col-6">
                         <small class="text-muted fw-bold d-block">رقم الملف الداخلي</small>
-                        <b class="fs-6" id="ui-case-id">--</b>
+                        <b class="fs-6 text-dark" id="ui-case-id">--</b>
                     </div>
                     <div class="col-6">
-                        <small class="text-muted fw-bold d-block">رقم الدعوى (المحكمة)</small>
-                        <b class="fs-6" id="ui-court-num">--</b>
+                        <small class="text-muted fw-bold d-block">درجة التقاضي</small>
+                        <b class="fs-6 text-dark" id="ui-litigation">--</b>
                     </div>
                     <div class="col-6">
-                        <small class="text-muted fw-bold d-block">المحكمة</small>
-                        <b class="fs-6" id="ui-court-name">--</b>
+                        <small class="text-muted fw-bold d-block">المحكمة / الجهة</small>
+                        <b class="fs-6 text-dark" id="ui-court-name">--</b>
                     </div>
                     <div class="col-6">
                         <small class="text-danger fw-bold d-block">الخصم</small>
                         <b class="fs-6 text-danger" id="ui-opponent">--</b>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--firm-primary);"><i class="fas fa-id-card me-2 text-success"></i> بياناتي المسجلة (KYC)</h5>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">رقم الهاتف</small>
+                        <b class="fs-6 text-dark" id="ui-client-phone" dir="ltr">--</b>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">الرقم الوطني / الهوية</small>
+                        <b class="fs-6 text-dark" id="ui-client-national">--</b>
+                    </div>
+                    <div class="col-6 border-top pt-2 mt-2">
+                        <small class="text-muted fw-bold d-block">الجنسية</small>
+                        <b class="fs-6 text-dark" id="ui-client-nationality">--</b>
+                    </div>
+                    <div class="col-6 border-top pt-2 mt-2">
+                        <small class="text-muted fw-bold d-block">تاريخ الميلاد</small>
+                        <b class="fs-6 text-dark" id="ui-client-dob">--</b>
+                    </div>
+                    <div class="col-12 border-top pt-2 mt-2">
+                        <small class="text-muted fw-bold d-block">العنوان التفصيلي</small>
+                        <b class="fs-6 text-dark" id="ui-client-address">--</b>
                     </div>
                 </div>
             </div>
@@ -190,8 +225,7 @@
                 
                 <div class="tab-pane fade show active" id="tab-updates">
                     <h6 class="fw-bold mb-3" style="color: var(--firm-primary);"><i class="fas fa-history me-2 text-warning"></i> السجل الإجرائي</h6>
-                    <div class="timeline" id="ui-timeline-container">
-                        </div>
+                    <div class="timeline" id="ui-timeline-container"></div>
                 </div>
 
                 <div class="tab-pane fade" id="tab-finance">
@@ -209,7 +243,7 @@
                             </div>
                         </div>
                         <div class="col-4">
-                            <div class="fin-box border border-danger">
+                            <div class="fin-box border border-danger bg-white">
                                 <small class="text-danger fw-bold d-block">المتبقي</small>
                                 <b class="text-danger fs-5" id="ui-fin-rem">0</b>
                             </div>
@@ -224,7 +258,7 @@
                 </div>
 
                 <div class="tab-pane fade" id="tab-files">
-                    <div class="alert alert-info text-center border-info bg-light small fw-bold">
+                    <div class="alert alert-info text-center border-info bg-light small fw-bold shadow-sm">
                         <i class="fas fa-info-circle me-1"></i> هذه المستندات تم إتاحتها من قبل المكتب لتتمكن من الاطلاع عليها وتحميلها.
                     </div>
                     <div class="row g-2" id="ui-files-container"></div>
