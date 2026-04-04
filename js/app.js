@@ -1,4 +1,4 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية 2026: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، وتجميل الـ UI)
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية 2026: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية للنوافذ)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -39,6 +39,10 @@ window.onload = async () => {
     await loadAllData();
     await loadNotifications(); 
     startSmartBackgroundSync();
+
+    // [الذاكرة الذكية]: استرجاع آخر نافذة كان عليها المستخدم وفتحها تلقائياً
+    const lastView = localStorage.getItem('last_active_view') || 'dashboard';
+    switchView(lastView);
 };
 
 // عرض بيانات المستخدم في الترويسة
@@ -150,11 +154,14 @@ async function saveFirmSettings(event) {
     }
 }
 
-// تبديل الواجهات
+// تبديل الواجهات (مع حفظ الذاكرة)
 function switchView(viewId) {
     if(viewId === 'ai') { window.location.href = 'ai-chat.html'; return; }
     if(viewId === 'library') { window.location.href = 'library.html'; return; }
     if(viewId === 'calculators') { window.location.href = 'calculators.html'; return; }
+
+    // [الذاكرة الذكية]: تسجيل النافذة المفتوحة للعودة إليها لاحقاً
+    localStorage.setItem('last_active_view', viewId);
 
     document.querySelectorAll('.view').forEach(v => v.classList.add('d-none'));
     const target = document.getElementById(viewId + '-view');
@@ -166,19 +173,17 @@ function switchView(viewId) {
     window.scrollTo(0, 0);
 }
 
-// vCard QR Code Builder (تم إصلاح المولد بشكل جذري وموثوق)
+// vCard QR Code Builder
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode');
     qrContainer.innerHTML = ''; 
     const firmSettings = JSON.parse(localStorage.getItem('firm_settings')) || {};
     
-    // تنظيف البيانات لضمان عدم فشل التوليد
     const cleanFirmName = escapeHTML(firmSettings.firm_name || 'مكتب المحاماة').substring(0, 30);
     const cleanAddress = escapeHTML(firmSettings.firm_address || '').substring(0, 50);
     const cleanName = escapeHTML(currentUser.full_name || 'المحامي').substring(0, 30);
     const cleanPhone = escapeHTML(currentUser.phone || firmSettings.firm_phone || '');
     
-    // تنسيق vCard الصحيح والآمن
     const vcardText = `BEGIN:VCARD\nVERSION:3.0\nFN:${cleanName}\nORG:${cleanFirmName}\nTEL;TYPE=CELL:${cleanPhone}\nADR;TYPE=WORK:;;${cleanAddress}\nEND:VCARD`;
     
     try {
@@ -357,7 +362,7 @@ function renderStaffList() {
     `).join('');
 }
 
-// --- الأجندة والمواعيد (نظام متقدم: 3 أزرار، تقويم، فلاتر، لا حذف) ---
+// --- الأجندة والمواعيد ---
 function toggleAgendaView() {
     isKanbanView = !isKanbanView;
     const list = document.getElementById('agenda-list');
@@ -385,7 +390,6 @@ function renderAgendaList() {
         const targetDate = new Date(dateVal).toLocaleDateString('en-CA');
         filteredAppts = filteredAppts.filter(a => new Date(a.appt_date).toLocaleDateString('en-CA') === targetDate);
     } else if (!searchVal) {
-        // الافتراضي: عرض ما لم يتم حسمه (اليوم + القادم + المتأخر الذي لم ينجز ولم يلغ)
         filteredAppts = filteredAppts.filter(a => a.status === 'مجدول' || a.status === 'مؤجل');
     }
 
@@ -402,7 +406,6 @@ function renderAgendaList() {
             }).join('');
         }
 
-        // رابط إضافة لتقويم جوجل (Calendar)
         const startTime = new Date(a.appt_date).toISOString().replace(/-|:|\.\d+/g, '');
         const endTime = new Date(new Date(a.appt_date).getTime() + 60*60*1000).toISOString().replace(/-|:|\.\d+/g, '');
         const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.title)}&dates=${startTime}/${endTime}`;
@@ -462,7 +465,6 @@ function renderKanbanBoard() {
     `).join('');
 }
 
-// أزرار المواعيد الـ 3 (إنجاز، تأجيل، إلغاء أرشفة)
 async function saveApptOutcome(e) { 
     e.preventDefault(); const id = document.getElementById('outcome_appt_id').value; 
     const notes = document.getElementById('outcome_text').value;
@@ -485,7 +487,7 @@ async function cancelAppt(id) {
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
 
-// ميزات الذكاء الاصطناعي
+// ميزات الذكاء الاصطناعي والبحث
 async function processIdImage(event) {
     const file = event.target.files[0]; if (!file) return;
     showAlert('جاري قراءة الهوية سحابياً...', 'info');
@@ -520,7 +522,7 @@ async function handleSmartSearch(q) {
 let currentShareLink = '';
 function openShareModal(caseId, pin, publicToken) {
     const token = publicToken || caseId; 
-    const baseUrl = window.location.origin + window.location.pathname.replace('app.html', 'public.html'); 
+    const baseUrl = window.location.origin + window.location.pathname.replace('app.html', 'client.html'); 
     currentShareLink = `${baseUrl}?token=${token}`;
     document.getElementById('share_link_input').value = currentShareLink;
     document.getElementById('share_pin_input').value = pin || 'لا يوجد';
@@ -539,7 +541,7 @@ function sendShareViaWhatsApp() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
 }
 
-// عمليات الإضافة (POST) المطابقة للحقول الجديدة
+// عمليات الإضافة (POST)
 async function saveClient(event) {
     event.preventDefault();
     const data = { 
@@ -563,10 +565,8 @@ async function saveClient(event) {
 async function saveCase(event) {
     event.preventDefault(); 
     
-    // سحب المحامين من القائمة المنسدلة المحدثة بـ Choices.js
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
     const lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
-    
     const autoTasksObj = document.getElementById('case_auto_tasks');
     const autoTasks = autoTasksObj ? autoTasksObj.checked : false;
 
@@ -594,20 +594,13 @@ async function saveCase(event) {
 
     const res = await API.addCase(data);
     if (res && !res.error) { 
-        const newCaseId = res[0].id;
-
-        // توليد إجراءات أولية تلقائياً (Workflow)
         if (autoTasks) {
             const tmr = new Date(Date.now() + 86400000).toISOString();
             const afterTmr = new Date(Date.now() + 172800000).toISOString();
-            await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة المبدئية', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
-            await API.addAppointment({ title: 'التواصل مع الموكل لجلب المستندات الناقصة', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
+            await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
+            await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
         }
-
-        closeModal('caseModal'); 
-        await loadAllData(); 
-        showAlert('تم فتح ملف القضية بنجاح', 'success'); 
-        event.target.reset(); 
+        closeModal('caseModal'); await loadAllData(); showAlert('تم فتح ملف القضية بنجاح', 'success'); event.target.reset(); 
     } else {
         showAlert(res?.error || 'فشل في إضافة القضية', 'error');
     }
@@ -617,7 +610,6 @@ async function saveCase(event) {
 
 async function saveAppointment(event) {
     event.preventDefault(); 
-    
     const apptSelect = document.getElementById('appt_assigned_to');
     const assignedTo = apptSelect ? Array.from(apptSelect.selectedOptions).map(opt => opt.value) : [];
 
@@ -631,15 +623,6 @@ async function saveAppointment(event) {
     if (await API.addAppointment(data)) { closeModal('apptModal'); await loadAllData(); showAlert('تمت الجدولة بنجاح', 'success'); event.target.reset(); }
 }
 
-async function saveStaff(event) {
-    event.preventDefault();
-    const data = { full_name: document.getElementById('staff_full_name').value, phone: document.getElementById('staff_phone').value, telegram_id: document.getElementById('staff_telegram_id').value || null, role: document.getElementById('staff_role').value, is_active: true, can_login: true };
-    const res = await API.addStaff(data);
-    if(res && !res.error) { closeModal('staffModal'); await loadAllData(); showAlert('تم إضافة الموظف بنجاح', 'success'); event.target.reset(); }
-    else showAlert(res.error || 'تجاوزت حد المستخدمين المسموح به', 'danger');
-}
-
-// دالة تهيئة القوائم المنسدلة مع دعم Choices.js
 function populateSelects() {
     const clSel = document.getElementById('case_client_id');
     if(clSel) clSel.innerHTML = '<option value="">اختر الموكل...</option>' + globalData.clients.map(c => `<option value="${c.id}">${escapeHTML(c.full_name)}</option>`).join('');
@@ -647,7 +630,6 @@ function populateSelects() {
     const pCaseSel = document.getElementById('case_parent_id');
     if(pCaseSel) pCaseSel.innerHTML = '<option value="">لا يوجد (قضية مستقلة)</option>' + globalData.cases.map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id || 'بدون رقم')}</option>`).join('');
 
-    // تفعيل Choices.js للمحامين في القضايا والمهام
     const cLSelect = document.getElementById('case_assigned_lawyers');
     if (cLSelect) {
         cLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
@@ -667,7 +649,7 @@ function populateSelects() {
     }
 }
 
-// نظام الإشعارات المطور وإصلاح الجرس
+// الإشعارات
 async function loadNotifications(silent = false) {
     const res = await API.getNotifications(); 
     globalData.notifications = Array.isArray(res) ? res : [];
@@ -676,7 +658,6 @@ async function loadNotifications(silent = false) {
     const badge = document.getElementById('notification-badge');
     const list = document.getElementById('notifications-list');
 
-    // تفعيل وتحديث الجرس
     if (unread.length > 0) {
         if(badge) { badge.innerText = unread.length; badge.classList.remove('d-none'); }
         if (silent) unread.forEach(n => { 
@@ -689,7 +670,6 @@ async function loadNotifications(silent = false) {
         if(badge) badge.classList.add('d-none');
     }
 
-    // عرض الإشعارات في القائمة المنسدلة
     if(list) {
         if (globalData.notifications.length === 0) {
             list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
@@ -709,36 +689,24 @@ async function markNotificationsRead() {
     const unread = globalData.notifications.filter(n => !n.is_read);
     if(unread.length === 0) return;
     
-    // إخفاء الـ Badge فوراً لتسريع الـ UI
     const badge = document.getElementById('notification-badge');
     if(badge) badge.classList.add('d-none');
     
-    // إرسال طلبات التحديث للباك إند
-    for (let n of unread) {
-        await API.markNotificationAsRead(n.id);
-    }
-    
-    // إعادة تحميل الإشعارات لتحديث شكل القائمة
+    for (let n of unread) { await API.markNotificationAsRead(n.id); }
     await loadNotifications(true);
 }
 
-// طلب صلاحية الـ Push Notifications لحل مشكلة الإشعارات والتطبيق مغلق
 async function requestPushPermission() {
-    if (!('Notification' in window)) {
-        showAlert('متصفحك لا يدعم الإشعارات.', 'warning');
-        return;
-    }
+    if (!('Notification' in window)) { showAlert('متصفحك لا يدعم الإشعارات.', 'warning'); return; }
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
         const reg = await navigator.serviceWorker.ready;
-        // في الأنظمة المتقدمة نستخدم PushManager مع VAPID هنا
-        // حالياً سنربط الجهاز بقاعدة البيانات كمتصفح مفعل
         await API.subscribePush({ device_token: 'web_browser_device', device_type: 'web' });
-        showAlert('تم تفعيل إشعارات الهاتف بنجاح، ستصلك التنبيهات حتى وإن كان التطبيق مغلقاً.', 'success');
+        showAlert('تم تفعيل إشعارات الهاتف بنجاح.', 'success');
         const btn = document.getElementById('install-pwa-btn');
         if(btn) btn.classList.add('d-none');
     } else {
-        showAlert('تم رفض صلاحية الإشعارات.', 'danger');
+        showAlert('تم رفض الصلاحية.', 'danger');
     }
 }
 
@@ -748,47 +716,22 @@ function triggerPushNotification(title, body) {
     }
 }
 
-// المساعدات العامة
 function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
 function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); m?.hide(); } }
+function showAlert(m, t) { if(typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: t === 'danger' ? 'error' : (t === 'warning' ? 'warning' : 'success'), title: escapeHTML(m), showConfirmButton: false, timer: 3000 }); }
 
-function showAlert(m, t) { 
-    if(typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: t === 'danger' ? 'error' : (t === 'warning' ? 'warning' : 'success'), title: escapeHTML(m), showConfirmButton: false, timer: 3000 });
-}
-
-// فحص تعارض المصالح السريع والمطور
 async function runConflictCheck() {
     const input = document.getElementById('conflict_search_input').value;
     const resDiv = document.getElementById('conflict_results');
-    if (input.length < 2) return showAlert('أدخل حرفين على الأقل للبحث', 'warning');
-    resDiv.innerHTML = '<div class="text-center p-3 small"><i class="fas fa-spinner fa-spin"></i> جاري الفحص في الأرشيف...</div>';
+    if (input.length < 2) return showAlert('أدخل حرفين للبحث', 'warning');
+    resDiv.innerHTML = '<div class="text-center p-3 small"><i class="fas fa-spinner fa-spin"></i> جاري الفحص...</div>';
     
     const res = await API.checkConflict(input);
     let html = '';
     if (res.clientConflicts?.length) html += `<h6 class="text-success fw-bold small"><i class="fas fa-user-check"></i> موكل سابق (آمن):</h6><ul class="list-group mb-2 shadow-sm">${res.clientConflicts.map(c => `<li class="list-group-item small px-2 py-1 border-0">${escapeHTML(c.full_name)}</li>`).join('')}</ul>`;
-    if (res.opponentConflicts?.length) html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم حالي (يوجد تعارض!):</h6><ul class="list-group shadow-sm">${res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-1 border-0">${escapeHTML(c.opponent_name)}</li>`).join('')}</ul>`;
-    
-    resDiv.innerHTML = html || '<div class="text-center text-success py-3 small fw-bold"><i class="fas fa-check-circle fa-2x mb-2 d-block"></i>الاسم نظيف تماماً - لا يوجد أي تعارض</div>';
-}
-
-// منع حذف الموظفين والمواعيد لضمان السجل
-async function deleteRecord(type, id) { 
-    if (type === 'appointment') {
-        showAlert('لا يمكن حذف المواعيد للحفاظ على الأرشيف، استخدم زر الإلغاء بدلاً من ذلك.', 'warning');
-        return;
-    }
-    if (type === 'user') {
-        showAlert('لا يمكن حذف الموظف نهائياً. قم بإيقاف حسابه من الإعدادات.', 'warning');
-        return;
-    }
-    
-    Swal.fire({ title: 'هل أنت متأكد؟', text: 'لا يمكن التراجع عن عملية الحذف نهائياً!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'نعم، حذف', cancelButtonText: 'إلغاء' }).then(async (result) => {
-        if (result.isConfirmed) {
-            await loadAllData(); 
-            showAlert('تم الحذف بنجاح', 'success');
-        }
-    });
+    if (res.opponentConflicts?.length) html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم حالي (تعارض!):</h6><ul class="list-group shadow-sm">${res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-1 border-0">${escapeHTML(c.opponent_name)}</li>`).join('')}</ul>`;
+    resDiv.innerHTML = html || '<div class="text-center text-success py-3 small fw-bold"><i class="fas fa-check-circle fa-2x mb-2 d-block"></i>الاسم نظيف</div>';
 }
