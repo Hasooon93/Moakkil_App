@@ -1,4 +1,4 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية 2026: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية للنوافذ)
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية 2026: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية للنوافذ، روابط عميقة، وتوليد PIN)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -518,15 +518,23 @@ async function handleSmartSearch(q) {
     drop.innerHTML = html || '<div class="p-3 text-center small text-muted">لا يوجد نتائج</div>'; drop.classList.remove('d-none');
 }
 
-// مشاركة البوابة
+// مشاركة البوابة مع إصلاح الرابط العميق (Absolute URL)
 let currentShareLink = '';
 function openShareModal(caseId, pin, publicToken) {
     const token = publicToken || caseId; 
-    const baseUrl = window.location.origin + window.location.pathname.replace('app.html', 'client.html'); 
+    
+    // الحل الجذري للروابط العميقة: جلب المسار الحالي وإزالة اسم الملف واستبداله بـ client.html
+    const pathArray = window.location.pathname.split('/');
+    pathArray.pop(); // إزالة app.html أو case-details.html
+    const basePath = pathArray.join('/');
+    const baseUrl = window.location.origin + basePath + '/client.html';
+    
     currentShareLink = `${baseUrl}?token=${token}`;
     document.getElementById('share_link_input').value = currentShareLink;
     document.getElementById('share_pin_input').value = pin || 'لا يوجد';
-    const qrContainer = document.getElementById('share-qrcode'); qrContainer.innerHTML = '';
+    
+    const qrContainer = document.getElementById('share-qrcode'); 
+    qrContainer.innerHTML = '';
     new QRCode(qrContainer, { text: currentShareLink, width: 160, height: 160, colorDark: "#0a192f", correctLevel: QRCode.CorrectLevel.L });
     openModal('shareModal');
 }
@@ -540,6 +548,19 @@ function sendShareViaWhatsApp() {
     const text = `أهلاً بك، يرجى متابعة ملف قضيتك عبر بوابتنا الإلكترونية الآمنة:\nالرابط: ${currentShareLink}\nالرمز السري (PIN): ${document.getElementById('share_pin_input').value}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
 }
+
+// دالة توليد كلمة المرور المعقدة للموكل
+window.generateStrongPIN = function() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // تجنبنا أحرف O و 0 و I و 1 لمنع التباس الموكل
+    let pin = '';
+    for (let i = 0; i < 6; i++) {
+        pin += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const pinInput = document.getElementById('case_access_pin');
+    if (pinInput) {
+        pinInput.value = pin;
+    }
+};
 
 // عمليات الإضافة (POST)
 async function saveClient(event) {
@@ -719,7 +740,22 @@ function triggerPushNotification(title, body) {
 function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
 function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
+
+function openModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = new bootstrap.Modal(el); 
+        m.show(); 
+        // التوليد الآلي للـ PIN عند فتح نافذة إضافة القضية في حال كان الحقل فارغاً
+        if (id === 'caseModal') {
+            const pinInput = document.getElementById('case_access_pin');
+            if (pinInput && !pinInput.value) {
+                generateStrongPIN();
+            }
+        }
+    } 
+}
+
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); m?.hide(); } }
 function showAlert(m, t) { if(typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: t === 'danger' ? 'error' : (t === 'warning' ? 'warning' : 'success'), title: escapeHTML(m), showConfirmButton: false, timer: 3000 }); }
 

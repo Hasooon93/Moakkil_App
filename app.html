@@ -24,7 +24,7 @@
         .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
         .nav-item.active i { color: var(--accent); transform: scale(1.1); }
         
-        /* Kanban Board Styles - محسنة */
+        /* Kanban Board Styles */
         .kanban-col { background: #f8fafc; border-radius: 12px; padding: 15px; min-height: 350px; min-width: 280px; border: 1px solid #e2e8f0; }
         .kanban-header { font-weight: bold; border-bottom: 3px solid; padding-bottom: 10px; margin-bottom: 15px; font-size: 1.1rem; }
         
@@ -199,7 +199,7 @@
             <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-light pb-2 pt-2" style="z-index: 10;">
                 <h5 class="fw-bold text-navy mb-0"><i class="fas fa-calendar-alt text-warning me-2"></i> الأجندة والمهام</h5>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-secondary fw-bold shadow-sm" onclick="toggleAgendaView()" id="btn-toggle-agenda" title="تبديل العرض (قائمة/لوحة)"><i class="fas fa-columns"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary fw-bold shadow-sm" onclick="toggleAgendaView()" id="btn-toggle-agenda" title="تبديل العرض"><i class="fas fa-columns"></i></button>
                     <button class="btn btn-sm btn-warning fw-bold px-3 shadow-sm text-dark" onclick="openModal('apptModal')"><i class="fas fa-plus me-1"></i> موعد</button>
                 </div>
             </div>
@@ -215,8 +215,7 @@
             
             <div id="agenda-list"></div>
 
-            <div id="kanban-board" class="row d-none flex-nowrap overflow-auto pb-3" style="min-height: 70vh; gap: 15px; padding-right: 10px;">
-                </div>
+            <div id="kanban-board" class="row d-none flex-nowrap overflow-auto pb-3" style="min-height: 70vh; gap: 15px; padding-right: 10px;"></div>
         </div>
 
         <div id="tools-view" class="view fade-in d-none">
@@ -379,9 +378,12 @@
                                 <input type="text" id="case_internal_id" class="form-control border-0 shadow-sm" placeholder="مثال: 2024/15">
                             </div>
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">رمز PIN (للموكل)</label>
-                                <input type="text" id="case_access_pin" class="form-control border-0 shadow-sm text-center fw-bold text-danger" placeholder="أرقام فقط" required>
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">أعطِ هذا الرمز للموكل لمتابعة قضيته</small>
+                                <label class="form-label fw-bold small text-muted">رمز الدخول الآمن (PIN)</label>
+                                <div class="input-group shadow-sm border-0 mb-1">
+                                    <input type="text" id="case_access_pin" class="form-control border-0 text-center fw-bold text-danger fs-5" readonly placeholder="يُولد آلياً" required>
+                                    <button type="button" class="btn btn-light border-0 text-navy fw-bold" onclick="generateStrongPIN()" title="توليد رمز عشوائي جديد"><i class="fas fa-sync-alt"></i></button>
+                                </div>
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">أعطِ هذا الرمز للموكل لمتابعة ملفه بأمان</small>
                             </div>
                         </div>
                         <div class="mb-3">
@@ -493,12 +495,10 @@
                                 <option value="أخرى">أخرى</option>
                             </select>
                         </div>
-                        
                         <div id="appt-assign-wrapper" class="mb-4">
                             <label class="form-label fw-bold small text-muted">إسناد المهمة لـ (المحامين)</label>
                             <select class="form-control" id="appt_assigned_to" multiple></select>
                         </div>
-
                         <button type="submit" class="btn btn-warning w-100 py-2 fw-bold text-dark shadow"><i class="fas fa-save me-1"></i> جدولة وتفعيل التنبيهات</button>
                     </form>
                 </div>
@@ -582,7 +582,7 @@
                     <form onsubmit="saveApptOutcome(event)">
                         <input type="hidden" id="outcome_appt_id">
                         <label class="form-label small fw-bold text-muted">مخرجات / تفاصيل الإنجاز (اختياري)</label>
-                        <textarea id="outcome_text" class="form-control border-0 mb-3 shadow-sm" rows="3" placeholder="اكتب ما تم إنجازه في هذه الجلسة أو الموعد..."></textarea>
+                        <textarea id="outcome_text" class="form-control border-0 mb-3 shadow-sm" rows="3" placeholder="اكتب ما تم إنجازه..."></textarea>
                         <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">تأكيد الإنجاز</button>
                     </form>
                 </div>
@@ -600,7 +600,7 @@
                 <div class="modal-body p-3 bg-light">
                     <form onsubmit="saveApptPostpone(event)">
                         <input type="hidden" id="postpone_appt_id">
-                        <label class="form-label small fw-bold text-muted">تاريخ ووقت الموعد الجديد <span class="text-danger">*</span></label>
+                        <label class="form-label small fw-bold text-muted">الموعد الجديد <span class="text-danger">*</span></label>
                         <input type="datetime-local" id="postpone_date" class="form-control border-0 mb-3 shadow-sm" required>
                         <button type="submit" class="btn btn-warning text-dark w-100 fw-bold shadow-sm">حفظ التأجيل</button>
                     </form>
@@ -628,7 +628,7 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button class="btn btn-success w-50 fw-bold shadow-sm" onclick="sendShareViaWhatsApp()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
-                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLinkApp()"><i class="fas fa-copy me-1"></i> نسخ النص</button>
+                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLinkApp()"><i class="fas fa-copy me-1"></i> نسخ</button>
                     </div>
                 </div>
             </div>
@@ -639,7 +639,7 @@
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 text-center p-4 shadow-lg" style="border-radius: 20px;">
                 <h5 class="fw-bold text-navy mb-1"><i class="fas fa-id-badge text-accent me-1"></i> بطاقة المكتب الذكية</h5>
-                <p class="text-muted small mb-3">دع العميل يمسح الكود بكاميرا هاتفه ليتم حفظ بيانات المكتب ورقمه في جهات اتصاله فوراً.</p>
+                <p class="text-muted small mb-3">دع العميل يمسح الكود بكاميرا هاتفه ليتم حفظ بيانات المكتب في جهات اتصاله فوراً.</p>
                 <div id="vcard-qrcode" class="d-flex justify-content-center mb-3 p-2 bg-white border rounded shadow-sm mx-auto" style="width: fit-content;"></div>
                 <button class="btn btn-light text-navy fw-bold w-100 border shadow-sm" data-bs-dismiss="modal">إغلاق</button>
             </div>
