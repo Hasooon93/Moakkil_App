@@ -1,4 +1,5 @@
 // js/case-details.js - محرك تفاصيل القضية الكامل (نسخة 2026: بدون أي اختصارات)
+// تم تحديث الروابط العميقة (Deep Links) وإصلاح QR الإيصالات لتعمل مع البوابة العامة للتحقق.
 
 let currentCaseId = localStorage.getItem('current_case_id');
 let caseObj = null;
@@ -602,6 +603,7 @@ function tafqeet(number) {
     return (thousandPart + basicPart).replace(/ و$/, "").trim();
 }
 
+// تعديل لضمان توجيه الـ QR إلى صفحة التحقق الصحيحة (verify.html)
 function printInvoice(amount, date, invoiceId) {
     document.getElementById('qr-print-container').style.display = 'none'; 
     document.getElementById('invoice-print-container').style.display = 'block';
@@ -620,7 +622,13 @@ function printInvoice(amount, date, invoiceId) {
     const qrContainer = document.getElementById("invoice-verification-qr");
     if (qrContainer && caseObj.public_token) {
         qrContainer.innerHTML = "";
-        const verifyUrl = `${window.location.origin + window.location.pathname.replace('case-details.html', 'verify.html')}?token=${caseObj.public_token}&inv=${invoiceId}`;
+        
+        // بناء رابط التحقق العميق بشكل ديناميكي
+        const pathArray = window.location.pathname.split('/');
+        pathArray.pop();
+        const basePath = pathArray.join('/');
+        const verifyUrl = `${window.location.origin + basePath}/verify.html?type=receipt&id=${invoiceId}`;
+        
         new QRCode(qrContainer, { text: verifyUrl, width: 100, height: 100, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L });
         let note = document.createElement('div'); note.style.fontSize = "11px"; note.style.marginTop = "8px"; note.style.color = "#555"; note.innerHTML = "<b>حماية المستندات:</b> امسح الرمز أعلاه للتحقق من أن هذا السند أصلي."; qrContainer.appendChild(note);
     }
@@ -634,7 +642,11 @@ function printQRCode() {
     document.getElementById('print-qr-casenum').innerText = `ملف رقم: ${caseObj.case_internal_id}`;
     
     const qrContainer = document.getElementById("qrcode"); qrContainer.innerHTML = ""; 
-    const deepLink = `${window.location.origin + window.location.pathname.replace('case-details.html', 'client.html')}?token=${caseObj.public_token}`;
+    
+    const pathArray = window.location.pathname.split('/');
+    pathArray.pop();
+    const deepLink = `${window.location.origin + pathArray.join('/')}/client.html?token=${caseObj.public_token}`;
+    
     new QRCode(qrContainer, { text: deepLink, width: 200, height: 200, colorDark : "#0a192f", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
     window.print();
 }
@@ -642,7 +654,11 @@ function printQRCode() {
 let currentShareLink = '';
 function openShareModal() {
     if(!caseObj.public_token) { showAlert('لا يوجد رمز وصول عام متاح.', 'error'); return; }
-    currentShareLink = `${window.location.origin + window.location.pathname.replace('case-details.html', 'client.html')}?token=${caseObj.public_token}`;
+    
+    const pathArray = window.location.pathname.split('/');
+    pathArray.pop();
+    currentShareLink = `${window.location.origin + pathArray.join('/')}/client.html?token=${caseObj.public_token}`;
+    
     document.getElementById('share_link_input').value = currentShareLink; 
     document.getElementById('share_pin_input').value = caseObj.access_pin || 'لا يوجد';
     const qrContainer = document.getElementById('share-qrcode'); qrContainer.innerHTML = '';

@@ -173,34 +173,41 @@ function switchView(viewId) {
     window.scrollTo(0, 0);
 }
 
-// vCard QR Code Builder - تم حل مشكلة اللغة العربية بشكل كامل
+// vCard QR Code Builder - تم الإصلاح: الآن يولد رابط لصفحة التحقق بدلاً من نص ثابت لكي تفتح صفحة الـ CV
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode');
     qrContainer.innerHTML = ''; 
-    const firmSettings = JSON.parse(localStorage.getItem('firm_settings')) || {};
     
-    const cleanFirmName = escapeHTML(firmSettings.firm_name || 'مكتب المحاماة').substring(0, 30);
-    const cleanAddress = escapeHTML(firmSettings.firm_address || '').substring(0, 50);
-    const cleanName = escapeHTML(currentUser.full_name || 'المحامي').substring(0, 30);
-    const cleanPhone = escapeHTML(currentUser.phone || firmSettings.firm_phone || '');
+    // بناء الرابط العميق لصفحة التحقق الخاصة بالسيرة الذاتية
+    const pathArray = window.location.pathname.split('/');
+    pathArray.pop(); // إزالة اسم الملف الحالي
+    const basePath = pathArray.join('/');
+    const baseUrl = window.location.origin + basePath + '/verify.html';
     
-    const vcardText = `BEGIN:VCARD\nVERSION:3.0\nFN:${cleanName}\nORG:${cleanFirmName}\nTEL;TYPE=CELL:${cleanPhone}\nADR;TYPE=WORK:;;${cleanAddress}\nEND:VCARD`;
+    // الرابط الذي سيتم مسحه بالكاميرا
+    const cvLink = `${baseUrl}?type=cv&id=${currentUser.id}`;
     
     try {
-        // حيلة تحويل التشفير (unescape) لدعم اللغة العربية في مكتبة qrcode.js
-        const utf8VcardText = unescape(encodeURIComponent(vcardText));
-        
         new QRCode(qrContainer, { 
-            text: utf8VcardText, 
+            text: cvLink, 
             width: 200, 
             height: 200, 
             colorDark: "#0a192f",
             colorLight: "#ffffff",
             correctLevel: QRCode.CorrectLevel.L 
         });
+        
+        // عرض الرابط كنص قابل للضغط تحت الكود احتياطياً
+        const linkDiv = document.getElementById('vcard-link-container');
+        if(!linkDiv) {
+            qrContainer.insertAdjacentHTML('afterend', `<div id="vcard-link-container" class="mt-3 text-center" style="word-break: break-all;"><a href="${cvLink}" target="_blank" class="small text-primary text-decoration-none">${cvLink}</a></div>`);
+        } else {
+            linkDiv.innerHTML = `<a href="${cvLink}" target="_blank" class="small text-primary text-decoration-none">${cvLink}</a>`;
+        }
+        
         openModal('vCardModal');
     } catch(e) {
-        qrContainer.innerHTML = '<div class="text-danger small">تعذر توليد البطاقة.</div>';
+        qrContainer.innerHTML = '<div class="text-danger small">تعذر توليد البطاقة. تأكد من تحميل مكتبة QR.</div>';
         openModal('vCardModal');
     }
 }

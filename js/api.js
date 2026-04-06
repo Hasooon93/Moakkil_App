@@ -1,14 +1,15 @@
 // js/api.js - المحرك الموحد المحدث V3.0 (Enterprise Edition)
 // الدعم الكامل: JWT، سجل النشاطات المفلتر، استخلاص AI ديناميكي، البصمة، المزامنة السحابية مع نظام Retry، إدارة الجلسات والاشتراكات.
+// التحديث الجديد: دعم البوابات العامة، التحقق من QR (الإيصالات والـ CV)، والعقل الذكي (Legal Brain).
 
-async function fetchAPI(endpoint, method = 'GET', body = null) {
+async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     const headers = {
         'Content-Type': 'application/json'
     };
     
-    // تضمين توكن JWT في ترويسة الطلب لضمان المصادقة الصارمة
-    if (token) {
+    // تضمين توكن JWT في ترويسة الطلب لضمان المصادقة الصارمة (إلا إذا كان المسار عاماً ولا يوجد توكن)
+    if (token && !isPublic) {
         headers['Authorization'] = `Bearer ${token}`;
     }
     
@@ -19,7 +20,8 @@ async function fetchAPI(endpoint, method = 'GET', body = null) {
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
         
         // معالجة انتهاء أو تزوير الجلسة (JWT 401) بطرد المستخدم فوراً لحماية البيانات
-        if (response.status === 401) {
+        // يتم تعطيل هذا الطرد في المسارات العامة (Public) لكي لا يطرد الموكل أو الزائر الذي يمسح الـ QR
+        if (response.status === 401 && !isPublic) {
             console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج لحماية البيانات...");
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
@@ -77,7 +79,7 @@ const API = {
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
     deleteUpdate: (id) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE'),
 
-    // الجلسات (تمت إضافتها)
+    // الجلسات
     getHearings: (caseId) => fetchAPI(caseId ? `/api/hearings?case_id=eq.${caseId}` : '/api/hearings'),
     addHearing: (data) => fetchAPI('/api/hearings', 'POST', data),
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
@@ -108,13 +110,16 @@ const API = {
     deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
 
     // ==========================================
-    // 6. الذكاء الاصطناعي والبحث الدلالي
+    // 6. الذكاء الاصطناعي والبحث الدلالي (AI Core)
     // ==========================================
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
     readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base64: imageBase64 }),
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
+    
+    // العقل الذكي القانوني (Legal Brain)
+    getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
     // ==========================================
     // 7. الأمان والرقابة (Audit Trail & Auth)
@@ -145,7 +150,7 @@ const API = {
         return fetchAPI('/api/files', 'POST', payload);
     },
 
-    // التحديث الهام: دعم نظام المحاولة المتعددة (Retry) لتفادي فشل الاتصال بالإنترنت
+    // دعم نظام المحاولة المتعددة (Retry) لتفادي فشل الاتصال بالإنترنت
     uploadToDrive: async (file, caseInternalId, driveFolderId = null) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -178,7 +183,7 @@ const API = {
                     } catch (err) {
                         if (retriesLeft > 0) {
                             console.warn(`⚠️ فشل الرفع. جاري إعادة المحاولة... (${retriesLeft} محاولات متبقية)`);
-                            setTimeout(() => attemptUpload(retriesLeft - 1), 2500); // الانتظار 2.5 ثانية قبل إعادة المحاولة
+                            setTimeout(() => attemptUpload(retriesLeft - 1), 2500); 
                         } else {
                             reject(new Error("تعذر الاتصال بسيرفر جوجل بعد عدة محاولات: " + err.message));
                         }
@@ -191,7 +196,16 @@ const API = {
             reader.onerror = () => reject(new Error("فشل في قراءة الملف محلياً"));
             reader.readAsDataURL(file);
         });
-    }
+    },
+
+    // ==========================================
+    // 9. البوابات العامة والتحقق من الـ QR (Public Portal)
+    // ==========================================
+    // مسارات التحقق تعمل بدون الحاجة لتسجيل الدخول (isPublic = true)
+    publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
+    getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
+    verifyReceipt: (id) => fetchAPI(`/api/public/verify-receipt?id=${id}`, 'GET', null, true),
+    verifyCV: (id) => fetchAPI(`/api/public/verify-cv?id=${id}`, 'GET', null, true)
 };
 
-console.log("✅ API Engine Ready (V3.0 Enterprise - Fully Secured & Retry Handled)");
+console.log("✅ API Engine Ready (V3.0 Enterprise - Fully Secured, QR & Retry Handled)");
