@@ -178,7 +178,7 @@ function switchView(viewId) {
     window.scrollTo(0, 0);
 }
 
-// vCard QR Code Builder - تم الإصلاح: الآن يولد رابط لصفحة التحقق بدلاً من نص ثابت لكي تفتح صفحة الـ CV
+// vCard QR Code Builder - تم حل مشكلة اللغة العربية وإضافة الرابط العميق
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode');
     qrContainer.innerHTML = ''; 
@@ -329,6 +329,7 @@ function renderCasesList() {
         `;
     }).join('');
 }
+
 function filterCases() { renderCasesList(); }
 
 // --- الموكلين والفرز ---
@@ -483,30 +484,19 @@ function renderKanbanBoard() {
 async function saveApptOutcome(e) { 
     e.preventDefault(); const id = document.getElementById('outcome_appt_id').value; 
     const notes = document.getElementById('outcome_text').value;
-    if(await API.updateAppointment(id, {status:'تم', notes: notes})) { 
-        closeModal('apptOutcomeModal'); 
-        showAlert('تم تسجيل الإنجاز في الدفتر', 'success'); 
-        await loadAllData(); 
-    } 
+    if(await API.updateAppointment(id, {status:'تم', notes: notes})) { closeModal('apptOutcomeModal'); showAlert('تم تسجيل الإنجاز في الدفتر', 'success'); await loadAllData(); } 
 }
 
 async function saveApptPostpone(e) { 
     e.preventDefault(); const id = document.getElementById('postpone_appt_id').value; 
     const d = new Date(document.getElementById('postpone_date').value).toISOString();
-    if(await API.updateAppointment(id, {status:'مؤجل', appt_date: d})) { 
-        closeModal('apptPostponeModal'); 
-        showAlert('تم تأجيل الموعد بنجاح', 'success'); 
-        await loadAllData(); 
-    } 
+    if(await API.updateAppointment(id, {status:'مؤجل', appt_date: d})) { closeModal('apptPostponeModal'); showAlert('تم تأجيل الموعد بنجاح', 'success'); await loadAllData(); } 
 }
 
 async function cancelAppt(id) {
     const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف، ولن يتم حذفه نهائياً للحفاظ على السجل.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
     if(confirm.isConfirmed) {
-        if(await API.updateAppointment(id, {status:'ملغي'})) { 
-            showAlert('تم إلغاء الموعد بنجاح', 'success'); 
-            await loadAllData(); 
-        }
+        if(await API.updateAppointment(id, {status:'ملغي'})) { showAlert('تم إلغاء الموعد بنجاح', 'success'); await loadAllData(); }
     }
 }
 
@@ -588,7 +578,7 @@ window.generateStrongPIN = function() {
     }
 };
 
-// عمليات الإضافة (POST) - تم إضافة تحديث الجرس الفوري
+// عمليات الإضافة (POST) مع الإشعارات الفورية
 async function saveClient(event) {
     event.preventDefault();
     const data = { 
@@ -619,9 +609,14 @@ async function saveCase(event) {
     event.preventDefault(); 
     
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
-    const lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
+    let lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
     const autoTasksObj = document.getElementById('case_auto_tasks');
     const autoTasks = autoTasksObj ? autoTasksObj.checked : false;
+
+    // 🚀 الإجبار على إرسال الإشعار لصانع المهمة إذا ترك القائمة فارغة
+    if (lawyers.length === 0) {
+        lawyers.push(currentUser.id);
+    }
 
     const data = { 
         client_id: document.getElementById('case_client_id').value, 
@@ -632,7 +627,7 @@ async function saveCase(event) {
         lawsuit_text: document.getElementById('case_lawsuit_text').value, 
         total_agreed_fees: Number(document.getElementById('case_agreed_fees').value), 
         claim_amount: Number(document.getElementById('case_claim_amount').value), 
-        assigned_lawyer_id: lawyers.length > 0 ? lawyers : null, 
+        assigned_lawyer_id: lawyers, 
         status: 'نشطة', 
         public_token: crypto.randomUUID(),
         litigation_degree: document.getElementById('case_litigation_degree').value || null,
@@ -650,8 +645,8 @@ async function saveCase(event) {
         if (autoTasks) {
             const tmr = new Date(Date.now() + 86400000).toISOString();
             const afterTmr = new Date(Date.now() + 172800000).toISOString();
-            await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
-            await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
+            await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers });
+            await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers });
         }
         closeModal('caseModal'); 
         await loadAllData(); 
@@ -668,14 +663,19 @@ async function saveCase(event) {
 async function saveAppointment(event) {
     event.preventDefault(); 
     const apptSelect = document.getElementById('appt_assigned_to');
-    const assignedTo = apptSelect ? Array.from(apptSelect.selectedOptions).map(opt => opt.value) : [];
+    let assignedTo = apptSelect ? Array.from(apptSelect.selectedOptions).map(opt => opt.value) : [];
+
+    // 🚀 الإجبار على إرسال الإشعار لصانع المهمة إذا ترك القائمة فارغة
+    if (assignedTo.length === 0) {
+        assignedTo.push(currentUser.id);
+    }
 
     const data = { 
         title: document.getElementById('appt_title').value, 
         appt_date: new Date(document.getElementById('appt_date').value).toISOString(), 
         type: document.getElementById('appt_type').value, 
         status: 'مجدول', 
-        assigned_to: assignedTo.length > 0 ? assignedTo : null 
+        assigned_to: assignedTo 
     };
     if (await API.addAppointment(data)) { 
         closeModal('apptModal'); 
@@ -712,7 +712,7 @@ function populateSelects() {
     }
 }
 
-// الإشعارات والرقابة
+// الإشعارات
 async function loadNotifications(silent = false) {
     const res = await API.getNotifications(); 
     globalData.notifications = Array.isArray(res) ? res : [];
@@ -769,7 +769,7 @@ async function requestPushPermission() {
         const btn = document.getElementById('install-pwa-btn');
         if(btn) btn.classList.add('d-none');
     } else {
-        showAlert('يرجى السماح بالإشعارات من إعدادات المتصفح لتصلك التنبيهات الفورية.', 'warning');
+        showAlert('تم رفض الصلاحية للإشعارات المنبثقة.', 'danger');
     }
 }
 
@@ -800,15 +800,35 @@ function openModal(id) {
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); m?.hide(); } }
 function showAlert(m, t) { if(typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: t === 'danger' ? 'error' : (t === 'warning' ? 'warning' : 'success'), title: escapeHTML(m), showConfirmButton: false, timer: 3000 }); }
 
+// تحديث نافذة التعارض لإظهار الرقم الوطني
 async function runConflictCheck() {
     const input = document.getElementById('conflict_search_input').value;
     const resDiv = document.getElementById('conflict_results');
-    if (input.length < 2) return showAlert('أدخل حرفين للبحث', 'warning');
-    resDiv.innerHTML = '<div class="text-center p-3 small"><i class="fas fa-spinner fa-spin"></i> جاري الفحص...</div>';
+    if (input.length < 2) return showAlert('أدخل حرفين أو رقمين للبحث', 'warning');
+    resDiv.innerHTML = '<div class="text-center p-3 small"><i class="fas fa-spinner fa-spin"></i> جاري الفحص الدقيق...</div>';
     
     const res = await API.checkConflict(input);
     let html = '';
-    if (res.clientConflicts?.length) html += `<h6 class="text-success fw-bold small"><i class="fas fa-user-check"></i> موكل سابق (آمن):</h6><ul class="list-group mb-2 shadow-sm">${res.clientConflicts.map(c => `<li class="list-group-item small px-2 py-1 border-0">${escapeHTML(c.full_name)}</li>`).join('')}</ul>`;
-    if (res.opponentConflicts?.length) html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم حالي (تعارض!):</h6><ul class="list-group shadow-sm">${res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-1 border-0">${escapeHTML(c.opponent_name)}</li>`).join('')}</ul>`;
-    resDiv.innerHTML = html || '<div class="text-center text-success py-3 small fw-bold"><i class="fas fa-check-circle fa-2x mb-2 d-block"></i>الاسم نظيف</div>';
+    
+    if (res.clientConflicts && res.clientConflicts.length > 0) {
+        html += `<h6 class="text-success fw-bold small"><i class="fas fa-user-check"></i> موكل سابق (آمن):</h6><ul class="list-group mb-2 shadow-sm">`;
+        html += res.clientConflicts.map(c => `
+            <li class="list-group-item small px-2 py-2 border-0 d-flex justify-content-between align-items-center bg-light mb-1 rounded">
+                <span class="fw-bold text-navy">${escapeHTML(c.full_name)}</span> 
+                <span class="badge bg-white text-dark border shadow-sm"><i class="fas fa-id-card text-muted"></i> ${escapeHTML(c.national_id || 'لا يوجد رقم')}</span>
+            </li>`).join('');
+        html += `</ul>`;
+    }
+    
+    if (res.opponentConflicts && res.opponentConflicts.length > 0) {
+        html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`;
+        html += res.opponentConflicts.map(c => `
+            <li class="list-group-item small px-2 py-2 border-0 bg-soft-danger mb-1 rounded">
+                <span class="fw-bold text-danger">${escapeHTML(c.opponent_name)}</span>
+                <span class="d-block text-muted mt-1" style="font-size:10px;"><i class="fas fa-folder"></i> ملف: ${escapeHTML(c.case_internal_id || 'غير محدد')}</span>
+            </li>`).join('');
+        html += `</ul>`;
+    }
+    
+    resDiv.innerHTML = html || '<div class="text-center text-success py-3 small fw-bold"><i class="fas fa-check-circle fa-2x mb-2 d-block"></i>الاسم والرقم الوطني نظيف تماماً</div>';
 }
