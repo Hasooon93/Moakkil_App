@@ -40,6 +40,11 @@ window.onload = async () => {
     await loadNotifications(); 
     startSmartBackgroundSync();
 
+    // طلب الصلاحية للإشعارات المنبثقة تلقائياً إذا لم يقم المستخدم بتحديدها بعد
+    if ('Notification' in window && Notification.permission === 'default') {
+        setTimeout(() => requestPushPermission(), 3000);
+    }
+
     // [الذاكرة الذكية]: استرجاع آخر نافذة كان عليها المستخدم وفتحها تلقائياً
     const lastView = localStorage.getItem('last_active_view') || 'dashboard';
     switchView(lastView);
@@ -84,10 +89,10 @@ window.manualSync = async () => {
 };
 
 function startSmartBackgroundSync() {
-    // جلب الإشعارات كل دقيقتين للعمل في الخلفية
+    // جلب الإشعارات كل 10 ثوانٍ للعمل في الخلفية لتصبح البوش نتفكيشن لحظية
     backgroundSyncTimer = setInterval(async () => {
         try { await loadNotifications(true); } catch(e) {}
-    }, 120000); 
+    }, 10000); 
 }
 
 // جلب وتطبيق إعدادات الهوية البصرية للمكتب
@@ -478,19 +483,30 @@ function renderKanbanBoard() {
 async function saveApptOutcome(e) { 
     e.preventDefault(); const id = document.getElementById('outcome_appt_id').value; 
     const notes = document.getElementById('outcome_text').value;
-    if(await API.updateAppointment(id, {status:'تم', notes: notes})) { closeModal('apptOutcomeModal'); showAlert('تم تسجيل الإنجاز في الدفتر', 'success'); await loadAllData(); } 
+    if(await API.updateAppointment(id, {status:'تم', notes: notes})) { 
+        closeModal('apptOutcomeModal'); 
+        showAlert('تم تسجيل الإنجاز في الدفتر', 'success'); 
+        await loadAllData(); 
+    } 
 }
 
 async function saveApptPostpone(e) { 
     e.preventDefault(); const id = document.getElementById('postpone_appt_id').value; 
     const d = new Date(document.getElementById('postpone_date').value).toISOString();
-    if(await API.updateAppointment(id, {status:'مؤجل', appt_date: d})) { closeModal('apptPostponeModal'); showAlert('تم تأجيل الموعد بنجاح', 'success'); await loadAllData(); } 
+    if(await API.updateAppointment(id, {status:'مؤجل', appt_date: d})) { 
+        closeModal('apptPostponeModal'); 
+        showAlert('تم تأجيل الموعد بنجاح', 'success'); 
+        await loadAllData(); 
+    } 
 }
 
 async function cancelAppt(id) {
     const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف، ولن يتم حذفه نهائياً للحفاظ على السجل.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
     if(confirm.isConfirmed) {
-        if(await API.updateAppointment(id, {status:'ملغي'})) { showAlert('تم إلغاء الموعد بنجاح', 'success'); await loadAllData(); }
+        if(await API.updateAppointment(id, {status:'ملغي'})) { 
+            showAlert('تم إلغاء الموعد بنجاح', 'success'); 
+            await loadAllData(); 
+        }
     }
 }
 
@@ -572,7 +588,7 @@ window.generateStrongPIN = function() {
     }
 };
 
-// عمليات الإضافة (POST)
+// عمليات الإضافة (POST) - تم إضافة تحديث الجرس الفوري
 async function saveClient(event) {
     event.preventDefault();
     const data = { 
@@ -590,7 +606,13 @@ async function saveClient(event) {
         profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null,
         confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي'
     };
-    if (await API.addClient(data)) { closeModal('clientModal'); await loadAllData(); showAlert('تم إضافة الموكل بنجاح', 'success'); event.target.reset(); }
+    if (await API.addClient(data)) { 
+        closeModal('clientModal'); 
+        await loadAllData(); 
+        await loadNotifications(); // تحديث فوري للجرس
+        showAlert('تم إضافة الموكل بنجاح', 'success'); 
+        event.target.reset(); 
+    }
 }
 
 async function saveCase(event) {
@@ -631,7 +653,11 @@ async function saveCase(event) {
             await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
             await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers.length > 0 ? lawyers : [currentUser.id] });
         }
-        closeModal('caseModal'); await loadAllData(); showAlert('تم فتح ملف القضية بنجاح', 'success'); event.target.reset(); 
+        closeModal('caseModal'); 
+        await loadAllData(); 
+        await loadNotifications(); // تحديث فوري للجرس لضمان ظهور إشعار الإسناد
+        showAlert('تم فتح ملف القضية بنجاح', 'success'); 
+        event.target.reset(); 
     } else {
         showAlert(res?.error || 'فشل في إضافة القضية', 'error');
     }
@@ -651,7 +677,13 @@ async function saveAppointment(event) {
         status: 'مجدول', 
         assigned_to: assignedTo.length > 0 ? assignedTo : null 
     };
-    if (await API.addAppointment(data)) { closeModal('apptModal'); await loadAllData(); showAlert('تمت الجدولة بنجاح', 'success'); event.target.reset(); }
+    if (await API.addAppointment(data)) { 
+        closeModal('apptModal'); 
+        await loadAllData(); 
+        await loadNotifications(); // تحديث فوري للجرس بعد إسناد الموعد
+        showAlert('تمت الجدولة بنجاح', 'success'); 
+        event.target.reset(); 
+    }
 }
 
 function populateSelects() {
@@ -680,7 +712,7 @@ function populateSelects() {
     }
 }
 
-// الإشعارات
+// الإشعارات والرقابة
 async function loadNotifications(silent = false) {
     const res = await API.getNotifications(); 
     globalData.notifications = Array.isArray(res) ? res : [];
@@ -737,7 +769,7 @@ async function requestPushPermission() {
         const btn = document.getElementById('install-pwa-btn');
         if(btn) btn.classList.add('d-none');
     } else {
-        showAlert('تم رفض الصلاحية.', 'danger');
+        showAlert('يرجى السماح بالإشعارات من إعدادات المتصفح لتصلك التنبيهات الفورية.', 'warning');
     }
 }
 
