@@ -1,7 +1,7 @@
-// js/case-details.js - محرك تفاصيل القضية الكامل (نسخة 2026: بدون أي اختصارات)
-// تم تحديث الروابط العميقة (Deep Links) وإصلاح QR الإيصالات لتعمل مع البوابة العامة للتحقق.
+// js/case-details.js - محرك تفاصيل القضية الكامل (النسخة النهائية المربوطة بالواجهة وقاعدة البيانات)
+// تم حل مشكلة الـ Auth، وتم ربط كافة الحقول الجديدة (الذكاء الاصطناعي، الوكالات، المصاريف، سنة الدعوى، التفاصيل الشاملة) بالواجهة.
 
-let currentCaseId = localStorage.getItem('current_case_id');
+let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
 
 const escapeHTML = (str) => {
@@ -35,6 +35,7 @@ window.manualSync = async () => {
 
 function goBack() { window.location.href = 'app.html'; }
 
+// جلب الداتا الرئيسية وربطها
 async function loadCaseFullDetails() {
     try {
         const [allCasesReq, updatesReq, installmentsReq, expensesReq, filesReq, staffReq, clientsReq] = await Promise.all([
@@ -67,9 +68,13 @@ async function loadCaseFullDetails() {
 
         await loadAuditTrail();
         
-    } catch (error) { showAlert('تأكد من الاتصال بالإنترنت', 'warning'); }
+    } catch (error) { 
+        console.error("Load Error:", error);
+        showAlert('حدث خطأ أثناء جلب البيانات أو تأكد من الاتصال بالإنترنت', 'warning'); 
+    }
 }
 
+// دالة تفريغ الداتا بالواجهة (تشمل النظرة السريعة + التفاصيل الشاملة)
 function renderHeaderAndSummary() {
     document.getElementById('case-title').innerText = `${escapeHTML(caseObj.case_internal_id || 'ملف قضية')}`;
     
@@ -111,28 +116,72 @@ function renderHeaderAndSummary() {
     if (caseObj.current_stage) litText += ` - مرحلة: ${escapeHTML(caseObj.current_stage)}`;
     document.getElementById('det-litigation').innerHTML = litText;
     
+    // --- ربط الحقول للبطاقة العلوية (النظرة السريعة) ---
     document.getElementById('det-court').innerText = escapeHTML(caseObj.current_court || "--");
-    document.getElementById('det-chamber').innerText = escapeHTML(caseObj.court_chamber || "--");
+    document.getElementById('det-chamber').innerText = escapeHTML(caseObj.court_room || "--");
     document.getElementById('det-court-num').innerText = escapeHTML(caseObj.court_case_number || "--");
+    document.getElementById('det-case-year').innerText = escapeHTML(caseObj.case_year || "--");
     document.getElementById('det-judge').innerText = escapeHTML(caseObj.current_judge || "--");
     document.getElementById('det-opponent').innerText = escapeHTML(caseObj.opponent_name || "--");
+    document.getElementById('det-poa-number').innerText = escapeHTML(caseObj.power_of_attorney_number || "--");
+    document.getElementById('det-opp-lawyer').innerText = escapeHTML(caseObj.opponent_lawyer || "--");
     
-    let oppLawyerText = caseObj.opponent_lawyer || "--";
-    if (caseObj.opponent_counsel_details && Object.keys(caseObj.opponent_counsel_details).length > 0) {
-        oppLawyerText = caseObj.opponent_counsel_details.name || oppLawyerText;
+    // --- ربط الحقول الخاصة بتبويب (التفاصيل الشاملة) الجديد ---
+    // 1. الأطراف والشهود
+    document.getElementById('det-co-plaintiffs').innerText = Array.isArray(caseObj.co_plaintiffs) && caseObj.co_plaintiffs.length > 0 ? caseObj.co_plaintiffs.join('، ') : '--';
+    document.getElementById('det-co-defendants').innerText = Array.isArray(caseObj.co_defendants) && caseObj.co_defendants.length > 0 ? caseObj.co_defendants.join('، ') : '--';
+    document.getElementById('det-experts').innerText = Array.isArray(caseObj.experts_and_witnesses) && caseObj.experts_and_witnesses.length > 0 ? caseObj.experts_and_witnesses.join('، ') : '--';
+    document.getElementById('det-poa-details').innerText = escapeHTML(caseObj.poa_details || "--");
+    
+    // 2. طبيعة الدعوى وقراراتها
+    document.getElementById('det-case-type').innerText = escapeHTML(caseObj.case_type || "--");
+    let parentCaseText = "لا يوجد";
+    if(caseObj.parent_case_id) {
+        const pCase = window.firmCases.find(c => c.id === caseObj.parent_case_id);
+        parentCaseText = pCase ? pCase.case_internal_id : caseObj.parent_case_id;
     }
-    document.getElementById('det-opp-lawyer').innerText = escapeHTML(oppLawyerText);
+    document.getElementById('det-parent-case').innerText = escapeHTML(parentCaseText);
+    document.getElementById('det-limit-date').innerText = escapeHTML(caseObj.statute_of_limitations_date || "--");
+    document.getElementById('det-judgment-date').innerText = escapeHTML(caseObj.judgment_date || "--");
     
+    const outcomeEl = document.getElementById('det-outcome');
+    outcomeEl.innerText = escapeHTML(caseObj.case_outcome || "لم تحسم بعد");
+    if(caseObj.case_outcome === 'ربح') outcomeEl.className = 'badge bg-success';
+    else if(caseObj.case_outcome === 'خسارة' || caseObj.case_outcome === 'رد الدعوى') outcomeEl.className = 'badge bg-danger';
+    else outcomeEl.className = 'badge bg-secondary';
+    
+    document.getElementById('det-closure-reason').innerText = escapeHTML(caseObj.closure_reason || "--");
+
+    // 3. السرد اليدوي للائحة الدعوى
+    document.getElementById('det-manual-facts').innerText = escapeHTML(caseObj.lawsuit_facts || "--");
+    document.getElementById('det-manual-legal').innerText = escapeHTML(caseObj.legal_basis || "--");
+    document.getElementById('det-manual-reqs').innerText = Array.isArray(caseObj.final_requests) && caseObj.final_requests.length > 0 ? caseObj.final_requests.join('\n') : '--';
+
+    // 4. المراجع والمكان الفيزيائي
     document.getElementById('det-police').innerText = escapeHTML(caseObj.police_station_ref || "--");
     document.getElementById('det-prosecution').innerText = escapeHTML(caseObj.prosecution_ref || "--");
     document.getElementById('det-archive').innerText = escapeHTML(caseObj.physical_archive_location || "--");
     document.getElementById('det-clerk').innerText = escapeHTML(caseObj.court_clerk || "--");
+    
+    // 5. الاستخلاص الذكي
     document.getElementById('det-ai-summary').innerText = escapeHTML(caseObj.ai_cumulative_summary || "لا يوجد ملخص تراكمي بعد.");
+    if(caseObj.ai_extracted_entities) {
+        try {
+            let ai = typeof caseObj.ai_extracted_entities === 'string' ? JSON.parse(caseObj.ai_extracted_entities) : caseObj.ai_extracted_entities;
+            document.getElementById('det-ai-facts').innerText = ai.lawsuit_facts || '--';
+            document.getElementById('det-ai-legal').innerText = ai.legal_basis || '--';
+            let reqs = ai.final_requests;
+            if(Array.isArray(reqs)) reqs = reqs.join('، ');
+            document.getElementById('det-ai-requests').innerText = reqs || '--';
+        } catch(e) { console.error("Error parsing AI entities", e); }
+    } else {
+        document.getElementById('det-ai-facts').innerText = '--';
+        document.getElementById('det-ai-legal').innerText = '--';
+        document.getElementById('det-ai-requests').innerText = '--';
+    }
 
     const deadlineEl = document.getElementById('det-deadline');
     let targetDate = caseObj.deadline_date;
-    if (caseObj.statute_of_limitations_date) targetDate = caseObj.statute_of_limitations_date; 
-
     if (targetDate) {
         deadlineEl.innerText = escapeHTML(targetDate);
         const daysLeft = Math.ceil((new Date(targetDate) - new Date()) / 86400000);
@@ -165,7 +214,7 @@ function openEditModal() {
     document.getElementById('edit_current_stage').value = caseObj.current_stage || '';
 
     document.getElementById('edit_court').value = caseObj.current_court || '';
-    document.getElementById('edit_court_chamber').value = caseObj.court_chamber || '';
+    document.getElementById('edit_court_chamber').value = caseObj.court_room || ''; 
     document.getElementById('edit_court_case_number').value = caseObj.court_case_number || '';
     document.getElementById('edit_case_year').value = caseObj.case_year || '';
     document.getElementById('edit_litigation_degree').value = caseObj.litigation_degree || '';
@@ -179,10 +228,12 @@ function openEditModal() {
 
     document.getElementById('edit_opponent').value = caseObj.opponent_name || '';
     document.getElementById('edit_opponent_lawyer').value = caseObj.opponent_lawyer || '';
+    document.getElementById('edit_poa_number').value = caseObj.power_of_attorney_number || '';
+    document.getElementById('edit_poa_details').value = caseObj.poa_details || '';
+
     document.getElementById('edit_co_plaintiffs').value = Array.isArray(caseObj.co_plaintiffs) ? caseObj.co_plaintiffs.join('، ') : '';
     document.getElementById('edit_co_defendants').value = Array.isArray(caseObj.co_defendants) ? caseObj.co_defendants.join('، ') : '';
     document.getElementById('edit_experts_and_witnesses').value = Array.isArray(caseObj.experts_and_witnesses) ? caseObj.experts_and_witnesses.join('، ') : '';
-    document.getElementById('edit_poa_details').value = caseObj.poa_details || '';
 
     document.getElementById('edit_lawsuit_facts').value = caseObj.lawsuit_facts || '';
     document.getElementById('edit_legal_basis').value = caseObj.legal_basis || '';
@@ -239,7 +290,7 @@ async function updateCaseDetails(event) {
         assigned_lawyer_id: selectedLawyers.length > 0 ? selectedLawyers : null,
 
         current_court: document.getElementById('edit_court').value,
-        court_chamber: document.getElementById('edit_court_chamber').value,
+        court_room: document.getElementById('edit_court_chamber').value, 
         court_case_number: document.getElementById('edit_court_case_number').value, 
         case_year: document.getElementById('edit_case_year').value ? Number(document.getElementById('edit_case_year').value) : null,
         litigation_degree: document.getElementById('edit_litigation_degree').value, 
@@ -255,10 +306,12 @@ async function updateCaseDetails(event) {
 
         opponent_name: document.getElementById('edit_opponent').value,
         opponent_lawyer: document.getElementById('edit_opponent_lawyer').value,
+        power_of_attorney_number: document.getElementById('edit_poa_number').value,
+        poa_details: document.getElementById('edit_poa_details').value,
+
         co_plaintiffs: parseToArray(document.getElementById('edit_co_plaintiffs').value),
         co_defendants: parseToArray(document.getElementById('edit_co_defendants').value),
         experts_and_witnesses: parseToArray(document.getElementById('edit_experts_and_witnesses').value),
-        poa_details: document.getElementById('edit_poa_details').value,
 
         lawsuit_facts: document.getElementById('edit_lawsuit_facts').value,
         legal_basis: document.getElementById('edit_legal_basis').value,
@@ -345,6 +398,7 @@ async function saveUpdate(event) {
     if(await API.addUpdate(data)) { 
         if (extractedData.lawsuit_facts || extractedData.legal_basis) {
             await API.updateCase(currentCaseId, { 
+                ai_extracted_entities: extractedData,
                 lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, 
                 legal_basis: extractedData.legal_basis || caseObj.legal_basis,
                 ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100)
@@ -397,9 +451,11 @@ function calculateFinances(installments, expenses) {
     const agreedFees = Number(caseObj.total_agreed_fees) || 0;
     const courtFees = Number(caseObj.court_fees_paid) || 0;
     const courtDeposits = Number(caseObj.court_deposits) || 0;
+    const claimAmount = Number(caseObj.claim_amount) || 0;
     
     const clientRemaining = (agreedFees + totalExpenses + courtFees) - (totalPaid + courtDeposits);
 
+    document.getElementById('det-claim-amount').innerText = claimAmount.toLocaleString() + ' د.أ';
     document.getElementById('sum-agreed').innerText = agreedFees.toLocaleString();
     document.getElementById('sum-paid').innerText = totalPaid.toLocaleString();
     document.getElementById('sum-expenses').innerText = totalExpenses.toLocaleString();
@@ -603,7 +659,6 @@ function tafqeet(number) {
     return (thousandPart + basicPart).replace(/ و$/, "").trim();
 }
 
-// تعديل لضمان توجيه الـ QR إلى صفحة التحقق الصحيحة (verify.html)
 function printInvoice(amount, date, invoiceId) {
     document.getElementById('qr-print-container').style.display = 'none'; 
     document.getElementById('invoice-print-container').style.display = 'block';
@@ -623,7 +678,6 @@ function printInvoice(amount, date, invoiceId) {
     if (qrContainer && caseObj.public_token) {
         qrContainer.innerHTML = "";
         
-        // بناء رابط التحقق العميق بشكل ديناميكي
         const pathArray = window.location.pathname.split('/');
         pathArray.pop();
         const basePath = pathArray.join('/');

@@ -39,6 +39,10 @@
         /* تجميل البطاقات */
         .client-card, .case-card, .appt-card { transition: all 0.3s ease; border: 1px solid #f1f5f9; }
         .client-card:hover, .case-card:hover, .appt-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; border-color: var(--accent); }
+        
+        /* تبويبات النوافذ المنبثقة */
+        .nav-pills .nav-link { border-radius: 10px; color: #64748b; font-weight: bold; margin-bottom: 5px; text-align: right; }
+        .nav-pills .nav-link.active { background-color: var(--navy); color: white; }
     </style>
 </head>
 <body class="pb-5 mb-5">
@@ -360,108 +364,154 @@
     </div>
 
     <div class="modal fade" id="caseModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
                     <h5 class="modal-title fw-bold"><i class="fas fa-gavel me-2 text-accent"></i> فتح ملف قضية جديد</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4 bg-light">
-                    <form id="caseForm" onsubmit="saveCase(event)">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">الموكل <span class="text-danger">*</span></label>
-                            <select id="case_client_id" class="form-select border-0 shadow-sm" required></select>
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">رقم الملف الداخلي</label>
-                                <input type="text" id="case_internal_id" class="form-control border-0 shadow-sm" placeholder="مثال: 2024/15">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">رمز الدخول الآمن (PIN)</label>
-                                <div class="input-group shadow-sm border-0 mb-1">
-                                    <input type="text" id="case_access_pin" class="form-control border-0 text-center fw-bold text-danger fs-5" readonly placeholder="يُولد آلياً" required>
-                                    <button type="button" class="btn btn-light border-0 text-navy fw-bold" onclick="generateStrongPIN()" title="توليد رمز عشوائي جديد"><i class="fas fa-sync-alt"></i></button>
-                                </div>
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">أعطِ هذا الرمز للموكل لمتابعة ملفه بأمان</small>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">نوع القضية</label>
-                            <input type="text" id="case_type" class="form-control border-0 shadow-sm" placeholder="مثال: مطالبة مالية، شرعي...">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted">الخصم</label>
-                            <input type="text" id="case_opponent_name" class="form-control border-0 shadow-sm" placeholder="اسم الخصم (لغايات فحص التعارض)">
-                        </div>
-                        
-                        <div class="row g-2 mb-3 border-top pt-2">
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">درجة التقاضي</label>
-                                <select id="case_litigation_degree" class="form-select border-0 shadow-sm">
-                                    <option value="">غير محدد</option>
-                                    <option value="صلح">صلح</option>
-                                    <option value="بداية">بداية</option>
-                                    <option value="استئناف">استئناف</option>
-                                    <option value="تمييز">تمييز</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">قضية رئيسية (ربط)</label>
-                                <select id="case_parent_id" class="form-select border-0 shadow-sm"></select>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted text-danger">الموعد النهائي</label>
-                                <input type="date" id="case_deadline_date" class="form-control border-0 shadow-sm">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted text-success">نسبة النجاح (%)</label>
-                                <input type="number" id="case_success_prob" class="form-control border-0 shadow-sm" min="0" max="100">
-                            </div>
+                <div class="modal-body p-0 bg-light">
+                    
+                    <ul class="nav nav-pills bg-white p-2 border-bottom overflow-auto flex-nowrap" id="addCaseTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active px-3" data-bs-toggle="pill" data-bs-target="#add-basic" type="button">الأساسيات</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#add-court" type="button">المحكمة</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#add-parties" type="button">الأطراف</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#add-lawsuit" type="button">اللائحة والمالية</button></li>
+                    </ul>
+
+                    <form id="caseForm" onsubmit="saveCase(event)" class="p-3">
+                        <div class="tab-content" id="addCaseTabsContent">
                             
-                            <div class="col-12 mt-3"> 
-                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية للملف</label>
-                                <select id="case_confidentiality" class="form-select border-0 shadow-sm">
-                                    <option value="عادي">عادي (متاح لمحامين المكتب)</option>
-                                    <option value="سري">سري (متاح للمدير والمحامين المسندين فقط)</option>
-                                </select>
+                            <div class="tab-pane fade show active" id="add-basic">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-muted">الموكل <span class="text-danger">*</span></label>
+                                    <select id="case_client_id" class="form-select border-0 shadow-sm" required></select>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted">رقم الملف الداخلي</label>
+                                        <input type="text" id="case_internal_id" class="form-control border-0 shadow-sm" placeholder="مثال: 2024/15">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted">رمز الدخول الآمن (PIN)</label>
+                                        <div class="input-group shadow-sm border-0 mb-1">
+                                            <input type="text" id="case_access_pin" class="form-control border-0 text-center fw-bold text-danger fs-5" readonly placeholder="يُولد آلياً" required>
+                                            <button type="button" class="btn btn-light border-0 text-navy fw-bold" onclick="generateStrongPIN()" title="توليد رمز عشوائي جديد"><i class="fas fa-sync-alt"></i></button>
+                                        </div>
+                                        <small class="text-muted d-block" style="font-size: 0.65rem;">أعطِ هذا الرمز للموكل لمتابعة ملفه بأمان</small>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-muted">نوع القضية</label>
+                                    <input type="text" id="case_type" class="form-control border-0 shadow-sm" placeholder="مثال: مطالبة مالية، شرعي...">
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted"><i class="fas fa-fire text-danger"></i> الأولوية</label>
+                                        <select id="case_priority_level" class="form-select border-0 shadow-sm">
+                                            <option value="عادي">عادي</option>
+                                            <option value="هام">هام</option>
+                                            <option value="عاجل جداً">عاجل جداً</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية</label>
+                                        <select id="case_confidentiality" class="form-select border-0 shadow-sm">
+                                            <option value="عادي">عادي (متاح للمكتب)</option>
+                                            <option value="سري">سري (متاح للمدير والمحامين المسندين فقط)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-muted">المرحلة الحالية</label>
+                                    <input type="text" id="case_current_stage" class="form-control border-0 shadow-sm" placeholder="مثال: قيد التسجيل، تبليغ...">
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="add-court">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">المحكمة المختصة</label><input type="text" id="case_court" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">الغرفة / الهيئة</label><input type="text" id="case_court_room" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">رقم الدعوى</label><input type="text" id="case_court_case_number" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">سنة الدعوى</label><input type="number" id="case_case_year" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted">درجة التقاضي</label>
+                                        <select id="case_litigation_degree" class="form-select border-0 shadow-sm">
+                                            <option value="">غير محدد</option><option value="صلح">صلح</option><option value="بداية">بداية</option><option value="استئناف">استئناف</option><option value="تمييز">تمييز</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">القاضي</label><input type="text" id="case_current_judge" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">كاتب الجلسة (القلم)</label><input type="text" id="case_court_clerk" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">قضية رئيسية (ربط)</label><select id="case_parent_id" class="form-select border-0 shadow-sm"></select></div>
+                                </div>
+                                <hr>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted text-danger">الموعد النهائي القادم</label><input type="date" id="case_deadline_date" class="form-control border-0 shadow-sm"></div>
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted text-danger">تاريخ التقادم / السقوط</label><input type="date" id="case_statute_of_limitations_date" class="form-control border-0 shadow-sm"></div>
+                                </div>
+                                <hr>
+                                <div class="row g-2">
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">مرجع المركز الأمني</label><input type="text" id="case_police_station_ref" class="form-control border-0 shadow-sm" placeholder="اختياري"></div>
+                                    <div class="col-6"><label class="form-label fw-bold small text-muted">مرجع النيابة العامة</label><input type="text" id="case_prosecution_ref" class="form-control border-0 shadow-sm" placeholder="اختياري"></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="add-parties">
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">الخصم الرئيسي</label><input type="text" id="case_opponent_name" class="form-control border-0 shadow-sm" placeholder="اسم الخصم (لغايات فحص التعارض)"></div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">محامي الخصم</label><input type="text" id="case_opponent_lawyer" class="form-control border-0 shadow-sm" placeholder="بيانات التواصل..."></div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">مدعين إضافيين (مفصول بفاصلة)</label><input type="text" id="case_co_plaintiffs" class="form-control border-0 shadow-sm"></div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">مدعى عليهم إضافيين</label><input type="text" id="case_co_defendants" class="form-control border-0 shadow-sm"></div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">الشهود والخبراء</label><textarea id="case_experts_and_witnesses" class="form-control border-0 shadow-sm" rows="2"></textarea></div>
+                                <hr>
+                                <div class="row g-2">
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">رقم الوكالة القانونية</label><input type="text" id="case_poa_number" class="form-control border-0 shadow-sm" placeholder="الرقم الرسمي"></div>
+                                    <div class="col-12"><label class="form-label fw-bold small text-muted">تفاصيل الوكالة (الكاتب العدل، التاريخ)</label><input type="text" id="case_poa_details" class="form-control border-0 shadow-sm"></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="add-lawsuit">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-muted d-flex justify-content-between align-items-center">
+                                        <span>سرد الوقائع / اللائحة</span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onclick="startDictation('case_lawsuit_text')" title="إملاء صوتي"><i class="fas fa-microphone"></i> إملاء</button>
+                                    </label>
+                                    <textarea id="case_lawsuit_text" class="form-control border-0 shadow-sm" rows="3" placeholder="تحدث أو اكتب ليقوم الذكاء الاصطناعي باستخراج البيانات آلياً..."></textarea>
+                                </div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">الأسانيد القانونية</label><textarea id="case_legal_basis" class="form-control border-0 shadow-sm" rows="2"></textarea></div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">الطلبات الختامية</label><textarea id="case_final_requests" class="form-control border-0 shadow-sm" rows="2"></textarea></div>
+                                
+                                <div class="form-check mb-3 bg-white p-2 rounded border shadow-sm">
+                                    <input class="form-check-input ms-2" type="checkbox" id="case_auto_tasks" value="1" checked style="float: right; margin-left: 10px; margin-top: 5px;">
+                                    <label class="form-check-label fw-bold text-navy small" for="case_auto_tasks">
+                                        توليد مهام وإجراءات أولية تلقائياً (Workflow)
+                                    </label>
+                                </div>
+
+                                <hr>
+                                <h6 class="fw-bold text-navy mb-3"><i class="fas fa-file-invoice-dollar me-2 text-success"></i> الأتعاب والمالية</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted">قيمة المطالبة (الدعوى)</label>
+                                        <input type="number" id="case_claim_amount" class="form-control border-0 shadow-sm" placeholder="0">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted">إجمالي الأتعاب (للمكتب)</label>
+                                        <input type="number" id="case_agreed_fees" class="form-control border-0 shadow-sm" placeholder="0">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-bold small text-muted text-success">نسبة النجاح المتوقعة (%)</label>
+                                        <input type="number" id="case_success_prob" class="form-control border-0 shadow-sm" min="0" max="100">
+                                    </div>
+                                </div>
+                                
+                                <div id="case-assign-wrapper" class="mb-4">
+                                    <label class="form-label fw-bold small text-muted">إسناد القضية لـ (المحامين)</label>
+                                    <select class="form-control" id="case_assigned_lawyers" multiple></select>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted d-flex justify-content-between align-items-center">
-                                <span>وقائع / لائحة الدعوى (للذكاء الاصطناعي)</span>
-                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill" onclick="startDictation('case_lawsuit_text')" title="إملاء صوتي"><i class="fas fa-microphone"></i> تحدث</button>
-                            </label>
-                            <textarea id="case_lawsuit_text" class="form-control border-0 shadow-sm" rows="3" placeholder="اكتب أو تحدث بالوقائع ليقوم الذكاء الاصطناعي باستخراج الأسماء، التواريخ، والملخص آلياً..."></textarea>
-                        </div>
-                        
-                        <div class="form-check mb-3 bg-white p-2 rounded border shadow-sm">
-                            <input class="form-check-input ms-2" type="checkbox" id="case_auto_tasks" value="1" checked style="float: right; margin-left: 10px; margin-top: 5px;">
-                            <label class="form-check-label fw-bold text-navy small" for="case_auto_tasks">
-                                توليد مهام وإجراءات أولية تلقائياً (Workflow)
-                            </label>
-                        </div>
-
-                        <hr>
-                        <h6 class="fw-bold text-navy mb-3"><i class="fas fa-file-invoice-dollar me-2 text-success"></i> الأتعاب المتفق عليها</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">إجمالي الأتعاب (د.أ)</label>
-                                <input type="number" id="case_agreed_fees" class="form-control border-0 shadow-sm" placeholder="0">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">قيمة المطالبة (د.أ)</label>
-                                <input type="number" id="case_claim_amount" class="form-control border-0 shadow-sm" placeholder="0">
-                            </div>
-                        </div>
-                        
-                        <div id="case-assign-wrapper" class="mb-4">
-                            <label class="form-label fw-bold small text-muted">إسناد القضية لـ (المحامين)</label>
-                            <select class="form-control" id="case_assigned_lawyers" multiple></select>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-save me-1"></i> حفظ وتوليد الملف</button>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow mt-3" id="btn_save_case"><i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي</button>
                     </form>
                 </div>
             </div>

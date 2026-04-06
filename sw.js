@@ -1,57 +1,35 @@
-// sw.js - Service Worker لمشروع موكّل الذكي (الكاش والإشعارات)
-
-const CACHE_NAME = 'moakkil-cache-v4.1'; // تم التحديث لـ v4.1 لإجبار المتصفح على تحميل النسخة الجديدة وتخطي خطأ الرفع
-const urlsToCache = [
-    './',
-    './index.html',
-    './login.html',
-    './app.html',
-    './client.html',
-    './client-details.html',
-    './staff.html',
-    './register.html',
-    './verify.html',
-    './library.html',
-    './calculators.html',
-    './reports.html',
-    './ai-chat.html',
-    './css/style.css',
-    './js/config.js',
-    './js/api.js',
-    './js/auth.js',
-    './js/app.js',
-    './js/client.js',
-    './js/client-details.js',
-    './js/staff.js',
-    './js/register.js',
-    './icons/icon-192.png',
-    './icons/icon-512.png',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css',
-    'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap'
+// sw.js - Service Worker for Moakkil System (Offline Mode & Push Notifications)
+const CACHE_NAME = 'moakkil-v1-2026';
+const STATIC_ASSETS = [
+    '/',
+    '/index.html',
+    '/login.html',
+    '/app.html',
+    '/css/style.css',
+    '/js/app.js',
+    '/js/api.js',
+    '/js/auth.js',
+    '/manifest.json'
 ];
 
-// 1. تنصيب الـ Service Worker وحفظ الملفات في الكاش
-self.addEventListener('install', event => {
-    self.skipWaiting(); // إجبار التحديث الفوري
+// 1. تنصيب ملف الـ Service Worker وتخزين الملفات الأساسية
+self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('Opened cache and cached essential files');
-                return cache.addAll(urlsToCache);
-            })
+        caches.open(CACHE_NAME).then((cache) => {
+            console.log('Opened cache and storing static assets.');
+            return cache.addAll(STATIC_ASSETS);
+        })
     );
+    self.skipWaiting();
 });
 
-// 2. تنشيط وحذف الكاش القديم (لضمان حصول المستخدمين على التحديثات الجديدة تلقائياً)
-self.addEventListener('activate', event => {
+// 2. تفعيل الـ Service Worker وحذف الكاش القديم إن وجد
+self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then(cacheNames => {
+        caches.keys().then((cacheNames) => {
             return Promise.all(
-                cacheNames.map(cacheName => {
+                cacheNames.map((cacheName) => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log('Deleting old cache:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
@@ -61,76 +39,76 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// 3. استراتيجية جلب البيانات (الشبكة أولاً للـ API، والكاش كخيار احتياطي للصفحات)
-self.addEventListener('fetch', event => {
-    const requestUrl = event.request.url;
-
-    // تجاوز طلبات الـ API، قاعدة البيانات، وسيرفر جوجل للرفع (أهم سطر لحل مشكلة CORS في رفع الملفات)
-    if (requestUrl.includes('/api/') || 
-        requestUrl.includes('supabase') || 
-        requestUrl.includes('googleusercontent') || 
-        requestUrl.includes('script.google.com') || 
-        requestUrl.includes('script.googleusercontent.com')) {
-        
-        // اترك المتصفح يتعامل مع هذا الطلب بشكل طبيعي تماماً (Bypass SW)
-        event.respondWith(fetch(event.request));
-        return;
+// 3. استراتيجية (Network First) لضمان أحدث البيانات مع دعم الأوفلاين
+self.addEventListener('fetch', (event) => {
+    // تجاهل استعلامات الـ API من الكاش (يجب أن تأتي دائماً من السيرفر)
+    if (event.request.url.includes('/api/')) {
+        return; 
     }
 
     event.respondWith(
         fetch(event.request).catch(() => {
-            // في حال انقطاع الإنترنت، يعتمد على الكاش لعرض الواجهات بسلاسة
             return caches.match(event.request);
         })
     );
 });
 
-// 4. التعامل مع استقبال الإشعارات (Push Notifications) والتطبيق مغلق
-self.addEventListener('push', event => {
-    let data = { title: 'إشعار من موكّل', body: 'لديك تنبيه جديد في النظام.', url: './app.html' };
-    
-    if (event.data) {
-        try {
-            const parsed = event.data.json();
-            data.title = parsed.title || data.title;
-            data.body = parsed.body || parsed.message || data.message || data.body;
-            data.url = parsed.url || data.url;
-        } catch(e) {
-            data.body = event.data.text();
-        }
+// =========================================================
+// 🔔 [ الإشعارات الفورية - Push Notifications ] 🔔
+// =========================================================
+
+// 4. استلام الإشعار من الباك إند (حتى لو كان المتصفح/التطبيق مغلقاً)
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+
+    try {
+        const data = event.data.json();
+        const title = data.title || 'إشعار جديد - نظام موكّل';
+        const options = {
+            body: data.message || 'لديك تحديث جديد في النظام.',
+            icon: '/assets/icon-192.png', // تأكد من وضع أيقونة التطبيق في مجلد assets
+            badge: '/assets/badge.png',   // أيقونة شريط الإشعارات الصغير
+            vibrate: [200, 100, 200],     // هزاز الهاتف
+            data: {
+                url: data.action_url || '/app.html' // الصفحة التي سيتم فتحها عند النقر
+            },
+            requireInteraction: true // يبقى الإشعار ظاهراً حتى يتفاعل معه المستخدم
+        };
+
+        event.waitUntil(self.registration.showNotification(title, options));
+    } catch (e) {
+        console.error("Error parsing push data:", e);
+        // إشعار احتياطي في حال فشل قراءة الـ JSON
+        event.waitUntil(self.registration.showNotification('نظام موكّل', {
+            body: event.data.text(),
+            icon: '/assets/icon-192.png'
+        }));
     }
-
-    const options = {
-        body: data.body,
-        icon: './icons/icon-192.png',
-        badge: './icons/icon-192.png',
-        vibrate: [200, 100, 200, 100, 200, 100, 200], // اهتزاز قوي ومميز للتنبيهات القانونية والمواعيد
-        data: {
-            url: data.url
-        },
-        requireInteraction: true // يبقى الإشعار ظاهراً في الهاتف حتى يتفاعل معه المستخدم أو يمسحه
-    };
-
-    event.waitUntil(
-        self.registration.showNotification(data.title, options)
-    );
 });
 
-// 5. عند النقر على الإشعار من شاشة الهاتف
-self.addEventListener('notificationclick', event => {
-    event.notification.close();
+// 5. التفاعل عند النقر على الإشعار (فتح التطبيق وتوجيه المستخدم)
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close(); // إغلاق الإشعار بعد النقر
+
+    const urlToOpen = event.notification.data.url;
+
+    // فحص ما إذا كان التطبيق مفتوحاً بالفعل لعمل Focus بدلاً من فتح نافذة جديدة
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            // التحقق مما إذا كان التطبيق مفتوحاً بالفعل في الخلفية لعمل فوكس عليه (بدلاً من فتح نسخة جديدة)
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            let matchingClient = null;
+
             for (let i = 0; i < windowClients.length; i++) {
-                const client = windowClients[i];
-                if (client.url.includes('app.html') && 'focus' in client) {
-                    return client.focus();
+                const windowClient = windowClients[i];
+                if (windowClient.url.includes(urlToOpen)) {
+                    matchingClient = windowClient;
+                    break;
                 }
             }
-            // إذا لم يكن مفتوحاً، افتح التطبيق من جديد
-            if (clients.openWindow) {
-                return clients.openWindow(event.notification.data.url);
+
+            if (matchingClient) {
+                return matchingClient.focus();
+            } else {
+                return clients.openWindow(urlToOpen);
             }
         })
     );
