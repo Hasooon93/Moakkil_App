@@ -1,334 +1,300 @@
-// js/reports.js - محرك التقارير المتقدم (المالية، الإحصائيات، أداء الفريق، دعم المحامين المتعددين، محمي ضد XSS)
+// js/reports.js - العقل المدبر للتقارير والرسوم البيانية مع ميزة الفلترة الزمنية الذكية (Date Filtering)
 
-let rawData = { cases: [], staff: [], installments: [], expenses: [] };
-let charts = { finance: null, cases: null };
-let currentUser = null;
+let rawCases = [];
+let rawInstallments = [];
+let rawExpenses = [];
+let rawAppointments = [];
+let rawClients = [];
 
-// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+let financeChartInstance = null;
+let casesChartInstance = null;
+
 const escapeHTML = (str) => {
-    if (str === null || str === undefined) return '';
+    if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, 
-        tag => ({
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            "'": '&#39;',
-            '"': '&quot;'
-        }[tag] || tag)
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
 };
 
 window.onload = async () => {
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY);
-    const userStr = localStorage.getItem(CONFIG.USER_KEY);
-    
-    if (!token || !userStr) {
+    applyFirmSettings();
+    if (!localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token')) {
         window.location.href = 'login.html';
         return;
     }
 
-    currentUser = JSON.parse(userStr);
-    
-    // الصلاحيات: السكرتاريا ممنوعة من رؤية التقارير
-    if (currentUser.role === 'secretary' || currentUser.role === 'سكرتاريا') {
-        Swal.fire({
-            icon: 'error',
-            title: 'وصول مرفوض',
-            text: 'ليس لديك الصلاحيات الكافية للوصول إلى لوحة التقارير المالية والإحصائية.',
-            confirmButtonText: 'العودة للرئيسية'
-        }).then(() => {
-            window.location.href = 'app.html';
-        });
-        return;
-    }
-    
-    // إخفاء جدول أداء الموظفين إذا كان المستخدم محامياً عادياً (ليس مديراً)
-    if (currentUser.role === 'lawyer' || currentUser.role === 'محامي') {
-        const staffSection = document.getElementById('staff-performance-section');
-        if(staffSection) staffSection.style.display = 'none';
-    }
-    
-    document.getElementById('report-date').innerText = new Date().toLocaleDateString('ar-EG');
-    await fetchAndRenderInitialData();
+    // تعيين التاريخ الافتراضي لـ "هذا الشهر" عند الفتح لأول مرة ليكون التقرير منطقياً
+    document.getElementById('filter_period').value = 'this_month';
+
+    await fetchAllData();
+    generateReports(); // تطبيق الفلتر وبناء التقرير
 };
 
-async function fetchAndRenderInitialData() {
+function applyFirmSettings() {
+    const settings = JSON.parse(localStorage.getItem('firm_settings'));
+    if (!settings) return;
+    const root = document.documentElement;
+    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
+    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
+}
+
+// التحكم في إظهار وإخفاء حقول التاريخ المخصص
+window.handlePeriodChange = function() {
+    const period = document.getElementById('filter_period').value;
+    const customElements = document.querySelectorAll('.custom-date');
+    
+    if (period === 'custom') {
+        customElements.forEach(el => el.classList.remove('d-none'));
+    } else {
+        customElements.forEach(el => el.classList.add('d-none'));
+    }
+};
+
+// جلب كل البيانات الخام مرة واحدة باستخدام الدوال المخصصة في api.js
+async function fetchAllData() {
     try {
-        // جلب جميع البيانات الأساسية للمكتب
-        const [casesRes, staffRes, instRes, expRes] = await Promise.all([
-            fetchAPI('/api/cases'),
-            fetchAPI('/api/users'),
-            fetchAPI('/api/installments'), 
-            fetchAPI('/api/expenses')      
+        Swal.fire({ title: 'جاري تحميل السجلات...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        // تم استبدال API.get بالدوال المخصصة API.getInstallments() و API.getExpenses()
+        const [casesRes, clientsRes, apptsRes, instRes, expRes] = await Promise.all([
+            API.getCases(),
+            API.getClients(),
+            API.getAppointments(),
+            API.getInstallments(), 
+            API.getExpenses()
         ]);
 
-        if (casesRes.error) throw new Error(casesRes.error);
+        rawCases = Array.isArray(casesRes) ? casesRes : [];
+        rawClients = Array.isArray(clientsRes) ? clientsRes : [];
+        rawAppointments = Array.isArray(apptsRes) ? apptsRes : [];
+        rawInstallments = Array.isArray(instRes) ? instRes : [];
+        rawExpenses = Array.isArray(expRes) ? expRes : [];
 
-        const allCases = Array.isArray(casesRes) ? casesRes : [];
-        const allInsts = Array.isArray(instRes) ? instRes : [];
-        const allExps = Array.isArray(expRes) ? expRes : [];
-        const allStaff = Array.isArray(staffRes) ? staffRes : [];
-
-        // تطبيق صلاحية الرؤية (المحامي يرى قضاياه فقط)
-        if (currentUser.role === 'lawyer' || currentUser.role === 'محامي') {
-            rawData.cases = allCases.filter(c => {
-                const assigned = Array.isArray(c.assigned_lawyer_id) ? c.assigned_lawyer_id : (c.assigned_lawyer_id ? [c.assigned_lawyer_id] : []);
-                return assigned.includes(currentUser.id) || c.created_by === currentUser.id;
-            });
-            
-            // جلب الـ IDs الخاصة بقضايا المحامي لفلترة مصاريفه ودفعاته فقط
-            const allowedCaseIds = rawData.cases.map(c => c.id);
-            
-            rawData.installments = allInsts.filter(i => allowedCaseIds.includes(i.case_id));
-            rawData.expenses = allExps.filter(e => allowedCaseIds.includes(e.case_id));
-        } else {
-            // المدير يرى كل شيء
-            rawData.cases = allCases;
-            rawData.installments = allInsts;
-            rawData.expenses = allExps;
-        }
-        
-        rawData.staff = allStaff;
-
-        renderAllReports(rawData);
-
+        Swal.close();
     } catch (error) {
-        console.error("Reports Error:", error);
-        showAlert('حدث خطأ أثناء جلب وتحليل البيانات للتقرير', 'error');
+        Swal.close();
+        Swal.fire('خطأ', 'تعذر تحميل البيانات من السيرفر.', 'error');
+        console.error(error);
     }
 }
 
-// دالة تطبيق الفلتر الزمني الديناميكي
-function applyFilters() {
-    const startDate = document.getElementById('filter-start').value;
-    const endDate = document.getElementById('filter-end').value;
+// الدالة الرئيسية: تطبيق الفلتر وإعادة بناء الواجهة
+window.generateReports = function() {
+    const period = document.getElementById('filter_period').value;
+    const startStr = document.getElementById('filter_start').value;
+    const endStr = document.getElementById('filter_end').value;
 
-    if (!startDate && !endDate) {
-        showAlert('يرجى تحديد تاريخ بداية أو نهاية للفلترة', 'warning');
-        return;
+    let startDate = null;
+    let endDate = null;
+    const now = new Date();
+
+    // إعداد التواريخ بناءً على اختيار المستخدم
+    if (period === 'today') {
+        startDate = new Date(now.setHours(0,0,0,0));
+        endDate = new Date(now.setHours(23,59,59,999));
+    } else if (period === 'this_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23,59,59);
+    } else if (period === 'this_year') {
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23,59,59);
+    } else if (period === 'custom') {
+        if(startStr) { startDate = new Date(startStr); startDate.setHours(0,0,0,0); }
+        if(endStr) { endDate = new Date(endStr); endDate.setHours(23,59,59,999); }
     }
 
-    const start = startDate ? new Date(startDate) : new Date('1970-01-01');
-    const end = endDate ? new Date(endDate) : new Date('2100-01-01');
-    
-    // نهاية اليوم للـ End Date لضمان شموله
-    end.setHours(23, 59, 59, 999);
-
-    const filteredData = {
-        staff: rawData.staff, // الموظفين لا يتأثرون بالفلتر الزمني
-        cases: rawData.cases.filter(c => {
-            const d = new Date(c.created_at);
-            return d >= start && d <= end;
-        }),
-        installments: rawData.installments.filter(i => {
-            const d = new Date(i.due_date || i.created_at);
-            return d >= start && d <= end;
-        }),
-        expenses: rawData.expenses.filter(e => {
-            const d = new Date(e.expense_date || e.created_at);
-            return d >= start && d <= end;
-        })
+    // دالة للتحقق من وقوع التاريخ ضمن الفترة
+    const isDateInRange = (dateStr) => {
+        if(!dateStr) return false;
+        const d = new Date(dateStr);
+        if(startDate && d < startDate) return false;
+        if(endDate && d > endDate) return false;
+        return true;
     };
 
-    renderAllReports(filteredData);
-    showAlert('تم استخراج التقرير للفترة المحددة', 'success');
-}
-
-function resetFilters() {
-    document.getElementById('filter-start').value = '';
-    document.getElementById('filter-end').value = '';
-    renderAllReports(rawData);
-}
-
-function renderAllReports(data) {
-    const financials = calculateFinancials(data.cases, data.installments, data.expenses);
-    const caseStats = calculateCaseStats(data.cases);
+    // فلترة المصفوفات
+    const filteredCases = period === 'all' ? rawCases : rawCases.filter(c => isDateInRange(c.created_at));
+    const filteredClients = period === 'all' ? rawClients : rawClients.filter(c => isDateInRange(c.created_at));
     
-    // حساب أداء الموظفين يظهر للمدراء فقط بناءً على الفلتر المطبق
-    if (currentUser.role === 'admin' || currentUser.role === 'مدير') {
-        calculateStaffPerformance(data.cases, data.staff);
-    }
+    // المهام نفلترها بناءً على تاريخ الاستحقاق
+    const filteredAppts = period === 'all' ? rawAppointments : rawAppointments.filter(a => isDateInRange(a.appt_date));
     
-    renderCharts(financials, caseStats);
+    // الماديات نفلترها بناءً على تاريخ الدفع أو الصرف الفعلي
+    const filteredInstallments = period === 'all' ? rawInstallments : rawInstallments.filter(i => isDateInRange(i.paid_date || i.due_date || i.created_at));
+    const filteredExpenses = period === 'all' ? rawExpenses : rawExpenses.filter(e => isDateInRange(e.expense_date || e.created_at));
+
+    // تحديث الأرقام والرسوم والجدول
+    calculateKPIs(filteredCases, filteredClients, filteredAppts, filteredInstallments, filteredExpenses);
+    updateCharts(filteredCases, filteredInstallments, filteredExpenses);
+    updateTransactionsTable(filteredInstallments, filteredExpenses);
+};
+
+// حساب مؤشرات الأداء بناءً على الداتا المفلترة
+function calculateKPIs(cases, clients, appts, installments, expenses) {
+    // الأتعاب فقط للقضايا التي فُتحت في هذه الفترة
+    const totalAgreed = cases.reduce((sum, c) => sum + (Number(c.total_agreed_fees) || 0), 0);
+    
+    // التحصيلات التي تمت في هذه الفترة (فقط المقبوضة)
+    const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    
+    // المصروفات التي صُرفت في هذه الفترة
+    const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    // المتبقي من القضايا التي فُتحت في هذه الفترة
+    const totalRem = totalAgreed - totalPaid;
+
+    // الأنيميشن للأرقام
+    animateValue('kpi-total-agreed', totalAgreed);
+    animateValue('kpi-total-paid', totalPaid);
+    animateValue('kpi-total-exp', totalExpenses);
+    animateValue('kpi-total-rem', totalRem > 0 ? totalRem : 0);
+
+    animateValue('kpi-cases-count', cases.length);
+    animateValue('kpi-clients-count', clients.length);
+    animateValue('kpi-appts-count', appts.length);
 }
 
-function calculateFinancials(cases, installments, expenses) {
-    let totalAgreed = 0;
-    let totalPaid = 0;
-    let totalExpenses = 0;
-
-    // تم التحديث: إضافة رسوم المحاكم المدفوعة من القضية إلى إجمالي مصاريف المكتب
-    cases.forEach(c => { 
-        totalAgreed += Number(c.total_agreed_fees) || 0; 
-        totalExpenses += Number(c.court_fees_paid) || 0; // التحديث المالي الجديد
-    });
-    
-    installments.forEach(i => { if (i.status === 'مدفوعة') totalPaid += Number(i.amount) || 0; });
-    expenses.forEach(e => { totalExpenses += Number(e.amount) || 0; });
-
-    const netProfit = totalPaid - totalExpenses;
-
-    document.getElementById('rep-total-agreed').innerText = totalAgreed.toLocaleString();
-    document.getElementById('rep-total-paid').innerText = totalPaid.toLocaleString();
-    document.getElementById('rep-total-expenses').innerText = totalExpenses.toLocaleString();
-    
-    const profitEl = document.getElementById('rep-net-profit');
-    profitEl.innerText = netProfit.toLocaleString();
-    if(netProfit < 0) profitEl.classList.add('text-danger');
-    else profitEl.classList.remove('text-danger');
-
-    return { totalAgreed, totalPaid, totalExpenses, netProfit };
+// أنيميشن عداد الأرقام
+function animateValue(id, end) {
+    const obj = document.getElementById(id);
+    if(!obj) return;
+    const duration = 1000;
+    const start = 0;
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
 }
 
-function calculateCaseStats(cases) {
-    let active = 0, closed = 0, appeal = 0;
+// تحديث الرسوم البيانية (Chart.js)
+function updateCharts(cases, installments, expenses) {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor = rootStyles.getPropertyValue('--navy').trim() || '#0a192f';
 
-    cases.forEach(c => {
-        if (c.status === 'نشطة') active++;
-        else if (c.status === 'مغلقة' || c.status === 'مكتملة' || c.status === 'محفوظة') closed++;
-        else if (c.status === 'قيد الاستئناف' || c.litigation_degree === 'استئناف' || c.litigation_degree === 'تمييز') appeal++;
-    });
+    // 1. حسابات التدفق المالي
+    const totalAgreed = cases.reduce((sum, c) => sum + (Number(c.total_agreed_fees) || 0), 0);
+    const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    document.getElementById('rep-cases-total').innerText = cases.length;
-    document.getElementById('rep-cases-active').innerText = active;
-    document.getElementById('rep-cases-closed').innerText = closed;
-    document.getElementById('rep-cases-appeal').innerText = appeal;
-
-    return { active, closed, appeal };
-}
-
-function calculateStaffPerformance(cases, staff) {
-    const tableBody = document.getElementById('lawyer-performance-body');
+    const financeCtx = document.getElementById('financeChart');
+    if (financeChartInstance) financeChartInstance.destroy();
     
-    if (staff.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="text-muted p-4">لا يوجد موظفين مسجلين</td></tr>';
-        return;
-    }
-
-    let rowsHtml = '';
-
-    staff.forEach(member => {
-        let assignedCasesCount = 0;
-        let associatedFees = 0;
-
-        cases.forEach(c => {
-            // دعم مصفوفة المحامين المتعددين
-            const assignedArray = Array.isArray(c.assigned_lawyer_id) ? c.assigned_lawyer_id : (c.assigned_lawyer_id ? [c.assigned_lawyer_id] : []);
-            
-            if (assignedArray.includes(member.id) || c.created_by === member.id) {
-                assignedCasesCount++;
-                associatedFees += Number(c.total_agreed_fees) || 0;
-            }
-        });
-
-        const statusBadge = member.is_active === false 
-            ? '<span class="badge bg-danger">معطل</span>' 
-            : '<span class="badge bg-success">فعال</span>';
-
-        const safeName = escapeHTML(member.full_name);
-        const safeRole = escapeHTML(getRoleNameInArabic(member.role));
-
-        rowsHtml += `
-            <tr class="${member.is_active === false ? 'opacity-50' : ''}">
-                <td class="text-start ps-3">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-light text-navy fw-bold rounded-circle d-flex align-items-center justify-content-center me-2 border" style="width:35px; height:35px;">
-                            ${safeName.charAt(0)}
-                        </div>
-                        <div>
-                            <b class="text-navy d-block">${safeName}</b>
-                            <small class="text-muted">${safeRole}</small>
-                        </div>
-                    </div>
-                </td>
-                <td>${statusBadge}</td>
-                <td><span class="badge bg-soft-primary text-primary fs-6">${assignedCasesCount}</span></td>
-                <td class="text-success fw-bold">${associatedFees.toLocaleString()}</td>
-            </tr>
-        `;
-    });
-
-    tableBody.innerHTML = rowsHtml;
-}
-
-function getRoleNameInArabic(role) {
-    if (role === 'admin' || role === 'مدير') return 'مدير';
-    if (role === 'secretary' || role === 'سكرتاريا') return 'سكرتاريا';
-    if (role === 'lawyer' || role === 'محامي') return 'محامي';
-    return role || 'موظف';
-}
-
-function renderCharts(finStats, caseStats) {
-    if (typeof Chart === 'undefined') return;
-    Chart.defaults.font.family = "'Cairo', sans-serif";
-    
-    // جلب ألوان الهوية البصرية من CSS المتصفح لتوحيد ألوان الرسوم البيانية
-    const style = getComputedStyle(document.body);
-    const colorNavy = style.getPropertyValue('--navy').trim() || '#0a192f';
-    const colorSuccess = '#10b981';
-    const colorDanger = '#ef4444';
-    const colorWarning = '#f59e0b';
-
-    // 1. تدمير المخططات القديمة إذا وجدت (عند التحديث بالفلتر)
-    if (charts.finance) charts.finance.destroy();
-    if (charts.cases) charts.cases.destroy();
-
-    // 2. إنشاء مخطط التدفق المالي (Bar Chart)
-    const ctxFinance = document.getElementById('financeChart').getContext('2d');
-    charts.finance = new Chart(ctxFinance, {
+    financeChartInstance = new Chart(financeCtx, {
         type: 'bar',
         data: {
-            labels: ['إجمالي الأتعاب', 'المحصل الفعلي', 'المصروفات والرسوم'],
+            labels: ['إجمالي الأتعاب (للقضايا الجديدة)', 'التحصيلات الفعلية', 'المصروفات المدفوعة'],
             datasets: [{
-                label: 'المبالغ (د.أ)',
-                data: [finStats.totalAgreed, finStats.totalPaid, finStats.totalExpenses],
-                backgroundColor: [colorNavy, colorSuccess, colorDanger],
-                borderRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-
-    // 3. إنشاء مخطط حالات القضايا (Doughnut Chart)
-    const ctxCases = document.getElementById('casesChart').getContext('2d');
-    charts.cases = new Chart(ctxCases, {
-        type: 'doughnut',
-        data: {
-            labels: ['نشطة', 'استئناف / تمييز', 'مغلقة'],
-            datasets: [{
-                data: [caseStats.active, caseStats.appeal, caseStats.closed],
-                backgroundColor: [colorSuccess, colorWarning, colorDanger],
-                hoverOffset: 4
+                label: 'المبلغ (د.أ)',
+                data: [totalAgreed, totalPaid, totalExpenses],
+                backgroundColor: [primaryColor, '#10b981', '#ef4444'],
+                borderRadius: 8,
+                barThickness: 30
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { padding: 20, font: { family: "'Cairo', sans-serif" } } }
+                legend: { display: false }
             },
-            cutout: '60%'
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: function(value) { return value.toLocaleString(); } } }
+            }
+        }
+    });
+
+    // 2. حسابات حالة القضايا المفلترة
+    const activeCases = cases.filter(c => c.status === 'نشطة').length;
+    const completedCases = cases.filter(c => c.status === 'مكتملة').length;
+    const appealCases = cases.filter(c => c.status === 'استئناف' || c.status === 'تمييز').length;
+
+    const casesCtx = document.getElementById('casesChart');
+    if (casesChartInstance) casesChartInstance.destroy();
+
+    casesChartInstance = new Chart(casesCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['نشطة', 'مكتملة/مغلقة', 'استئناف/تمييز'],
+            datasets: [{
+                data: [activeCases, completedCases, appealCases],
+                backgroundColor: ['#10b981', '#64748b', '#f59e0b'],
+                borderWidth: 2,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { family: 'inherit', size: 13 } } }
+            }
         }
     });
 }
 
-function showAlert(message, type = 'info') {
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            toast: true,
-            position: 'top-end',
-            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
-            title: escapeHTML(message),
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
+// تحديث جدول المعاملات الأحدث (خلال الفترة المفلترة)
+function updateTransactionsTable(installments, expenses) {
+    const tbody = document.getElementById('recent-transactions-tbody');
+    
+    // دمج الدفعات والمصروفات المفلترة في مصفوفة واحدة
+    let transactions = [];
+    
+    installments.forEach(i => {
+        const caseObj = rawCases.find(c => c.id === i.case_id);
+        transactions.push({
+            date: new Date(i.paid_date || i.due_date || i.created_at),
+            type: 'مقبوضات (أتعاب)',
+            amount: Number(i.amount),
+            description: `دفعة لقضية رقم: ${caseObj ? caseObj.case_internal_id : 'غير محدد'}`,
+            status: i.status === 'مدفوعة' ? 'مكتمل' : 'مستحق',
+            statusColor: i.status === 'مدفوعة' ? 'success' : 'warning',
+            typeColor: 'success'
         });
-    } else {
-        alert(message);
+    });
+
+    expenses.forEach(e => {
+        const caseObj = rawCases.find(c => c.id === e.case_id);
+        transactions.push({
+            date: new Date(e.expense_date || e.created_at),
+            type: 'مدفوعات (مصروف)',
+            amount: Number(e.amount),
+            description: e.description + (caseObj ? ` - ملف: ${caseObj.case_internal_id}` : ''),
+            status: 'مصروف',
+            statusColor: 'danger',
+            typeColor: 'danger'
+        });
+    });
+
+    // ترتيب المعاملات من الأحدث للأقدم
+    transactions.sort((a, b) => b.date - a.date);
+    
+    // أخذ آخر 15 معاملة فقط للعرض
+    const recentTx = transactions.slice(0, 15);
+
+    if (recentTx.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-muted border-0 bg-white">لا توجد حركات مالية مسجلة في هذه الفترة.</td></tr>`;
+        return;
     }
+
+    tbody.innerHTML = recentTx.map(tx => `
+        <tr class="bg-white border-bottom">
+            <td class="fw-bold text-muted">${tx.date.toLocaleDateString('ar-EG')}</td>
+            <td><span class="badge bg-soft-${tx.typeColor} text-${tx.typeColor} border border-${tx.typeColor}">${tx.type}</span></td>
+            <td class="fw-bold text-${tx.typeColor}">${tx.amount.toLocaleString()}</td>
+            <td class="text-truncate" style="max-width: 200px;" title="${escapeHTML(tx.description)}">${escapeHTML(tx.description)}</td>
+            <td><span class="badge bg-${tx.statusColor}">${tx.status}</span></td>
+        </tr>
+    `).join('');
 }
+
+// دالة طباعة التقرير
+window.printReport = function() {
+    window.print();
+};
