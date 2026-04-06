@@ -173,7 +173,7 @@ function switchView(viewId) {
     window.scrollTo(0, 0);
 }
 
-// vCard QR Code Builder
+// vCard QR Code Builder - تم حل مشكلة اللغة العربية بشكل كامل
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode');
     qrContainer.innerHTML = ''; 
@@ -187,8 +187,11 @@ function showVCard() {
     const vcardText = `BEGIN:VCARD\nVERSION:3.0\nFN:${cleanName}\nORG:${cleanFirmName}\nTEL;TYPE=CELL:${cleanPhone}\nADR;TYPE=WORK:;;${cleanAddress}\nEND:VCARD`;
     
     try {
+        // حيلة تحويل التشفير (unescape) لدعم اللغة العربية في مكتبة qrcode.js
+        const utf8VcardText = unescape(encodeURIComponent(vcardText));
+        
         new QRCode(qrContainer, { 
-            text: vcardText, 
+            text: utf8VcardText, 
             width: 200, 
             height: 200, 
             colorDark: "#0a192f",
@@ -746,7 +749,6 @@ function openModal(id) {
     if(el) { 
         const m = new bootstrap.Modal(el); 
         m.show(); 
-        // التوليد الآلي للـ PIN عند فتح نافذة إضافة القضية في حال كان الحقل فارغاً
         if (id === 'caseModal') {
             const pinInput = document.getElementById('case_access_pin');
             if (pinInput && !pinInput.value) {

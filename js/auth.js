@@ -1,212 +1,206 @@
-// js/auth.js - نظام الدخول الموحد (OTP لجميع المستخدمين + إضافة البصمة WebAuthn)
+// js/auth.js - نظام المصادقة وإدارة الجلسات (V4.2 Enterprise - Fallback Support)
+// التحديث: إضافة Fallback لإشعارات Swal ودعم الأخطاء المتقدمة
 
-/**
- * 1. طلب كود الدخول (OTP)
- * يتصل بمسار: /api/auth/request-otp
- */
-async function requestOTP() {
-    const phoneInput = document.getElementById('phone');
-    const phone = phoneInput.value.trim();
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const otpForm = document.getElementById('otpForm');
+    const phoneInput = document.getElementById('phoneInput');
+    const otpInput = document.getElementById('otpInput');
+    const btnRequestOtp = document.getElementById('btnRequestOtp');
+    const btnVerifyOtp = document.getElementById('btnVerifyOtp');
+
+    // -------------------------------------------------------------
+    // [1] الحماية الأولية (Redirect if already logged in)
+    // -------------------------------------------------------------
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
     
-    if (!phone) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'تنبيه',
-            text: 'يرجى إدخال رقم الهاتف المسجل في النظام أولاً.',
-            confirmButtonText: 'حسناً'
-        });
-        phoneInput.focus();
+    if (token && userStr && window.location.pathname.includes('login.html')) {
+        const user = JSON.parse(userStr);
+        if (user.role === 'super_admin') {
+            window.location.replace('register.html');
+        } else {
+            window.location.replace('app.html');
+        }
         return;
     }
 
-    const btn = document.getElementById('btn-request-otp');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الإرسال...';
-
-    try {
-        const response = await fetch(`${CONFIG.API_URL}/api/auth/request-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            // إخفاء نافذة الهاتف وإظهار نافذة الكود
-            document.getElementById('phone-section').classList.add('d-none');
-            document.getElementById('otp-section').classList.remove('d-none');
-            document.getElementById('otp').focus();
-            
-            // تنبيه نجاح الإرسال
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-            Toast.fire({
-                icon: 'success',
-                title: data.message || 'تم إرسال الكود بنجاح'
-            });
-
-        } else {
+    // دالة عرض الأخطاء الذكية (تدعم Fallback في حال فشل تحميل المكتبة)
+    const showError = (msg) => {
+        if (typeof Swal !== 'undefined') {
             Swal.fire({
                 icon: 'error',
-                title: 'فشل الإرسال!',
-                text: data.error || 'حدث خطأ غير معروف، يرجى مراجعة مدير النظام.',
-                confirmButtonText: 'حسناً'
+                title: 'تنبيه',
+                text: msg,
+                confirmButtonText: 'حسناً',
+                confirmButtonColor: '#0a192f'
             });
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'خطأ في الاتصال',
-            text: 'تعذر الاتصال بالخادم. يرجى التأكد من اتصالك بالإنترنت وأن النظام يعمل.',
-            confirmButtonText: 'حسناً'
-        });
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> إرسال رمز التحقق';
-    }
-}
-
-/**
- * 2. التحقق من الكود (OTP) وإتمام الدخول واقتراح البصمة
- * يتصل بمسار: /api/auth/verify-otp
- */
-async function verifyOTP() {
-    const phone = document.getElementById('phone').value.trim();
-    const otpInput = document.getElementById('otp');
-    const otp = otpInput.value.trim();
-
-    if (!otp || otp.length < 4) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'تنبيه',
-            text: 'يرجى إدخال رمز التحقق بشكل صحيح.',
-            confirmButtonText: 'حسناً'
-        });
-        otpInput.focus();
-        return;
-    }
-
-    const btn = document.getElementById('btn-verify-otp');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحقق...';
-
-    try {
-        const response = await fetch(`${CONFIG.API_URL}/api/auth/verify-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, otp })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            // حفظ التوكن وبيانات المستخدم في التخزين المحلي
-            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
-            localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
-            
-            // محاولة اقتراح تفعيل البصمة إذا كان المتصفح يدعمها
-            if (window.PublicKeyCredential) {
-                Swal.fire({
-                    icon: 'question',
-                    title: `أهلاً بك، ${data.user.full_name}`,
-                    text: 'هل ترغب بتفعيل الدخول السريع عبر البصمة (أو التعرف على الوجه) لهذا الجهاز؟',
-                    showCancelButton: true,
-                    confirmButtonText: '<i class="fas fa-fingerprint me-1"></i> نعم، فعّل البصمة',
-                    cancelButtonText: 'ليس الآن',
-                    allowOutsideClick: false
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        registerBiometrics().then(() => {
-                            window.location.href = 'app.html';
-                        });
-                    } else {
-                        window.location.href = 'app.html';
-                    }
-                });
-            } else {
-                // انتقال مباشر إذا كان الجهاز لا يدعم البصمة
-                Swal.fire({
-                    icon: 'success',
-                    title: `أهلاً بك، ${data.user.full_name}`,
-                    text: 'جاري تحويلك إلى لوحة التحكم...',
-                    timer: 1500,
-                    showConfirmButton: false
-                }).then(() => {
-                    window.location.href = 'app.html';
-                });
-            }
-            
         } else {
-            Swal.fire({
-                icon: 'error',
-                title: 'خطأ!',
-                text: data.error || 'الكود غير صحيح أو منتهي الصلاحية.',
-                confirmButtonText: 'المحاولة مجدداً'
-            });
-            otpInput.value = '';
-            otpInput.focus();
+            // البديل الاحتياطي إذا كان المستخدم يفتح الملف بصيغة file:///
+            alert("تنبيه: " + msg);
         }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'خطأ في الاتصال',
-            text: 'تعذر الاتصال بالخادم أثناء التحقق.',
-            confirmButtonText: 'حسناً'
-        });
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i> تأكيد الدخول';
-    }
-}
+    };
 
-/**
- * 3. تسجيل البصمة (WebAuthn) - ميزة إضافية للراحة والأمان
- */
-async function registerBiometrics() {
-    try {
-        // توليد تحدي عشوائي (Challenge)
-        const challenge = new Uint8Array(32);
-        window.crypto.getRandomValues(challenge);
-        
-        const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
-        const user = userStr ? JSON.parse(userStr) : { id: 'unknown', phone: 'unknown', full_name: 'User' };
-
-        const publicKey = {
-            challenge: challenge,
-            rp: { name: "نظام موكّل القانوني", id: window.location.hostname },
-            user: {
-                id: new TextEncoder().encode(user.id),
-                name: user.phone,
-                displayName: user.full_name
-            },
-            pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-            timeout: 60000,
-            attestation: "none"
-        };
-
-        const credential = await navigator.credentials.create({ publicKey });
-        
-        // إرسال المفتاح العام ومعرف البصمة للباك إند للحفظ
-        if (credential) {
-            const result = await API.registerBiometric({
-                credential_id: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
-                public_key: 'webauthn_public_key_registered', // يتم تخزين البصمة محلياً بالجهاز، ونرسل الإثبات للباك إند
-                device_name: navigator.userAgent
-            });
-
-            if(!result.error) {
-                Swal.fire('تم بنجاح!', 'تم تفعيل الدخول بالبصمة لهذا الجهاز.', 'success');
+    // -------------------------------------------------------------
+    // [2] الخطوة الأولى: إرسال رقم الهاتف وطلب الكود
+    // -------------------------------------------------------------
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const phone = phoneInput.value.trim();
+            if (!phone) {
+                showError("يرجى إدخال رقم الهاتف المسجل بالنظام.");
+                return;
             }
-        }
-    } catch (err) {
-        console.warn("تم إلغاء أو فشل تسجيل البصمة:", err);
-        Swal.fire('ملاحظة', 'لم يتم تفعيل البصمة. يمكنك المحاولة لاحقاً.', 'info');
+
+            const originalText = btnRequestOtp.innerHTML;
+            btnRequestOtp.innerHTML = 'جاري الإرسال... <i class="fas fa-spinner fa-spin"></i>';
+            btnRequestOtp.disabled = true;
+
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/request-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+
+                const data = await response.json();
+                
+                // التقاط الخطأ 403 (الرقم غير مسجل) أو أي خطأ آخر
+                if (!response.ok) {
+                    throw new Error(data.error || 'حدث خطأ غير معروف في الخادم.');
+                }
+
+                // عرض إشعار نجاح الإرسال
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم الإرسال',
+                        text: data.message || 'تم إرسال رمز التحقق بنجاح.',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                } else {
+                    alert(data.message || 'تم إرسال رمز التحقق بنجاح.');
+                }
+
+                // إخفاء فورم الهاتف وإظهار فورم الـ OTP بشكل صحيح
+                loginForm.classList.add('d-none');
+                if (otpForm) {
+                    otpForm.classList.remove('d-none');
+                }
+                
+                sessionStorage.setItem('temp_phone', phone);
+                if (otpInput) {
+                    setTimeout(() => otpInput.focus(), 500); 
+                }
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                btnRequestOtp.innerHTML = originalText;
+                btnRequestOtp.disabled = false;
+            }
+        });
     }
+
+    // -------------------------------------------------------------
+    // [3] الخطوة الثانية: التحقق من الكود وتوليد الجلسة
+    // -------------------------------------------------------------
+    if (otpForm) {
+        otpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const otp = otpInput.value.trim();
+            const phone = sessionStorage.getItem('temp_phone');
+
+            if (!otp || !phone) {
+                showError("البيانات مفقودة، يرجى تحديث الصفحة والمحاولة من جديد.");
+                return;
+            }
+
+            const originalText = btnVerifyOtp.innerHTML;
+            btnVerifyOtp.innerHTML = 'جاري التحقق... <i class="fas fa-spinner fa-spin"></i>';
+            btnVerifyOtp.disabled = true;
+
+            try {
+                const response = await fetch(`${CONFIG.API_URL}/api/auth/verify-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, otp })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'الكود المدخل غير صحيح.');
+
+                // تخزين التوكن وبيانات المستخدم
+                localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
+                localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+                
+                if (data.user.firm_id) {
+                    localStorage.setItem(CONFIG.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
+                }
+                
+                sessionStorage.removeItem('temp_phone');
+
+                // إشعار الدخول الناجح قبل التوجيه
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'مرحباً بك',
+                        text: 'تم تسجيل الدخول بنجاح، جاري تحويلك...',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = data.user.role === 'super_admin' ? 'register.html' : 'app.html';
+                    });
+                } else {
+                    window.location.href = data.user.role === 'super_admin' ? 'register.html' : 'app.html';
+                }
+
+            } catch (err) {
+                showError(err.message);
+                otpInput.value = '';
+                otpInput.focus();
+            } finally {
+                btnVerifyOtp.innerHTML = originalText;
+                btnVerifyOtp.disabled = false;
+            }
+        });
+    }
+});
+
+// -------------------------------------------------------------
+// [4] دالة تسجيل الخروج الشاملة
+// -------------------------------------------------------------
+window.logout = function() {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'تسجيل الخروج',
+            text: 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#0a192f',
+            confirmButtonText: 'نعم، خروج',
+            cancelButtonText: 'إلغاء'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executeLogout();
+            }
+        });
+    } else {
+        if(confirm('هل أنت متأكد أنك تريد تسجيل الخروج؟')) {
+            executeLogout();
+        }
+    }
+};
+
+function executeLogout() {
+    console.log("🔒 جاري تسجيل الخروج وتدمير الجلسة...");
+    localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
+    localStorage.removeItem(CONFIG.FIRM_KEY || 'moakkil_firm_id');
+    window.location.href = 'login.html';
 }

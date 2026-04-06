@@ -28,7 +28,8 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 100px; /* مساحة لحقل الإدخال */
+            /* تمت زيادة المساحة السفلية لضمان عدم اختفاء الرسائل خلف الحقل المرتفع */
+            padding-bottom: 200px; 
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -65,11 +66,13 @@
 
         .input-area {
             position: fixed;
-            bottom: 65px; /* يرتفع عن شريط التنقل السفلي */
+            /* تم رفع الحقل بشكل ملحوظ ليتجاوز الشريط السفلي والمساحة الآمنة للهواتف */
+            bottom: 95px; 
             left: 0;
             width: 100%;
             background: white;
             padding: 10px 15px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
             box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
             display: flex;
             align-items: flex-end;
