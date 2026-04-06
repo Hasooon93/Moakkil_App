@@ -102,7 +102,7 @@
 
         // 1. معالج التحقق من الإيصالات (النظام الجديد)
         async function verifyReceiptData(id) {
-            const res = await window.API.verifyReceipt(id);
+            const res = await API.verifyReceipt(id);
             if (res && res.success && res.data) {
                 showReceiptSuccess(res.data);
             } else {
@@ -112,7 +112,7 @@
 
         // 2. معالج التحقق من هوية المحامي والسيرة الذاتية (CV)
         async function verifyCVData(id) {
-            const res = await window.API.verifyCV(id);
+            const res = await API.verifyCV(id);
             if (res && res.success && res.data) {
                 showCVSuccess(res.data);
             } else {
@@ -123,7 +123,7 @@
         // 3. معالج التوافقية للإيصالات المطبوعة قديماً (Legacy)
         async function verifyLegacyReceipt(token, invId) {
             try {
-                const res = await window.API.getPublicPortalData(token);
+                const res = await API.getPublicPortalData(token);
                 if (res && !res.error && res.installments) {
                     const invoice = res.installments.find(i => i.id === invId);
                     const caseData = res.case || {};

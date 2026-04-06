@@ -1,6 +1,6 @@
 // sw.js - Service Worker لمشروع موكّل الذكي (الكاش والإشعارات)
 
-const CACHE_NAME = 'moakkil-cache-v4.0'; // تم التحديث لضمان جلب النسخ الجديدة من الملفات والصفحات المضافة
+const CACHE_NAME = 'moakkil-cache-v4.1'; // تم التحديث لـ v4.1 لإجبار المتصفح على تحميل النسخة الجديدة وتخطي خطأ الرفع
 const urlsToCache = [
     './',
     './index.html',
@@ -34,7 +34,7 @@ const urlsToCache = [
 
 // 1. تنصيب الـ Service Worker وحفظ الملفات في الكاش
 self.addEventListener('install', event => {
-    self.skipWaiting();
+    self.skipWaiting(); // إجبار التحديث الفوري
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
@@ -63,8 +63,16 @@ self.addEventListener('activate', event => {
 
 // 3. استراتيجية جلب البيانات (الشبكة أولاً للـ API، والكاش كخيار احتياطي للصفحات)
 self.addEventListener('fetch', event => {
-    // تجاوز طلبات الـ API وقواعد البيانات لتذهب للشبكة دائماً ولا تحفظ في الكاش (لضمان البيانات اللحظية)
-    if (event.request.url.includes('/api/') || event.request.url.includes('supabase') || event.request.url.includes('googleusercontent')) {
+    const requestUrl = event.request.url;
+
+    // تجاوز طلبات الـ API، قاعدة البيانات، وسيرفر جوجل للرفع (أهم سطر لحل مشكلة CORS في رفع الملفات)
+    if (requestUrl.includes('/api/') || 
+        requestUrl.includes('supabase') || 
+        requestUrl.includes('googleusercontent') || 
+        requestUrl.includes('script.google.com') || 
+        requestUrl.includes('script.googleusercontent.com')) {
+        
+        // اترك المتصفح يتعامل مع هذا الطلب بشكل طبيعي تماماً (Bypass SW)
         event.respondWith(fetch(event.request));
         return;
     }
