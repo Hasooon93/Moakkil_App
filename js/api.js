@@ -43,11 +43,11 @@ const API = {
     // ==========================================
     getFirmSettings: () => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-        return fetchAPI(`/api/firms?id=eq.${currentUser.firm_id}`);
+        return fetchAPI(`/api/firms?id=eq.${currentUser?.firm_id || ''}`);
     },
     updateFirmSettings: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-        return fetchAPI(`/api/firms?id=eq.${currentUser.firm_id}`, 'PATCH', data);
+        return fetchAPI(`/api/firms?id=eq.${currentUser?.firm_id || ''}`, 'PATCH', data);
     },
     getSubscriptions: () => fetchAPI('/api/subscriptions'),
 
@@ -136,7 +136,7 @@ const API = {
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-        const firmId = localStorage.getItem(CONFIG.FIRM_KEY);
+        const firmId = currentUser?.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
         const payload = {
             ...data,
             added_by: currentUser ? currentUser.id : null,
