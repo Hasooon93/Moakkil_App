@@ -13,7 +13,7 @@ const AUTH = {
         
         if (!token || !user) {
             console.warn("[Auth] جلسة غير صالحة. جاري التوجيه لصفحة الدخول...");
-            window.location.replace('login.html');
+            window.location.replace('login');
             return null;
         }
 
@@ -31,7 +31,7 @@ const AUTH = {
         localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
         localStorage.removeItem(CONFIG.FIRM_KEY);
         // لا نحذف OFFLINE_QUEUE_KEY لتجنب ضياع بيانات المزامنة غير المكتملة
-        window.location.replace('login.html');
+        window.location.replace('login');
     },
 
     // =================================================================
@@ -143,7 +143,7 @@ const AUTH = {
             // 2. إرسال بيانات البصمة للسيرفر لربطها بحساب الموظف
             const payload = {
                 credential_id: credential.id,
-                public_key: AUTH._bufferToBase64(credential.response.clientDataJSON), // تبسيط للغايات الأمنية
+                public_key: AUTH._bufferToBase64(credential.response.clientDataJSON), 
                 device_name: navigator.userAgent.split(') ')[0].split(' (')[1] || 'جهاز غير معروف'
             };
 
@@ -196,12 +196,12 @@ const AUTH = {
                 phone: savedPhone
             };
 
-            // نستخدم API.biometricLogin التي أضفناها في api.js
+            // نستخدم API.biometricLogin التي أضفناها في api.js والتي تجلب الآن بيانات المستخدم الكاملة
             const data = await API.biometricLogin(payload);
             
             if (data.error) throw new Error(data.error);
 
-            // 3. تخزين بيانات الجلسة بنجاح
+            // 3. تخزين بيانات الجلسة بنجاح (بيانات كاملة ومطابقة لـ OTP)
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             if (data.user.firm_id) {

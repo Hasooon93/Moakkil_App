@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: إخفاء زر البصمة بعد التفعيل، وإصلاح إشعارات الجرس المباشرة.
+// التحديثات الأخيرة: إخفاء زر البصمة بعد التفعيل، وإصلاح إشعارات الجرس المباشرة، وتطبيق Optimistic UI لتسريع المواعيد.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -555,26 +555,46 @@ async function saveCase(event) {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي';
 }
 
+// 🚀 تطبيق Optimistic UI لتسريع إضافة المواعيد
 async function saveAppointment(event) {
     event.preventDefault(); 
     const apptSelect = document.getElementById('appt_assigned_to');
     let assignedTo = apptSelect ? Array.from(apptSelect.selectedOptions).map(opt => opt.value) : [];
     if (assignedTo.length === 0 && currentUser && currentUser.id) assignedTo.push(currentUser.id);
 
+    const rawDate = document.getElementById('appt_date').value;
     const data = { 
         title: document.getElementById('appt_title').value, 
-        appt_date: new Date(document.getElementById('appt_date').value).toISOString(), 
+        appt_date: rawDate, 
         type: document.getElementById('appt_type').value, 
         status: 'مجدول', assigned_to: assignedTo 
     };
     
-    const res = await API.addAppointment(data);
-    if (res && !res.error) { 
-        closeModal('apptModal'); await loadAllData(); await loadNotifications(); 
-        showAlert(res.offline ? 'تم الحفظ محلياً وسيزامن عند توفر إنترنت' : 'تمت الجدولة بنجاح', res.offline ? 'warning' : 'success'); 
-        event.target.reset(); 
-    } else {
-        showAlert(res?.error || 'حدث خطأ أثناء الجدولة', 'danger');
+    // إغلاق النافذة فوراً لسرعة الاستجابة للمستخدم
+    closeModal('apptModal');
+    event.target.reset();
+
+    // إضافة الموعد وهمياً للشاشة (Optimistic Update)
+    const tempId = 'temp_' + Date.now();
+    globalData.appointments.push({ ...data, id: tempId });
+    if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+    showAlert('تمت الجدولة بنجاح', 'success');
+
+    try {
+        // إرسال الطلب للسيرفر في الخلفية
+        const res = await API.addAppointment({ ...data, appt_date: new Date(rawDate).toISOString() });
+        if (res && !res.error) { 
+            // استبدال الموعد الوهمي بالموعد الحقيقي
+            const idx = globalData.appointments.findIndex(a => a.id === tempId);
+            if (idx !== -1) globalData.appointments[idx] = res;
+        } else {
+            throw new Error(res?.error || 'حدث خطأ أثناء الجدولة');
+        }
+    } catch(err) {
+        // التراجع في حال الفشل
+        globalData.appointments = globalData.appointments.filter(a => a.id !== tempId);
+        if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+        showAlert(err.message, 'danger');
     }
 }
 
@@ -595,50 +615,62 @@ function populateSelects() {
     }
 }
 
-// الإشعارات والرقابة
+// 🔔 إصلاح إشعارات الجرس المباشرة
 async function loadNotifications(silent = false) {
-    // 1. جلب الإشعارات من الـ Database عبر API
-    const res = await API.getNotifications(); 
-    
-    // إذا كانت هناك استجابة مصفوفة، نعينها لـ globalData
-    globalData.notifications = Array.isArray(res) ? res : [];
-    
-    const unread = globalData.notifications.filter(n => !n.is_read);
-    const badge = document.getElementById('notification-badge');
-    const list = document.getElementById('notifications-list');
+    try {
+        const res = await API.getNotifications(); 
+        if (!res || res.error) return;
 
-    // 2. تحديث الشارة الحمراء (Badge)
-    if (unread.length > 0) {
-        if(badge) { 
-            badge.innerText = unread.length; 
-            badge.classList.remove('d-none'); 
-        }
-        if (silent) {
-            unread.forEach(n => { 
-                if(!notifiedIds.has(n.id)) { 
-                    notifiedIds.add(n.id); 
-                    triggerPushNotification(n.title, n.message); 
-                } 
-            });
-        }
-    } else { 
-        if(badge) badge.classList.add('d-none'); 
-    }
+        globalData.notifications = Array.isArray(res) ? res : [];
+        
+        const unread = globalData.notifications.filter(n => n.is_read === false);
+        const badge = document.getElementById('notification-badge');
+        const list = document.getElementById('notifications-list');
 
-    // 3. تحديث قائمة الإشعارات في الـ Dropdown
-    if(list) {
-        if (globalData.notifications.length === 0) {
-            list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
-        } else {
-            list.innerHTML = globalData.notifications.slice(0, 15).map(n => 
-                `<li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}">
-                    <strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong>
-                    <span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
-                    <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
-                </li>`
-            ).join('');
+        if (unread.length > 0) {
+            if(badge) { 
+                badge.innerText = unread.length > 9 ? '+9' : unread.length; 
+                badge.classList.remove('d-none'); 
+            }
+            if (silent) {
+                unread.forEach(n => { 
+                    if(!notifiedIds.has(n.id)) { 
+                        notifiedIds.add(n.id); 
+                        triggerPushNotification(n.title, n.message); 
+                    } 
+                });
+            }
+        } else { 
+            if(badge) badge.classList.add('d-none'); 
         }
+
+        if(list) {
+            if (globalData.notifications.length === 0) {
+                list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
+            } else {
+                list.innerHTML = globalData.notifications.slice(0, 10).map(n => `
+                    <li class="p-2 border-bottom ${n.is_read ? 'bg-white' : 'bg-light'}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
+                        <div class="d-flex align-items-start gap-2">
+                            <div class="mt-1"><i class="fas fa-circle text-primary" style="font-size: 8px; display: ${n.is_read ? 'none' : 'block'}"></i></div>
+                            <div>
+                                <h6 class="mb-0 small fw-bold text-navy">${escapeHTML(n.title)}</h6>
+                                <p class="mb-0 text-muted" style="font-size: 11px;">${escapeHTML(n.message)}</p>
+                                <small class="text-muted" style="font-size: 9px;">${new Date(n.created_at).toLocaleString('ar-JO')}</small>
+                            </div>
+                        </div>
+                    </li>
+                `).join('');
+            }
+        }
+    } catch (e) {
+        console.error("خطأ في تحميل الإشعارات:", e);
     }
+}
+
+async function handleNotificationClick(id, url) {
+    await API.markNotificationAsRead(id);
+    if (url) window.location.href = url;
+    else loadNotifications();
 }
 
 async function markNotificationsRead() {
@@ -647,7 +679,7 @@ async function markNotificationsRead() {
     for (let n of unread) {
         await API.markNotificationAsRead(n.id);
     }
-    await loadNotifications(true); // جلب الإشعارات مجدداً لتحديث اللون إلى مقروء
+    await loadNotifications(true); 
 }
 
 async function requestPushPermission() {
@@ -655,9 +687,8 @@ async function requestPushPermission() {
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
         const reg = await navigator.serviceWorker.ready;
-        // إرسال طلب اشتراك حقيقي لقاعدة البيانات بدلاً من الداتا الوهمية
         await API.subscribePush({ 
-            device_token: 'web_browser_device', // يمكن تحسينها لاحقاً باستخدام PushManager
+            device_token: 'web_browser_device', 
             device_type: navigator.platform 
         });
         showAlert('تم تفعيل الإشعارات بنجاح.', 'success');

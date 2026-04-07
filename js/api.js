@@ -12,7 +12,6 @@ function saveToOfflineQueue(endpoint, method, body) {
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
     console.warn(`[Offline Mode] تم حفظ الطلب للمزامنة لاحقاً: ${endpoint}`);
     
-    // إرسال تنبيه للواجهة إذا كانت تدعم ذلك
     if(window.showToast) {
         window.showToast('أنت غير متصل بالإنترنت. تم حفظ العملية وستتم المزامنة تلقائياً عند عودة الاتصال.', 'warning');
     }
@@ -39,7 +38,7 @@ async function processOfflineQueue() {
             if (!response.ok) throw new Error('فشل المزامنة مع السيرفر');
         } catch (e) {
             console.error(`[Sync Error] فشل مزامنة ${req.endpoint}`, e);
-            remainingQueue.push(req); // إبقاء الطلب في الطابور للمحاولة لاحقاً
+            remainingQueue.push(req);
         }
     }
 
@@ -50,44 +49,41 @@ async function processOfflineQueue() {
     }
 }
 
-// مراقبة عودة الإنترنت للمزامنة التلقائية
 window.addEventListener('online', processOfflineQueue);
 
 // =================================================================
 // 🚀 المحرك الرئيسي للاتصال (Main Fetch Wrapper)
 // =================================================================
 
-// دالة مساعدة لضبط التوقيت (Timezone Fix - UTC+3)
-function adjustTimezone(body) {
-    if (!body) return body;
-    let adjustedBody = { ...body };
-    // إذا كان هناك تاريخ للموعد، نضيف 3 ساعات (بتوقيت الأردن)
-    if (adjustedBody.appt_date) {
-        let date = new Date(adjustedBody.appt_date);
-        date.setHours(date.getHours() + 3);
-        adjustedBody.appt_date = date.toISOString();
+// 🕒 دالة التوقيت الذكية: تحويل التاريخ لنص صريح بتوقيت الأردن (UTC+3) لحل مشكلة تيليغرام
+function formatJordanTime(isoString) {
+    if(!isoString) return '';
+    try {
+        const date = new Date(isoString);
+        return date.toLocaleString('ar-JO', {
+            timeZone: 'Asia/Amman',
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    } catch (e) {
+        return isoString;
     }
-    return adjustedBody;
 }
 
-// دالة لإرسال الإشعارات بالخلفية دون إبطاء الواجهة (Fire-and-Forget)
+// دالة إرسال الإشعارات في الخلفية (Fire-and-Forget) لتسريع النظام
 function sendNotificationAsync(endpoint, method, body) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
-    // ضبط التوقيت قبل الإرسال
-    const finalBody = adjustTimezone(body);
-    
     fetch(`${CONFIG.API_URL}${endpoint}`, {
         method: method,
         headers: headers,
-        body: JSON.stringify(finalBody)
-    }).catch(e => console.warn('[Async Notification] فشل إرسال الإشعار بالخلفية:', e));
+        body: JSON.stringify(body)
+    }).catch(e => console.warn('[Async Notification] فشل الإرسال بالخلفية:', e));
 }
 
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false) {
-    // 1. التحقق من حالة الاتصال للعمليات التي تغير البيانات
     if (!navigator.onLine && !isPublic) {
         if (['POST', 'PATCH', 'DELETE'].includes(method)) {
             saveToOfflineQueue(endpoint, method, body);
@@ -112,12 +108,11 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
     try {
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
         
-        // الحماية من اختراق الجلسات أو انتهاء صلاحيتها
         if (response.status === 401 && !isPublic) {
             console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج لحماية البيانات...");
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
-            window.location.href = 'login.html';
+            window.location.href = 'login';
             return null;
         }
 
@@ -127,7 +122,6 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
         
-        // 2. إذا انقطع الاتصال فجأة أثناء الإرسال
         if (error.message === 'Failed to fetch' && ['POST', 'PATCH', 'DELETE'].includes(method)) {
             saveToOfflineQueue(endpoint, method, body);
             return { success: true, offline: true, message: "تم الحفظ محلياً بسبب انقطاع الاتصال المفاجئ" };
@@ -141,7 +135,6 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
 // 📚 مكتبة الموجهات (API Endpoints Library)
 // =================================================================
 const API = {
-    // 1. إعدادات المكتب والاشتراكات
     getFirmSettings: () => {
         const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
         return fetchAPI(`/api/firms?id=eq.${currentUser?.firm_id || ''}`);
@@ -152,7 +145,6 @@ const API = {
     },
     getSubscriptions: () => fetchAPI('/api/subscriptions'),
 
-    // 2. إدارة الموكلين والوكالات
     getClients: () => fetchAPI('/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
@@ -161,7 +153,6 @@ const API = {
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
     deletePOA: (id) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE'),
 
-    // 3. إدارة القضايا والجلسات
     getCases: () => fetchAPI('/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
@@ -174,24 +165,27 @@ const API = {
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    // 4. الموارد البشرية والمهام
     getStaff: () => fetchAPI('/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
     deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     getAppointments: () => fetchAPI('/api/appointments'),
     
-    // تم التعديل لتسريع المواعيد عبر إرسال الإشعارات في الخلفية
+    // 🔥 تم الإصلاح الجذري: إرسال المواعيد بالخلفية وحل مشكلة الإشعارات والتوقيت
     addAppointment: async (data) => {
         const res = await fetchAPI('/api/appointments', 'POST', data);
-        if(res && !res.error && data.assigned_to) {
-            // إرسال الإشعارات بالخلفية
-            sendNotificationAsync('/api/notifications', 'POST', {
-                title: 'مهمة جديدة',
-                message: `تم إسناد المهمة: ${data.title}`,
-                action_url: '/app',
-                assigned_to: data.assigned_to,
-                appt_date: data.appt_date // لضبط التوقيت
+        if(res && !res.error && data.assigned_to && Array.isArray(data.assigned_to)) {
+            // تحويل التاريخ فوراً إلى توقيت الأردن كنص
+            const localTimeStr = data.appt_date ? formatJordanTime(data.appt_date) : 'غير محدد';
+            
+            // إرسال إشعار منفصل لكل محامي باستخدام user_id لتتطابق مع قاعدة البيانات
+            data.assigned_to.forEach(userId => {
+                sendNotificationAsync('/api/notifications', 'POST', {
+                    user_id: userId,
+                    title: 'مهمة / موعد جديد',
+                    message: `تم إسناد مهمة لك: (${data.title}) بتاريخ ${localTimeStr}. يرجى مراجعة الأجندة.`,
+                    action_url: '/app'
+                });
             });
         }
         return res;
@@ -200,7 +194,6 @@ const API = {
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
-    // 5. المالية والمصروفات
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=eq.${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
     deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
@@ -208,7 +201,6 @@ const API = {
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
 
-    // 6. الذكاء الاصطناعي (AI Core & Semantic Search)
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
     readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base_64: imageBase64 }),
@@ -216,17 +208,18 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    // 7. الأمان والرقابة والبصمة
     getNotifications: () => fetchAPI('/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
     
-    // تم التعديل لإرجاع بيانات المستخدم كاملة (firm_id و role)
+    // 🔥 تم الإصلاح الجذري: ضمان تحميل بيانات المستخدم كاملة عند الدخول بالبصمة
     biometricLogin: async (data) => {
         const res = await fetchAPI('/api/auth/biometric-login', 'POST', data, true);
         if (res && res.user && res.token) {
-            // نطلب بيانات المستخدم الكاملة من قاعدة البيانات باستخدام التوكن الجديد
+            // حفظ التوكن مؤقتاً لكي تعمل دالة fetchAPI وتجلب البيانات المحمية
+            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', res.token);
+            
             const userDetails = await fetchAPI(`/api/users?id=eq.${res.user.id}`);
             if(userDetails && Array.isArray(userDetails) && userDetails.length > 0) {
                  res.user = { ...res.user, ...userDetails[0] }; 
@@ -237,7 +230,6 @@ const API = {
     
     getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
 
-    // 8. إدارة الملفات والأرشفة (Google Drive Integration)
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
@@ -246,7 +238,7 @@ const API = {
         const payload = { ...data, added_by: currentUser?.id || null, firm_id: firmId || null };
         return fetchAPI('/api/files', 'POST', payload);
     },
-    getDriveUploadUrl: () => fetchAPI('/api/drive/generate-upload-url'), // الاتصال بمسار الوركر الجديد
+    getDriveUploadUrl: () => fetchAPI('/api/drive/generate-upload-url'),
 
     uploadToDrive: async (file, caseInternalId, driveFolderId = null) => {
         return new Promise((resolve, reject) => {
@@ -265,13 +257,12 @@ const API = {
                         else reject(new Error("تعذر الاتصال بخوادم جوجل السحابية: " + err.message));
                     }
                 };
-                attemptUpload(3); // نظام Retry (3 محاولات)
+                attemptUpload(3);
             };
             reader.readAsDataURL(file);
         });
     },
 
-    // 9. البوابات العامة والتحقق من الـ QR
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
     getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
     verifyReceipt: (id) => fetchAPI(`/api/public/verify-receipt?id=${id}`, 'GET', null, true),
