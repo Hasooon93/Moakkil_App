@@ -162,13 +162,13 @@ const API = {
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    // ملاحظة: جدول المستخدمين حسب الداتا بيز هو hub_users
-    getStaff: () => fetchAPI('/api/hub_users'),
-    addStaff: (data) => fetchAPI('/api/hub_users', 'POST', data),
-    updateStaff: (id, data) => fetchAPI(`/api/hub_users?id=eq.${id}`, 'PATCH', data),
-    deleteStaff: (id) => fetchAPI(`/api/hub_users?id=eq.${id}`, 'DELETE'),
+    // إرجاع المسارات لأسمائها الأصلية النظيفة مع السيرفر
+    getStaff: () => fetchAPI('/api/users'),
+    addStaff: (data) => fetchAPI('/api/users', 'POST', data),
+    updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
+    deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     
-    getAppointments: () => fetchAPI('/api/mo_appointments'), // اسم الجدول حسب الـ Schema
+    getAppointments: () => fetchAPI('/api/appointments'),
     
     // 🔥 التحديث الجذري: تطبيق التوقيت، وحل الإشعارات المرفوضة
     addAppointment: async (data) => {
@@ -177,15 +177,15 @@ const API = {
             data.appt_date = applyJordanTimeHack(data.appt_date);
         }
 
-        const res = await fetchAPI('/api/mo_appointments', 'POST', data);
+        const res = await fetchAPI('/api/appointments', 'POST', data);
         
-        // 2. إرسال الإشعارات بالخلفية للجدول fd_notifications مع الحقول الإجبارية
+        // 2. إرسال الإشعارات بالخلفية مع الحقول الإجبارية للسيرفر
         if(res && !res.error && data.assigned_to && Array.isArray(data.assigned_to)) {
             const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
             const firmId = currentUser?.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
             
             data.assigned_to.forEach(userId => {
-                sendNotificationAsync('/api/fd_notifications', 'POST', {
+                sendNotificationAsync('/api/notifications', 'POST', {
                     user_id: userId,
                     title: 'مهمة / موعد جديد',
                     message: `تم إسناد مهمة لك: (${data.title}). يرجى مراجعة الأجندة.`,
@@ -198,8 +198,8 @@ const API = {
         return res;
     },
     
-    updateAppointment: (id, data) => fetchAPI(`/api/mo_appointments?id=eq.${id}`, 'PATCH', data),
-    deleteAppointment: (id) => fetchAPI(`/api/mo_appointments?id=eq.${id}`, 'DELETE'),
+    updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
+    deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=eq.${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
@@ -215,8 +215,8 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    getNotifications: () => fetchAPI('/api/fd_notifications'), // اسم الجدول حسب الـ Schema
-    markNotificationAsRead: (id) => fetchAPI(`/api/fd_notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
+    getNotifications: () => fetchAPI('/api/notifications'),
+    markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
     
@@ -235,7 +235,7 @@ const API = {
         return res;
     },
     
-    getHistory: (entityId = null) => fetchAPI(entityId ? `/api/fd_history?entity_id=eq.${entityId}` : '/api/fd_history'), // اسم الجدول حسب الـ Schema
+    getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
 
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
