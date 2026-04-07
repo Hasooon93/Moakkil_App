@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = JSON.parse(userStr);
     if (user.role !== 'super_admin') {
         Swal.fire({ icon: 'error', title: 'غير مصرح', text: 'هذه الصفحة مخصصة للإدارة العليا فقط' }).then(() => {
-            window.location.replace('app.html');
+            window.location.replace('app');
         });
         return;
     }

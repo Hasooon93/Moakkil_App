@@ -16,7 +16,7 @@ const escapeHTML = (str) => {
 
 window.onload = async () => {
     applyFirmSettings();
-    if (!currentClientId) { window.location.href = 'app.html'; return; }
+    if (!currentClientId) { window.location.href = 'app'; return; }
     await loadClientData();
 };
 
@@ -33,7 +33,7 @@ window.manualSync = async () => {
     showAlert('تم التحديث بنجاح', 'success');
 };
 
-function goBack() { window.location.href = 'app.html'; }
+function goBack() { window.location.href = 'app'; }
 
 // جلب البيانات بالاعتماد على الدوال المخصصة في api.js
 async function loadClientData() {
@@ -51,7 +51,7 @@ async function loadClientData() {
         
         if (!clientObj) { 
             Swal.close();
-            window.location.href = 'app.html'; 
+            window.location.href = 'app'; 
             return; 
         }
 

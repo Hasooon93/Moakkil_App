@@ -211,7 +211,7 @@
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
             if (!token || !userStr) {
-                window.location.href = 'login.html';
+                window.location.href = 'login';
             }
         });
 
