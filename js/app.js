@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: نظام اصطياد الأخطاء الذكي، إخفاء البصمة، الجرس المباشر، Optimistic UI، وإصلاح استخراج الهوية الذكي (OCR).
+// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، Optimistic UI، وإصلاح استخراج الهوية الذكي (OCR).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -7,6 +7,54 @@ let backgroundSyncTimer = null;
 let notifiedIds = new Set(); 
 let isKanbanView = false; 
 let currentCaseFilter = ''; 
+
+// =================================================================
+// 🔔 نظام المصافحة وتفعيل البوش نتفكيشن (Push Subscription)
+// =================================================================
+
+const VAPID_PUBLIC_KEY = 'BFhEWsEEpWXrLBrY1U_hrLjwVwpWbRFd-ii5zc8-qb6L0ZgxTRWZqoZNzMl-vuu7zUaAyyEaNJHWqp_oUSPgO_Q'; 
+
+// دالة مساعدة لفك تشفير المفتاح
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// دالة طلب الصلاحية وتسجيل الجهاز
+async function subscribeToPushNotifications() {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                console.warn('[Push] تم رفض الإشعارات من المستخدم.');
+                return;
+            }
+
+            const registration = await navigator.serviceWorker.ready;
+
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+            }
+
+            // إرسال الاشتراك للوركر
+            await API.subscribePush(subscription.toJSON());
+            console.log('[Push] تم تسجيل الجهاز لاستقبال الإشعارات بنجاح!');
+
+        } catch (error) {
+            console.error('[Push Error] فشل تفعيل الإشعارات:', error);
+        }
+    }
+}
 
 // دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
@@ -38,9 +86,8 @@ window.onload = async () => {
     await loadNotifications(); 
     startSmartBackgroundSync();
 
-    if ('Notification' in window && Notification.permission === 'default') {
-        setTimeout(() => requestPushPermission(), 3000);
-    }
+    // تفعيل بوش نتفكيشن الفعلي بعد 3 ثوانٍ من التحميل
+    setTimeout(() => subscribeToPushNotifications(), 3000);
 
     const lastView = localStorage.getItem('last_active_view') || 'dashboard';
     switchView(lastView);
@@ -71,7 +118,6 @@ function applyRoleBasedUI() {
         if (document.getElementById('admin-reports-btn')) document.getElementById('admin-reports-btn').classList.remove('d-none');
     }
 
-    // إخفاء زر تفعيل البصمة إذا كانت مفعلة مسبقاً على هذا الجهاز
     const hasBiometric = localStorage.getItem('moakkil_biometric_id');
     const biometricBtn = document.querySelector('a[onclick="registerBiometricBtn()"]');
     if (hasBiometric && biometricBtn) {
@@ -191,14 +237,12 @@ function showVCard() {
     }
 }
 
-// 🔥 التحديث الجذري لمعالجة الأخطاء وعدم انهيار القوائم المنسدلة
 async function loadAllData() {
     try {
         const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
             API.getClients(), API.getCases(), API.getStaff(), API.getAppointments()
         ]);
         
-        // التقاط الأخطاء الصامتة من السيرفر وعرضها في الكونسول دون إيقاف النظام
         if(rawClients?.error) console.warn("Clients Error:", rawClients.error);
         if(rawCases?.error) console.warn("Cases Error:", rawCases.error);
         if(staff?.error) console.warn("Staff Error:", staff.error);
@@ -409,7 +453,6 @@ async function cancelAppt(id) {
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
 
-// 🤖 إصلاح مشكلة الفشل الصامت في قراءة الهويات (OCR)
 async function processIdImage(event) {
     const file = event.target.files[0]; 
     if (!file) return;
@@ -418,14 +461,12 @@ async function processIdImage(event) {
     
     const reader = new FileReader();
     reader.onload = async (e) => {
-        // 1. تنظيف الـ Base64 من الـ Prefix لضمان قراءته من الذكاء الاصطناعي بشكل سليم
         const pureBase64 = e.target.result.split(',')[1];
         
         try {
             const data = await API.readOCR(pureBase64);
             
             if (data && !data.error) {
-                // 2. صيد البيانات الذكي من أي هيكل JSON يعود به السيرفر
                 const extractedName = data.full_name || (data.data && data.data.full_name) || (data.extracted_json && data.extracted_json.full_name);
                 const extractedId = data.national_id || (data.data && data.data.national_id) || (data.extracted_json && data.extracted_json.national_id);
                 
@@ -441,7 +482,6 @@ async function processIdImage(event) {
                     successCount++;
                 }
                 
-                // 3. التنبيه المنطقي
                 if (successCount > 0) {
                     showAlert('تم استخراج البيانات الأساسية بنجاح', 'success');
                 } else {
@@ -468,7 +508,6 @@ async function handleSmartSearch(q) {
     const drop = document.getElementById('search-results-dropdown'); if (q.length < 2) return drop.classList.add('d-none');
     const res = await API.smartSearch(q); let html = '';
     
-    // دعم البحث الدلالي للذكاء الاصطناعي (Legal Brain Vector Search)
     if (res.brain?.length) html += '<h6 class="dropdown-header text-accent fw-bold"><i class="fas fa-brain"></i> الذاكرة القانونية (بحث بالمعنى)</h6>' + res.brain.map(b => `<button class="dropdown-item" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title)}'"><small class="text-navy fw-bold">${escapeHTML(b.title)}</small><br><span style="font-size:10px;" class="text-muted text-wrap">${escapeHTML(b.ai_summary || b.original_text).substring(0, 70)}...</span></button>`).join('');
     
     if (res.cases?.length) html += '<h6 class="dropdown-header">القضايا</h6>' + res.cases.map(c => `<button class="dropdown-item" onclick="viewCaseDetails('${c.id}')">${escapeHTML(c.case_internal_id)}</button>`).join('');
@@ -478,7 +517,6 @@ async function handleSmartSearch(q) {
     drop.innerHTML = html || '<div class="p-3 text-center small text-muted">لا يوجد نتائج</div>'; drop.classList.remove('d-none');
 }
 
-// المشاركة والرابط العميق
 let currentShareLink = '';
 function openShareModal(caseId, pin, publicToken) {
     const token = publicToken || caseId; 
@@ -499,7 +537,6 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
-// عمليات الحفظ المركزية (العملاء والقضايا والمواعيد) مع دعم الاوفلاين
 async function saveClient(event) {
     event.preventDefault();
     const data = { 
@@ -532,7 +569,7 @@ async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
     let lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
-    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id); // إضافة صانع المهمة آلياً إذا تركت فارغة
+    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id);
     
     const autoTasks = document.getElementById('case_auto_tasks') ? document.getElementById('case_auto_tasks').checked : false;
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
@@ -601,7 +638,6 @@ async function saveCase(event) {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي';
 }
 
-// 🔥 تطبيق Optimistic UI لتسريع إضافة المواعيد (بدون انتظار السيرفر)
 async function saveAppointment(event) {
     event.preventDefault(); 
     const apptSelect = document.getElementById('appt_assigned_to');
@@ -617,11 +653,9 @@ async function saveAppointment(event) {
         assigned_to: assignedTo 
     };
     
-    // 1. إغلاق النافذة فوراً لسرعة الاستجابة للمستخدم
     closeModal('apptModal');
     event.target.reset();
 
-    // 2. إضافة الموعد وهمياً للشاشة (Optimistic Update)
     const tempId = 'temp_' + Date.now();
     const tempAppt = { ...data, id: tempId, created_at: new Date().toISOString() };
     globalData.appointments.push(tempAppt);
@@ -630,17 +664,14 @@ async function saveAppointment(event) {
     showAlert('تمت الجدولة بنجاح', 'success');
 
     try {
-        // 3. إرسال الطلب للسيرفر في الخلفية
         const res = await API.addAppointment({ ...data, appt_date: new Date(rawDate).toISOString() });
         if (res && !res.error) { 
-            // استبدال الموعد الوهمي بالموعد الحقيقي الصادر من السيرفر
             const idx = globalData.appointments.findIndex(a => a.id === tempId);
             if (idx !== -1) globalData.appointments[idx] = res;
         } else {
             throw new Error(res?.error || 'حدث خطأ أثناء الجدولة');
         }
     } catch(err) {
-        // 4. التراجع في حال فشل السيرفر
         globalData.appointments = globalData.appointments.filter(a => a.id !== tempId);
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
         showAlert(err.message, 'danger');
@@ -664,7 +695,7 @@ function populateSelects() {
     }
 }
 
-// 🔔 إصلاح إشعارات الجرس المباشرة وربطها بالداتا بيز
+// 🛎️ دالة جلب وعرض الإشعارات داخل الجرس المنسدل
 async function loadNotifications(silent = false) {
     try {
         const res = await API.getNotifications(); 
@@ -711,13 +742,12 @@ async function loadNotifications(silent = false) {
     }
 }
 
-// دالة تفاعلية جديدة لتحويل الإشعار لمقروء عند النقر عليه
 async function handleNotificationClick(id, url) {
     await API.markNotificationAsRead(id);
     if (url && url !== 'undefined' && url !== 'null') {
         window.location.href = url;
     } else {
-        loadNotifications(); // إعادة تحميل القائمة لتحديث الألوان
+        loadNotifications(); 
     }
 }
 
@@ -728,22 +758,6 @@ async function markNotificationsRead() {
         await API.markNotificationAsRead(n.id);
     }
     await loadNotifications(true); 
-}
-
-async function requestPushPermission() {
-    if (!('Notification' in window)) { showAlert('متصفحك لا يدعم الإشعارات.', 'warning'); return; }
-    const perm = await Notification.requestPermission();
-    if (perm === 'granted') {
-        const reg = await navigator.serviceWorker.ready;
-        await API.subscribePush({ 
-            device_token: 'web_browser_device', 
-            device_type: navigator.platform 
-        });
-        showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
-        const btn = document.getElementById('install-pwa-btn'); if(btn) btn.classList.add('d-none');
-    } else {
-        showAlert('تم رفض الصلاحية للإشعارات المنبثقة.', 'danger');
-    }
 }
 
 function triggerPushNotification(title, body) { 
