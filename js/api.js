@@ -67,19 +67,6 @@ function applyJordanTimeHack(isoString) {
     }
 }
 
-// دالة إرسال الإشعارات في الخلفية (Fire-and-Forget)
-function sendNotificationAsync(endpoint, method, body) {
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    
-    fetch(`${CONFIG.API_URL}${endpoint}`, {
-        method: method,
-        headers: headers,
-        body: JSON.stringify(body)
-    }).catch(e => console.warn('[Async Notification] فشل الإرسال بالخلفية:', e));
-}
-
 // 🛡️ تقوية المحرك لمعالجة أخطاء السيرفر (500) وعدم انهيار النظام
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false) {
     if (!navigator.onLine && !isPublic) {
@@ -178,31 +165,12 @@ const API = {
     
     getAppointments: () => fetchAPI(getCurrentUser().firm_id ? `/api/appointments?firm_id=eq.${getCurrentUser().firm_id}` : '/api/appointments'),
     
+    // 🔥 تم تنظيف الدالة. سيقوم الوركر السحابي بتولي الإشعارات بالكامل للحماية من أخطاء الـ 500
     addAppointment: async (data) => {
         if (data.appt_date) {
             data.appt_date = applyJordanTimeHack(data.appt_date);
         }
-
-        const res = await fetchAPI('/api/appointments', 'POST', data);
-        
-        if(res && !res.error && data.assigned_to && Array.isArray(data.assigned_to)) {
-            const user = getCurrentUser();
-            const firmId = user.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
-            
-            // إرسال الإشعار لجدول الإشعارات بشكل دقيق
-            data.assigned_to.forEach(userId => {
-                sendNotificationAsync('/api/notifications', 'POST', {
-                    user_id: userId,
-                    title: 'مهمة / موعد جديد',
-                    message: `تم إسناد مهمة لك: (${data.title}). يرجى مراجعة الأجندة.`,
-                    action_url: '/app',
-                    firm_id: firmId,
-                    created_by: user.id || userId,
-                    is_read: false
-                });
-            });
-        }
-        return res;
+        return await fetchAPI('/api/appointments', 'POST', data);
     },
     
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
