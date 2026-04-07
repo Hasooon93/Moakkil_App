@@ -62,7 +62,10 @@
     <div class="top-nav px-3 d-flex align-items-center justify-content-between">
         <button class="btn btn-link text-white p-0" onclick="window.location.href='app.html'"><i class="fas fa-arrow-right fs-4"></i></button>
         <h5 class="mb-0 fw-bold text-white text-truncate mx-2">الموارد البشرية (فريق العمل)</h5>
-        <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm" onclick="loadStaff()"><i class="fas fa-sync"></i></button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" onclick="window.registerDeviceBiometric()" title="تفعيل الدخول بالبصمة لجهازي الحالي"><i class="fas fa-fingerprint text-warning"></i> بصمتي</button>
+            <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm" onclick="loadStaff()" title="تحديث البيانات"><i class="fas fa-sync"></i></button>
+        </div>
     </div>
 
     <div id="alertBox"></div>
@@ -194,6 +197,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
     <script src="./js/staff.js"></script>
 </body>
 </html>

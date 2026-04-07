@@ -1,4 +1,4 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة)
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -13,6 +13,11 @@ const escapeHTML = (str) => {
     return str.toString().replace(/[&<>'"]/g, 
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
+};
+
+// ربط تنبيهات النظام (api.js و sw.js) بنظام SweetAlert الخاص بالواجهة
+window.showToast = function(msg, type) {
+    showAlert(msg, type === 'error' ? 'danger' : type);
 };
 
 window.onload = async () => {
@@ -361,16 +366,21 @@ function renderKanbanBoard() {
 async function saveApptOutcome(e) { 
     e.preventDefault(); const id = document.getElementById('outcome_appt_id').value; 
     const notes = document.getElementById('outcome_text').value;
-    if(await API.updateAppointment(id, {status:'تم', notes: notes})) { closeModal('apptOutcomeModal'); showAlert('تم تسجيل الإنجاز في الدفتر', 'success'); await loadAllData(); } 
+    const res = await API.updateAppointment(id, {status:'تم', notes: notes});
+    if(res && !res.error) { closeModal('apptOutcomeModal'); showAlert(res.offline ? 'حُفظت المخرجات محلياً (Offline)' : 'تم تسجيل الإنجاز في الدفتر', res.offline ? 'warning' : 'success'); await loadAllData(); } 
 }
 async function saveApptPostpone(e) { 
     e.preventDefault(); const id = document.getElementById('postpone_appt_id').value; 
     const d = new Date(document.getElementById('postpone_date').value).toISOString();
-    if(await API.updateAppointment(id, {status:'مؤجل', appt_date: d})) { closeModal('apptPostponeModal'); showAlert('تم تأجيل الموعد بنجاح', 'success'); await loadAllData(); } 
+    const res = await API.updateAppointment(id, {status:'مؤجل', appt_date: d});
+    if(res && !res.error) { closeModal('apptPostponeModal'); showAlert(res.offline ? 'حُفظ التأجيل محلياً (Offline)' : 'تم تأجيل الموعد بنجاح', res.offline ? 'warning' : 'success'); await loadAllData(); } 
 }
 async function cancelAppt(id) {
     const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
-    if(confirm.isConfirmed) { if(await API.updateAppointment(id, {status:'ملغي'})) { showAlert('تم إلغاء الموعد بنجاح', 'success'); await loadAllData(); } }
+    if(confirm.isConfirmed) { 
+        const res = await API.updateAppointment(id, {status:'ملغي'});
+        if(res && !res.error) { showAlert(res.offline ? 'تم الإلغاء محلياً (Offline)' : 'تم إلغاء الموعد بنجاح', res.offline ? 'warning' : 'success'); await loadAllData(); } 
+    }
 }
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
@@ -401,8 +411,14 @@ function startDictation(targetId) {
 async function handleSmartSearch(q) {
     const drop = document.getElementById('search-results-dropdown'); if (q.length < 2) return drop.classList.add('d-none');
     const res = await API.smartSearch(q); let html = '';
+    
+    // دعم البحث الدلالي للذكاء الاصطناعي (Legal Brain Vector Search)
+    if (res.brain?.length) html += '<h6 class="dropdown-header text-accent fw-bold"><i class="fas fa-brain"></i> الذاكرة القانونية (بحث بالمعنى)</h6>' + res.brain.map(b => `<button class="dropdown-item" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title)}'"><small class="text-navy fw-bold">${escapeHTML(b.title)}</small><br><span style="font-size:10px;" class="text-muted text-wrap">${escapeHTML(b.ai_summary || b.original_text).substring(0, 70)}...</span></button>`).join('');
+    
     if (res.cases?.length) html += '<h6 class="dropdown-header">القضايا</h6>' + res.cases.map(c => `<button class="dropdown-item" onclick="viewCaseDetails('${c.id}')">${escapeHTML(c.case_internal_id)}</button>`).join('');
+    
     if (res.clients?.length) html += '<h6 class="dropdown-header">الموكلين</h6>' + res.clients.map(c => `<button class="dropdown-item" onclick="viewClientProfile('${c.id}')">${escapeHTML(c.full_name)}</button>`).join('');
+    
     drop.innerHTML = html || '<div class="p-3 text-center small text-muted">لا يوجد نتائج</div>'; drop.classList.remove('d-none');
 }
 
@@ -427,7 +443,7 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
-// عمليات الحفظ المركزية (العملاء والقضايا والمواعيد)
+// عمليات الحفظ المركزية (العملاء والقضايا والمواعيد) مع دعم الاوفلاين
 async function saveClient(event) {
     event.preventDefault();
     const data = { 
@@ -445,13 +461,18 @@ async function saveClient(event) {
         profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null,
         confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي'
     };
-    if (await API.addClient(data)) { 
+    
+    const res = await API.addClient(data);
+    if (res && !res.error) { 
         closeModal('clientModal'); await loadAllData(); await loadNotifications();
-        showAlert('تم إضافة الموكل بنجاح', 'success'); event.target.reset(); 
+        showAlert(res.offline ? 'أنت غير متصل. تم الحفظ في الطابور المحلي للمزامنة لاحقاً' : 'تم إضافة الموكل بنجاح', res.offline ? 'warning' : 'success'); 
+        event.target.reset(); 
+    } else {
+        showAlert(res?.error || 'حدث خطأ في الحفظ', 'danger');
     }
 }
 
-// الدالة الأهم: إضافة قضية مع كافة الحقول الجديدة
+// الدالة الأهم: إضافة قضية مع كافة الحقول الجديدة ودعم الاوفلاين
 async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
@@ -510,14 +531,18 @@ async function saveCase(event) {
 
     const res = await API.addCase(data);
     if (res && !res.error) { 
-        if (autoTasks) {
+        if (autoTasks && !res.offline) {
             const tmr = new Date(Date.now() + 86400000).toISOString(); const afterTmr = new Date(Date.now() + 172800000).toISOString();
             await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers });
             await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers });
         }
         closeModal('caseModal'); await loadAllData(); await loadNotifications(); 
-        showAlert('تم فتح ملف القضية بنجاح', 'success'); event.target.reset(); 
-    } else { showAlert(res?.error || 'فشل في إضافة القضية', 'error'); }
+        showAlert(res.offline ? 'أنت غير متصل. تم الحفظ في الطابور المحلي للمزامنة' : 'تم فتح ملف القضية وتوليد المجلد السحابي بنجاح', res.offline ? 'warning' : 'success'); 
+        event.target.reset(); 
+    } else { 
+        showAlert(res?.error || 'فشل في إضافة القضية', 'error'); 
+    }
+    
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي';
 }
 
@@ -533,9 +558,14 @@ async function saveAppointment(event) {
         type: document.getElementById('appt_type').value, 
         status: 'مجدول', assigned_to: assignedTo 
     };
-    if (await API.addAppointment(data)) { 
+    
+    const res = await API.addAppointment(data);
+    if (res && !res.error) { 
         closeModal('apptModal'); await loadAllData(); await loadNotifications(); 
-        showAlert('تمت الجدولة بنجاح', 'success'); event.target.reset(); 
+        showAlert(res.offline ? 'تم الحفظ محلياً وسيزامن عند توفر إنترنت' : 'تمت الجدولة بنجاح', res.offline ? 'warning' : 'success'); 
+        event.target.reset(); 
+    } else {
+        showAlert(res?.error || 'حدث خطأ أثناء الجدولة', 'danger');
     }
 }
 
@@ -597,7 +627,7 @@ function triggerPushNotification(title, body) { if (Notification.permission === 
 
 function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
-function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+function logout() { AUTH.logout(); }
 
 function openModal(id) { 
     const el = document.getElementById(id); 

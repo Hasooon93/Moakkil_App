@@ -1,7 +1,72 @@
 // js/api.js - المحرك الموحد المحدث V3.0 (Enterprise Edition)
-// الدعم الكامل: JWT، سجل النشاطات المفلتر، استخلاص AI ديناميكي، البصمة، المزامنة السحابية مع نظام Retry، إدارة الجلسات والاشتراكات.
+// الدعم الكامل: JWT، سجل النشاطات المفلتر، استخلاص AI ديناميكي، البصمة، المزامنة السحابية مع نظام Retry، وضع عدم الاتصال (Offline Mode).
 
+// =================================================================
+// 🔄 نظام المزامنة الذكي (Offline Queue System)
+// =================================================================
+const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
+
+function saveToOfflineQueue(endpoint, method, body) {
+    let queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+    queue.push({ endpoint, method, body, timestamp: Date.now() });
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    console.warn(`[Offline Mode] تم حفظ الطلب للمزامنة لاحقاً: ${endpoint}`);
+    
+    // إرسال تنبيه للواجهة إذا كانت تدعم ذلك
+    if(window.showToast) {
+        window.showToast('أنت غير متصل بالإنترنت. تم حفظ العملية وستتم المزامنة تلقائياً عند عودة الاتصال.', 'warning');
+    }
+}
+
+async function processOfflineQueue() {
+    let queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+    if (queue.length === 0) return;
+
+    console.log(`[Sync] جاري مزامنة ${queue.length} طلبات محفوظة...`);
+    if(window.showToast) window.showToast('عاد الاتصال. جاري مزامنة البيانات المحفوظة...', 'info');
+
+    let remainingQueue = [];
+    for (let req of queue) {
+        try {
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const options = { method: req.method, headers };
+            if (req.body) options.body = JSON.stringify(req.body);
+
+            const response = await fetch(`${CONFIG.API_URL}${req.endpoint}`, options);
+            if (!response.ok) throw new Error('فشل المزامنة مع السيرفر');
+        } catch (e) {
+            console.error(`[Sync Error] فشل مزامنة ${req.endpoint}`, e);
+            remainingQueue.push(req); // إبقاء الطلب في الطابور للمحاولة لاحقاً
+        }
+    }
+
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+    if (remainingQueue.length === 0) {
+        console.log('[Sync] تمت المزامنة بنجاح.');
+        if(window.showToast) window.showToast('تمت مزامنة جميع البيانات مع السيرفر بنجاح!', 'success');
+    }
+}
+
+// مراقبة عودة الإنترنت للمزامنة التلقائية
+window.addEventListener('online', processOfflineQueue);
+
+// =================================================================
+// 🚀 المحرك الرئيسي للاتصال (Main Fetch Wrapper)
+// =================================================================
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false) {
+    // 1. التحقق من حالة الاتصال للعمليات التي تغير البيانات
+    if (!navigator.onLine && !isPublic) {
+        if (['POST', 'PATCH', 'DELETE'].includes(method)) {
+            saveToOfflineQueue(endpoint, method, body);
+            return { success: true, offline: true, message: "تم الحفظ محلياً لحين عودة الإنترنت" };
+        } else {
+            return { error: 'أنت غير متصل بالإنترنت، ولا يمكن جلب أحدث البيانات حالياً.' };
+        }
+    }
+
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     const headers = {
         'Content-Type': 'application/json'
@@ -17,6 +82,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
     try {
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
         
+        // الحماية من اختراق الجلسات أو انتهاء صلاحيتها
         if (response.status === 401 && !isPublic) {
             console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج لحماية البيانات...");
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
@@ -30,10 +96,20 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
         return data;
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
+        
+        // 2. إذا انقطع الاتصال فجأة أثناء الإرسال
+        if (error.message === 'Failed to fetch' && ['POST', 'PATCH', 'DELETE'].includes(method)) {
+            saveToOfflineQueue(endpoint, method, body);
+            return { success: true, offline: true, message: "تم الحفظ محلياً بسبب انقطاع الاتصال المفاجئ" };
+        }
+        
         return { error: error.message }; 
     }
 }
 
+// =================================================================
+// 📚 مكتبة الموجهات (API Endpoints Library)
+// =================================================================
 const API = {
     // 1. إعدادات المكتب والاشتراكات
     getFirmSettings: () => {
@@ -86,7 +162,7 @@ const API = {
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
 
-    // 6. الذكاء الاصطناعي (AI Core)
+    // 6. الذكاء الاصطناعي (AI Core & Semantic Search)
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
     readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base_64: imageBase64 }),
@@ -94,14 +170,15 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    // 7. الأمان والرقابة
+    // 7. الأمان والرقابة والبصمة
     getNotifications: () => fetchAPI('/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
+    biometricLogin: (data) => fetchAPI('/api/auth/biometric-login', 'POST', data, true), // المسار المضاف الجديد
     getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
 
-    // 8. إدارة الملفات والأرشفة (Google Drive)
+    // 8. إدارة الملفات والأرشفة (Google Drive Integration)
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
@@ -110,6 +187,7 @@ const API = {
         const payload = { ...data, added_by: currentUser?.id || null, firm_id: firmId || null };
         return fetchAPI('/api/files', 'POST', payload);
     },
+    getDriveUploadUrl: () => fetchAPI('/api/drive/generate-upload-url'), // الاتصال بمسار الوركر الجديد
 
     uploadToDrive: async (file, caseInternalId, driveFolderId = null) => {
         return new Promise((resolve, reject) => {
@@ -122,13 +200,13 @@ const API = {
                         const res = await fetch(CONFIG.GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
                         const result = await res.json();
                         if(result?.success) resolve(result);
-                        else throw new Error(result.error || "فشل إرجاع الرابط");
+                        else throw new Error(result.error || "فشل إرجاع الرابط من جوجل درايف");
                     } catch (err) {
                         if (retriesLeft > 0) setTimeout(() => attemptUpload(retriesLeft - 1), 2500); 
-                        else reject(new Error("تعذر الاتصال بسيرفر جوجل: " + err.message));
+                        else reject(new Error("تعذر الاتصال بخوادم جوجل السحابية: " + err.message));
                     }
                 };
-                attemptUpload(3);
+                attemptUpload(3); // نظام Retry (3 محاولات)
             };
             reader.readAsDataURL(file);
         });

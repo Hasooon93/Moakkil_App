@@ -87,6 +87,13 @@
             color: white;
             outline: none;
         }
+        
+        .btn-primary-custom:disabled {
+            background: #94a3b8;
+            transform: none;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
 
         .otp-input {
             letter-spacing: 12px;
@@ -137,6 +144,21 @@
             color: white;
             box-shadow: 0 4px 10px rgba(0, 136, 204, 0.3);
         }
+        
+        /* زر البصمة الإضافي */
+        .btn-biometric-custom {
+            background: transparent;
+            color: var(--navy);
+            border: 2px solid var(--navy);
+            border-radius: 12px;
+            padding: 10px;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+        .btn-biometric-custom:hover {
+            background: var(--light-bg);
+            color: var(--navy);
+        }
     </style>
 </head>
 <body>
@@ -166,6 +188,10 @@
             <button type="submit" class="btn btn-primary-custom w-100 shadow-sm" id="btnRequestOtp">
                 <i class="fas fa-paper-plane me-2"></i> إرسال رمز التحقق
             </button>
+            
+            <button type="button" class="btn btn-biometric-custom w-100 mt-3 d-none" id="btnBiometric" onclick="handleBiometricLogin()">
+                <i class="fas fa-fingerprint me-2"></i> الدخول السريع بالبصمة
+            </button>
         </form>
 
         <form id="otpForm" class="d-none fade-in">
@@ -188,20 +214,134 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <script src="./js/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
+    <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
-    <script src="./js/auth.js"></script> <script>
+    <script src="./js/auth.js"></script> 
+    
+    <script>
+        // متغيرات عامة
+        let currentPhone = '';
+        const loginForm = document.getElementById('loginForm');
+        const otpForm = document.getElementById('otpForm');
+        const btnRequestOtp = document.getElementById('btnRequestOtp');
+        const btnVerifyOtp = document.getElementById('btnVerifyOtp');
+        const btnBiometric = document.getElementById('btnBiometric');
+
+        // 1. التهيئة الأولية عند التحميل
         window.addEventListener('DOMContentLoaded', () => {
+            // أ) ضبط الألوان الديناميكية
             try {
                 const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
                 if (fwSettings) {
                     if (fwSettings.primary_color) document.documentElement.style.setProperty('--navy', fwSettings.primary_color);
                     if (fwSettings.accent_color) document.documentElement.style.setProperty('--accent', fwSettings.accent_color);
                 }
-            } catch (e) {
-                console.error("فشل في تحميل إعدادات الألوان:", e);
+            } catch (e) { console.error("فشل في تحميل إعدادات الألوان:", e); }
+
+            // ب) التحقق من الجلسة النشطة (الطرد للداخل)
+            if (localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token')) {
+                window.location.replace('app.html');
+            }
+
+            // ج) التحقق من وجود بصمة مسجلة لهذا الجهاز لإظهار الزر
+            if (localStorage.getItem(CONFIG.BIOMETRIC_ID_KEY || 'moakkil_biometric_id')) {
+                btnBiometric.classList.remove('d-none');
+            }
+
+            // د) تفعيل Service Worker للإشعارات والـ Offline Mode
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(console.error);
             }
         });
+
+        // 2. إرسال طلب الـ OTP
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phone = document.getElementById('phoneInput').value.trim();
+            if (!phone) return;
+
+            btnRequestOtp.disabled = true;
+            const originalHtml = btnRequestOtp.innerHTML;
+            btnRequestOtp.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الإرسال...';
+
+            try {
+                await AUTH.requestOTP(phone);
+                currentPhone = phone;
+                
+                // إخفاء فورم الهاتف وإظهار فورم الـ OTP
+                loginForm.classList.add('d-none');
+                otpForm.classList.remove('d-none');
+                
+                // استخدام SweetAlert للإشعار الجميل
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم الإرسال!',
+                    text: 'تفقد حسابك في تيليغرام للحصول على الرمز.',
+                    confirmButtonColor: 'var(--navy)'
+                });
+                
+                setTimeout(() => document.getElementById('otpInput').focus(), 300);
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'خطأ', text: err.message, confirmButtonColor: 'var(--navy)' });
+            } finally {
+                btnRequestOtp.disabled = false;
+                btnRequestOtp.innerHTML = originalHtml;
+            }
+        });
+
+        // 3. التحقق من الـ OTP
+        otpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const otp = document.getElementById('otpInput').value.trim();
+            if (!otp) return;
+
+            btnVerifyOtp.disabled = true;
+            const originalHtml = btnVerifyOtp.innerHTML;
+            btnVerifyOtp.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحقق...';
+
+            try {
+                await AUTH.verifyOTP(currentPhone, otp);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'مرحباً بك!',
+                    text: 'تم تسجيل الدخول بنجاح، جاري التوجيه...',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    window.location.replace('app.html');
+                });
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'الرمز غير صحيح', text: err.message, confirmButtonColor: 'var(--navy)' });
+                btnVerifyOtp.disabled = false;
+                btnVerifyOtp.innerHTML = originalHtml;
+            }
+        });
+
+        // 4. معالجة الدخول بالبصمة
+        async function handleBiometricLogin() {
+            btnBiometric.disabled = true;
+            const originalHtml = btnBiometric.innerHTML;
+            btnBiometric.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري المطابقة...';
+
+            try {
+                await AUTH.loginBiometric();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم التحقق!',
+                    text: 'جاري الدخول للنظام...',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    window.location.replace('app.html');
+                });
+            } catch (err) {
+                Swal.fire({ icon: 'error', title: 'فشل البصمة', text: err.message, confirmButtonColor: 'var(--navy)' });
+                btnBiometric.disabled = false;
+                btnBiometric.innerHTML = originalHtml;
+            }
+        }
     </script>
 </body>
 </html>

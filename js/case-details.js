@@ -1,5 +1,5 @@
 // js/case-details.js - محرك تفاصيل القضية الكامل (النسخة النهائية المربوطة بالواجهة وقاعدة البيانات)
-// تم حل مشكلة الـ Auth، وتم ربط كافة الحقول الجديدة (الذكاء الاصطناعي، الوكالات، المصاريف، سنة الدعوى، التفاصيل الشاملة) بالواجهة.
+// التحديثات التقنية: دعم تنبيهات الـ Offline Mode لحفظ الدفعات والمصاريف والتحديثات محلياً عند انقطاع الإنترنت.
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -201,7 +201,9 @@ function renderHeaderAndSummary() {
 async function saveSecretNotes() {
     const notes = document.getElementById('secret_notes_input').value;
     const res = await API.updateCase(currentCaseId, { secret_notes: notes });
-    if (res) showAlert('تم حفظ الملاحظات السرية', 'success');
+    if (res && !res.error) {
+        showAlert(res.offline ? 'أنت غير متصل، تم حفظ الملاحظات محلياً' : 'تم حفظ الملاحظات السرية', res.offline ? 'warning' : 'success');
+    }
 }
 
 function openEditModal() {
@@ -327,9 +329,10 @@ async function updateCaseDetails(event) {
         court_deposits: document.getElementById('edit_court_deposits').value ? Number(document.getElementById('edit_court_deposits').value) : 0
     };
 
-    if(await API.updateCase(currentCaseId, data)) { 
+    const res = await API.updateCase(currentCaseId, data);
+    if(res && !res.error) { 
         closeModal('editCaseModal'); 
-        showAlert('تم التحديث الشامل بنجاح', 'success'); 
+        showAlert(res.offline ? 'تم حفظ التعديلات محلياً وستُرفع عند عودة الإنترنت' : 'تم التحديث الشامل بنجاح', res.offline ? 'warning' : 'success'); 
         await loadCaseFullDetails(); 
     }
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التعديلات الشاملة';
@@ -395,7 +398,8 @@ async function saveUpdate(event) {
         attachment_url: finalAttachmentUrl
     };
     
-    if(await API.addUpdate(data)) { 
+    const res = await API.addUpdate(data);
+    if(res && !res.error) { 
         if (extractedData.lawsuit_facts || extractedData.legal_basis) {
             await API.updateCase(currentCaseId, { 
                 ai_extracted_entities: extractedData,
@@ -405,7 +409,10 @@ async function saveUpdate(event) {
             });
         }
         closeModal('updateModal'); document.getElementById('updateForm').reset(); 
-        showAlert('تمت إضافة الواقعة', 'success'); await loadCaseFullDetails(); 
+        showAlert(res.offline ? 'أنت غير متصل، تم حفظ الواقعة في الطابور المحلي' : 'تمت إضافة الواقعة', res.offline ? 'warning' : 'success'); 
+        await loadCaseFullDetails(); 
+    } else {
+        showAlert(res?.error || 'حدث خطأ أثناء الإضافة', 'error');
     }
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث';
 }
@@ -541,13 +548,27 @@ function renderFiles(files) {
 async function savePayment(event) { 
     event.preventDefault(); 
     const data = { case_id: currentCaseId, amount: Number(document.getElementById('pay_amount').value), due_date: document.getElementById('pay_due_date').value, status: document.getElementById('pay_status').value }; 
-    if(await API.addInstallment(data)) { closeModal('paymentModal'); document.getElementById('paymentForm').reset(); showAlert('تم تسجيل الدفعة', 'success'); await loadCaseFullDetails(); } 
+    const res = await API.addInstallment(data);
+    if(res && !res.error) { 
+        closeModal('paymentModal'); document.getElementById('paymentForm').reset(); 
+        showAlert(res.offline ? 'أنت غير متصل. تم الحفظ في الطابور المحلي' : 'تم تسجيل الدفعة', res.offline ? 'warning' : 'success'); 
+        await loadCaseFullDetails(); 
+    } else {
+        showAlert(res?.error || 'حدث خطأ', 'error');
+    }
 }
 
 async function saveExpense(event) { 
     event.preventDefault(); 
     const data = { case_id: currentCaseId, amount: Number(document.getElementById('exp_amount').value), description: document.getElementById('exp_desc').value, expense_date: document.getElementById('exp_date').value, receipt_url: document.getElementById('exp_receipt_url').value || null }; 
-    if(await API.addExpense(data)) { closeModal('expenseModal'); document.getElementById('expenseForm').reset(); showAlert('تم تسجيل المصروف', 'success'); await loadCaseFullDetails(); } 
+    const res = await API.addExpense(data);
+    if(res && !res.error) { 
+        closeModal('expenseModal'); document.getElementById('expenseForm').reset(); 
+        showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم تسجيل المصروف', res.offline ? 'warning' : 'success'); 
+        await loadCaseFullDetails(); 
+    } else {
+        showAlert(res?.error || 'حدث خطأ', 'error');
+    }
 }
 
 async function saveFile(event) {
@@ -560,26 +581,46 @@ async function saveFile(event) {
     
     if (!fileInput.files.length) return;
     const file = fileInput.files[0];
+    
+    if (!navigator.onLine) {
+        showAlert('لا يمكن رفع الملفات السحابية أثناء انقطاع الإنترنت. يرجى الانتظار.', 'warning');
+        return;
+    }
+
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
     try {
         const driveRes = await API.uploadToDrive(file, caseObj.case_internal_id, caseObj.drive_folder_id);
         if(driveRes && driveRes.url) {
-            if(await API.addFileRecord({ case_id: currentCaseId, file_name: titleInput || file.name, file_type: file.type, file_category: catInput, drive_file_id: driveRes.url, is_template: false, expiry_date: expiryInput || null })) { 
-                closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ السحابي', 'success'); await loadCaseFullDetails(); 
+            const res = await API.addFileRecord({ case_id: currentCaseId, file_name: titleInput || file.name, file_type: file.type, file_category: catInput, drive_file_id: driveRes.url, is_template: false, expiry_date: expiryInput || null });
+            if(res && !res.error) { 
+                closeModal('fileModal'); document.getElementById('fileForm').reset(); 
+                showAlert('تم الحفظ السحابي', 'success'); 
+                await loadCaseFullDetails(); 
             }
         }
-    } catch (err) { showAlert("فشل: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; }
+    } catch (err) { 
+        showAlert("فشل: " + err.message, 'error'); 
+    } finally { 
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; 
+    }
 }
 
 async function deleteRecord(type, id) {
-    const res = await Swal.fire({ title: 'هل أنت متأكد؟', text: "لا يمكن التراجع عن هذا الحذف!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف', cancelButtonText: 'إلغاء' });
-    if(!res.isConfirmed) return;
+    const confirm = await Swal.fire({ title: 'هل أنت متأكد؟', text: "لا يمكن التراجع عن هذا الحذف!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف', cancelButtonText: 'إلغاء' });
+    if(!confirm.isConfirmed) return;
     try {
-        if (type === 'update') await API.deleteUpdate(id);
-        if (type === 'installment') await API.deleteInstallment(id, currentCaseId);
-        if (type === 'expense') await API.deleteExpense(id);
-        if (type === 'file') await API.deleteFile(id);
-        showAlert('تم الحذف بنجاح', 'success'); await loadCaseFullDetails();
+        let res;
+        if (type === 'update') res = await API.deleteUpdate(id);
+        if (type === 'installment') res = await API.deleteInstallment(id, currentCaseId);
+        if (type === 'expense') res = await API.deleteExpense(id);
+        if (type === 'file') res = await API.deleteFile(id);
+        
+        if (res && !res.error) {
+            showAlert(res.offline ? 'أنت غير متصل، تم إرسال أمر الحذف محلياً' : 'تم الحذف بنجاح', res.offline ? 'warning' : 'success'); 
+            await loadCaseFullDetails();
+        } else {
+            showAlert(res?.error || 'حدث خطأ أثناء الحذف', 'error');
+        }
     } catch(e) { showAlert('حدث خطأ أثناء الحذف أو لا تملك صلاحية لذلك.', 'error'); }
 }
 

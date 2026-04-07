@@ -1,4 +1,5 @@
 // js/client-details.js - محرك صفحة الموكل الشاملة (النسخة المتوافقة 100% مع api.js)
+// التحديثات: دعم المزامنة (Offline Mode) للتعديلات والحذف، ومنع أخطاء الرفع السحابي أثناء انقطاع الإنترنت.
 
 let currentClientId = localStorage.getItem('current_client_id') || new URLSearchParams(window.location.search).get('id');
 let clientObj = null;
@@ -238,11 +239,14 @@ async function updateClient(e) {
     };
 
     try {
-        // تم استبدال API.patch بـ API.updateClient
-        await API.updateClient(currentClientId, data);
-        closeModal('editClientModal');
-        showAlert('تم تحديث بيانات الموكل بنجاح', 'success');
-        await loadClientData();
+        const res = await API.updateClient(currentClientId, data);
+        if(res && !res.error) {
+            closeModal('editClientModal');
+            showAlert(res.offline ? 'أنت غير متصل. تم حفظ التعديلات محلياً' : 'تم تحديث بيانات الموكل بنجاح', res.offline ? 'warning' : 'success');
+            await loadClientData();
+        } else {
+            showAlert(res?.error || 'حدث خطأ في التحديث', 'error');
+        }
     } catch(err) {
         showAlert('فشل التحديث: ' + err.message, 'error');
     } finally {
@@ -261,10 +265,13 @@ async function deleteClient() {
     
     if (confirm.isConfirmed) {
         try {
-            // تم استبدال API.delete بـ API.deleteClient
-            await API.deleteClient(currentClientId);
-            showAlert('تم حذف الموكل بنجاح', 'success');
-            setTimeout(() => { goBack(); }, 1500);
+            const res = await API.deleteClient(currentClientId);
+            if(res && !res.error) {
+                showAlert(res.offline ? 'أنت غير متصل، تم أمر الحذف محلياً' : 'تم حذف الموكل بنجاح', res.offline ? 'warning' : 'success');
+                setTimeout(() => { goBack(); }, 1500);
+            } else {
+                showAlert(res?.error || 'حدث خطأ في الحذف', 'error');
+            }
         } catch(e) {
             showAlert('فشل الحذف، تأكد من الصلاحيات', 'error');
         }
@@ -283,6 +290,11 @@ async function saveClientFile(event) {
     if (!fileInput.files.length) return;
     const file = fileInput.files[0];
     
+    if (!navigator.onLine) {
+        showAlert('عذراً، لا يمكن رفع الملفات السحابية أثناء انقطاع الإنترنت.', 'warning');
+        return;
+    }
+    
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
     try {
         const driveRes = await API.uploadToDrive(file, clientObj.full_name, "Client_Files_Folder");
@@ -297,12 +309,13 @@ async function saveClientFile(event) {
                 expiry_date: expiryInput || null 
             };
             
-            // تم استبدال API.post بـ API.addFileRecord
-            await API.addFileRecord(payload);
-            closeModal('fileModal'); 
-            document.getElementById('fileForm').reset(); 
-            showAlert('تم الحفظ في ملف الموكل', 'success'); 
-            await loadClientData(); 
+            const res = await API.addFileRecord(payload);
+            if(res && !res.error) {
+                closeModal('fileModal'); 
+                document.getElementById('fileForm').reset(); 
+                showAlert('تم الحفظ في ملف الموكل', 'success'); 
+                await loadClientData(); 
+            }
         }
     } catch (err) { 
         showAlert("فشل الرفع: " + err.message, 'error'); 
@@ -316,10 +329,13 @@ async function deleteClientFile(id) {
     const res = await Swal.fire({ title: 'هل أنت متأكد؟', text: "سيتم إزالة المستند من أرشيف الموكل!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف', cancelButtonText: 'إلغاء' });
     if(!res.isConfirmed) return;
     try {
-        // تم استبدال API.delete بـ API.deleteFile
-        await API.deleteFile(id);
-        showAlert('تم الحذف بنجاح', 'success'); 
-        await loadClientData();
+        const delRes = await API.deleteFile(id);
+        if(delRes && !delRes.error) {
+            showAlert(delRes.offline ? 'تم الحذف محلياً بسبب انقطاع الإنترنت' : 'تم الحذف بنجاح', delRes.offline ? 'warning' : 'success'); 
+            await loadClientData();
+        } else {
+            showAlert(delRes?.error || 'حدث خطأ', 'error');
+        }
     } catch(e) { showAlert('حدث خطأ أثناء الحذف', 'error'); }
 }
 

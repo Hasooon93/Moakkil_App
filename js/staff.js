@@ -1,4 +1,5 @@
 // js/staff.js - محرك إدارة الموارد البشرية والموظفين (HR)
+// التحديثات: دعم المزامنة (Offline Mode) للصلاحيات والرواتب، حماية الذكاء الاصطناعي والرفع السحابي من انقطاع الشبكة، وتجهيز دالة البصمة.
 
 let allStaff = [];
 let currentEditingStaff = null;
@@ -33,6 +34,21 @@ function applyFirmSettings() {
     if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
     if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
 }
+
+// دالة جاهزة لربط جهاز الموظف بالبصمة (تُستدعى من الواجهة عند النقر على زر "تفعيل البصمة لجهازي")
+window.registerDeviceBiometric = async () => {
+    if (!navigator.onLine) {
+        Swal.fire('تنبيه', 'لا يمكن تفعيل البصمة أثناء انقطاع الإنترنت، يرجى الاتصال بالشبكة أولاً.', 'warning');
+        return;
+    }
+    try {
+        Swal.fire({title: 'جاري إعداد البصمة...', text: 'يرجى تأكيد هويتك عبر جهازك', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
+        const res = await AUTH.registerBiometric();
+        Swal.fire('نجاح', res.message || 'تم تسجيل البصمة بنجاح', 'success');
+    } catch (err) {
+        Swal.fire('خطأ', err.message || 'فشل إعداد البصمة', 'error');
+    }
+};
 
 async function loadStaff() {
     const container = document.getElementById('staff-container');
@@ -171,15 +187,22 @@ async function saveStaff(event) {
     };
 
     try {
+        let res;
         if (id) {
-            await API.updateStaff(id, data);
-            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تم التحديث بنجاح', showConfirmButton: false, timer: 2000});
+            res = await API.updateStaff(id, data);
+            if(res && !res.error) {
+                Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الحفظ محلياً (Offline)' : 'تم التحديث بنجاح', showConfirmButton: false, timer: 2000});
+            }
         } else {
             data.is_active = true;
             data.can_login = true;
-            await API.addStaff(data);
-            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت إضافة الموظف بنجاح', showConfirmButton: false, timer: 2000});
+            res = await API.addStaff(data);
+            if(res && !res.error) {
+                Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الإضافة للطابور المحلي' : 'تمت إضافة الموظف بنجاح', showConfirmButton: false, timer: 2000});
+            }
         }
+        
+        if(res && res.error) throw new Error(res.error);
         
         const m = bootstrap.Modal.getInstance(document.getElementById('staffModal'));
         if (m) m.hide();
@@ -191,7 +214,7 @@ async function saveStaff(event) {
     }
 }
 
-// إيقاف الموظف (Soft Delete)
+// إيقاف الموظف (Soft Delete) مع دعم الأوفلاين
 async function toggleStaffStatus(id, currentActiveStatus) {
     const actionName = currentActiveStatus ? "إيقاف" : "تفعيل";
     const newStatus = !currentActiveStatus;
@@ -209,11 +232,15 @@ async function toggleStaffStatus(id, currentActiveStatus) {
     if (!confirm.isConfirmed) return;
 
     try {
-        await API.updateStaff(id, { is_active: newStatus, can_login: newStatus });
-        Swal.fire({toast: true, position: 'top-end', icon: 'success', title: `تم ${actionName} الموظف بنجاح`, showConfirmButton: false, timer: 2000});
-        await loadStaff();
+        const res = await API.updateStaff(id, { is_active: newStatus, can_login: newStatus });
+        if(res && !res.error) {
+            Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الحفظ محلياً' : `تم ${actionName} الموظف بنجاح`, showConfirmButton: false, timer: 2000});
+            await loadStaff();
+        } else {
+            throw new Error(res?.error || 'حدث خطأ');
+        }
     } catch (err) {
-        Swal.fire('خطأ', 'تعذر تغيير حالة الموظف', 'error');
+        Swal.fire('خطأ', 'تعذر تغيير حالة الموظف: ' + err.message, 'error');
     }
 }
 
@@ -225,6 +252,11 @@ function openAiIdModal() {
 }
 
 async function processIdAI() {
+    if (!navigator.onLine) {
+        Swal.fire('تنبيه', 'لا يمكن استخدام الذكاء الاصطناعي أثناء انقطاع الإنترنت.', 'warning');
+        return;
+    }
+
     const text = document.getElementById('ai_id_text').value.trim();
     if (!text) { Swal.fire('تنبيه', 'يرجى لصق نص الهوية أولاً', 'warning'); return; }
 
@@ -277,6 +309,11 @@ function renderStaffDocs(docs) {
 }
 
 async function uploadStaffDoc() {
+    if (!navigator.onLine) {
+        Swal.fire('تنبيه', 'لا يمكن رفع الملفات السحابية أثناء انقطاع الإنترنت.', 'warning');
+        return;
+    }
+
     const fileInput = document.getElementById('doc_file');
     const nameInput = document.getElementById('doc_name').value.trim();
     
@@ -297,13 +334,17 @@ async function uploadStaffDoc() {
                 date: new Date().toISOString()
             });
             
-            await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
-            currentEditingStaff.staff_documents = currentDocs; // تحديث محلي
-            
-            document.getElementById('doc_file').value = '';
-            document.getElementById('doc_name').value = '';
-            renderStaffDocs(currentDocs);
-            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة', showConfirmButton: false, timer: 2000});
+            const res = await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
+            if(res && !res.error) {
+                currentEditingStaff.staff_documents = currentDocs; // تحديث محلي
+                
+                document.getElementById('doc_file').value = '';
+                document.getElementById('doc_name').value = '';
+                renderStaffDocs(currentDocs);
+                Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة', showConfirmButton: false, timer: 2000});
+            } else {
+                throw new Error(res?.error || 'خطأ في التحديث');
+            }
         }
     } catch (err) {
         Swal.fire('خطأ', 'فشل الرفع السحابي: ' + err.message, 'error');
@@ -320,11 +361,15 @@ async function deleteStaffDoc(index) {
     currentDocs.splice(index, 1);
     
     try {
-        await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
-        currentEditingStaff.staff_documents = currentDocs;
-        renderStaffDocs(currentDocs);
-        Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تم الحذف', showConfirmButton: false, timer: 2000});
+        const res = await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
+        if(res && !res.error) {
+            currentEditingStaff.staff_documents = currentDocs;
+            renderStaffDocs(currentDocs);
+            Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الحذف محلياً' : 'تم الحذف', showConfirmButton: false, timer: 2000});
+        } else {
+            throw new Error(res?.error || 'خطأ في الحذف');
+        }
     } catch (err) {
-        Swal.fire('خطأ', 'تعذر حذف الوثيقة', 'error');
+        Swal.fire('خطأ', 'تعذر حذف الوثيقة: ' + err.message, 'error');
     }
 }

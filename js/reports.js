@@ -1,4 +1,5 @@
 // js/reports.js - العقل المدبر للتقارير والرسوم البيانية مع ميزة الفلترة الزمنية الذكية (Date Filtering)
+// التحديثات: دعم تنبيهات وضع عدم الاتصال (Offline Mode) للتقارير لمنع تجميد الشاشة.
 
 let rawCases = [];
 let rawInstallments = [];
@@ -55,6 +56,10 @@ async function fetchAllData() {
     try {
         Swal.fire({ title: 'جاري تحميل السجلات...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
+        if (!navigator.onLine) {
+            Swal.fire({toast: true, position: 'top-end', icon: 'warning', title: 'أنت غير متصل بالإنترنت. تعذر جلب أحدث الإحصائيات.', showConfirmButton: false, timer: 4000});
+        }
+
         // تم استبدال API.get بالدوال المخصصة API.getInstallments() و API.getExpenses()
         const [casesRes, clientsRes, apptsRes, instRes, expRes] = await Promise.all([
             API.getCases(),
@@ -63,6 +68,11 @@ async function fetchAllData() {
             API.getInstallments(), 
             API.getExpenses()
         ]);
+
+        // التحقق من أن الاستجابة ليست خطأ اتصال (Offline Error)
+        if (casesRes && casesRes.error && !Array.isArray(casesRes)) {
+            throw new Error(casesRes.error);
+        }
 
         rawCases = Array.isArray(casesRes) ? casesRes : [];
         rawClients = Array.isArray(clientsRes) ? clientsRes : [];
@@ -73,7 +83,7 @@ async function fetchAllData() {
         Swal.close();
     } catch (error) {
         Swal.close();
-        Swal.fire('خطأ', 'تعذر تحميل البيانات من السيرفر.', 'error');
+        Swal.fire('تنبيه', 'تعذر تحميل أحدث البيانات من السيرفر. تأكد من اتصالك بالإنترنت.', 'warning');
         console.error(error);
     }
 }

@@ -1,4 +1,5 @@
 // js/client.js - محرك بوابة الموكل العامة (التحقق بالرقم السري وعرض البيانات المتطورة بأمان)
+// التحديثات: ربط نظام الحماية من التخمين (Brute-Force)، ودعم وضع عدم الاتصال (Offline Cache).
 
 let publicData = null;
 
@@ -21,12 +22,33 @@ window.onload = async () => {
     }
 
     try {
-        // الاتصال الآمن بالمحرك السحابي للعموم
-        const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${token}`);
-        const data = await res.json();
+        let data = null;
+        
+        // 1. دعم وضع الأوفلاين (Offline Mode)
+        if (navigator.onLine) {
+            // الاتصال الآمن بالمحرك السحابي للعموم
+            const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${token}`);
+            data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || "الملف غير موجود");
+            
+            // حفظ نسخة آمنة في المتصفح للحالات التي ينقطع فيها الإنترنت
+            localStorage.setItem(`moakkil_client_cache_${token}`, JSON.stringify(data));
+        } else {
+            // جلب البيانات من الكاش المحلي
+            const cached = localStorage.getItem(`moakkil_client_cache_${token}`);
+            if (cached) {
+                data = JSON.parse(cached);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'أنت بوضع عدم الاتصال. يتم عرض آخر نسخة محفوظة.', showConfirmButton: false, timer: 5000 });
+                }
+            } else {
+                throw new Error("لا يوجد اتصال بالإنترنت ولا توجد نسخة محفوظة مسبقاً لهذا الملف.");
+            }
+        }
 
         // التوافق مع التعديلات البرمجية (دعم object مباشر أو مصفوفة)
-        if (res.ok && (data.case || (data.cases && data.cases.length > 0))) {
+        if (data && (data.case || (data.cases && data.cases.length > 0))) {
             publicData = data;
             
             // تطبيق هوية المكتب (الألوان واللوغو) إن وجدت
@@ -37,7 +59,7 @@ window.onload = async () => {
             document.getElementById('security-layer').classList.remove('d-none');
             document.getElementById('pin_input').focus();
         } else {
-            throw new Error(data.error || "الملف غير موجود");
+            throw new Error("الملف غير موجود أو تم إغلاقه.");
         }
     } catch (error) {
         document.getElementById('loader').innerHTML = `<div class="alert alert-danger text-center w-75 fw-bold shadow-sm"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i> تعذر الوصول للملف: ${escapeHTML(error.message)}</div>`;
@@ -53,44 +75,73 @@ function applyFirmIdentity(firm) {
     if (firm.logo_url) {
         const logoImg = document.getElementById('firm-logo-img');
         if(logoImg) {
-            logoImg.src = firm.logo_url;
+            logoImg.src = escapeHTML(firm.logo_url);
             document.getElementById('firm-logo-sec').classList.remove('d-none');
         }
     }
 }
 
-// دالة التحقق من صحة الـ PIN
-function verifyAccess(event) {
+// دالة التحقق من صحة الـ PIN المرتبطة بالسيرفر لحماية التخمين (Brute-Force)
+async function verifyAccess(event) {
     event.preventDefault();
     const enteredPin = document.getElementById('pin_input').value;
     
-    // استخراج بيانات القضية بأمان
+    // استخراج بيانات القضية
     const caseData = publicData.case || publicData.cases[0] || {};
-    const actualPin = caseData.access_pin; 
     
     const btn = document.getElementById('btn-verify');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحقق...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحقق الأمني...';
 
-    // محاكاة وقت التحقق لتعزيز الشعور بالأمان للموكل
-    setTimeout(() => {
-        // إذا قام الباك إند بمسح الـ PIN لحمايته أو تطابق الرمزين، نسمح بالدخول
-        if (!actualPin || enteredPin === actualPin) {
-            document.getElementById('security-layer').classList.add('d-none');
-            document.getElementById('main-content').classList.remove('d-none');
-            renderClientPortal();
-            
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'success', title: 'تم التحقق بنجاح', showConfirmButton: false, timer: 2000
-            });
-        } else {
-            Swal.fire('رمز خاطئ!', 'الرمز السري الذي أدخلته غير صحيح. يرجى التأكد من محاميك.', 'error');
-            document.getElementById('pin_input').value = '';
-            document.getElementById('pin_input').focus();
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i> دخول للوحة المتابعة';
+    try {
+        if (!navigator.onLine) {
+            // في حالة الأوفلاين، نعتمد على الكاش المحلي المؤقت للـ PIN إن وجد
+            const savedPin = localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`);
+            if (savedPin && savedPin === enteredPin) {
+                unlockPortal();
+                return;
+            } else {
+                throw new Error("لا يمكن التحقق من الرمز السري بدون إنترنت (تأكد من الرمز أو اتصل بالشبكة).");
+            }
         }
-    }, 800); 
+
+        // الاتصال بمسار الـ API المخصص للتحقق لمنع التخمين
+        const res = await fetch(`${CONFIG.API_URL}/api/public/client/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ case_number: caseData.case_internal_id, access_pin: enteredPin })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            // حفظ الـ PIN محلياً للسماح بالدخول الأوفلاين لاحقاً
+            localStorage.setItem(`moakkil_offline_pin_${caseData.case_internal_id}`, enteredPin);
+            unlockPortal();
+        } else if (res.status === 429) {
+            throw new Error("تجاوزت الحد الأقصى للمحاولات الخاطئة. يرجى المحاولة بعد 15 دقيقة لدواعي أمنية.");
+        } else {
+            throw new Error("الرمز السري الذي أدخلته غير صحيح. يرجى التأكد من محاميك.");
+        }
+
+    } catch (error) {
+        Swal.fire('تنبيه أمني!', error.message, 'error');
+        document.getElementById('pin_input').value = '';
+        document.getElementById('pin_input').focus();
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i> دخول للوحة المتابعة';
+    }
+}
+
+// دالة فك القفل وعرض البيانات
+function unlockPortal() {
+    document.getElementById('security-layer').classList.add('d-none');
+    document.getElementById('main-content').classList.remove('d-none');
+    renderClientPortal();
+    
+    Swal.fire({
+        toast: true, position: 'top-end', icon: 'success', title: 'تم التحقق بنجاح', showConfirmButton: false, timer: 2000
+    });
 }
 
 // دالة رسم وتعبئة بيانات الموكل بشكل جميل
@@ -139,7 +190,7 @@ function renderClientPortal() {
     document.getElementById('ui-court-name').innerText = escapeHTML(caseData.current_court || '--');
     document.getElementById('ui-opponent').innerText = escapeHTML(caseData.opponent_name || '--');
 
-    // البيانات الشخصية (KYC) الجديدة التي أضفناها في client.html
+    // البيانات الشخصية (KYC)
     if (document.getElementById('ui-client-phone')) document.getElementById('ui-client-phone').innerText = escapeHTML(client.phone || '--');
     if (document.getElementById('ui-client-national')) document.getElementById('ui-client-national').innerText = escapeHTML(client.national_id || '--');
     if (document.getElementById('ui-client-nationality')) document.getElementById('ui-client-nationality').innerText = escapeHTML(client.nationality || 'أردني');

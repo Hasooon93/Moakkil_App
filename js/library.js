@@ -1,4 +1,5 @@
 // js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
+// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي.
 
 let currentUser = null;
 let allTemplates = [];
@@ -43,12 +44,12 @@ window.onload = async () => {
 async function loadTemplates() {
     try {
         // المحاولة الأولى: جلب النماذج عبر استعلام مباشر وسليم
-        let files = await fetchAPI('/api/files?is_template=eq.true');
+        let files = await API.getFiles('is_template=eq.true'); // استخدام دوال API.js
         
         // خوارزمية العلاج الذاتي: إذا فشل الاستعلام، نجلب كل الملفات ونفلتر محلياً
         if (files && files.error) {
             console.warn("[Auto-Heal] فشل الاستعلام المباشر، جاري جلب الملفات والفلترة محلياً...");
-            const allFiles = await fetchAPI('/api/files');
+            const allFiles = await API.getFiles();
             if (Array.isArray(allFiles)) {
                 files = allFiles.filter(f => f.is_template === true || f.case_id === null);
             } else {
@@ -62,7 +63,7 @@ async function loadTemplates() {
         document.getElementById('templates-container').innerHTML = `
             <div class="col-12 text-center p-4 text-danger fw-bold bg-white rounded shadow-sm border">
                 <i class="fas fa-exclamation-circle fa-2x mb-2"></i><br>
-                حدث خطأ أثناء الاتصال بالخادم. يرجى التأكد من الإنترنت.
+                حدث خطأ أثناء الاتصال بالخادم. تأكد من الإنترنت أو جرب التحديث.
             </div>
         `;
     }
@@ -140,6 +141,11 @@ function renderTemplates() {
 async function uploadTemplate(event) {
     event.preventDefault();
     
+    if (!navigator.onLine) {
+        showAlert('عذراً، لا يمكن رفع نماذج جديدة للمكتبة أثناء انقطاع الإنترنت.', 'warning');
+        return;
+    }
+
     const titleInput = document.getElementById('tpl_title').value;
     const catInput = document.getElementById('tpl_category').value;
     const fileInput = document.getElementById('tpl_file');
@@ -158,7 +164,7 @@ async function uploadTemplate(event) {
     try {
         let finalFileUrl = "";
 
-        // محاولة الرفع لجوجل درايف
+        // محاولة الرفع لجوجل درايف عبر دالة API الموحدة
         try {
             const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
             if (driveRes && driveRes.url) {
@@ -169,23 +175,18 @@ async function uploadTemplate(event) {
         } catch (gasError) {
             console.warn("تعذر الرفع لجوجل درايف، سيتم وضع مسار وهمي لغايات العرض:", gasError);
             finalFileUrl = "https://drive.google.com/file/d/placeholder";
-            showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ CORS)', 'info');
+            showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ)', 'info');
         }
         
-        // إرسال كافة الحقول الممكنة لإرضاء قاعدة البيانات (Supabase Not-Null constraints)
         let payload = { 
             file_name: titleInput || file.name, 
             file_type: file.type, 
             file_category: catInput, 
-            file_url: finalFileUrl,
-            drive_file_id: finalFileUrl, // تم إرجاع هذا الحقل لأنه مطلوب إجبارياً في قاعدة بياناتك
-            gdrive_file_id: finalFileUrl,
-            attachment_url: finalFileUrl,
-            is_template: true, 
-            case_id: null,
-            client_id: null
+            drive_file_id: finalFileUrl, // الحقل القياسي المتفق عليه في db
+            is_template: true
         };
 
+        // استخدام دالة إضافة الملف في API.js (لتسجيل الـ Audit Logs تلقائياً)
         let res = await API.addFileRecord(payload);
         
         // 🔥 خوارزمية العلاج الذاتي (Auto-Heal) لأخطاء الحقول غير الموجودة 🔥
@@ -201,12 +202,6 @@ async function uploadTemplate(event) {
             } else {
                 break;
             }
-        }
-        
-        if (res && res.error && res.error.includes('is_template')) {
-            console.warn("[Auto-Heal] إزالة حقل is_template");
-            delete payload.is_template;
-            res = await API.addFileRecord(payload);
         }
         
         if (res && !res.error) {
@@ -241,9 +236,11 @@ async function deleteRecord(id) {
     if (!confirmResult.isConfirmed) return;
 
     try {
+        // استخدام دالة الحذف القياسية في API.js
         const res = await API.deleteFile(id);
+        
         if(res && !res.error) {
-            showAlert('تم حذف النموذج بنجاح', 'success');
+            showAlert(res.offline ? 'أنت أوفلاين، سيتم الحذف فور عودة الإنترنت' : 'تم حذف النموذج بنجاح', res.offline ? 'warning' : 'success');
             await loadTemplates();
         } else {
             showAlert(res.error || 'فشل الحذف', 'error');
