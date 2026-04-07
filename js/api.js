@@ -56,6 +56,36 @@ window.addEventListener('online', processOfflineQueue);
 // =================================================================
 // 🚀 المحرك الرئيسي للاتصال (Main Fetch Wrapper)
 // =================================================================
+
+// دالة مساعدة لضبط التوقيت (Timezone Fix - UTC+3)
+function adjustTimezone(body) {
+    if (!body) return body;
+    let adjustedBody = { ...body };
+    // إذا كان هناك تاريخ للموعد، نضيف 3 ساعات (بتوقيت الأردن)
+    if (adjustedBody.appt_date) {
+        let date = new Date(adjustedBody.appt_date);
+        date.setHours(date.getHours() + 3);
+        adjustedBody.appt_date = date.toISOString();
+    }
+    return adjustedBody;
+}
+
+// دالة لإرسال الإشعارات بالخلفية دون إبطاء الواجهة (Fire-and-Forget)
+function sendNotificationAsync(endpoint, method, body) {
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    // ضبط التوقيت قبل الإرسال
+    const finalBody = adjustTimezone(body);
+    
+    fetch(`${CONFIG.API_URL}${endpoint}`, {
+        method: method,
+        headers: headers,
+        body: JSON.stringify(finalBody)
+    }).catch(e => console.warn('[Async Notification] فشل إرسال الإشعار بالخلفية:', e));
+}
+
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false) {
     // 1. التحقق من حالة الاتصال للعمليات التي تغير البيانات
     if (!navigator.onLine && !isPublic) {
@@ -150,7 +180,23 @@ const API = {
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
     deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     getAppointments: () => fetchAPI('/api/appointments'),
-    addAppointment: (data) => fetchAPI('/api/appointments', 'POST', data),
+    
+    // تم التعديل لتسريع المواعيد عبر إرسال الإشعارات في الخلفية
+    addAppointment: async (data) => {
+        const res = await fetchAPI('/api/appointments', 'POST', data);
+        if(res && !res.error && data.assigned_to) {
+            // إرسال الإشعارات بالخلفية
+            sendNotificationAsync('/api/notifications', 'POST', {
+                title: 'مهمة جديدة',
+                message: `تم إسناد المهمة: ${data.title}`,
+                action_url: '/app',
+                assigned_to: data.assigned_to,
+                appt_date: data.appt_date // لضبط التوقيت
+            });
+        }
+        return res;
+    },
+    
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
@@ -175,7 +221,20 @@ const API = {
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
-    biometricLogin: (data) => fetchAPI('/api/auth/biometric-login', 'POST', data, true), // المسار المضاف الجديد
+    
+    // تم التعديل لإرجاع بيانات المستخدم كاملة (firm_id و role)
+    biometricLogin: async (data) => {
+        const res = await fetchAPI('/api/auth/biometric-login', 'POST', data, true);
+        if (res && res.user && res.token) {
+            // نطلب بيانات المستخدم الكاملة من قاعدة البيانات باستخدام التوكن الجديد
+            const userDetails = await fetchAPI(`/api/users?id=eq.${res.user.id}`);
+            if(userDetails && Array.isArray(userDetails) && userDetails.length > 0) {
+                 res.user = { ...res.user, ...userDetails[0] }; 
+            }
+        }
+        return res;
+    },
+    
     getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
 
     // 8. إدارة الملفات والأرشفة (Google Drive Integration)

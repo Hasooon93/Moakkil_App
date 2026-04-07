@@ -1,4 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
+// التحديثات الأخيرة: إخفاء زر البصمة بعد التفعيل، وإصلاح إشعارات الجرس المباشرة.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -26,7 +27,7 @@ window.onload = async () => {
     }
 
     if (!localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || !currentUser) {
-        window.location.href = 'login.html';
+        window.location.href = 'login';
         return;
     }
 
@@ -46,7 +47,7 @@ window.onload = async () => {
 };
 
 function setupUserInfo() {
-    const roleAr = getRoleNameInArabic(currentUser.role);
+    const roleAr = getRoleNameInArabic(currentUser.role || currentUser.user_type);
     const userName = escapeHTML(currentUser.full_name || 'مستخدم');
     if (document.getElementById('welcome-name')) document.getElementById('welcome-name').innerText = userName;
     if (document.getElementById('welcome-role')) document.getElementById('welcome-role').innerText = `المنصب: ${roleAr}`;
@@ -55,19 +56,27 @@ function setupUserInfo() {
 }
 
 function getRoleNameInArabic(role) {
-    if (role === 'admin') return 'مدير النظام';
+    if (role === 'admin' || role === 'super_admin' || role === 'superadmin') return 'مدير النظام';
     if (role === 'secretary') return 'سكرتاريا';
     if (role === 'lawyer') return 'محامي';
     return role || 'موظف';
 }
 
 function applyRoleBasedUI() {
-    const isAdmin = (currentUser.role === 'admin');
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'superadmin');
     if (isAdmin) {
         if (document.getElementById('staff-management-section')) document.getElementById('staff-management-section').classList.remove('d-none');
         if (document.getElementById('stat-staff-card')) document.getElementById('stat-staff-card').style.display = 'block';
         if (document.getElementById('firm-settings-btn')) document.getElementById('firm-settings-btn').style.display = 'block';
         if (document.getElementById('admin-reports-btn')) document.getElementById('admin-reports-btn').classList.remove('d-none');
+    }
+
+    // إخفاء زر تفعيل البصمة إذا كانت مفعلة مسبقاً على هذا الجهاز
+    const hasBiometric = localStorage.getItem('moakkil_biometric_id');
+    const biometricBtn = document.querySelector('a[onclick="registerBiometricBtn()"]');
+    if (hasBiometric && biometricBtn) {
+        // البحث عن عنصر li الذي يحتوي الزر لإخفائه بالكامل
+        biometricBtn.closest('li').style.display = 'none';
     }
 }
 
@@ -83,7 +92,7 @@ window.manualSync = async () => {
 function startSmartBackgroundSync() {
     backgroundSyncTimer = setInterval(async () => {
         try { await loadNotifications(true); } catch(e) {}
-    }, 10000); 
+    }, 15000); 
 }
 
 async function loadFirmSettings() {
@@ -147,9 +156,9 @@ async function saveFirmSettings(event) {
 }
 
 function switchView(viewId) {
-    if(viewId === 'ai') { window.location.href = 'ai-chat.html'; return; }
-    if(viewId === 'library') { window.location.href = 'library.html'; return; }
-    if(viewId === 'calculators') { window.location.href = 'calculators.html'; return; }
+    if(viewId === 'ai') { window.location.href = 'ai-chat'; return; }
+    if(viewId === 'library') { window.location.href = 'library'; return; }
+    if(viewId === 'calculators') { window.location.href = 'calculators'; return; }
 
     localStorage.setItem('last_active_view', viewId);
     document.querySelectorAll('.view').forEach(v => v.classList.add('d-none'));
@@ -588,28 +597,57 @@ function populateSelects() {
 
 // الإشعارات والرقابة
 async function loadNotifications(silent = false) {
+    // 1. جلب الإشعارات من الـ Database عبر API
     const res = await API.getNotifications(); 
+    
+    // إذا كانت هناك استجابة مصفوفة، نعينها لـ globalData
     globalData.notifications = Array.isArray(res) ? res : [];
+    
     const unread = globalData.notifications.filter(n => !n.is_read);
     const badge = document.getElementById('notification-badge');
     const list = document.getElementById('notifications-list');
 
+    // 2. تحديث الشارة الحمراء (Badge)
     if (unread.length > 0) {
-        if(badge) { badge.innerText = unread.length; badge.classList.remove('d-none'); }
-        if (silent) unread.forEach(n => { if(!notifiedIds.has(n.id)) { notifiedIds.add(n.id); triggerPushNotification(n.title, n.message); } });
-    } else { if(badge) badge.classList.add('d-none'); }
+        if(badge) { 
+            badge.innerText = unread.length; 
+            badge.classList.remove('d-none'); 
+        }
+        if (silent) {
+            unread.forEach(n => { 
+                if(!notifiedIds.has(n.id)) { 
+                    notifiedIds.add(n.id); 
+                    triggerPushNotification(n.title, n.message); 
+                } 
+            });
+        }
+    } else { 
+        if(badge) badge.classList.add('d-none'); 
+    }
 
+    // 3. تحديث قائمة الإشعارات في الـ Dropdown
     if(list) {
-        if (globalData.notifications.length === 0) list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
-        else list.innerHTML = globalData.notifications.slice(0, 15).map(n => `<li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}"><strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong><span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span><small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small></li>`).join('');
+        if (globalData.notifications.length === 0) {
+            list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
+        } else {
+            list.innerHTML = globalData.notifications.slice(0, 15).map(n => 
+                `<li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}">
+                    <strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong>
+                    <span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
+                    <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
+                </li>`
+            ).join('');
+        }
     }
 }
 
 async function markNotificationsRead() {
     const unread = globalData.notifications.filter(n => !n.is_read); if(unread.length === 0) return;
     const badge = document.getElementById('notification-badge'); if(badge) badge.classList.add('d-none');
-    for (let n of unread) await API.markNotificationAsRead(n.id);
-    await loadNotifications(true);
+    for (let n of unread) {
+        await API.markNotificationAsRead(n.id);
+    }
+    await loadNotifications(true); // جلب الإشعارات مجدداً لتحديث اللون إلى مقروء
 }
 
 async function requestPushPermission() {
@@ -617,17 +655,26 @@ async function requestPushPermission() {
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
         const reg = await navigator.serviceWorker.ready;
-        await API.subscribePush({ device_token: 'web_browser_device', device_type: 'web' });
-        showAlert('تم تفعيل إشعارات الهاتف بنجاح.', 'success');
+        // إرسال طلب اشتراك حقيقي لقاعدة البيانات بدلاً من الداتا الوهمية
+        await API.subscribePush({ 
+            device_token: 'web_browser_device', // يمكن تحسينها لاحقاً باستخدام PushManager
+            device_type: navigator.platform 
+        });
+        showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
         const btn = document.getElementById('install-pwa-btn'); if(btn) btn.classList.add('d-none');
-    } else showAlert('تم رفض الصلاحية للإشعارات المنبثقة.', 'danger');
+    } else {
+        showAlert('تم رفض الصلاحية للإشعارات المنبثقة.', 'danger');
+    }
 }
 
-function triggerPushNotification(title, body) { if (Notification.permission === "granted") navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body: body, icon: './icons/icon-192.png', badge: './icons/icon-192.png' })); }
+function triggerPushNotification(title, body) { 
+    if (Notification.permission === "granted") {
+        navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body: body, icon: './icons/icon-192.png', badge: './icons/icon-192.png', dir:'rtl' })); 
+    }
+}
 
 function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
-function logout() { AUTH.logout(); }
 
 function openModal(id) { 
     const el = document.getElementById(id); 
