@@ -60,14 +60,14 @@ function applyJordanTimeHack(isoString) {
     if (!isoString) return isoString;
     try {
         let d = new Date(isoString);
-        d.setHours(d.getHours() + 3); // إضافة 3 ساعات إجبارياً
+        d.setHours(d.getHours() + 3); 
         return d.toISOString();
     } catch(e) {
         return isoString;
     }
 }
 
-// دالة إرسال الإشعارات في الخلفية (Fire-and-Forget) لتسريع النظام
+// دالة إرسال الإشعارات في الخلفية (Fire-and-Forget)
 function sendNotificationAsync(endpoint, method, body) {
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     const headers = { 'Content-Type': 'application/json' };
@@ -80,6 +80,7 @@ function sendNotificationAsync(endpoint, method, body) {
     }).catch(e => console.warn('[Async Notification] فشل الإرسال بالخلفية:', e));
 }
 
+// 🛡️ تقوية المحرك لمعالجة أخطاء السيرفر (500) وعدم انهيار النظام
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false) {
     if (!navigator.onLine && !isPublic) {
         if (['POST', 'PATCH', 'DELETE'].includes(method)) {
@@ -91,9 +92,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
     }
 
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-    const headers = {
-        'Content-Type': 'application/json'
-    };
+    const headers = { 'Content-Type': 'application/json' };
     
     if (token && !isPublic) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -106,16 +105,24 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
         
         if (response.status === 401 && !isPublic) {
-            console.warn("⚠️ تم رفض الجلسة (مرفوضة أو منتهية). جاري تسجيل الخروج لحماية البيانات...");
+            console.warn("⚠️ تم رفض الجلسة. جاري تسجيل الخروج...");
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
             window.location.href = 'login';
             return null;
         }
 
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || data.message || 'خطأ غير معروف في السيرفر');
-        return data;
+        // التحقق مما إذا كان الرد JSON أم نص/HTML (مثل خطأ 502)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || data.message || `خطأ سيرفر: ${response.status}`);
+            return data;
+        } else {
+            const text = await response.text();
+            throw new Error(`استجابة غير متوقعة من السيرفر (الكود: ${response.status})`);
+        }
+
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
         
@@ -128,21 +135,19 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
     }
 }
 
+// دالة مساعدة لجلب بيانات المستخدم الحالي بسرعة
+const getCurrentUser = () => JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user')) || {};
+
 // =================================================================
 // 📚 مكتبة الموجهات (API Endpoints Library)
 // =================================================================
 const API = {
-    getFirmSettings: () => {
-        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-        return fetchAPI(`/api/firms?id=eq.${currentUser?.firm_id || ''}`);
-    },
-    updateFirmSettings: (data) => {
-        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-        return fetchAPI(`/api/firms?id=eq.${currentUser?.firm_id || ''}`, 'PATCH', data);
-    },
+    getFirmSettings: () => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`),
+    updateFirmSettings: (data) => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`, 'PATCH', data),
     getSubscriptions: () => fetchAPI('/api/subscriptions'),
 
-    getClients: () => fetchAPI('/api/clients'),
+    // 🔥 إضافة فلتر firm_id لضمان جلب البيانات الصحيحة وعدم رفض السيرفر
+    getClients: () => fetchAPI(getCurrentUser().firm_id ? `/api/clients?firm_id=eq.${getCurrentUser().firm_id}` : '/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
     deleteClient: (id) => fetchAPI(`/api/clients?id=eq.${id}`, 'DELETE'),
@@ -150,7 +155,8 @@ const API = {
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
     deletePOA: (id) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE'),
 
-    getCases: () => fetchAPI('/api/cases'),
+    // 🔥 إضافة فلتر firm_id
+    getCases: () => fetchAPI(getCurrentUser().firm_id ? `/api/cases?firm_id=eq.${getCurrentUser().firm_id}` : '/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
     deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
@@ -162,28 +168,27 @@ const API = {
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    // إرجاع المسارات لأسمائها الأصلية النظيفة مع السيرفر
-    getStaff: () => fetchAPI('/api/users'),
+    // 🔥 السر الأكبر لحل مشكلة اختفاء الموظفين: فلترة صحيحة باسم المكتب!
+    getStaff: () => fetchAPI(getCurrentUser().firm_id ? `/api/users?firm_id=eq.${getCurrentUser().firm_id}` : '/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
     deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     
-    getAppointments: () => fetchAPI('/api/appointments'),
+    // 🔥 فلتر firm_id للمواعيد
+    getAppointments: () => fetchAPI(getCurrentUser().firm_id ? `/api/appointments?firm_id=eq.${getCurrentUser().firm_id}` : '/api/appointments'),
     
-    // 🔥 التحديث الجذري: تطبيق التوقيت، وحل الإشعارات المرفوضة
     addAppointment: async (data) => {
-        // 1. تطبيق خدعة التوقيت (إضافة 3 ساعات)
         if (data.appt_date) {
             data.appt_date = applyJordanTimeHack(data.appt_date);
         }
 
         const res = await fetchAPI('/api/appointments', 'POST', data);
         
-        // 2. إرسال الإشعارات بالخلفية مع الحقول الإجبارية للسيرفر
         if(res && !res.error && data.assigned_to && Array.isArray(data.assigned_to)) {
-            const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-            const firmId = currentUser?.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
+            const user = getCurrentUser();
+            const firmId = user.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
             
+            // إرسال الإشعار لجدول الإشعارات بشكل دقيق
             data.assigned_to.forEach(userId => {
                 sendNotificationAsync('/api/notifications', 'POST', {
                     user_id: userId,
@@ -191,7 +196,8 @@ const API = {
                     message: `تم إسناد مهمة لك: (${data.title}). يرجى مراجعة الأجندة.`,
                     action_url: '/app',
                     firm_id: firmId,
-                    created_by: currentUser?.id || userId
+                    created_by: user.id || userId,
+                    is_read: false
                 });
             });
         }
@@ -215,20 +221,18 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    getNotifications: () => fetchAPI('/api/notifications'),
+    // 🔥 حل مشكلة الإشعارات: طلب إشعارات "هذا المستخدم فقط"
+    getNotifications: () => fetchAPI(getCurrentUser().id ? `/api/notifications?user_id=eq.${getCurrentUser().id}&order=created_at.desc` : '/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
     
-    // 🔥 التحديث الجذري: دمج بيانات البصمة مع النسخة الاحتياطية الكاملة للمستخدم
     biometricLogin: async (data) => {
         const res = await fetchAPI('/api/auth/biometric-login', 'POST', data, true);
         if (res && res.user && res.token) {
-            // استرجاع النسخة الكاملة للمستخدم (التي حفظناها عند الدخول بـ OTP)
             const cachedUserStr = localStorage.getItem('moakkil_full_user_backup');
             if (cachedUserStr) {
                 const cachedUser = JSON.parse(cachedUserStr);
-                // دمج بيانات البصمة مع بيانات الـ OTP الأصلية لضمان وجود firm_id و role
                 res.user = { ...cachedUser, ...res.user }; 
             }
         }
@@ -240,9 +244,9 @@ const API = {
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
-        const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
-        const firmId = currentUser?.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
-        const payload = { ...data, added_by: currentUser?.id || null, firm_id: firmId || null };
+        const currentUser = getCurrentUser();
+        const firmId = currentUser.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
+        const payload = { ...data, added_by: currentUser.id || null, firm_id: firmId || null };
         return fetchAPI('/api/files', 'POST', payload);
     },
     getDriveUploadUrl: () => fetchAPI('/api/drive/generate-upload-url'),

@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: إخفاء زر البصمة بعد التفعيل، وإصلاح إشعارات الجرس المباشرة، وتطبيق Optimistic UI لتسريع المواعيد.
+// التحديثات الأخيرة: نظام اصطياد الأخطاء الذكي، إخفاء البصمة، الجرس المباشر، وOptimistic UI.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -75,7 +75,6 @@ function applyRoleBasedUI() {
     const hasBiometric = localStorage.getItem('moakkil_biometric_id');
     const biometricBtn = document.querySelector('a[onclick="registerBiometricBtn()"]');
     if (hasBiometric && biometricBtn) {
-        // البحث عن عنصر li الذي يحتوي الزر لإخفائه بالكامل
         const liElement = biometricBtn.closest('li');
         if(liElement) liElement.style.display = 'none';
     }
@@ -192,19 +191,34 @@ function showVCard() {
     }
 }
 
+// 🔥 التحديث الجذري لمعالجة الأخطاء وعدم انهيار القوائم المنسدلة
 async function loadAllData() {
     try {
         const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([
             API.getClients(), API.getCases(), API.getStaff(), API.getAppointments()
         ]);
+        
+        // التقاط الأخطاء الصامتة من السيرفر وعرضها في الكونسول دون إيقاف النظام
+        if(rawClients?.error) console.warn("Clients Error:", rawClients.error);
+        if(rawCases?.error) console.warn("Cases Error:", rawCases.error);
+        if(staff?.error) console.warn("Staff Error:", staff.error);
+        if(rawAppointments?.error) console.warn("Appointments Error:", rawAppointments.error);
+
         globalData.staff = Array.isArray(staff) ? staff : [];
-        filterAndSetClients(rawClients);
-        filterAndSetCases(rawCases);
-        filterAndSetAppointments(rawAppointments);
-        renderDashboard(); renderCasesList(); renderClientsList();
+        filterAndSetClients(Array.isArray(rawClients) ? rawClients : []);
+        filterAndSetCases(Array.isArray(rawCases) ? rawCases : []);
+        filterAndSetAppointments(Array.isArray(rawAppointments) ? rawAppointments : []);
+        
+        renderDashboard(); 
+        renderCasesList(); 
+        renderClientsList();
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
-        renderStaffList(); populateSelects();
-    } catch(e) { showAlert('خطأ في الاتصال بالبيانات', 'danger'); }
+        renderStaffList(); 
+        populateSelects();
+    } catch(e) { 
+        console.error("Load Data Error:", e);
+        showAlert('خطأ في الاتصال ببعض البيانات', 'danger'); 
+    }
 }
 
 function filterAndSetCases(raw) { 
@@ -486,7 +500,7 @@ async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
     let lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
-    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id);
+    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id); // إضافة صانع المهمة آلياً إذا تركت فارغة
     
     const autoTasks = document.getElementById('case_auto_tasks') ? document.getElementById('case_auto_tasks').checked : false;
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
@@ -601,6 +615,23 @@ async function saveAppointment(event) {
     }
 }
 
+function populateSelects() {
+    const clSel = document.getElementById('case_client_id');
+    if(clSel) clSel.innerHTML = '<option value="">اختر الموكل...</option>' + globalData.clients.map(c => `<option value="${c.id}">${escapeHTML(c.full_name)}</option>`).join('');
+    const pCaseSel = document.getElementById('case_parent_id');
+    if(pCaseSel) pCaseSel.innerHTML = '<option value="">لا يوجد (قضية مستقلة)</option>' + globalData.cases.map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id || 'بدون رقم')}</option>`).join('');
+    const cLSelect = document.getElementById('case_assigned_lawyers');
+    if (cLSelect) {
+        cLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
+        if (typeof Choices !== 'undefined') { if (window.caseLawyerChoices) window.caseLawyerChoices.destroy(); window.caseLawyerChoices = new Choices(cLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر المحامين...' }); }
+    }
+    const aLSelect = document.getElementById('appt_assigned_to');
+    if (aLSelect) {
+        aLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
+        if (typeof Choices !== 'undefined') { if (window.apptLawyerChoices) window.apptLawyerChoices.destroy(); window.apptLawyerChoices = new Choices(aLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر الموظفين...' }); }
+    }
+}
+
 // 🔔 إصلاح إشعارات الجرس المباشرة وربطها بالداتا بيز
 async function loadNotifications(silent = false) {
     try {
@@ -609,7 +640,7 @@ async function loadNotifications(silent = false) {
 
         globalData.notifications = Array.isArray(res) ? res : [];
         
-        const unread = globalData.notifications.filter(n => !n.is_read);
+        const unread = globalData.notifications.filter(n => n.is_read === false);
         const badge = document.getElementById('notification-badge');
         const list = document.getElementById('notifications-list');
 
