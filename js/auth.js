@@ -31,6 +31,7 @@ const AUTH = {
         localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
         localStorage.removeItem(CONFIG.FIRM_KEY);
         // لا نحذف OFFLINE_QUEUE_KEY لتجنب ضياع بيانات المزامنة غير المكتملة
+        // لا نحذف moakkil_full_user_backup لكي تعمل البصمة عند العودة بصلاحيات كاملة
         window.location.replace('login');
     },
 
@@ -68,6 +69,10 @@ const AUTH = {
             // حفظ التوكن وبيانات المستخدم
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+            
+            // 🔥 النسخة الاحتياطية الكاملة: تستخدمها البصمة لاحقاً لضمان عدم ضياع الصلاحيات
+            localStorage.setItem('moakkil_full_user_backup', JSON.stringify(data.user));
+
             if (data.user.firm_id) {
                 localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
             }
@@ -154,6 +159,9 @@ const AUTH = {
             localStorage.setItem('moakkil_biometric_id', credential.id);
             localStorage.setItem('moakkil_saved_phone', user.phone);
             
+            // تحديث النسخة الاحتياطية لضمان تطابق الأمان
+            localStorage.setItem('moakkil_full_user_backup', JSON.stringify(user));
+            
             return { success: true, message: "تم تفعيل الدخول بالبصمة لهذا الجهاز بنجاح!" };
         } catch (error) {
             console.error("[Biometric Register Error]:", error);
@@ -196,12 +204,12 @@ const AUTH = {
                 phone: savedPhone
             };
 
-            // نستخدم API.biometricLogin التي أضفناها في api.js والتي تجلب الآن بيانات المستخدم الكاملة
+            // نستخدم API.biometricLogin التي تدمج بيانات السيرفر مع الذاكرة الاحتياطية
             const data = await API.biometricLogin(payload);
             
             if (data.error) throw new Error(data.error);
 
-            // 3. تخزين بيانات الجلسة بنجاح (بيانات كاملة ومطابقة لـ OTP)
+            // 3. تخزين بيانات الجلسة بنجاح (الآن تحتوي على firm_id و role كاملة)
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             if (data.user.firm_id) {

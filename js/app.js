@@ -76,7 +76,8 @@ function applyRoleBasedUI() {
     const biometricBtn = document.querySelector('a[onclick="registerBiometricBtn()"]');
     if (hasBiometric && biometricBtn) {
         // البحث عن عنصر li الذي يحتوي الزر لإخفائه بالكامل
-        biometricBtn.closest('li').style.display = 'none';
+        const liElement = biometricBtn.closest('li');
+        if(liElement) liElement.style.display = 'none';
     }
 }
 
@@ -481,12 +482,11 @@ async function saveClient(event) {
     }
 }
 
-// الدالة الأهم: إضافة قضية مع كافة الحقول الجديدة ودعم الاوفلاين
 async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
     let lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
-    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id); // إضافة صانع المهمة آلياً إذا تركت فارغة
+    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id);
     
     const autoTasks = document.getElementById('case_auto_tasks') ? document.getElementById('case_auto_tasks').checked : false;
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
@@ -555,7 +555,7 @@ async function saveCase(event) {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي';
 }
 
-// 🚀 تطبيق Optimistic UI لتسريع إضافة المواعيد
+// 🔥 تطبيق Optimistic UI لتسريع إضافة المواعيد (بدون انتظار السيرفر)
 async function saveAppointment(event) {
     event.preventDefault(); 
     const apptSelect = document.getElementById('appt_assigned_to');
@@ -567,55 +567,41 @@ async function saveAppointment(event) {
         title: document.getElementById('appt_title').value, 
         appt_date: rawDate, 
         type: document.getElementById('appt_type').value, 
-        status: 'مجدول', assigned_to: assignedTo 
+        status: 'مجدول', 
+        assigned_to: assignedTo 
     };
     
-    // إغلاق النافذة فوراً لسرعة الاستجابة للمستخدم
+    // 1. إغلاق النافذة فوراً لسرعة الاستجابة للمستخدم
     closeModal('apptModal');
     event.target.reset();
 
-    // إضافة الموعد وهمياً للشاشة (Optimistic Update)
+    // 2. إضافة الموعد وهمياً للشاشة (Optimistic Update)
     const tempId = 'temp_' + Date.now();
-    globalData.appointments.push({ ...data, id: tempId });
+    const tempAppt = { ...data, id: tempId, created_at: new Date().toISOString() };
+    globalData.appointments.push(tempAppt);
+    
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
     showAlert('تمت الجدولة بنجاح', 'success');
 
     try {
-        // إرسال الطلب للسيرفر في الخلفية
+        // 3. إرسال الطلب للسيرفر في الخلفية
         const res = await API.addAppointment({ ...data, appt_date: new Date(rawDate).toISOString() });
         if (res && !res.error) { 
-            // استبدال الموعد الوهمي بالموعد الحقيقي
+            // استبدال الموعد الوهمي بالموعد الحقيقي الصادر من السيرفر
             const idx = globalData.appointments.findIndex(a => a.id === tempId);
             if (idx !== -1) globalData.appointments[idx] = res;
         } else {
             throw new Error(res?.error || 'حدث خطأ أثناء الجدولة');
         }
     } catch(err) {
-        // التراجع في حال الفشل
+        // 4. التراجع في حال فشل السيرفر
         globalData.appointments = globalData.appointments.filter(a => a.id !== tempId);
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
         showAlert(err.message, 'danger');
     }
 }
 
-function populateSelects() {
-    const clSel = document.getElementById('case_client_id');
-    if(clSel) clSel.innerHTML = '<option value="">اختر الموكل...</option>' + globalData.clients.map(c => `<option value="${c.id}">${escapeHTML(c.full_name)}</option>`).join('');
-    const pCaseSel = document.getElementById('case_parent_id');
-    if(pCaseSel) pCaseSel.innerHTML = '<option value="">لا يوجد (قضية مستقلة)</option>' + globalData.cases.map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id || 'بدون رقم')}</option>`).join('');
-    const cLSelect = document.getElementById('case_assigned_lawyers');
-    if (cLSelect) {
-        cLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
-        if (typeof Choices !== 'undefined') { if (window.caseLawyerChoices) window.caseLawyerChoices.destroy(); window.caseLawyerChoices = new Choices(cLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر المحامين...' }); }
-    }
-    const aLSelect = document.getElementById('appt_assigned_to');
-    if (aLSelect) {
-        aLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
-        if (typeof Choices !== 'undefined') { if (window.apptLawyerChoices) window.apptLawyerChoices.destroy(); window.apptLawyerChoices = new Choices(aLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر الموظفين...' }); }
-    }
-}
-
-// 🔔 إصلاح إشعارات الجرس المباشرة
+// 🔔 إصلاح إشعارات الجرس المباشرة وربطها بالداتا بيز
 async function loadNotifications(silent = false) {
     try {
         const res = await API.getNotifications(); 
@@ -623,7 +609,7 @@ async function loadNotifications(silent = false) {
 
         globalData.notifications = Array.isArray(res) ? res : [];
         
-        const unread = globalData.notifications.filter(n => n.is_read === false);
+        const unread = globalData.notifications.filter(n => !n.is_read);
         const badge = document.getElementById('notification-badge');
         const list = document.getElementById('notifications-list');
 
@@ -649,15 +635,10 @@ async function loadNotifications(silent = false) {
                 list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
             } else {
                 list.innerHTML = globalData.notifications.slice(0, 10).map(n => `
-                    <li class="p-2 border-bottom ${n.is_read ? 'bg-white' : 'bg-light'}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
-                        <div class="d-flex align-items-start gap-2">
-                            <div class="mt-1"><i class="fas fa-circle text-primary" style="font-size: 8px; display: ${n.is_read ? 'none' : 'block'}"></i></div>
-                            <div>
-                                <h6 class="mb-0 small fw-bold text-navy">${escapeHTML(n.title)}</h6>
-                                <p class="mb-0 text-muted" style="font-size: 11px;">${escapeHTML(n.message)}</p>
-                                <small class="text-muted" style="font-size: 9px;">${new Date(n.created_at).toLocaleString('ar-JO')}</small>
-                            </div>
-                        </div>
+                    <li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
+                        <strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong>
+                        <span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
+                        <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
                     </li>
                 `).join('');
             }
@@ -667,10 +648,14 @@ async function loadNotifications(silent = false) {
     }
 }
 
+// دالة تفاعلية جديدة لتحويل الإشعار لمقروء عند النقر عليه
 async function handleNotificationClick(id, url) {
     await API.markNotificationAsRead(id);
-    if (url) window.location.href = url;
-    else loadNotifications();
+    if (url && url !== 'undefined' && url !== 'null') {
+        window.location.href = url;
+    } else {
+        loadNotifications(); // إعادة تحميل القائمة لتحديث الألوان
+    }
 }
 
 async function markNotificationsRead() {

@@ -55,17 +55,14 @@ window.addEventListener('online', processOfflineQueue);
 // 🚀 المحرك الرئيسي للاتصال (Main Fetch Wrapper)
 // =================================================================
 
-// 🕒 دالة التوقيت الذكية: تحويل التاريخ لنص صريح بتوقيت الأردن (UTC+3) لحل مشكلة تيليغرام
-function formatJordanTime(isoString) {
-    if(!isoString) return '';
+// 🕒 خدعة التوقيت: إضافة 3 ساعات للتوقيت العالمي لكي يقرأه بوت تيليغرام كتوقيت أردني
+function applyJordanTimeHack(isoString) {
+    if (!isoString) return isoString;
     try {
-        const date = new Date(isoString);
-        return date.toLocaleString('ar-JO', {
-            timeZone: 'Asia/Amman',
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-    } catch (e) {
+        let d = new Date(isoString);
+        d.setHours(d.getHours() + 3); // إضافة 3 ساعات إجبارياً
+        return d.toISOString();
+    } catch(e) {
         return isoString;
     }
 }
@@ -165,34 +162,44 @@ const API = {
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    getStaff: () => fetchAPI('/api/users'),
-    addStaff: (data) => fetchAPI('/api/users', 'POST', data),
-    updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
-    deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
-    getAppointments: () => fetchAPI('/api/appointments'),
+    // ملاحظة: جدول المستخدمين حسب الداتا بيز هو hub_users
+    getStaff: () => fetchAPI('/api/hub_users'),
+    addStaff: (data) => fetchAPI('/api/hub_users', 'POST', data),
+    updateStaff: (id, data) => fetchAPI(`/api/hub_users?id=eq.${id}`, 'PATCH', data),
+    deleteStaff: (id) => fetchAPI(`/api/hub_users?id=eq.${id}`, 'DELETE'),
     
-    // 🔥 تم الإصلاح الجذري: إرسال المواعيد بالخلفية وحل مشكلة الإشعارات والتوقيت
+    getAppointments: () => fetchAPI('/api/mo_appointments'), // اسم الجدول حسب الـ Schema
+    
+    // 🔥 التحديث الجذري: تطبيق التوقيت، وحل الإشعارات المرفوضة
     addAppointment: async (data) => {
-        const res = await fetchAPI('/api/appointments', 'POST', data);
+        // 1. تطبيق خدعة التوقيت (إضافة 3 ساعات)
+        if (data.appt_date) {
+            data.appt_date = applyJordanTimeHack(data.appt_date);
+        }
+
+        const res = await fetchAPI('/api/mo_appointments', 'POST', data);
+        
+        // 2. إرسال الإشعارات بالخلفية للجدول fd_notifications مع الحقول الإجبارية
         if(res && !res.error && data.assigned_to && Array.isArray(data.assigned_to)) {
-            // تحويل التاريخ فوراً إلى توقيت الأردن كنص
-            const localTimeStr = data.appt_date ? formatJordanTime(data.appt_date) : 'غير محدد';
+            const currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
+            const firmId = currentUser?.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
             
-            // إرسال إشعار منفصل لكل محامي باستخدام user_id لتتطابق مع قاعدة البيانات
             data.assigned_to.forEach(userId => {
-                sendNotificationAsync('/api/notifications', 'POST', {
+                sendNotificationAsync('/api/fd_notifications', 'POST', {
                     user_id: userId,
                     title: 'مهمة / موعد جديد',
-                    message: `تم إسناد مهمة لك: (${data.title}) بتاريخ ${localTimeStr}. يرجى مراجعة الأجندة.`,
-                    action_url: '/app'
+                    message: `تم إسناد مهمة لك: (${data.title}). يرجى مراجعة الأجندة.`,
+                    action_url: '/app',
+                    firm_id: firmId,
+                    created_by: currentUser?.id || userId
                 });
             });
         }
         return res;
     },
     
-    updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
-    deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
+    updateAppointment: (id, data) => fetchAPI(`/api/mo_appointments?id=eq.${id}`, 'PATCH', data),
+    deleteAppointment: (id) => fetchAPI(`/api/mo_appointments?id=eq.${id}`, 'DELETE'),
 
     getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=eq.${caseId}`),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
@@ -208,27 +215,27 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    getNotifications: () => fetchAPI('/api/notifications'),
-    markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
+    getNotifications: () => fetchAPI('/api/fd_notifications'), // اسم الجدول حسب الـ Schema
+    markNotificationAsRead: (id) => fetchAPI(`/api/fd_notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
     
-    // 🔥 تم الإصلاح الجذري: ضمان تحميل بيانات المستخدم كاملة عند الدخول بالبصمة
+    // 🔥 التحديث الجذري: دمج بيانات البصمة مع النسخة الاحتياطية الكاملة للمستخدم
     biometricLogin: async (data) => {
         const res = await fetchAPI('/api/auth/biometric-login', 'POST', data, true);
         if (res && res.user && res.token) {
-            // حفظ التوكن مؤقتاً لكي تعمل دالة fetchAPI وتجلب البيانات المحمية
-            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', res.token);
-            
-            const userDetails = await fetchAPI(`/api/users?id=eq.${res.user.id}`);
-            if(userDetails && Array.isArray(userDetails) && userDetails.length > 0) {
-                 res.user = { ...res.user, ...userDetails[0] }; 
+            // استرجاع النسخة الكاملة للمستخدم (التي حفظناها عند الدخول بـ OTP)
+            const cachedUserStr = localStorage.getItem('moakkil_full_user_backup');
+            if (cachedUserStr) {
+                const cachedUser = JSON.parse(cachedUserStr);
+                // دمج بيانات البصمة مع بيانات الـ OTP الأصلية لضمان وجود firm_id و role
+                res.user = { ...cachedUser, ...res.user }; 
             }
         }
         return res;
     },
     
-    getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
+    getHistory: (entityId = null) => fetchAPI(entityId ? `/api/fd_history?entity_id=eq.${entityId}` : '/api/fd_history'), // اسم الجدول حسب الـ Schema
 
     getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
