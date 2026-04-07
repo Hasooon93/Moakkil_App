@@ -160,21 +160,22 @@ const API = {
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
     deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
-    getUpdates: (caseId) => fetchAPI(`/api/updates?case_id=eq.${caseId}`),
+    
+    // 🧠 دوال ذكية (Polymorphic) تقبل: حالة فارغة، أو فلتر بحث مخصص، أو case_id محدد
+    getUpdates: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/updates?${param}` : `/api/updates?case_id=eq.${param}`) : '/api/updates'),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
     deleteUpdate: (id) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE'),
-    getHearings: (caseId) => fetchAPI(caseId ? `/api/hearings?case_id=eq.${caseId}` : '/api/hearings'),
+    
+    getHearings: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/hearings?${param}` : `/api/hearings?case_id=eq.${param}`) : '/api/hearings'),
     addHearing: (data) => fetchAPI('/api/hearings', 'POST', data),
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    // 🔥 السر الأكبر لحل مشكلة اختفاء الموظفين: فلترة صحيحة باسم المكتب!
     getStaff: () => fetchAPI(getCurrentUser().firm_id ? `/api/users?firm_id=eq.${getCurrentUser().firm_id}` : '/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
     deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     
-    // 🔥 فلتر firm_id للمواعيد
     getAppointments: () => fetchAPI(getCurrentUser().firm_id ? `/api/appointments?firm_id=eq.${getCurrentUser().firm_id}` : '/api/appointments'),
     
     addAppointment: async (data) => {
@@ -207,10 +208,12 @@ const API = {
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
-    getInstallments: (caseId) => fetchAPI(`/api/installments?case_id=eq.${caseId}`),
+    // 🧠 دوال ذكية (Polymorphic) للتعامل مع التقارير والمكتبة وتفاصيل القضية معاً
+    getInstallments: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/installments?${param}` : `/api/installments?case_id=eq.${param}`) : '/api/installments'),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
     deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
-    getExpenses: (caseId) => fetchAPI(caseId ? `/api/expenses?case_id=eq.${caseId}` : '/api/expenses'),
+    
+    getExpenses: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/expenses?${param}` : `/api/expenses?case_id=eq.${param}`) : '/api/expenses'),
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
 
@@ -241,7 +244,8 @@ const API = {
     
     getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
 
-    getFiles: (caseId) => fetchAPI(caseId ? `/api/files?case_id=eq.${caseId}` : '/api/files'),
+    // 🧠 دالة ذكية للملفات تقبل فلاتر معقدة مثل: is_template=eq.true
+    getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
     addFileRecord: (data) => {
         const currentUser = getCurrentUser();
