@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: نظام اصطياد الأخطاء الذكي، إخفاء البصمة، الجرس المباشر، وOptimistic UI.
+// التحديثات الأخيرة: نظام اصطياد الأخطاء الذكي، إخفاء البصمة، الجرس المباشر، Optimistic UI، وإصلاح استخراج الهوية الذكي (OCR).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -409,18 +409,50 @@ async function cancelAppt(id) {
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
 
-// الذكاء الاصطناعي والصوت والبحث
+// 🤖 إصلاح مشكلة الفشل الصامت في قراءة الهويات (OCR)
 async function processIdImage(event) {
-    const file = event.target.files[0]; if (!file) return;
+    const file = event.target.files[0]; 
+    if (!file) return;
+    
     showAlert('جاري قراءة الهوية سحابياً...', 'info');
+    
     const reader = new FileReader();
     reader.onload = async (e) => {
-        const data = await API.readOCR(e.target.result);
-        if (data && !data.error) {
-            if (data.full_name) document.getElementById('client_full_name').value = data.full_name;
-            if (data.national_id) document.getElementById('client_national_id').value = data.national_id;
-            showAlert('تم استخراج البيانات الأساسية بنجاح', 'success');
-        } else showAlert('فشل في تحليل الصورة', 'danger');
+        // 1. تنظيف الـ Base64 من الـ Prefix لضمان قراءته من الذكاء الاصطناعي بشكل سليم
+        const pureBase64 = e.target.result.split(',')[1];
+        
+        try {
+            const data = await API.readOCR(pureBase64);
+            
+            if (data && !data.error) {
+                // 2. صيد البيانات الذكي من أي هيكل JSON يعود به السيرفر
+                const extractedName = data.full_name || (data.data && data.data.full_name) || (data.extracted_json && data.extracted_json.full_name);
+                const extractedId = data.national_id || (data.data && data.data.national_id) || (data.extracted_json && data.extracted_json.national_id);
+                
+                let successCount = 0;
+                
+                if (extractedName) {
+                    document.getElementById('client_full_name').value = extractedName;
+                    successCount++;
+                }
+                
+                if (extractedId) {
+                    document.getElementById('client_national_id').value = extractedId;
+                    successCount++;
+                }
+                
+                // 3. التنبيه المنطقي
+                if (successCount > 0) {
+                    showAlert('تم استخراج البيانات الأساسية بنجاح', 'success');
+                } else {
+                    showAlert('تمت القراءة ولكن لم نتمكن من التقاط بيانات واضحة، يرجى إعادة التصوير بإضاءة جيدة.', 'warning');
+                }
+            } else {
+                showAlert('فشل في تحليل الصورة من السيرفر', 'danger');
+            }
+        } catch (err) {
+            showAlert('خطأ في الاتصال أثناء القراءة', 'danger');
+        }
     };
     reader.readAsDataURL(file);
 }
