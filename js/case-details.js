@@ -13,7 +13,7 @@ const escapeHTML = (str) => {
 
 window.onload = async () => {
     applyFirmSettings(); 
-    if (!currentCaseId) { window.location.href = 'app.html'; return; }
+    if (!currentCaseId) { window.location.href = 'app'; return; }
     await loadCaseFullDetails();
 };
 
@@ -33,7 +33,7 @@ window.manualSync = async () => {
     if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i>'; }
 };
 
-function goBack() { window.location.href = 'app.html'; }
+function goBack() { window.location.href = 'app'; }
 
 // جلب الداتا الرئيسية وربطها
 async function loadCaseFullDetails() {
@@ -53,7 +53,7 @@ async function loadCaseFullDetails() {
         window.firmClients = Array.isArray(clientsReq) ? clientsReq : [];
         
         caseObj = window.firmCases.find(c => c.id == currentCaseId);
-        if (!caseObj) { window.location.href = 'app.html'; return; }
+        if (!caseObj) { window.location.href = 'app'; return; }
 
         renderHeaderAndSummary();
         renderTimeline(Array.isArray(updatesReq) ? updatesReq : []);
