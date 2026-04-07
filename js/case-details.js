@@ -1,5 +1,6 @@
 // js/case-details.js - محرك تفاصيل القضية الكامل (النسخة النهائية المربوطة بالواجهة وقاعدة البيانات)
 // التحديثات التقنية: دعم تنبيهات الـ Offline Mode لحفظ الدفعات والمصاريف والتحديثات محلياً عند انقطاع الإنترنت.
+// التحديث الأخير: تطبيق Optimistic UI لتسريع الاستجابة وضبط التوقيت (Jordan Time UTC+3).
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -10,6 +11,18 @@ const escapeHTML = (str) => {
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
 };
+
+// 🕒 خدعة التوقيت لضبط التواريخ مع توقيت الأردن (UTC+3)
+function applyJordanTimeHackLocal(dateString) {
+    if (!dateString) return dateString;
+    try {
+        let d = new Date(dateString);
+        d.setHours(d.getHours() + 3);
+        return d.toISOString();
+    } catch(e) {
+        return dateString;
+    }
+}
 
 window.onload = async () => {
     applyFirmSettings(); 
@@ -365,56 +378,79 @@ async function previewAIExtraction() {
     if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> استخلاص البيانات (الوقائع والأسانيد)'; }
 }
 
+// 🚀 تطبيق Optimistic UI وتعديل التوقيت (UTC+3) للتحديثات
 async function saveUpdate(event) {
     event.preventDefault();
     const btn = document.getElementById('btn_save_update');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
-
     const details = document.getElementById('upd_details').value;
-    let finalAttachmentUrl = null;
     const fileInput = document.getElementById('upd_attachment_input');
+    const hasFile = fileInput && fileInput.files.length > 0;
     
-    if (fileInput && fileInput.files.length > 0) {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> الرفع السحابي...';
+    let finalAttachmentUrl = null;
+
+    // إذا كان هناك ملف، نعلق الواجهة حتى يتم الرفع لـ Google Drive
+    if (hasFile) {
+        if (!navigator.onLine) {
+            showAlert('لا يمكن رفع الملفات أثناء انقطاع الإنترنت.', 'warning');
+            return;
+        }
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> الرفع السحابي...';
         try {
             const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
             finalAttachmentUrl = driveRes.url;
         } catch(e) { 
-            showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; return; 
+            showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; return; 
         }
+    } else {
+        // إذا لم يكن هناك ملف -> Optimistic UI! إغلاق فوري
+        closeModal('updateModal');
+        showAlert('تمت إضافة الواقعة', 'success');
     }
 
     const extractedStr = document.getElementById('upd_extracted_json').value;
     const extractedData = extractedStr ? JSON.parse(extractedStr) : {};
 
+    const rawHearing = document.getElementById('upd_hearing_date').value || null;
+    const rawNextHearing = document.getElementById('upd_next_hearing').value || null;
+
     const data = {
         case_id: currentCaseId, 
         update_title: document.getElementById('upd_title').value, 
         update_details: details,
-        hearing_date: document.getElementById('upd_hearing_date').value || null, 
-        next_hearing_date: document.getElementById('upd_next_hearing').value || null,
+        hearing_date: rawHearing ? applyJordanTimeHackLocal(rawHearing) : null, 
+        next_hearing_date: rawNextHearing ? applyJordanTimeHackLocal(rawNextHearing) : null,
         is_visible_to_client: document.getElementById('upd_visible').checked,
         ai_extracted_entities: extractedData,
         attachment_url: finalAttachmentUrl
     };
     
-    const res = await API.addUpdate(data);
-    if(res && !res.error) { 
-        if (extractedData.lawsuit_facts || extractedData.legal_basis) {
-            await API.updateCase(currentCaseId, { 
-                ai_extracted_entities: extractedData,
-                lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, 
-                legal_basis: extractedData.legal_basis || caseObj.legal_basis,
-                ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100)
-            });
+    try {
+        const res = await API.addUpdate(data);
+        if(res && !res.error) { 
+            if (extractedData.lawsuit_facts || extractedData.legal_basis) {
+                await API.updateCase(currentCaseId, { 
+                    ai_extracted_entities: extractedData,
+                    lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, 
+                    legal_basis: extractedData.legal_basis || caseObj.legal_basis,
+                    ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100)
+                });
+            }
+            if (hasFile) {
+                closeModal('updateModal');
+                showAlert(res.offline ? 'تم حفظ الواقعة محلياً' : 'تمت إضافة الواقعة', res.offline ? 'warning' : 'success'); 
+            }
+            document.getElementById('updateForm').reset(); 
+            await loadCaseFullDetails(); 
+        } else {
+            throw new Error(res?.error || 'حدث خطأ أثناء الإضافة');
         }
-        closeModal('updateModal'); document.getElementById('updateForm').reset(); 
-        showAlert(res.offline ? 'أنت غير متصل، تم حفظ الواقعة في الطابور المحلي' : 'تمت إضافة الواقعة', res.offline ? 'warning' : 'success'); 
-        await loadCaseFullDetails(); 
-    } else {
-        showAlert(res?.error || 'حدث خطأ أثناء الإضافة', 'error');
+    } catch(err) {
+        showAlert(err.message, 'error');
+    } finally {
+        if (hasFile) {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث';
+        }
     }
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث';
 }
 
 function renderTimeline(updates) {
@@ -545,29 +581,47 @@ function renderFiles(files) {
     `}).join('');
 }
 
+// 🚀 تطبيق Optimistic UI وتعديل التوقيت للدفعات
 async function savePayment(event) { 
     event.preventDefault(); 
-    const data = { case_id: currentCaseId, amount: Number(document.getElementById('pay_amount').value), due_date: document.getElementById('pay_due_date').value, status: document.getElementById('pay_status').value }; 
-    const res = await API.addInstallment(data);
-    if(res && !res.error) { 
-        closeModal('paymentModal'); document.getElementById('paymentForm').reset(); 
-        showAlert(res.offline ? 'أنت غير متصل. تم الحفظ في الطابور المحلي' : 'تم تسجيل الدفعة', res.offline ? 'warning' : 'success'); 
-        await loadCaseFullDetails(); 
-    } else {
-        showAlert(res?.error || 'حدث خطأ', 'error');
+    const rawDate = document.getElementById('pay_due_date').value;
+    const data = { case_id: currentCaseId, amount: Number(document.getElementById('pay_amount').value), due_date: applyJordanTimeHackLocal(rawDate), status: document.getElementById('pay_status').value }; 
+    
+    closeModal('paymentModal'); 
+    document.getElementById('paymentForm').reset(); 
+    showAlert('تم تسجيل الدفعة', 'success'); 
+
+    try {
+        const res = await API.addInstallment(data);
+        if(res && !res.error) { 
+            await loadCaseFullDetails(); 
+        } else {
+            throw new Error(res?.error || 'حدث خطأ');
+        }
+    } catch(e) {
+        showAlert(e.message, 'error');
     }
 }
 
+// 🚀 تطبيق Optimistic UI وتعديل التوقيت للمصروفات
 async function saveExpense(event) { 
     event.preventDefault(); 
-    const data = { case_id: currentCaseId, amount: Number(document.getElementById('exp_amount').value), description: document.getElementById('exp_desc').value, expense_date: document.getElementById('exp_date').value, receipt_url: document.getElementById('exp_receipt_url').value || null }; 
-    const res = await API.addExpense(data);
-    if(res && !res.error) { 
-        closeModal('expenseModal'); document.getElementById('expenseForm').reset(); 
-        showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم تسجيل المصروف', res.offline ? 'warning' : 'success'); 
-        await loadCaseFullDetails(); 
-    } else {
-        showAlert(res?.error || 'حدث خطأ', 'error');
+    const rawDate = document.getElementById('exp_date').value;
+    const data = { case_id: currentCaseId, amount: Number(document.getElementById('exp_amount').value), description: document.getElementById('exp_desc').value, expense_date: applyJordanTimeHackLocal(rawDate), receipt_url: document.getElementById('exp_receipt_url').value || null }; 
+    
+    closeModal('expenseModal'); 
+    document.getElementById('expenseForm').reset(); 
+    showAlert('تم تسجيل المصروف', 'success'); 
+
+    try {
+        const res = await API.addExpense(data);
+        if(res && !res.error) { 
+            await loadCaseFullDetails(); 
+        } else {
+            throw new Error(res?.error || 'حدث خطأ');
+        }
+    } catch(e) {
+        showAlert(e.message, 'error');
     }
 }
 
