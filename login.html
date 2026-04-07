@@ -240,8 +240,16 @@
             } catch (e) { console.error("فشل في تحميل إعدادات الألوان:", e); }
 
             // ب) التحقق من الجلسة النشطة (الطرد للداخل)
-            if (localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token')) {
-                window.location.replace('app');
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+            const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+            if (token && userStr) {
+                const user = JSON.parse(userStr);
+                const userRole = user.role || user.user_type;
+                if (userRole === 'super_admin' || userRole === 'superadmin' || user.is_setup_required) {
+                    window.location.replace('register');
+                } else {
+                    window.location.replace('app');
+                }
             }
 
             // ج) التحقق من وجود بصمة مسجلة لهذا الجهاز لإظهار الزر
@@ -301,16 +309,15 @@
             btnVerifyOtp.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحقق...';
 
             try {
+                // الدالة verifyOTP داخل auth.js ستقوم بعملية التوجيه الصحيحة
                 await AUTH.verifyOTP(currentPhone, otp);
                 
                 Swal.fire({
                     icon: 'success',
                     title: 'مرحباً بك!',
-                    text: 'تم تسجيل الدخول بنجاح، جاري التوجيه...',
+                    text: 'تم التحقق بنجاح، جاري التوجيه...',
                     showConfirmButton: false,
                     timer: 1500
-                }).then(() => {
-                    window.location.replace('app');
                 });
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'الرمز غير صحيح', text: err.message, confirmButtonColor: 'var(--navy)' });
@@ -326,15 +333,15 @@
             btnBiometric.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري المطابقة...';
 
             try {
+                // الدالة loginBiometric داخل auth.js ستقوم بعملية التوجيه الصحيحة
                 await AUTH.loginBiometric();
+                
                 Swal.fire({
                     icon: 'success',
                     title: 'تم التحقق!',
-                    text: 'جاري الدخول للنظام...',
+                    text: 'جاري التوجيه...',
                     showConfirmButton: false,
                     timer: 1500
-                }).then(() => {
-                    window.location.replace('app');
                 });
             } catch (err) {
                 Swal.fire({ icon: 'error', title: 'فشل البصمة', text: err.message, confirmButtonColor: 'var(--navy)' });

@@ -1,5 +1,5 @@
 // js/auth.js - نظام المصادقة وإدارة الهوية (V3.0 Enterprise)
-// الدعم: OTP عبر تيليغرام، الدخول بالبصمة (WebAuthn / FaceID / TouchID)، الجلسات المحمية (JWT).
+// الدعم: OTP عبر تيليغرام، الدخول بالبصمة (WebAuthn / FaceID / TouchID)، الجلسات المحمية (JWT)، والتوجيه الذكي.
 
 const AUTH = {
     // =================================================================
@@ -70,6 +70,14 @@ const AUTH = {
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             if (data.user.firm_id) {
                 localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
+            }
+
+            // التوجيه الذكي بعد تسجيل الدخول (Routing)
+            const userRole = data.user.role || data.user.user_type;
+            if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
+                window.location.href = 'register'; 
+            } else {
+                window.location.href = 'app';
             }
 
             return data;
@@ -198,6 +206,14 @@ const AUTH = {
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             if (data.user.firm_id) {
                 localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
+            }
+
+            // التوجيه الذكي بعد الدخول بالبصمة
+            const userRole = data.user.role || data.user.user_type;
+            if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
+                window.location.href = 'register'; 
+            } else {
+                window.location.href = 'app';
             }
 
             return data;
