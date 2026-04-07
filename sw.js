@@ -52,6 +52,11 @@ self.addEventListener('activate', (event) => {
 // 3. الاعتراض (Fetch) - استراتيجية الشبكة أولاً مع التخزين المؤقت
 // =================================================================
 self.addEventListener('fetch', (event) => {
+    // تخطي الطلبات التي لا تدعمها تقنية الكاش (مثل إضافات المتصفح chrome-extension://) لتجنب أخطاء المتصفح
+    if (!event.request.url.startsWith('http')) {
+        return;
+    }
+
     const requestUrl = new URL(event.request.url);
 
     // أ) لا نتدخل في طلبات الـ API (نتعامل معها في api.js عبر طابور الاوفلاين)
@@ -67,7 +72,10 @@ self.addEventListener('fetch', (event) => {
                 if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
                     const responseToCache = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
+                        // تأكيد إضافي للأمان قبل التخزين
+                        if (event.request.url.startsWith('http')) {
+                            cache.put(event.request, responseToCache);
+                        }
                     });
                 }
                 return networkResponse;
