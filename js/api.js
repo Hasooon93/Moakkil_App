@@ -187,6 +187,46 @@ const API = {
 
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
+    
+    // 🧠 دالة الاستخراج الذكي الشاملة (تتحمل أخطاء تنسيق الـ AI)
+    extractLegalData: async (text) => {
+        try {
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+            const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '[https://curly-pond-9975.hassan-alsakka.workers.dev](https://curly-pond-9975.hassan-alsakka.workers.dev)';
+            
+            const res = await fetch(`${baseUrl}/api/ai/process`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ type: 'data_extractor', content: text })
+            });
+
+            if (!res.ok) throw new Error('فشل الاتصال بالذكاء الاصطناعي');
+            
+            const data = await res.json();
+            
+            // محاولة صيد البيانات مهما كان شكلها (Fallbacks)
+            let extracted = data.extracted_json || data;
+            
+            // في حال أعاد السيرفر نصاً وليس Object (بسبب علامات Markdown)
+            if (typeof extracted === 'string') {
+                try {
+                    const cleanString = extracted.replace(/```json/g, '').replace(/```/g, '').trim();
+                    extracted = JSON.parse(cleanString);
+                } catch (e) {
+                    console.warn("فشل في تحويل النص إلى JSON", e);
+                    extracted = {};
+                }
+            }
+            return extracted;
+        } catch (error) {
+            console.error('AI Extraction Error:', error);
+            return { error: error.message };
+        }
+    },
+
     readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base_64: imageBase64 }),
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
@@ -248,6 +288,6 @@ const API = {
 
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
     getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
-    verifyReceipt: (id) => fetchAPI(`/api/public/verify-receipt?id=${id}`, 'GET', null, true),
-    verifyCV: (id) => fetchAPI(`/api/public/verify-cv?id=${id}`, 'GET', null, true)
+    verifyReceipt: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-receipt?id=${id}` : '/api/public/verify-receipt', 'GET', null, true),
+    verifyCV: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-cv?id=${id}` : '/api/public/verify-cv', 'GET', null, true)
 };

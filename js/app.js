@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: إظهار ملاحظات الإنجاز في بطاقات المواعيد، تفعيل Web Push Native، الجرس المباشر، سجل الرقابة، Optimistic UI، ومعالجة التواريخ.
+// التحديثات الأخيرة: إصلاح المايكروفون، الاستخراج الذكي AI، إصلاح VCard ID، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -223,13 +223,16 @@ function switchView(viewId) {
     window.scrollTo(0, 0);
 }
 
+// 🛡️ إصلاح مشكلة undefined في الـ VCard ID
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode');
     qrContainer.innerHTML = ''; 
     const pathArray = window.location.pathname.split('/');
     pathArray.pop(); 
     const basePath = pathArray.join('/');
-    const cvLink = `${window.location.origin + basePath}/verify.html?type=cv&id=${currentUser.id}`;
+    
+    const userId = currentUser.id || currentUser.uid; // الإصلاح هنا
+    const cvLink = `${window.location.origin + basePath}/verify.html?type=cv&id=${userId}`;
     
     try {
         new QRCode(qrContainer, { text: cvLink, width: 200, height: 200, colorDark: "#0a192f", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.L });
@@ -434,7 +437,6 @@ function renderAgendaList() {
             actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
         }
         
-        // 🔥 إظهار ملاحظات الإنجاز في بطاقة الموعد إذا وجدت
         let notesHtml = '';
         if (a.notes && a.notes.trim() !== '') {
             notesHtml = `<div class="mt-2 p-2 bg-light border rounded small text-muted"><i class="fas fa-info-circle text-info me-1"></i> <b>ملاحظات الإنجاز:</b> <span style="white-space: pre-wrap;">${escapeHTML(a.notes)}</span></div>`;
@@ -459,7 +461,6 @@ function renderKanbanBoard() {
             <div class="d-flex flex-column gap-2" style="max-height: 55vh; overflow-y: auto;">
             ${globalData.appointments.filter(col.f).sort((a,b) => new Date(b.appt_date) - new Date(a.appt_date)).map(a => {
                 
-                // إظهار سطر صغير للملاحظات في وضع الـ Kanban
                 let notesSnippet = (a.notes && a.notes.trim() !== '') ? `<div class="mt-2 pt-2 border-top border-light text-muted small"><i class="fas fa-info-circle text-info me-1"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${escapeHTML(a.notes)}</span></div>` : '';
 
                 return `<div class="card-custom appt-card p-2 shadow-sm border border-light bg-light" style="font-size:13px; border-radius:10px;">
@@ -509,7 +510,6 @@ async function saveApptOutcome(e, id) {
 
     const notes = document.getElementById('outcome_text') ? document.getElementById('outcome_text').value : '';
     
-    // 🔥 تحديث الملاحظة والحالة محلياً لتظهر فوراً على الشاشة
     const idx = globalData.appointments.findIndex(a => a.id === apptId);
     if(idx !== -1) {
         globalData.appointments[idx].status = 'تم';
@@ -609,11 +609,97 @@ async function processIdImage(event) {
     reader.readAsDataURL(file);
 }
 
+// 🛡️ إصلاح الإملاء الصوتي وتنبيهات المايكروفون
 function startDictation(targetId) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return showAlert('المتصفح لا يدعم الإملاء', 'warning');
-    const rec = new SpeechRecognition(); rec.lang = 'ar-JO'; rec.start(); showAlert('تحدث الآن...', 'info');
-    rec.onresult = (e) => { document.getElementById(targetId).value += e.results[0][0].transcript; };
+    if (!SpeechRecognition) {
+        return showAlert('متصفحك لا يدعم الإملاء الصوتي. يرجى استخدام متصفح Chrome الحديث.', 'warning');
+    }
+    try {
+        const rec = new SpeechRecognition();
+        rec.lang = 'ar-JO';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+
+        rec.onstart = () => showAlert('تحدث الآن... الميكروفون يستمع', 'info');
+        rec.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            const input = document.getElementById(targetId);
+            if (input) input.value += (input.value ? ' ' : '') + text;
+            showAlert('تم التقاط الصوت', 'success');
+        };
+        rec.onerror = (e) => {
+            console.error('Speech error:', e);
+            showAlert('فشل التقاط الصوت. تأكد من السماح للمتصفح باستخدام الميكروفون.', 'danger');
+        };
+        rec.start();
+    } catch (e) {
+        showAlert('حدث خطأ. يرجى السماح للمتصفح باستخدام الميكروفون.', 'danger');
+    }
+}
+
+// 🤖 دالة الاستخراج الذكي لبيانات القضية من النص الحر
+async function runSmartExtraction() {
+    const rawText = document.getElementById('case_lawsuit_text').value;
+    const btn = document.getElementById('btn-extract-ai');
+    
+    if (!rawText || rawText.trim().length < 20) {
+        showAlert('يرجى كتابة نص اللائحة أولاً (20 حرف على الأقل)', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحليل...';
+    showAlert('يتم الآن تحليل اللائحة وقراءة المعطيات...', 'info');
+
+    try {
+        const extractedData = await API.extractLegalData(rawText);
+        
+        if (extractedData && !extractedData.error) {
+            // 🎯 خوارزمية ذكية لتوزيع البيانات (Fallbacks) بالبحث عن المفاتيح العربية والإنجليزية
+            
+            const opponent = extractedData.opponent_name || extractedData["الخصم"] || extractedData["اسم الخصم"] || extractedData["المدعى عليه"];
+            if (opponent && document.getElementById('case_opponent_name')) {
+                document.getElementById('case_opponent_name').value = opponent;
+            }
+
+            const amount = extractedData.claim_amount || extractedData["المطالبة"] || extractedData["قيمة المطالبة"] || extractedData["المبلغ"];
+            if (amount && document.getElementById('case_claim_amount')) {
+                const numbersOnly = String(amount).replace(/[^0-9.]/g, '');
+                if (numbersOnly) document.getElementById('case_claim_amount').value = numbersOnly;
+            }
+
+            const legalBasis = extractedData.legal_basis || extractedData["الأسانيد"] || extractedData["السند القانوني"] || extractedData["الأساس القانوني"];
+            if (legalBasis && document.getElementById('case_legal_basis')) {
+                document.getElementById('case_legal_basis').value = Array.isArray(legalBasis) ? legalBasis.join('\n') : legalBasis;
+            }
+
+            const finalReqs = extractedData.final_requests || extractedData["الطلبات"] || extractedData["الطلبات الختامية"];
+            if (finalReqs && document.getElementById('case_final_requests')) {
+                 document.getElementById('case_final_requests').value = Array.isArray(finalReqs) ? finalReqs.join('\n') : finalReqs;
+            }
+
+            const facts = extractedData.lawsuit_facts || extractedData["الوقائع"];
+            if (facts && document.getElementById('case_lawsuit_text')) {
+                 document.getElementById('case_lawsuit_text').value = `[تحليل الذكاء الاصطناعي للوقائع]:\n${Array.isArray(facts)? facts.join('\n') : facts}\n\n-----------------\n[النص الأصلي]:\n${rawText}`;
+            }
+
+            showAlert('تم استخراج وتوزيع البيانات بنجاح! راجع الحقول.', 'success');
+            
+            // فتح التبويبات ليراها المستخدم
+            const partiesTab = new bootstrap.Tab(document.querySelector('button[data-bs-target="#add-parties"]'));
+            if(partiesTab) partiesTab.show();
+            
+        } else {
+            throw new Error(extractedData.error || 'فشل في قراءة البيانات');
+        }
+    } catch (error) {
+        console.error(error);
+        showAlert('حدث خطأ أثناء تحليل اللائحة. تأكد من وضوح النص.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i> استخراج ذكي';
+    }
 }
 
 async function handleSmartSearch(q) {
@@ -821,89 +907,6 @@ function populateSelects() {
     }
 }
 
-async function loadNotifications(silent = false) {
-    try {
-        const res = await API.getNotifications(); 
-        if (!res || res.error) return;
-
-        globalData.notifications = Array.isArray(res) ? res : [];
-        
-        const unread = globalData.notifications.filter(n => n.is_read === false);
-        const badge = document.getElementById('notification-badge');
-        const list = document.getElementById('notifications-list');
-
-        if (unread.length > 0) {
-            if(badge) { 
-                badge.innerText = unread.length > 9 ? '+9' : unread.length; 
-                badge.classList.remove('d-none'); 
-            }
-            if (silent) {
-                unread.forEach(n => { 
-                    if(!notifiedIds.has(n.id)) { 
-                        notifiedIds.add(n.id); 
-                        triggerPushNotification(n.title, n.message); 
-                    } 
-                });
-            }
-        } else { 
-            if(badge) badge.classList.add('d-none'); 
-        }
-
-        if(list) {
-            if (globalData.notifications.length === 0) {
-                list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
-            } else {
-                list.innerHTML = globalData.notifications.slice(0, 10).map(n => `
-                    <li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
-                        <strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong>
-                        <span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
-                        <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
-                    </li>
-                `).join('');
-            }
-        }
-    } catch (e) {
-        console.error("خطأ في تحميل الإشعارات:", e);
-    }
-}
-
-async function handleNotificationClick(id, url) {
-    await API.markNotificationAsRead(id);
-    if (url && url !== 'undefined' && url !== 'null') {
-        window.location.href = url;
-    } else {
-        loadNotifications(); 
-    }
-}
-
-async function markNotificationsRead() {
-    const unread = globalData.notifications.filter(n => !n.is_read); if(unread.length === 0) return;
-    const badge = document.getElementById('notification-badge'); if(badge) badge.classList.add('d-none');
-    for (let n of unread) {
-        await API.markNotificationAsRead(n.id);
-    }
-    await loadNotifications(true); 
-}
-
-function triggerPushNotification(title, body) { 
-    if (Notification.permission === "granted") {
-        navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body: body, icon: './icons/icon-192.png', badge: './icons/icon-192.png', dir:'rtl' })); 
-    }
-}
-
-function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
-function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
-
-function openModal(id) { 
-    const el = document.getElementById(id); 
-    if(el) { 
-        const m = new bootstrap.Modal(el); m.show(); 
-        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
-    } 
-}
-function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); m?.hide(); } }
-function showAlert(m, t) { if(typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: t === 'danger' ? 'error' : (t === 'warning' ? 'warning' : 'success'), title: escapeHTML(m), showConfirmButton: false, timer: 3000 }); }
-
 async function runConflictCheck() {
     const input = document.getElementById('conflict_search_input').value; const resDiv = document.getElementById('conflict_results');
     if (input.length < 2) return showAlert('أدخل حرفين أو رقمين للبحث', 'warning');
@@ -916,7 +919,7 @@ async function runConflictCheck() {
         html += `</ul>`;
     }
     if (res.opponentConflicts && res.opponentConflicts.length > 0) {
-        html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`;
+        html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خص مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`;
         html += res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-2 border-0 bg-soft-danger mb-1 rounded"><span class="fw-bold text-danger">${escapeHTML(c.opponent_name)}</span><span class="d-block text-muted mt-1" style="font-size:10px;"><i class="fas fa-folder"></i> ملف: ${escapeHTML(c.case_internal_id || 'غير محدد')}</span></li>`).join('');
         html += `</ul>`;
     }

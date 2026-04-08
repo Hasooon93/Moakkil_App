@@ -1,6 +1,6 @@
 // js/case-details.js - محرك تفاصيل القضية الكامل (النسخة النهائية المربوطة بالواجهة وقاعدة البيانات)
 // التحديثات التقنية: دعم تنبيهات الـ Offline Mode لحفظ الدفعات والمصاريف والتحديثات محلياً عند انقطاع الإنترنت.
-// التحديث الأخير: تطبيق Optimistic UI لتسريع الاستجابة وضبط التوقيت (Jordan Time UTC+3).
+// التحديث الأخير: إصلاح ai_entities و parent_case_id لمنع أخطاء 500، تطبيق Optimistic UI، ضبط التوقيت، وإصلاح الإملاء الصوتي والبطاقة الذكية.
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -178,9 +178,11 @@ function renderHeaderAndSummary() {
     
     // 5. الاستخلاص الذكي
     document.getElementById('det-ai-summary').innerText = escapeHTML(caseObj.ai_cumulative_summary || "لا يوجد ملخص تراكمي بعد.");
-    if(caseObj.ai_extracted_entities) {
+    
+    // 🛡️ إصلاح استخدام حقل ai_entities بدلاً من ai_extracted_entities
+    if(caseObj.ai_entities) {
         try {
-            let ai = typeof caseObj.ai_extracted_entities === 'string' ? JSON.parse(caseObj.ai_extracted_entities) : caseObj.ai_extracted_entities;
+            let ai = typeof caseObj.ai_entities === 'string' ? JSON.parse(caseObj.ai_entities) : caseObj.ai_entities;
             document.getElementById('det-ai-facts').innerText = ai.lawsuit_facts || '--';
             document.getElementById('det-ai-legal').innerText = ai.legal_basis || '--';
             let reqs = ai.final_requests;
@@ -294,6 +296,10 @@ async function updateCaseDetails(event) {
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
     const parseLinesToArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(s => s) : [];
 
+    // 🛡️ حماية parent_case_id لتجنب خطأ 500 UUID
+    const parentIdValue = document.getElementById('edit_parent_case_id').value;
+    const validParentId = parentIdValue === '' ? null : parentIdValue;
+
     const data = {
         case_internal_id: document.getElementById('edit_internal_id').value, 
         status: document.getElementById('edit_status').value,
@@ -311,7 +317,7 @@ async function updateCaseDetails(event) {
         litigation_degree: document.getElementById('edit_litigation_degree').value, 
         current_judge: document.getElementById('edit_judge').value,
         court_clerk: document.getElementById('edit_court_clerk').value,
-        parent_case_id: document.getElementById('edit_parent_case_id').value || null,
+        parent_case_id: validParentId,
         
         deadline_date: document.getElementById('edit_deadline_date').value || null,
         statute_of_limitations_date: document.getElementById('edit_statute_of_limitations_date').value || null,
@@ -378,7 +384,7 @@ async function previewAIExtraction() {
     if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> استخلاص البيانات (الوقائع والأسانيد)'; }
 }
 
-// 🚀 تطبيق Optimistic UI وتعديل التوقيت (UTC+3) للتحديثات
+// 🚀 تطبيق Optimistic UI وتعديل التوقيت (UTC+3) للتحديثات (مع إصلاح ai_entities)
 async function saveUpdate(event) {
     event.preventDefault();
     const btn = document.getElementById('btn_save_update');
@@ -388,7 +394,6 @@ async function saveUpdate(event) {
     
     let finalAttachmentUrl = null;
 
-    // إذا كان هناك ملف، نعلق الواجهة حتى يتم الرفع لـ Google Drive
     if (hasFile) {
         if (!navigator.onLine) {
             showAlert('لا يمكن رفع الملفات أثناء انقطاع الإنترنت.', 'warning');
@@ -402,7 +407,6 @@ async function saveUpdate(event) {
             showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; return; 
         }
     } else {
-        // إذا لم يكن هناك ملف -> Optimistic UI! إغلاق فوري
         closeModal('updateModal');
         showAlert('تمت إضافة الواقعة', 'success');
     }
@@ -428,8 +432,9 @@ async function saveUpdate(event) {
         const res = await API.addUpdate(data);
         if(res && !res.error) { 
             if (extractedData.lawsuit_facts || extractedData.legal_basis) {
+                // 🛡️ إصلاح استخدام ai_entities بدلاً من القديم لمنع 500 error
                 await API.updateCase(currentCaseId, { 
-                    ai_extracted_entities: extractedData,
+                    ai_entities: extractedData,
                     lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, 
                     legal_basis: extractedData.legal_basis || caseObj.legal_basis,
                     ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100)
@@ -581,7 +586,6 @@ function renderFiles(files) {
     `}).join('');
 }
 
-// 🚀 تطبيق Optimistic UI وتعديل التوقيت للدفعات
 async function savePayment(event) { 
     event.preventDefault(); 
     const rawDate = document.getElementById('pay_due_date').value;
@@ -603,7 +607,6 @@ async function savePayment(event) {
     }
 }
 
-// 🚀 تطبيق Optimistic UI وتعديل التوقيت للمصروفات
 async function saveExpense(event) { 
     event.preventDefault(); 
     const rawDate = document.getElementById('exp_date').value;
@@ -678,19 +681,51 @@ async function deleteRecord(type, id) {
     } catch(e) { showAlert('حدث خطأ أثناء الحذف أو لا تملك صلاحية لذلك.', 'error'); }
 }
 
+// 🛡️ إصلاح دالة الإملاء الصوتي لتشمل معالجة رفض صلاحية الميكروفون
 function startDictation(elementId) {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { showAlert('عذراً، متصفحك لا يدعم الإملاء الصوتي.', 'warning'); return; }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ar-JO'; recognition.interimResults = false;
-    const textArea = document.getElementById(elementId);
-    const origPlaceholder = textArea.placeholder;
-    textArea.placeholder = "جاري الاستماع... تحدث الآن.";
-    showAlert('الميكروفون يعمل.. تحدث الآن', 'info');
-    recognition.start();
-    recognition.onresult = function(e) { textArea.value += (textArea.value ? ' ' : '') + e.results[0][0].transcript; };
-    recognition.onerror = function() { showAlert('تم إيقاف الميكروفون أو حدث خطأ.', 'error'); textArea.placeholder = origPlaceholder; };
-    recognition.onend = function() { textArea.placeholder = origPlaceholder; showAlert('تم إدراج النص بنجاح.', 'success'); };
+    if (!SpeechRecognition) {
+        return showAlert('متصفحك لا يدعم الإملاء الصوتي. يرجى استخدام متصفح Chrome الحديث.', 'warning');
+    }
+    
+    try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ar-JO'; 
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const textArea = document.getElementById(elementId);
+        const origPlaceholder = textArea.placeholder;
+        
+        recognition.onstart = function() {
+            textArea.placeholder = "جاري الاستماع... تحدث الآن.";
+            showAlert('الميكروفون يعمل.. تحدث الآن', 'info');
+        };
+        
+        recognition.onresult = function(e) { 
+            textArea.value += (textArea.value ? ' ' : '') + e.results[0][0].transcript; 
+            showAlert('تم إدراج النص بنجاح.', 'success');
+        };
+        
+        recognition.onerror = function(e) { 
+            console.error('Speech error:', e);
+            if (e.error === 'not-allowed') {
+                showAlert('تم رفض صلاحية الميكروفون. يرجى السماح للمتصفح بالوصول للمايكروفون من إعدادات المتصفح.', 'danger');
+            } else {
+                showAlert('حدث خطأ أثناء الإملاء الصوتي.', 'error'); 
+            }
+            textArea.placeholder = origPlaceholder; 
+        };
+        
+        recognition.onend = function() { 
+            textArea.placeholder = origPlaceholder; 
+        };
+
+        recognition.start();
+    } catch (e) {
+        console.error(e);
+        showAlert('فشل تشغيل خدمة الصوت في جهازك.', 'danger');
+    }
 }
 
 function openAiDraftModal() { document.getElementById('ai_draft_notes').value = ''; document.getElementById('ai_draft_result_container').classList.add('d-none'); document.getElementById('ai_draft_result').value = ''; openModal('aiDraftModal'); }
