@@ -1,7 +1,7 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، Optimistic UI للمواعيد مع استعادة نافذة الملاحظات، ومعالجة التواريخ الفارغة (Null Dates).
+// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، سجل الرقابة (Audit Trail)، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs الفارغة.
 
-let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
+let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
 let backgroundSyncTimer = null;
 let notifiedIds = new Set(); 
@@ -121,6 +121,7 @@ function applyRoleBasedUI() {
         if (document.getElementById('stat-staff-card')) document.getElementById('stat-staff-card').style.display = 'block';
         if (document.getElementById('firm-settings-btn')) document.getElementById('firm-settings-btn').style.display = 'block';
         if (document.getElementById('admin-reports-btn')) document.getElementById('admin-reports-btn').classList.remove('d-none');
+        if (document.getElementById('audit-trail-btn')) document.getElementById('audit-trail-btn').style.display = 'block';
     }
 
     const hasBiometric = localStorage.getItem('moakkil_biometric_id');
@@ -258,12 +259,26 @@ async function loadAllData() {
         filterAndSetCases(Array.isArray(rawCases) ? rawCases : []);
         filterAndSetAppointments(Array.isArray(rawAppointments) ? rawAppointments : []);
         
+        // تحميل سجل الرقابة للمدراء
+        if (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'superadmin') {
+            try {
+                const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+                const baseUrl = window.API_BASE_URL || CONFIG.API_URL || 'https://curly-pond-9975.hassan-alsakka.workers.dev';
+                const historyRes = await fetch(`${baseUrl}/api/history`, { headers: { 'Authorization': `Bearer ${token}` }});
+                if(historyRes.ok) {
+                    const logs = await historyRes.json();
+                    globalData.activityLogs = Array.isArray(logs) ? logs : [];
+                }
+            } catch(e) { console.warn("Audit Logs Error:", e); }
+        }
+
         renderDashboard(); 
         renderCasesList(); 
         renderClientsList();
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
         renderStaffList(); 
         populateSelects();
+        renderActivityLogs();
     } catch(e) { 
         console.error("Load Data Error:", e);
         showAlert('خطأ في الاتصال ببعض البيانات', 'danger'); 
@@ -414,7 +429,6 @@ function renderAgendaList() {
         const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.title)}&dates=${startTime}/${endTime}`;
         let statusBadgeColor = a.status === 'تم' ? 'success' : (a.status === 'ملغي' ? 'danger' : (a.status === 'مؤجل' ? 'warning' : 'primary'));
         let actionButtons = '';
-        // 🔄 إصلاح استدعاء النافذة المنبثقة للإنجاز والتأجيل
         if (a.status === 'مجدول' || a.status === 'مؤجل') {
             actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
         }
@@ -437,54 +451,95 @@ function renderKanbanBoard() {
             `).join('')}</div></div>`).join('');
 }
 
-// 🔄 دوال المواعيد (استجابة فورية Optimistic UI + إغلاق النافذة)
-async function saveApptOutcome(e) { 
+// 🔥 إضافة دالة رسم سجل المراقبة (Audit Trail) للمدراء
+function renderActivityLogs() {
+    const list = document.getElementById('audit-list');
+    if(!list) return;
+    if(globalData.activityLogs.length === 0) {
+        list.innerHTML = '<div class="text-center p-3 text-muted">لا يوجد حركات مسجلة حالياً</div>';
+        return;
+    }
+    const actionTypes = { 'CREATE': 'إضافة', 'UPDATE': 'تعديل', 'DELETE': 'حذف' };
+    const entityNames = { 'mo_cases': 'قضية', 'mo_clients': 'موكل', 'mo_appointments': 'موعد', 'mo_users': 'موظف', 'mo_installments': 'دفعة', 'mo_expenses': 'مصروف', 'mo_files': 'مستند', 'mo_firms': 'مكتب' };
+    
+    list.innerHTML = globalData.activityLogs.slice(0, 100).map(log => {
+        const staffName = globalData.staff.find(s => s.id === log.user_id)?.full_name || 'مجهول';
+        const action = actionTypes[log.action_type] || log.action_type;
+        const entity = entityNames[log.entity_type] || log.entity_type;
+        const badgeColor = log.action_type === 'CREATE' ? 'success' : (log.action_type === 'DELETE' ? 'danger' : 'warning');
+        
+        return `
+        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-${badgeColor} bg-white" style="border-radius:12px;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-navy"><i class="fas fa-user-tie me-1 text-secondary"></i> ${escapeHTML(staffName)}</strong>
+                <span class="badge bg-${badgeColor} shadow-sm">${action} ${entity}</span>
+            </div>
+            <small class="text-muted d-block mb-1"><i class="fas fa-clock me-1"></i> ${new Date(log.created_at).toLocaleString('ar-EG')}</small>
+            <div class="text-muted" style="font-size: 11px; overflow-wrap: anywhere; user-select: all;">المعرف: ${log.entity_id}</div>
+        </div>`;
+    }).join('');
+}
+
+// 🛡️ دوال المواعيد مع الحماية من حفظ الـ temp_
+async function saveApptOutcome(e, id) { 
     if(e) e.preventDefault(); 
-    const apptId = document.getElementById('outcome_appt_id').value; 
+    const apptId = id || document.getElementById('outcome_appt_id').value; 
+    
+    if (apptId.toString().startsWith('temp_')) {
+        showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
+        return;
+    }
+
     const notes = document.getElementById('outcome_text') ? document.getElementById('outcome_text').value : '';
     
-    // تحديث الواجهة فوراً
     const idx = globalData.appointments.findIndex(a => a.id === apptId);
     if(idx !== -1) globalData.appointments[idx].status = 'تم';
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
     closeModal('apptOutcomeModal'); 
     showAlert('تم تسجيل الإنجاز', 'success');
 
-    // إرسال للسيرفر بالخلفية
     await API.updateAppointment(apptId, {status:'تم', notes: notes});
 }
 
 async function saveApptPostpone(e) { 
     if(e) e.preventDefault(); 
     const id = document.getElementById('postpone_appt_id').value; 
+    
+    if (id.toString().startsWith('temp_')) {
+        showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
+        return;
+    }
+
     const dInput = document.getElementById('postpone_date').value;
     if(!dInput) return showAlert('الرجاء اختيار تاريخ', 'warning');
     const d = new Date(dInput).toISOString();
     
-    // تحديث الواجهة فوراً
     const idx = globalData.appointments.findIndex(a => a.id === id);
     if(idx !== -1) { globalData.appointments[idx].status = 'مؤجل'; globalData.appointments[idx].appt_date = d; }
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
     closeModal('apptPostponeModal'); 
     showAlert('تم تأجيل الموعد بنجاح', 'success');
 
-    // إرسال للسيرفر بالخلفية
     await API.updateAppointment(id, {status:'مؤجل', appt_date: d});
 }
 
 async function cancelAppt(id) {
+    if (id.toString().startsWith('temp_')) {
+        showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
+        return;
+    }
+
     const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
     if(confirm.isConfirmed) { 
-        // تحديث الواجهة فوراً
         const idx = globalData.appointments.findIndex(a => a.id === id);
         if(idx !== -1) globalData.appointments[idx].status = 'ملغي';
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
         showAlert('تم إلغاء الموعد', 'success');
 
-        // إرسال للسيرفر بالخلفية
         await API.updateAppointment(id, {status:'ملغي'});
     }
 }
+
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
 
@@ -605,6 +660,7 @@ async function saveClient(event) {
     }
 }
 
+// 🛡️ حماية الـ UUID والتواريخ الفارغة
 async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
@@ -620,6 +676,10 @@ async function saveCase(event) {
 
     const statuteValue = document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : '';
     const validStatute = statuteValue === '' ? null : statuteValue;
+
+    // 🔥 حماية حقل parent_case_id ليكون null إذا كان فارغاً بدلاً من ""
+    const parentIdValue = document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : '';
+    const validParentId = parentIdValue === '' ? null : parentIdValue;
 
     const data = { 
         client_id: document.getElementById('case_client_id').value, 
@@ -637,7 +697,8 @@ async function saveCase(event) {
         litigation_degree: document.getElementById('case_litigation_degree') ? document.getElementById('case_litigation_degree').value : null,
         current_judge: document.getElementById('case_current_judge') ? document.getElementById('case_current_judge').value : '',
         court_clerk: document.getElementById('case_court_clerk') ? document.getElementById('case_court_clerk').value : '',
-        parent_case_id: document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : null,
+        
+        parent_case_id: validParentId, // تم الإصلاح هنا
         
         deadline_date: validDeadline,
         statute_of_limitations_date: validStatute,

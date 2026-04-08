@@ -76,6 +76,8 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 15px;">
                     <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="openModal('settingsModal')" id="firm-settings-btn" style="display:none;"><i class="fas fa-cog text-muted me-2"></i>إعدادات المكتب</a></li>
                     
+                    <li><a class="dropdown-item py-2 fw-bold text-navy" href="#" onclick="switchView('audit')" id="audit-trail-btn" style="display:none;"><i class="fas fa-history text-muted me-2"></i>سجل الرقابة (Audit)</a></li>
+
                     <li><a class="dropdown-item py-2 fw-bold text-success" href="#" onclick="registerBiometricBtn()"><i class="fas fa-fingerprint me-2"></i>تفعيل البصمة للجهاز</a></li>
                     
                     <li><hr class="dropdown-divider"></li>
@@ -254,6 +256,15 @@
                 </div>
             </div>
         </div>
+
+        <div id="audit-view" class="view fade-in d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3 sticky-top bg-light pb-2 pt-2" style="z-index: 10;">
+                <h5 class="fw-bold text-danger mb-0"><i class="fas fa-history me-2"></i> سجل الرقابة والمراقبة</h5>
+            </div>
+            <p class="small text-muted mb-3"><i class="fas fa-info-circle"></i> يظهر هذا السجل للمدراء فقط، ويوثق كل حركة (إضافة، تعديل، حذف) تتم في النظام.</p>
+            <div id="audit-list"></div>
+        </div>
+
     </div>
 
     <button class="fab-main d-md-none" onclick="openModal('caseModal')" title="إضافة قضية سريعة"><i class="fas fa-plus"></i></button>
