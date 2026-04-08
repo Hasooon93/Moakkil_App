@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة)
-// التحديثات الأخيرة: استعادة كافة الدوال الأساسية، الاستخراج الذكي AI، إصلاح VCard ID، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs.
+// التحديثات الأخيرة: استعادة كافة الدوال الأساسية (showAlert, openModal)، الاستخراج الذكي AI، إصلاح VCard ID، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -7,6 +7,53 @@ let backgroundSyncTimer = null;
 let notifiedIds = new Set(); 
 let isKanbanView = false; 
 let currentCaseFilter = ''; 
+
+// =================================================================
+// 🛠️ الدوال الأساسية للواجهة والتنبيهات (تم نقلها للأعلى لضمان عملها)
+// =================================================================
+
+const escapeHTML = (str) => {
+    if (!str) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+};
+
+function showAlert(message, type = 'info') { 
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({ 
+            toast: true, 
+            position: 'top-end', 
+            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type), 
+            title: escapeHTML(message), 
+            showConfirmButton: false, 
+            timer: 3000, 
+            timerProgressBar: true 
+        }); 
+    } else {
+        alert(message);
+    }
+}
+
+window.showToast = function(msg, type) {
+    showAlert(msg, type === 'error' ? 'danger' : type);
+};
+
+function openModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = new bootstrap.Modal(el); m.show(); 
+        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
+    } 
+}
+
+function closeModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = bootstrap.Modal.getInstance(el); 
+        if(m) m.hide(); 
+    } 
+}
 
 // =================================================================
 // 🔔 نظام المصافحة وتفعيل البوش نتفكيشن (Push Subscription)
@@ -62,16 +109,9 @@ async function requestPushPermission() {
     }
 }
 
-const escapeHTML = (str) => {
-    if (!str) return '';
-    return str.toString().replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-    );
-};
-
-window.showToast = function(msg, type) {
-    showAlert(msg, type === 'error' ? 'danger' : type);
-};
+// =================================================================
+// ⚙️ الإعدادات وتحميل الصفحة
+// =================================================================
 
 window.onload = async () => {
     if ('serviceWorker' in navigator) {
@@ -244,6 +284,10 @@ function showVCard() {
         openModal('vCardModal');
     }
 }
+
+// =================================================================
+// 📊 جلب البيانات واللوحات (Data Loading & Rendering)
+// =================================================================
 
 async function loadAllData() {
     try {
@@ -500,6 +544,10 @@ function renderActivityLogs() {
     }).join('');
 }
 
+// =================================================================
+// 📅 دوال المواعيد (الحفظ، التأجيل، الإلغاء)
+// =================================================================
+
 async function saveApptOutcome(e, id) { 
     if(e) e.preventDefault(); 
     const apptId = id || document.getElementById('outcome_appt_id').value; 
@@ -565,6 +613,10 @@ async function cancelAppt(id) {
 
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
+
+// =================================================================
+// 🤖 دوال الذكاء الاصطناعي والاستخراج
+// =================================================================
 
 async function processIdImage(event) {
     const file = event.target.files[0]; 
@@ -729,6 +781,10 @@ async function handleSmartSearch(q) {
     drop.innerHTML = html || '<div class="p-3 text-center small text-muted">لا يوجد نتائج</div>'; drop.classList.remove('d-none');
 }
 
+// =================================================================
+// 🔗 المشاركة وتوليد الروابط
+// =================================================================
+
 let currentShareLink = '';
 function openShareModal(caseId, pin, publicToken) {
     const token = publicToken || caseId; 
@@ -748,6 +804,10 @@ window.generateStrongPIN = function() {
     for (let i = 0; i < 6; i++) pin += chars.charAt(Math.floor(Math.random() * chars.length));
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
+
+// =================================================================
+// 💾 دوال حفظ البيانات الرئيسية
+// =================================================================
 
 async function saveClient(event) {
     event.preventDefault();
@@ -921,9 +981,6 @@ function populateSelects() {
     }
 }
 
-// =================================================================
-// استعادة الدوال المفقودة (النوافذ والتوجيهات والإشعارات)
-// =================================================================
 async function loadNotifications(silent = false) {
     try {
         const res = await API.getNotifications(); 
@@ -996,22 +1053,6 @@ function triggerPushNotification(title, body) {
 
 function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
 function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
-
-function openModal(id) { 
-    const el = document.getElementById(id); 
-    if(el) { 
-        const m = new bootstrap.Modal(el); m.show(); 
-        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
-    } 
-}
-
-function closeModal(id) { 
-    const el = document.getElementById(id); 
-    if(el) { 
-        const m = bootstrap.Modal.getInstance(el); 
-        if(m) m.hide(); 
-    } 
-}
 
 async function runConflictCheck() {
     const input = document.getElementById('conflict_search_input').value; const resDiv = document.getElementById('conflict_results');
