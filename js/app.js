@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: إصلاح المايكروفون، الاستخراج الذكي AI، إصلاح VCard ID، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs.
+// التحديثات الأخيرة: استعادة كافة الدوال الأساسية، الاستخراج الذكي AI، إصلاح VCard ID، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -223,7 +223,6 @@ function switchView(viewId) {
     window.scrollTo(0, 0);
 }
 
-// 🛡️ إصلاح مشكلة undefined في الـ VCard ID
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode');
     qrContainer.innerHTML = ''; 
@@ -231,7 +230,7 @@ function showVCard() {
     pathArray.pop(); 
     const basePath = pathArray.join('/');
     
-    const userId = currentUser.id || currentUser.uid; // الإصلاح هنا
+    const userId = currentUser.id || currentUser.uid; 
     const cvLink = `${window.location.origin + basePath}/verify.html?type=cv&id=${userId}`;
     
     try {
@@ -367,6 +366,7 @@ function renderCasesList() {
         </div>`;
     }).join('');
 }
+
 function filterCases() { renderCasesList(); }
 
 function filterClients() { renderClientsList(); }
@@ -401,6 +401,7 @@ function toggleAgendaView() {
     if (isKanbanView) { list.classList.add('d-none'); kanban.classList.remove('d-none'); renderKanbanBoard(); }
     else { kanban.classList.add('d-none'); list.classList.remove('d-none'); renderAgendaList(); }
 }
+
 function filterAgenda() { renderAgendaList(); }
 
 function renderAgendaList() {
@@ -499,6 +500,7 @@ function renderActivityLogs() {
     }).join('');
 }
 
+// 🛡️ دوال المواعيد مع الحماية من حفظ الـ temp_
 async function saveApptOutcome(e, id) { 
     if(e) e.preventDefault(); 
     const apptId = id || document.getElementById('outcome_appt_id').value; 
@@ -562,8 +564,28 @@ async function cancelAppt(id) {
     }
 }
 
+// 🛡️ إعادة الدوال المفقودة للنوافذ المنبثقة والتوجيه
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
+
+function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
+function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
+
+function openModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = new bootstrap.Modal(el); m.show(); 
+        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
+    } 
+}
+
+function closeModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = bootstrap.Modal.getInstance(el); 
+        if(m) m.hide(); 
+    } 
+}
 
 async function processIdImage(event) {
     const file = event.target.files[0]; 
@@ -609,32 +631,50 @@ async function processIdImage(event) {
     reader.readAsDataURL(file);
 }
 
-// 🛡️ إصلاح الإملاء الصوتي وتنبيهات المايكروفون
-function startDictation(targetId) {
+// 🛡️ إصلاح دالة الإملاء الصوتي
+function startDictation(elementId) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
         return showAlert('متصفحك لا يدعم الإملاء الصوتي. يرجى استخدام متصفح Chrome الحديث.', 'warning');
     }
+    
     try {
-        const rec = new SpeechRecognition();
-        rec.lang = 'ar-JO';
-        rec.interimResults = false;
-        rec.maxAlternatives = 1;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ar-JO'; 
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
 
-        rec.onstart = () => showAlert('تحدث الآن... الميكروفون يستمع', 'info');
-        rec.onresult = (e) => {
-            const text = e.results[0][0].transcript;
-            const input = document.getElementById(targetId);
-            if (input) input.value += (input.value ? ' ' : '') + text;
-            showAlert('تم التقاط الصوت', 'success');
+        const textArea = document.getElementById(elementId);
+        const origPlaceholder = textArea.placeholder;
+        
+        recognition.onstart = function() {
+            textArea.placeholder = "جاري الاستماع... تحدث الآن.";
+            showAlert('الميكروفون يعمل.. تحدث الآن', 'info');
         };
-        rec.onerror = (e) => {
+        
+        recognition.onresult = function(e) { 
+            textArea.value += (textArea.value ? ' ' : '') + e.results[0][0].transcript; 
+            showAlert('تم إدراج النص بنجاح.', 'success');
+        };
+        
+        recognition.onerror = function(e) { 
             console.error('Speech error:', e);
-            showAlert('فشل التقاط الصوت. تأكد من السماح للمتصفح باستخدام الميكروفون.', 'danger');
+            if (e.error === 'not-allowed') {
+                showAlert('تم رفض صلاحية الميكروفون. يرجى السماح للمتصفح بالوصول للمايكروفون من إعدادات المتصفح.', 'danger');
+            } else {
+                showAlert('حدث خطأ أثناء الإملاء الصوتي.', 'error'); 
+            }
+            textArea.placeholder = origPlaceholder; 
         };
-        rec.start();
+        
+        recognition.onend = function() { 
+            textArea.placeholder = origPlaceholder; 
+        };
+
+        recognition.start();
     } catch (e) {
-        showAlert('حدث خطأ. يرجى السماح للمتصفح باستخدام الميكروفون.', 'danger');
+        console.error(e);
+        showAlert('فشل تشغيل خدمة الصوت في جهازك.', 'danger');
     }
 }
 
@@ -656,8 +696,6 @@ async function runSmartExtraction() {
         const extractedData = await API.extractLegalData(rawText);
         
         if (extractedData && !extractedData.error) {
-            // 🎯 خوارزمية ذكية لتوزيع البيانات (Fallbacks) بالبحث عن المفاتيح العربية والإنجليزية
-            
             const opponent = extractedData.opponent_name || extractedData["الخصم"] || extractedData["اسم الخصم"] || extractedData["المدعى عليه"];
             if (opponent && document.getElementById('case_opponent_name')) {
                 document.getElementById('case_opponent_name').value = opponent;
@@ -686,7 +724,6 @@ async function runSmartExtraction() {
 
             showAlert('تم استخراج وتوزيع البيانات بنجاح! راجع الحقول.', 'success');
             
-            // فتح التبويبات ليراها المستخدم
             const partiesTab = new bootstrap.Tab(document.querySelector('button[data-bs-target="#add-parties"]'));
             if(partiesTab) partiesTab.show();
             
@@ -735,6 +772,7 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
+// 🛡️ معالجة التواريخ الفارغة (Null Dates) لتجنب أخطاء 500 في الداتا بيز
 async function saveClient(event) {
     event.preventDefault();
     
@@ -767,6 +805,7 @@ async function saveClient(event) {
     }
 }
 
+// 🛡️ حماية الـ UUID والتواريخ الفارغة
 async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
@@ -919,7 +958,7 @@ async function runConflictCheck() {
         html += `</ul>`;
     }
     if (res.opponentConflicts && res.opponentConflicts.length > 0) {
-        html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خص مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`;
+        html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`;
         html += res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-2 border-0 bg-soft-danger mb-1 rounded"><span class="fw-bold text-danger">${escapeHTML(c.opponent_name)}</span><span class="d-block text-muted mt-1" style="font-size:10px;"><i class="fas fa-folder"></i> ملف: ${escapeHTML(c.case_internal_id || 'غير محدد')}</span></li>`).join('');
         html += `</ul>`;
     }
