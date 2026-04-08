@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، Optimistic UI للمواعيد، ومعالجة التواريخ الفارغة (Null Dates).
+// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، Optimistic UI للمواعيد مع استعادة نافذة الملاحظات، ومعالجة التواريخ الفارغة (Null Dates).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -414,8 +414,9 @@ function renderAgendaList() {
         const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.title)}&dates=${startTime}/${endTime}`;
         let statusBadgeColor = a.status === 'تم' ? 'success' : (a.status === 'ملغي' ? 'danger' : (a.status === 'مؤجل' ? 'warning' : 'primary'));
         let actionButtons = '';
+        // 🔄 إصلاح استدعاء النافذة المنبثقة للإنجاز والتأجيل
         if (a.status === 'مجدول' || a.status === 'مؤجل') {
-            actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="saveApptOutcome(event, '${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
+            actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
         }
         return `<div class="card-custom appt-card p-3 mb-3 shadow-sm border-start border-4 border-${statusBadgeColor} bg-white" style="border-radius:12px;">
             <div class="d-flex justify-content-between align-items-start"><h6 class="fw-bold text-navy mb-1 lh-base" style="max-width:75%;">${escapeHTML(a.title)}</h6><span class="badge bg-${statusBadgeColor} shadow-sm">${escapeHTML(a.status)}</span></div>
@@ -436,10 +437,10 @@ function renderKanbanBoard() {
             `).join('')}</div></div>`).join('');
 }
 
-// 🔥 Optimistic Updates للمواعيد (استجابة فورية)
-async function saveApptOutcome(e, id) { 
+// 🔄 دوال المواعيد (استجابة فورية Optimistic UI + إغلاق النافذة)
+async function saveApptOutcome(e) { 
     if(e) e.preventDefault(); 
-    const apptId = id || document.getElementById('outcome_appt_id').value; 
+    const apptId = document.getElementById('outcome_appt_id').value; 
     const notes = document.getElementById('outcome_text') ? document.getElementById('outcome_text').value : '';
     
     // تحديث الواجهة فوراً
@@ -454,7 +455,7 @@ async function saveApptOutcome(e, id) {
 }
 
 async function saveApptPostpone(e) { 
-    e.preventDefault(); 
+    if(e) e.preventDefault(); 
     const id = document.getElementById('postpone_appt_id').value; 
     const dInput = document.getElementById('postpone_date').value;
     if(!dInput) return showAlert('الرجاء اختيار تاريخ', 'warning');
@@ -571,11 +572,10 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
-// 🔥 معالجة التواريخ الفارغة (Null Dates) لتجنب أخطاء 500 في الداتا بيز
+// 🛡️ معالجة التواريخ الفارغة (Null Dates) لتجنب أخطاء 500 في الداتا بيز
 async function saveClient(event) {
     event.preventDefault();
     
-    // تحويل التواريخ الفارغة إلى null لتفادي خطأ invalid input syntax for type date
     const dobValue = document.getElementById('client_dob') ? document.getElementById('client_dob').value : '';
     const validDob = dobValue === '' ? null : dobValue;
 
@@ -615,7 +615,6 @@ async function saveCase(event) {
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
     const parseLinesToArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(s => s) : [];
 
-    // تحويل التواريخ الفارغة إلى null لتفادي خطأ 500
     const deadlineValue = document.getElementById('case_deadline_date') ? document.getElementById('case_deadline_date').value : '';
     const validDeadline = deadlineValue === '' ? null : deadlineValue;
 

@@ -297,8 +297,8 @@
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">رقم الهاتف</label>
-                                <input type="tel" id="client_phone" class="form-control border-0 shadow-sm" placeholder="079XXXXXXX" dir="ltr">
+                                <label class="form-label fw-bold small text-muted">رقم الهاتف <span class="text-danger">*</span></label>
+                                <input type="tel" id="client_phone" class="form-control border-0 shadow-sm" required placeholder="079XXXXXXX" dir="ltr">
                             </div>
                             <div class="col-6">
                                 <label class="form-label fw-bold small text-muted">الرقم الوطني/الشركة</label>
@@ -345,15 +345,15 @@
                         </div>
                         <div class="row g-2 mb-4 border-top pt-3">
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted">صفة الموكل</label>
-                                <select id="client_type" class="form-select border-0 shadow-sm">
+                                <label class="form-label fw-bold small text-muted">صفة الموكل <span class="text-danger">*</span></label>
+                                <select id="client_type" class="form-select border-0 shadow-sm" required>
                                     <option value="فرد">أفراد (شخص طبيعي)</option>
                                     <option value="شركة">شركات (شخص اعتباري)</option>
                                 </select>
                             </div>
                             <div class="col-6">
-                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية</label>
-                                <select id="client_confidentiality" class="form-select border-0 shadow-sm">
+                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية <span class="text-danger">*</span></label>
+                                <select id="client_confidentiality" class="form-select border-0 shadow-sm" required>
                                     <option value="عادي">عادي (متاح للمكتب)</option>
                                     <option value="سري">سري (للمدير والمحامي المسؤول)</option>
                                 </select>
@@ -392,11 +392,11 @@
                                 </div>
                                 <div class="row g-2 mb-3">
                                     <div class="col-6">
-                                        <label class="form-label fw-bold small text-muted">رقم الملف الداخلي</label>
-                                        <input type="text" id="case_internal_id" class="form-control border-0 shadow-sm" placeholder="مثال: 2024/15">
+                                        <label class="form-label fw-bold small text-muted">رقم الملف الداخلي <span class="text-danger">*</span></label>
+                                        <input type="text" id="case_internal_id" class="form-control border-0 shadow-sm" required placeholder="مثال: 2024/15">
                                     </div>
                                     <div class="col-6">
-                                        <label class="form-label fw-bold small text-muted">رمز الدخول الآمن (PIN)</label>
+                                        <label class="form-label fw-bold small text-muted">رمز الدخول الآمن (PIN) <span class="text-danger">*</span></label>
                                         <div class="input-group shadow-sm border-0 mb-1">
                                             <input type="text" id="case_access_pin" class="form-control border-0 text-center fw-bold text-danger fs-5" readonly placeholder="يُولد آلياً" required>
                                             <button type="button" class="btn btn-light border-0 text-navy fw-bold" onclick="generateStrongPIN()" title="توليد رمز عشوائي جديد"><i class="fas fa-sync-alt"></i></button>
@@ -405,8 +405,8 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold small text-muted">نوع القضية</label>
-                                    <input type="text" id="case_type" class="form-control border-0 shadow-sm" placeholder="مثال: مطالبة مالية، شرعي...">
+                                    <label class="form-label fw-bold small text-muted">نوع القضية <span class="text-danger">*</span></label>
+                                    <input type="text" id="case_type" class="form-control border-0 shadow-sm" required placeholder="مثال: مطالبة مالية، شرعي...">
                                 </div>
                                 <div class="row g-2 mb-3">
                                     <div class="col-6">
@@ -460,7 +460,7 @@
                             </div>
 
                             <div class="tab-pane fade" id="add-parties">
-                                <div class="mb-3"><label class="form-label fw-bold small text-muted">الخصم الرئيسي</label><input type="text" id="case_opponent_name" class="form-control border-0 shadow-sm" placeholder="اسم الخصم (لغايات فحص التعارض)"></div>
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">الخصم الرئيسي <span class="text-danger">*</span></label><input type="text" id="case_opponent_name" required class="form-control border-0 shadow-sm" placeholder="اسم الخصم (لغايات فحص التعارض)"></div>
                                 <div class="mb-3"><label class="form-label fw-bold small text-muted">محامي الخصم</label><input type="text" id="case_opponent_lawyer" class="form-control border-0 shadow-sm" placeholder="بيانات التواصل..."></div>
                                 <div class="mb-3"><label class="form-label fw-bold small text-muted">مدعين إضافيين (مفصول بفاصلة)</label><input type="text" id="case_co_plaintiffs" class="form-control border-0 shadow-sm"></div>
                                 <div class="mb-3"><label class="form-label fw-bold small text-muted">مدعى عليهم إضافيين</label><input type="text" id="case_co_defendants" class="form-control border-0 shadow-sm"></div>
@@ -498,8 +498,8 @@
                                         <input type="number" id="case_claim_amount" class="form-control border-0 shadow-sm" placeholder="0">
                                     </div>
                                     <div class="col-6">
-                                        <label class="form-label fw-bold small text-muted">إجمالي الأتعاب (للمكتب)</label>
-                                        <input type="number" id="case_agreed_fees" class="form-control border-0 shadow-sm" placeholder="0">
+                                        <label class="form-label fw-bold small text-muted">إجمالي الأتعاب (للمكتب) <span class="text-danger">*</span></label>
+                                        <input type="number" id="case_agreed_fees" required class="form-control border-0 shadow-sm" placeholder="0">
                                     </div>
                                     <div class="col-6">
                                         <label class="form-label fw-bold small text-muted text-success">نسبة النجاح المتوقعة (%)</label>
@@ -508,8 +508,8 @@
                                 </div>
                                 
                                 <div id="case-assign-wrapper" class="mb-4">
-                                    <label class="form-label fw-bold small text-muted">إسناد القضية لـ (المحامين)</label>
-                                    <select class="form-control" id="case_assigned_lawyers" multiple></select>
+                                    <label class="form-label fw-bold small text-muted">إسناد القضية لـ (المحامين) <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="case_assigned_lawyers" required multiple></select>
                                 </div>
                             </div>
                         </div>
@@ -549,8 +549,8 @@
                             </select>
                         </div>
                         <div id="appt-assign-wrapper" class="mb-4">
-                            <label class="form-label fw-bold small text-muted">إسناد المهمة لـ (المحامين)</label>
-                            <select class="form-control" id="appt_assigned_to" multiple></select>
+                            <label class="form-label fw-bold small text-muted">إسناد المهمة لـ (المحامين) <span class="text-danger">*</span></label>
+                            <select class="form-control" id="appt_assigned_to" required multiple></select>
                         </div>
                         <button type="submit" class="btn btn-warning w-100 py-2 fw-bold text-dark shadow"><i class="fas fa-save me-1"></i> جدولة وتفعيل التنبيهات</button>
                     </form>
