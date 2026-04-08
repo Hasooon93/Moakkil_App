@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، Optimistic UI، وإصلاح استخراج الهوية الذكي (OCR).
+// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، Optimistic UI للمواعيد، ومعالجة التواريخ الفارغة (Null Dates).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -14,7 +14,6 @@ let currentCaseFilter = '';
 
 const VAPID_PUBLIC_KEY = 'BFhEWsEEpWXrLBrY1U_hrLjwVwpWbRFd-ii5zc8-qb6L0ZgxTRWZqoZNzMl-vuu7zUaAyyEaNJHWqp_oUSPgO_Q'; 
 
-// دالة مساعدة لفك تشفير المفتاح
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -26,7 +25,6 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// دالة طلب الصلاحية وتسجيل الجهاز (المحدثة)
 async function requestPushPermission() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) { 
         showAlert('متصفحك لا يدعم الإشعارات المتطورة.', 'warning'); 
@@ -51,7 +49,6 @@ async function requestPushPermission() {
             });
         }
 
-        // إرسال الاشتراك للوركر
         await API.subscribePush(subscription.toJSON());
         console.log('[Push] تم تسجيل الجهاز لاستقبال الإشعارات بنجاح!');
         showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
@@ -65,7 +62,6 @@ async function requestPushPermission() {
     }
 }
 
-// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
 const escapeHTML = (str) => {
     if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, 
@@ -73,7 +69,6 @@ const escapeHTML = (str) => {
     );
 };
 
-// ربط تنبيهات النظام (api.js و sw.js) بنظام SweetAlert الخاص بالواجهة
 window.showToast = function(msg, type) {
     showAlert(msg, type === 'error' ? 'danger' : type);
 };
@@ -95,7 +90,6 @@ window.onload = async () => {
     await loadNotifications(); 
     startSmartBackgroundSync();
 
-    // طلب الإذن بعد 3 ثوانٍ إذا لم يتم تحديده مسبقاً
     if ('Notification' in window && Notification.permission === 'default') {
         setTimeout(() => requestPushPermission(), 3000);
     }
@@ -421,7 +415,7 @@ function renderAgendaList() {
         let statusBadgeColor = a.status === 'تم' ? 'success' : (a.status === 'ملغي' ? 'danger' : (a.status === 'مؤجل' ? 'warning' : 'primary'));
         let actionButtons = '';
         if (a.status === 'مجدول' || a.status === 'مؤجل') {
-            actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
+            actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="saveApptOutcome(event, '${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
         }
         return `<div class="card-custom appt-card p-3 mb-3 shadow-sm border-start border-4 border-${statusBadgeColor} bg-white" style="border-radius:12px;">
             <div class="d-flex justify-content-between align-items-start"><h6 class="fw-bold text-navy mb-1 lh-base" style="max-width:75%;">${escapeHTML(a.title)}</h6><span class="badge bg-${statusBadgeColor} shadow-sm">${escapeHTML(a.status)}</span></div>
@@ -442,23 +436,52 @@ function renderKanbanBoard() {
             `).join('')}</div></div>`).join('');
 }
 
-async function saveApptOutcome(e) { 
-    e.preventDefault(); const id = document.getElementById('outcome_appt_id').value; 
-    const notes = document.getElementById('outcome_text').value;
-    const res = await API.updateAppointment(id, {status:'تم', notes: notes});
-    if(res && !res.error) { closeModal('apptOutcomeModal'); showAlert(res.offline ? 'حُفظت المخرجات محلياً (Offline)' : 'تم تسجيل الإنجاز في الدفتر', res.offline ? 'warning' : 'success'); await loadAllData(); } 
+// 🔥 Optimistic Updates للمواعيد (استجابة فورية)
+async function saveApptOutcome(e, id) { 
+    if(e) e.preventDefault(); 
+    const apptId = id || document.getElementById('outcome_appt_id').value; 
+    const notes = document.getElementById('outcome_text') ? document.getElementById('outcome_text').value : '';
+    
+    // تحديث الواجهة فوراً
+    const idx = globalData.appointments.findIndex(a => a.id === apptId);
+    if(idx !== -1) globalData.appointments[idx].status = 'تم';
+    if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+    closeModal('apptOutcomeModal'); 
+    showAlert('تم تسجيل الإنجاز', 'success');
+
+    // إرسال للسيرفر بالخلفية
+    await API.updateAppointment(apptId, {status:'تم', notes: notes});
 }
+
 async function saveApptPostpone(e) { 
-    e.preventDefault(); const id = document.getElementById('postpone_appt_id').value; 
-    const d = new Date(document.getElementById('postpone_date').value).toISOString();
-    const res = await API.updateAppointment(id, {status:'مؤجل', appt_date: d});
-    if(res && !res.error) { closeModal('apptPostponeModal'); showAlert(res.offline ? 'حُفظ التأجيل محلياً (Offline)' : 'تم تأجيل الموعد بنجاح', res.offline ? 'warning' : 'success'); await loadAllData(); } 
+    e.preventDefault(); 
+    const id = document.getElementById('postpone_appt_id').value; 
+    const dInput = document.getElementById('postpone_date').value;
+    if(!dInput) return showAlert('الرجاء اختيار تاريخ', 'warning');
+    const d = new Date(dInput).toISOString();
+    
+    // تحديث الواجهة فوراً
+    const idx = globalData.appointments.findIndex(a => a.id === id);
+    if(idx !== -1) { globalData.appointments[idx].status = 'مؤجل'; globalData.appointments[idx].appt_date = d; }
+    if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+    closeModal('apptPostponeModal'); 
+    showAlert('تم تأجيل الموعد بنجاح', 'success');
+
+    // إرسال للسيرفر بالخلفية
+    await API.updateAppointment(id, {status:'مؤجل', appt_date: d});
 }
+
 async function cancelAppt(id) {
     const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
     if(confirm.isConfirmed) { 
-        const res = await API.updateAppointment(id, {status:'ملغي'});
-        if(res && !res.error) { showAlert(res.offline ? 'تم الإلغاء محلياً (Offline)' : 'تم إلغاء الموعد بنجاح', res.offline ? 'warning' : 'success'); await loadAllData(); } 
+        // تحديث الواجهة فوراً
+        const idx = globalData.appointments.findIndex(a => a.id === id);
+        if(idx !== -1) globalData.appointments[idx].status = 'ملغي';
+        if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+        showAlert('تم إلغاء الموعد', 'success');
+
+        // إرسال للسيرفر بالخلفية
+        await API.updateAppointment(id, {status:'ملغي'});
     }
 }
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
@@ -548,8 +571,14 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
+// 🔥 معالجة التواريخ الفارغة (Null Dates) لتجنب أخطاء 500 في الداتا بيز
 async function saveClient(event) {
     event.preventDefault();
+    
+    // تحويل التواريخ الفارغة إلى null لتفادي خطأ invalid input syntax for type date
+    const dobValue = document.getElementById('client_dob') ? document.getElementById('client_dob').value : '';
+    const validDob = dobValue === '' ? null : dobValue;
+
     const data = { 
         full_name: document.getElementById('client_full_name').value, 
         phone: document.getElementById('client_phone').value, 
@@ -558,7 +587,7 @@ async function saveClient(event) {
         client_type: document.getElementById('client_type').value, 
         address: document.getElementById('client_address').value,
         mother_name: document.getElementById('client_mother') ? document.getElementById('client_mother').value : null,
-        date_of_birth: document.getElementById('client_dob') ? document.getElementById('client_dob').value : null,
+        date_of_birth: validDob,
         place_of_birth: document.getElementById('client_pob') ? document.getElementById('client_pob').value : null,
         nationality: document.getElementById('client_nationality') ? document.getElementById('client_nationality').value : null,
         marital_status: document.getElementById('client_marital') ? document.getElementById('client_marital').value : null,
@@ -586,6 +615,13 @@ async function saveCase(event) {
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
     const parseLinesToArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(s => s) : [];
 
+    // تحويل التواريخ الفارغة إلى null لتفادي خطأ 500
+    const deadlineValue = document.getElementById('case_deadline_date') ? document.getElementById('case_deadline_date').value : '';
+    const validDeadline = deadlineValue === '' ? null : deadlineValue;
+
+    const statuteValue = document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : '';
+    const validStatute = statuteValue === '' ? null : statuteValue;
+
     const data = { 
         client_id: document.getElementById('case_client_id').value, 
         case_internal_id: document.getElementById('case_internal_id').value, 
@@ -604,8 +640,8 @@ async function saveCase(event) {
         court_clerk: document.getElementById('case_court_clerk') ? document.getElementById('case_court_clerk').value : '',
         parent_case_id: document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : null,
         
-        deadline_date: document.getElementById('case_deadline_date') ? document.getElementById('case_deadline_date').value : null,
-        statute_of_limitations_date: document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : null,
+        deadline_date: validDeadline,
+        statute_of_limitations_date: validStatute,
         police_station_ref: document.getElementById('case_police_station_ref') ? document.getElementById('case_police_station_ref').value : '',
         prosecution_ref: document.getElementById('case_prosecution_ref') ? document.getElementById('case_prosecution_ref').value : '',
         
@@ -706,7 +742,6 @@ function populateSelects() {
     }
 }
 
-// 🛎️ دالة جلب وعرض الإشعارات داخل الجرس المنسدل
 async function loadNotifications(silent = false) {
     try {
         const res = await API.getNotifications(); 
