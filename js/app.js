@@ -26,33 +26,42 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// دالة طلب الصلاحية وتسجيل الجهاز
-async function subscribeToPushNotifications() {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                console.warn('[Push] تم رفض الإشعارات من المستخدم.');
-                return;
-            }
-
-            const registration = await navigator.serviceWorker.ready;
-
-            let subscription = await registration.pushManager.getSubscription();
-            if (!subscription) {
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                });
-            }
-
-            // إرسال الاشتراك للوركر
-            await API.subscribePush(subscription.toJSON());
-            console.log('[Push] تم تسجيل الجهاز لاستقبال الإشعارات بنجاح!');
-
-        } catch (error) {
-            console.error('[Push Error] فشل تفعيل الإشعارات:', error);
+// دالة طلب الصلاحية وتسجيل الجهاز (المحدثة)
+async function requestPushPermission() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { 
+        showAlert('متصفحك لا يدعم الإشعارات المتطورة.', 'warning'); 
+        return; 
+    }
+    
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            console.warn('[Push] تم رفض الإشعارات من المستخدم.');
+            showAlert('تم رفض الصلاحية للإشعارات المنبثقة.', 'danger');
+            return;
         }
+
+        const registration = await navigator.serviceWorker.ready;
+
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+        }
+
+        // إرسال الاشتراك للوركر
+        await API.subscribePush(subscription.toJSON());
+        console.log('[Push] تم تسجيل الجهاز لاستقبال الإشعارات بنجاح!');
+        showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
+        
+        const btn = document.getElementById('install-pwa-btn'); 
+        if(btn) btn.classList.add('d-none');
+
+    } catch (error) {
+        console.error('[Push Error] فشل تفعيل الإشعارات:', error);
+        showAlert('حدث خطأ أثناء تفعيل الإشعارات.', 'danger');
     }
 }
 
@@ -86,8 +95,10 @@ window.onload = async () => {
     await loadNotifications(); 
     startSmartBackgroundSync();
 
-    // تفعيل بوش نتفكيشن الفعلي بعد 3 ثوانٍ من التحميل
-    setTimeout(() => subscribeToPushNotifications(), 3000);
+    // طلب الإذن بعد 3 ثوانٍ إذا لم يتم تحديده مسبقاً
+    if ('Notification' in window && Notification.permission === 'default') {
+        setTimeout(() => requestPushPermission(), 3000);
+    }
 
     const lastView = localStorage.getItem('last_active_view') || 'dashboard';
     switchView(lastView);
