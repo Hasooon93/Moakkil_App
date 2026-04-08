@@ -1,4 +1,4 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة)
 // التحديثات الأخيرة: استعادة كافة الدوال الأساسية، الاستخراج الذكي AI، إصلاح VCard ID، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
@@ -500,7 +500,6 @@ function renderActivityLogs() {
     }).join('');
 }
 
-// 🛡️ دوال المواعيد مع الحماية من حفظ الـ temp_
 async function saveApptOutcome(e, id) { 
     if(e) e.preventDefault(); 
     const apptId = id || document.getElementById('outcome_appt_id').value; 
@@ -564,28 +563,8 @@ async function cancelAppt(id) {
     }
 }
 
-// 🛡️ إعادة الدوال المفقودة للنوافذ المنبثقة والتوجيه
 function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
 function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
-
-function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
-function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
-
-function openModal(id) { 
-    const el = document.getElementById(id); 
-    if(el) { 
-        const m = new bootstrap.Modal(el); m.show(); 
-        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
-    } 
-}
-
-function closeModal(id) { 
-    const el = document.getElementById(id); 
-    if(el) { 
-        const m = bootstrap.Modal.getInstance(el); 
-        if(m) m.hide(); 
-    } 
-}
 
 async function processIdImage(event) {
     const file = event.target.files[0]; 
@@ -631,7 +610,6 @@ async function processIdImage(event) {
     reader.readAsDataURL(file);
 }
 
-// 🛡️ إصلاح دالة الإملاء الصوتي
 function startDictation(elementId) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -678,7 +656,6 @@ function startDictation(elementId) {
     }
 }
 
-// 🤖 دالة الاستخراج الذكي لبيانات القضية من النص الحر
 async function runSmartExtraction() {
     const rawText = document.getElementById('case_lawsuit_text').value;
     const btn = document.getElementById('btn-extract-ai');
@@ -772,7 +749,6 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
-// 🛡️ معالجة التواريخ الفارغة (Null Dates) لتجنب أخطاء 500 في الداتا بيز
 async function saveClient(event) {
     event.preventDefault();
     
@@ -805,7 +781,6 @@ async function saveClient(event) {
     }
 }
 
-// 🛡️ حماية الـ UUID والتواريخ الفارغة
 async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
@@ -944,6 +919,98 @@ function populateSelects() {
         aLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join('');
         if (typeof Choices !== 'undefined') { if (window.apptLawyerChoices) window.apptLawyerChoices.destroy(); window.apptLawyerChoices = new Choices(aLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر الموظفين...' }); }
     }
+}
+
+// =================================================================
+// استعادة الدوال المفقودة (النوافذ والتوجيهات والإشعارات)
+// =================================================================
+async function loadNotifications(silent = false) {
+    try {
+        const res = await API.getNotifications(); 
+        if (!res || res.error) return;
+
+        globalData.notifications = Array.isArray(res) ? res : [];
+        
+        const unread = globalData.notifications.filter(n => n.is_read === false);
+        const badge = document.getElementById('notification-badge');
+        const list = document.getElementById('notifications-list');
+
+        if (unread.length > 0) {
+            if(badge) { 
+                badge.innerText = unread.length > 9 ? '+9' : unread.length; 
+                badge.classList.remove('d-none'); 
+            }
+            if (silent) {
+                unread.forEach(n => { 
+                    if(!notifiedIds.has(n.id)) { 
+                        notifiedIds.add(n.id); 
+                        triggerPushNotification(n.title, n.message); 
+                    } 
+                });
+            }
+        } else { 
+            if(badge) badge.classList.add('d-none'); 
+        }
+
+        if(list) {
+            if (globalData.notifications.length === 0) {
+                list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
+            } else {
+                list.innerHTML = globalData.notifications.slice(0, 10).map(n => `
+                    <li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
+                        <strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong>
+                        <span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
+                        <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
+                    </li>
+                `).join('');
+            }
+        }
+    } catch (e) {
+        console.error("خطأ في تحميل الإشعارات:", e);
+    }
+}
+
+async function handleNotificationClick(id, url) {
+    await API.markNotificationAsRead(id);
+    if (url && url !== 'undefined' && url !== 'null') {
+        window.location.href = url;
+    } else {
+        loadNotifications(); 
+    }
+}
+
+async function markNotificationsRead() {
+    const unread = globalData.notifications.filter(n => !n.is_read); if(unread.length === 0) return;
+    const badge = document.getElementById('notification-badge'); if(badge) badge.classList.add('d-none');
+    for (let n of unread) {
+        await API.markNotificationAsRead(n.id);
+    }
+    await loadNotifications(true); 
+}
+
+function triggerPushNotification(title, body) { 
+    if (Notification.permission === "granted") {
+        navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body: body, icon: './icons/icon-192.png', badge: './icons/icon-192.png', dir:'rtl' })); 
+    }
+}
+
+function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
+function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
+
+function openModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = new bootstrap.Modal(el); m.show(); 
+        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
+    } 
+}
+
+function closeModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = bootstrap.Modal.getInstance(el); 
+        if(m) m.hide(); 
+    } 
 }
 
 async function runConflictCheck() {
