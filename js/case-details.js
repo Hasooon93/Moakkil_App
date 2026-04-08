@@ -726,10 +726,6 @@ function startDictation(elementId) {
         console.error(e);
         showAlert('فشل تشغيل خدمة الصوت في جهازك.', 'danger');
     }
-}
-
-function openAiDraftModal() { document.getElementById('ai_draft_notes').value = ''; document.getElementById('ai_draft_result_container').classList.add('d-none'); document.getElementById('ai_draft_result').value = ''; openModal('aiDraftModal'); }
-
 async function generateAiDraft() {
     const btn = document.getElementById('btn_generate_draft');
     const draftType = document.getElementById('ai_draft_type').value;
@@ -737,21 +733,34 @@ async function generateAiDraft() {
     const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
     const clientName = client ? client.full_name : 'الموكل';
     
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري توليد المسودة...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الصياغة القانونية...';
     btn.disabled = true; document.getElementById('ai_draft_result_container').classList.add('d-none');
 
-    const promptText = `أنت محامي أردني محترف. قم بصياغة مسودة قانونية رسمية من نوع: (${draftType}). البيانات:
-الطرف الأول (الموكل): ${clientName} | الطرف الثاني (الخصم): ${caseObj.opponent_name || 'الخصم'}
-المحكمة: ${caseObj.current_court || 'المختصة'} | المطالبة: ${caseObj.claim_amount || '--'} دينار أردني. ملاحظات إضافية: ${extraNotes}.
-الوقائع: ${caseObj.lawsuit_facts || 'غير متوفر'} | الأسانيد: ${caseObj.legal_basis || 'غير متوفر'} | الطلبات: ${Array.isArray(caseObj.final_requests)?caseObj.final_requests.join(' '):'غير متوفر'}.
-المطلوب: اكتب المسودة بشكل رسمي وجاهز للطباعة بدون مقدمات، ابدأ بالبسملة والنص مباشرة.`;
+    const promptText = `بصفتك محامياً أردنياً متمرساً، قم بصياغة مستند قانوني رسمي جاهز للطباعة والتقديم للمحكمة.
+نوع المستند: ${draftType}
+المدعي / الموكل: ${clientName}
+المدعى عليه / الخصم: ${caseObj.opponent_name || 'غير محدد'}
+المحكمة المختصة: ${caseObj.current_court || 'محكمة البداية / الصلح المختصة'}
+قيمة المطالبة: ${caseObj.claim_amount ? caseObj.claim_amount + ' دينار أردني' : 'غير محدد'}
+الوقائع: ${caseObj.lawsuit_facts || 'صغ وقائع قانونية منطقية ومقنعة تناسب نوع الدعوى.'}
+الأسانيد القانونية: ${caseObj.legal_basis || 'استند للقانون المدني الأردني وقانون أصول المحاكمات المدنية.'}
+الطلبات الختامية: ${Array.isArray(caseObj.final_requests) && caseObj.final_requests.length > 0 ? caseObj.final_requests.join('، ') : 'تضمين الرسوم والمصاريف وأتعاب المحاماة والفائدة القانونية.'}
+ملاحظات إضافية من المحامي: ${extraNotes}
+
+تعليمات صارمة جداً للتنفيذ:
+1. أجب باللغة العربية الفصحى المتقنة فقط. لا تكتب أي حرف إنجليزي.
+2. استخدم المصطلحات القانونية الأردنية المعتمدة بدقة (مثل: لائحة دعوى، وكالة، بينات، وكيل المدعي، نلتمس من محكمتكم الموقرة).
+3. ابدأ المستند فوراً بـ "بسم الله الرحمن الرحيم" ثم عنوان المستند واسم المحكمة الناظرة للدعوى.
+4. لا تكتب أي مقدمات أو شروحات حوارية مثل "إليك المسودة" أو "تفضل". اكتب النص القانوني مباشرة فقط.`;
 
     try {
         const res = await API.askAI(promptText);
         if (res && res.reply) {
-            document.getElementById('ai_draft_result').value = res.reply;
+            // فلتر أمان إضافي لتنظيف الرد من أي هلوسات إنجليزية قد تسبق النص
+            let finalReply = res.reply.replace(/Here is the.*?:/ig, '').replace(/```/g, '').trim();
+            document.getElementById('ai_draft_result').value = finalReply;
             document.getElementById('ai_draft_result_container').classList.remove('d-none');
-            showAlert('تم توليد المسودة بنجاح!', 'success');
+            showAlert('تم توليد المسودة باحترافية!', 'success');
         } else throw new Error('لا يوجد رد');
     } catch (e) { showAlert('فشل الاتصال بمحرك الذكاء الاصطناعي.', 'error'); } 
     finally { btn.innerHTML = '<i class="fas fa-robot me-1"></i> توليد المسودة الآن'; btn.disabled = false; }
