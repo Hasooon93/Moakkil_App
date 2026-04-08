@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المنقحة: أداء عالي، فلاتر، منع الحذف، تقويم ذكي، استخلاص KYC، ذاكرة ذكية، وروابط عميقة، ومزامنة Offline)
-// التحديثات الأخيرة: تفعيل Web Push Native، الجرس المباشر، سجل الرقابة (Audit Trail)، Optimistic UI للمواعيد، ومعالجة التواريخ والـ UUIDs الفارغة.
+// التحديثات الأخيرة: إظهار ملاحظات الإنجاز في بطاقات المواعيد، تفعيل Web Push Native، الجرس المباشر، سجل الرقابة، Optimistic UI، ومعالجة التواريخ.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -259,7 +259,6 @@ async function loadAllData() {
         filterAndSetCases(Array.isArray(rawCases) ? rawCases : []);
         filterAndSetAppointments(Array.isArray(rawAppointments) ? rawAppointments : []);
         
-        // تحميل سجل الرقابة للمدراء
         if (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'superadmin') {
             try {
                 const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
@@ -400,6 +399,7 @@ function toggleAgendaView() {
     else { kanban.classList.add('d-none'); list.classList.remove('d-none'); renderAgendaList(); }
 }
 function filterAgenda() { renderAgendaList(); }
+
 function renderAgendaList() {
     const list = document.getElementById('agenda-list'); if (!list) return;
     const searchVal = document.getElementById('search-agenda')?.value.toLowerCase() || '';
@@ -429,13 +429,24 @@ function renderAgendaList() {
         const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.title)}&dates=${startTime}/${endTime}`;
         let statusBadgeColor = a.status === 'تم' ? 'success' : (a.status === 'ملغي' ? 'danger' : (a.status === 'مؤجل' ? 'warning' : 'primary'));
         let actionButtons = '';
+        
         if (a.status === 'مجدول' || a.status === 'مؤجل') {
             actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
         }
+        
+        // 🔥 إظهار ملاحظات الإنجاز في بطاقة الموعد إذا وجدت
+        let notesHtml = '';
+        if (a.notes && a.notes.trim() !== '') {
+            notesHtml = `<div class="mt-2 p-2 bg-light border rounded small text-muted"><i class="fas fa-info-circle text-info me-1"></i> <b>ملاحظات الإنجاز:</b> <span style="white-space: pre-wrap;">${escapeHTML(a.notes)}</span></div>`;
+        }
+
         return `<div class="card-custom appt-card p-3 mb-3 shadow-sm border-start border-4 border-${statusBadgeColor} bg-white" style="border-radius:12px;">
             <div class="d-flex justify-content-between align-items-start"><h6 class="fw-bold text-navy mb-1 lh-base" style="max-width:75%;">${escapeHTML(a.title)}</h6><span class="badge bg-${statusBadgeColor} shadow-sm">${escapeHTML(a.status)}</span></div>
             <div class="d-flex justify-content-between align-items-center mb-2 mt-2 bg-light p-2 rounded"><small class="text-muted fw-bold"><i class="fas fa-calendar-alt text-warning me-1"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small><a href="${calendarUrl}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill shadow-sm" title="إضافة للتقويم"><i class="fas fa-calendar-plus"></i></a></div>
-            <div class="mb-1">${assignedHtml}</div>${actionButtons}</div>`;
+            <div class="mb-1">${assignedHtml}</div>
+            ${notesHtml}
+            ${actionButtons}
+        </div>`;
     }).join('');
 }
 
@@ -446,12 +457,19 @@ function renderKanbanBoard() {
         <div class="kanban-col border-top border-4 border-${col.color} shadow-sm bg-white mx-2" style="width: 280px; flex-shrink: 0;">
             <div class="kanban-header text-${col.color} mb-3 pb-2 border-bottom border-light"><i class="fas fa-circle me-1 small"></i> ${col.l} (${globalData.appointments.filter(col.f).length})</div>
             <div class="d-flex flex-column gap-2" style="max-height: 55vh; overflow-y: auto;">
-            ${globalData.appointments.filter(col.f).sort((a,b) => new Date(b.appt_date) - new Date(a.appt_date)).map(a => `
-                <div class="card-custom appt-card p-2 shadow-sm border border-light bg-light" style="font-size:13px; border-radius:10px;"><b class="text-navy d-block text-truncate mb-1" title="${escapeHTML(a.title)}">${escapeHTML(a.title)}</b><small class="text-muted"><i class="fas fa-calendar-alt me-1 text-secondary"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small></div>
-            `).join('')}</div></div>`).join('');
+            ${globalData.appointments.filter(col.f).sort((a,b) => new Date(b.appt_date) - new Date(a.appt_date)).map(a => {
+                
+                // إظهار سطر صغير للملاحظات في وضع الـ Kanban
+                let notesSnippet = (a.notes && a.notes.trim() !== '') ? `<div class="mt-2 pt-2 border-top border-light text-muted small"><i class="fas fa-info-circle text-info me-1"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${escapeHTML(a.notes)}</span></div>` : '';
+
+                return `<div class="card-custom appt-card p-2 shadow-sm border border-light bg-light" style="font-size:13px; border-radius:10px;">
+                    <b class="text-navy d-block text-truncate mb-1" title="${escapeHTML(a.title)}">${escapeHTML(a.title)}</b>
+                    <small class="text-muted"><i class="fas fa-calendar-alt me-1 text-secondary"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small>
+                    ${notesSnippet}
+                </div>`;
+            }).join('')}</div></div>`).join('');
 }
 
-// 🔥 إضافة دالة رسم سجل المراقبة (Audit Trail) للمدراء
 function renderActivityLogs() {
     const list = document.getElementById('audit-list');
     if(!list) return;
@@ -480,7 +498,6 @@ function renderActivityLogs() {
     }).join('');
 }
 
-// 🛡️ دوال المواعيد مع الحماية من حفظ الـ temp_
 async function saveApptOutcome(e, id) { 
     if(e) e.preventDefault(); 
     const apptId = id || document.getElementById('outcome_appt_id').value; 
@@ -492,8 +509,13 @@ async function saveApptOutcome(e, id) {
 
     const notes = document.getElementById('outcome_text') ? document.getElementById('outcome_text').value : '';
     
+    // 🔥 تحديث الملاحظة والحالة محلياً لتظهر فوراً على الشاشة
     const idx = globalData.appointments.findIndex(a => a.id === apptId);
-    if(idx !== -1) globalData.appointments[idx].status = 'تم';
+    if(idx !== -1) {
+        globalData.appointments[idx].status = 'تم';
+        globalData.appointments[idx].notes = notes; 
+    }
+    
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
     closeModal('apptOutcomeModal'); 
     showAlert('تم تسجيل الإنجاز', 'success');
@@ -627,7 +649,6 @@ window.generateStrongPIN = function() {
     const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
 };
 
-// 🛡️ معالجة التواريخ الفارغة (Null Dates) لتجنب أخطاء 500 في الداتا بيز
 async function saveClient(event) {
     event.preventDefault();
     
@@ -660,7 +681,6 @@ async function saveClient(event) {
     }
 }
 
-// 🛡️ حماية الـ UUID والتواريخ الفارغة
 async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers');
@@ -677,7 +697,6 @@ async function saveCase(event) {
     const statuteValue = document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : '';
     const validStatute = statuteValue === '' ? null : statuteValue;
 
-    // 🔥 حماية حقل parent_case_id ليكون null إذا كان فارغاً بدلاً من ""
     const parentIdValue = document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : '';
     const validParentId = parentIdValue === '' ? null : parentIdValue;
 
@@ -698,7 +717,7 @@ async function saveCase(event) {
         current_judge: document.getElementById('case_current_judge') ? document.getElementById('case_current_judge').value : '',
         court_clerk: document.getElementById('case_court_clerk') ? document.getElementById('case_court_clerk').value : '',
         
-        parent_case_id: validParentId, // تم الإصلاح هنا
+        parent_case_id: validParentId, 
         
         deadline_date: validDeadline,
         statute_of_limitations_date: validStatute,
