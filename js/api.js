@@ -192,7 +192,7 @@ const API = {
     extractLegalData: async (text) => {
         try {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-            const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '[https://curly-pond-9975.hassan-alsakka.workers.dev](https://curly-pond-9975.hassan-alsakka.workers.dev)';
+            const baseUrl = window.API_BASE_URL || CONFIG.API_URL || 'https://curly-pond-9975.hassan-alsakka.workers.dev';
             
             const res = await fetch(`${baseUrl}/api/ai/process`, {
                 method: 'POST',
@@ -288,6 +288,8 @@ const API = {
 
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
     getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
+    
+    // 🛡️ إصلاح خطأ الـ undefined في جلب البطاقات والإيصالات
     verifyReceipt: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-receipt?id=${id}` : '/api/public/verify-receipt', 'GET', null, true),
     verifyCV: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-cv?id=${id}` : '/api/public/verify-cv', 'GET', null, true)
 };

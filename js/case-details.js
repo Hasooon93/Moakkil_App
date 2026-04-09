@@ -1,4 +1,4 @@
-// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة غير المقتطعة)
+// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة المصلحة 100%)
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -19,7 +19,7 @@ function applyJordanTimeHackLocal(dateString) {
 
 window.onload = async () => {
     applyFirmSettings(); 
-    if (!currentCaseId) { window.location.href = 'app'; return; }
+    if (!currentCaseId) { window.location.href = 'app.html'; return; }
     await loadCaseFullDetails();
 };
 
@@ -39,7 +39,7 @@ window.manualSync = async () => {
     if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i>'; }
 };
 
-function goBack() { window.location.href = 'app'; }
+function goBack() { window.location.href = 'app.html'; }
 
 async function loadCaseFullDetails() {
     try {
@@ -53,7 +53,7 @@ async function loadCaseFullDetails() {
         window.firmClients = Array.isArray(clientsReq) ? clientsReq : [];
         
         caseObj = window.firmCases.find(c => c.id == currentCaseId);
-        if (!caseObj) { window.location.href = 'app'; return; }
+        if (!caseObj) { window.location.href = 'app.html'; return; }
 
         renderHeaderAndSummary();
         renderTimeline(Array.isArray(updatesReq) ? updatesReq : []);
@@ -156,7 +156,7 @@ function renderHeaderAndSummary() {
             let reqs = ai.final_requests;
             if(Array.isArray(reqs)) reqs = reqs.join('، ');
             document.getElementById('det-ai-requests').innerText = reqs || '--';
-        } catch(e) { console.error("Error parsing AI", e); }
+        } catch(e) { console.error("Error parsing AI entities", e); }
     } else {
         document.getElementById('det-ai-facts').innerText = '--';
         document.getElementById('det-ai-legal').innerText = '--';
@@ -243,7 +243,7 @@ function openEditModal() {
     
     const parentCaseSelect = document.getElementById('edit_parent_case_id');
     if(parentCaseSelect && window.firmCases) {
-        parentCaseSelect.innerHTML = '<option value="">لا يوجد</option>' + window.firmCases.filter(c => c.id !== currentCaseId).map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id)}</option>`).join('');
+        parentCaseSelect.innerHTML = '<option value="">لا يوجد (قضية رئيسية)</option>' + window.firmCases.filter(c => c.id !== currentCaseId).map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id)}</option>`).join('');
         if (caseObj.parent_case_id) parentCaseSelect.value = caseObj.parent_case_id;
     }
     openModal('editCaseModal');
@@ -334,16 +334,18 @@ async function saveUpdate(event) {
     const rawHearing = document.getElementById('upd_hearing_date').value || null;
     const rawNextHearing = document.getElementById('upd_next_hearing').value || null;
 
+    // 🚀 استخدام المسمى الصحيح `ai_extracted_entities` لجدول التحديثات لمنع خطأ 500
     const data = {
         case_id: currentCaseId, update_title: document.getElementById('upd_title').value, update_details: details,
         hearing_date: rawHearing ? applyJordanTimeHackLocal(rawHearing) : null, next_hearing_date: rawNextHearing ? applyJordanTimeHackLocal(rawNextHearing) : null,
-        is_visible_to_client: document.getElementById('upd_visible').checked, ai_entities: extractedData, attachment_url: finalAttachmentUrl
+        is_visible_to_client: document.getElementById('upd_visible').checked, ai_extracted_entities: extractedData, attachment_url: finalAttachmentUrl
     };
     
     try {
         const res = await API.addUpdate(data);
         if(res && !res.error) { 
             if (extractedData.lawsuit_facts || extractedData.legal_basis) {
+                // 🚀 استخدام المسمى الصحيح `ai_entities` لجدول القضايا
                 await API.updateCase(currentCaseId, { ai_entities: extractedData, lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, legal_basis: extractedData.legal_basis || caseObj.legal_basis, ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100) });
             }
             if (hasFile) { closeModal('updateModal'); showAlert(res.offline ? 'حفظ محلي' : 'تمت الإضافة', res.offline ? 'warning' : 'success'); }
@@ -484,7 +486,15 @@ function startDictation(elementId) {
         const textArea = document.getElementById(elementId); const origPlaceholder = textArea.placeholder;
         recognition.onstart = function() { textArea.placeholder = "تحدث الآن."; showAlert('الميكروفون يعمل', 'info'); };
         recognition.onresult = function(e) { textArea.value += (textArea.value ? ' ' : '') + e.results[0][0].transcript; showAlert('تم إدراج النص.', 'success'); };
-        recognition.onerror = function(e) { if(e.error==='aborted') return; console.error(e); showAlert('خطأ بالميكروفون.', 'danger'); textArea.placeholder = origPlaceholder; };
+        
+        // 🛡️ تجاهل رسالة الخطأ في حال توقف المايكروفون طبيعياً
+        recognition.onerror = function(e) { 
+            if(e.error === 'aborted') return; 
+            console.error(e); 
+            showAlert('خطأ بالميكروفون: ' + e.error, 'danger'); 
+            textArea.placeholder = origPlaceholder; 
+        };
+        
         recognition.onend = function() { textArea.placeholder = origPlaceholder; };
         recognition.start();
     } catch (e) { showAlert('فشل خدمة الصوت.', 'danger'); }
