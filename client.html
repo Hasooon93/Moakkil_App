@@ -129,6 +129,15 @@
         </div>
     </div>
 
+    <div id="suspended-layer" class="d-none">
+        <div class="security-card mx-auto mt-5" style="max-width: 400px; padding: 2rem; background: white; border-radius: 20px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.1);">
+            <i class="fas fa-user-lock fa-4x text-danger mb-3"></i>
+            <h4 class="fw-bold text-dark mb-2">تم تعليق الحساب</h4>
+            <p class="text-muted small mb-4">نعتذر منك، تم إيقاف وصولك لهذه البوابة مؤقتاً من قبل إدارة المكتب. يرجى مراجعة المكتب لتسوية الأوضاع.</p>
+            <button class="btn btn-outline-danger fw-bold px-4 w-100" onclick="logoutClient()">تسجيل خروج</button>
+        </div>
+    </div>
+
     <div id="main-content" class="d-none">
         
         <div class="client-header">
@@ -138,8 +147,11 @@
                     <h3 class="fw-bold mb-2">أهلاً، <span id="ui-client-name">--</span></h3>
                     <span class="badge bg-success shadow-sm" style="font-size: 0.9rem;" id="ui-case-status">حالة القضية</span>
                 </div>
-                <div id="ui-firm-logo-container" class="bg-white p-1 rounded d-none shadow-sm">
-                    <img id="ui-firm-logo" src="" style="width: 50px; height: 50px; object-fit: contain;">
+                <div class="d-flex flex-column align-items-end gap-2">
+                    <button class="btn btn-sm btn-outline-light text-white" onclick="logoutClient()" title="تسجيل خروج أمن"><i class="fas fa-sign-out-alt"></i> خروج</button>
+                    <div id="ui-firm-logo-container" class="bg-white p-1 rounded d-none shadow-sm">
+                        <img id="ui-firm-logo" src="" style="width: 50px; height: 50px; object-fit: contain;">
+                    </div>
                 </div>
             </div>
             

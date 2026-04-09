@@ -126,6 +126,10 @@ function openStaffModal(id = null) {
             document.getElementById('s_avatar').value = staff.avatar_url || '';
             document.getElementById('s_address').value = staff.address || '';
             
+            // الحقول المحقونة (الجنس، الرقم الوطني)
+            document.getElementById('s_national_id').value = staff.national_id || '';
+            document.getElementById('s_gender').value = staff.gender || '';
+            
             document.getElementById('s_role').value = staff.role || 'lawyer';
             document.getElementById('s_specialization').value = staff.specialization || '';
             document.getElementById('s_join_date').value = staff.join_date || '';
@@ -133,9 +137,24 @@ function openStaffModal(id = null) {
             document.getElementById('s_syndicate_num').value = staff.syndicate_number || '';
             document.getElementById('s_syndicate_expiry').value = staff.syndicate_expiry_date || '';
 
+            // الصلاحيات (محروق جراحياً)
+            if (staff.permissions) {
+                document.getElementById('perm_delete').checked = staff.permissions.can_delete || false;
+                document.getElementById('perm_finance').checked = staff.permissions.can_finance || false;
+                document.getElementById('perm_reports').checked = staff.permissions.can_reports || false;
+            } else {
+                document.getElementById('perm_delete').checked = false;
+                document.getElementById('perm_finance').checked = false;
+                document.getElementById('perm_reports').checked = false;
+            }
+
             if (staff.salary_details) {
                 document.getElementById('s_salary').value = staff.salary_details.basic || '';
                 document.getElementById('s_commission').value = staff.salary_details.commission || '';
+                // تفاصيل البنك والبدلات
+                document.getElementById('s_allowance').value = staff.salary_details.allowance || '';
+                document.getElementById('s_bank_name').value = staff.salary_details.bank_name || '';
+                document.getElementById('s_bank_iban').value = staff.salary_details.bank_iban || '';
             }
 
             if (staff.emergency_contact) {
@@ -162,10 +181,14 @@ async function saveStaff(event) {
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
 
     const id = document.getElementById('staff_id').value;
+    
+    // بناء كائن البيانات متضمناً JSONB للـ ERP
     const data = {
         full_name: document.getElementById('s_full_name').value.trim(),
         phone: document.getElementById('s_phone').value.trim(),
         telegram_id: document.getElementById('s_telegram_id').value || null,
+        national_id: document.getElementById('s_national_id').value || null,
+        gender: document.getElementById('s_gender').value || null,
         date_of_birth: document.getElementById('s_dob').value || null,
         avatar_url: document.getElementById('s_avatar').value || null,
         address: document.getElementById('s_address').value || null,
@@ -175,10 +198,23 @@ async function saveStaff(event) {
         experience_years: parseInt(document.getElementById('s_experience').value) || 0,
         syndicate_number: document.getElementById('s_syndicate_num').value || null,
         syndicate_expiry_date: document.getElementById('s_syndicate_expiry').value || null,
+        
+        // بناء الصلاحيات ككائن Jsonb
+        permissions: {
+            can_delete: document.getElementById('perm_delete').checked,
+            can_finance: document.getElementById('perm_finance').checked,
+            can_reports: document.getElementById('perm_reports').checked
+        },
+        
+        // بناء الراتب כكائن Jsonb
         salary_details: {
             basic: document.getElementById('s_salary').value || 0,
-            commission: document.getElementById('s_commission').value || 0
+            commission: document.getElementById('s_commission').value || 0,
+            allowance: document.getElementById('s_allowance').value || 0,
+            bank_name: document.getElementById('s_bank_name').value || '',
+            bank_iban: document.getElementById('s_bank_iban').value || ''
         },
+        
         emergency_contact: {
             name: document.getElementById('s_em_name').value || '',
             phone: document.getElementById('s_em_phone').value || '',

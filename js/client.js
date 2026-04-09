@@ -1,5 +1,5 @@
 // js/client.js - محرك بوابة الموكل العامة (التحقق بالرقم السري وعرض البيانات المتطورة بأمان)
-// التحديثات: ربط نظام الحماية من التخمين (Brute-Force)، ودعم وضع عدم الاتصال (Offline Cache).
+// التحديثات: ربط نظام الحماية من التخمين (Brute-Force)، ودعم وضع عدم الاتصال (Offline Cache)، وحظر الحسابات المعلقة.
 
 let publicData = null;
 
@@ -124,7 +124,11 @@ async function verifyAccess(event) {
         }
 
     } catch (error) {
-        Swal.fire('تنبيه أمني!', error.message, 'error');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('تنبيه أمني!', error.message, 'error');
+        } else {
+            alert(error.message);
+        }
         document.getElementById('pin_input').value = '';
         document.getElementById('pin_input').focus();
     } finally {
@@ -133,15 +137,40 @@ async function verifyAccess(event) {
     }
 }
 
+// دالة تسجيل الخروج للموكل
+window.logoutClient = function() {
+    localStorage.removeItem('moakkil_client_token');
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if(token) {
+        localStorage.removeItem(`moakkil_client_cache_${token}`);
+    }
+    // إعادة التوجيه للصفحة بدون التوكن لمسح الجلسة
+    window.location.href = window.location.pathname; 
+};
+
 // دالة فك القفل وعرض البيانات
 function unlockPortal() {
+    const client = publicData.client || {};
+    
+    // التحقق من حالة حظر الموكل (Client Portal Active) - حقن الـ ERP
+    if (client.client_portal_active === false) {
+        document.getElementById('security-layer').classList.add('d-none');
+        document.getElementById('main-content').classList.add('d-none');
+        const susp = document.getElementById('suspended-layer');
+        if(susp) susp.classList.remove('d-none');
+        return; // منع إكمال العرض
+    }
+
     document.getElementById('security-layer').classList.add('d-none');
     document.getElementById('main-content').classList.remove('d-none');
     renderClientPortal();
     
-    Swal.fire({
-        toast: true, position: 'top-end', icon: 'success', title: 'تم التحقق بنجاح', showConfirmButton: false, timer: 2000
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true, position: 'top-end', icon: 'success', title: 'تم التحقق بنجاح', showConfirmButton: false, timer: 2000
+        });
+    }
 }
 
 // دالة رسم وتعبئة بيانات الموكل بشكل جميل
@@ -180,8 +209,11 @@ function renderClientPortal() {
     if (pText) pText.innerText = progressText;
 
     if(firm.logo_url) {
-        document.getElementById('ui-firm-logo').src = escapeHTML(firm.logo_url);
-        document.getElementById('ui-firm-logo-container').classList.remove('d-none');
+        const logoEl = document.getElementById('ui-firm-logo');
+        if(logoEl) {
+            logoEl.src = escapeHTML(firm.logo_url);
+            document.getElementById('ui-firm-logo-container').classList.remove('d-none');
+        }
     }
 
     // معلومات القضية
@@ -272,12 +304,14 @@ function renderClientPortal() {
         filesContainer.innerHTML = files.map(f => {
             const isImage = f.file_type && f.file_type.includes('image');
             const icon = isImage ? 'fa-image text-primary' : 'fa-file-pdf text-danger';
+            // الاعتماد على file_url للعرض حسب الهيكلة القياسية للـ ERP كاحتياط
+            const fileLink = escapeHTML(f.file_url || f.drive_file_id || '#');
             return `
             <div class="col-6">
                 <div class="card p-3 text-center border-0 shadow-sm h-100">
                     <i class="fas ${icon} fa-2x mb-2"></i>
                     <h6 class="small fw-bold text-truncate mb-2" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
-                    <a href="${escapeHTML(f.drive_file_id)}" target="_blank" class="btn btn-sm btn-outline-dark fw-bold rounded-pill"><i class="fas fa-download"></i> تحميل</a>
+                    <a href="${fileLink}" target="_blank" class="btn btn-sm btn-outline-dark fw-bold rounded-pill"><i class="fas fa-download"></i> تحميل</a>
                 </div>
             </div>`;
         }).join('');
