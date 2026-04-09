@@ -2,9 +2,9 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a192f">
-    <title>المكتبة القانونية | موكّل</title>
+    <title>المكتبة القانونية والنماذج | موكّل</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -13,63 +13,106 @@
     <link href="./css/style.css" rel="stylesheet">
     
     <style>
-        .nav-pills .nav-link { border-radius: 10px; color: var(--navy); font-weight: 700; border: 1px solid #e2e8f0; margin-left: 5px; transition: 0.3s; background: white;}
-        .nav-pills .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); }
-        .template-card { border-right: 4px solid var(--accent); transition: 0.3s; border-radius: 12px; background: white; padding: 15px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .template-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .library-header {
+            background: linear-gradient(135deg, var(--navy, #0a192f) 0%, #1e3a8a 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .library-header::after {
+            content: '\f02d'; /* أيقونة الكتاب */
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            position: absolute;
+            left: -10px;
+            bottom: -20px;
+            font-size: 120px;
+            opacity: 0.05;
+        }
+        .nav-pills .nav-link { 
+            border-radius: 12px; 
+            color: var(--navy); 
+            font-weight: 700; 
+            border: 1px solid #e2e8f0; 
+            margin-left: 8px; 
+            transition: all 0.3s ease; 
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .nav-pills .nav-link.active { 
+            background-color: var(--navy); 
+            color: white; 
+            border-color: var(--navy); 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .template-card { 
+            border-right: 4px solid var(--accent); 
+            transition: all 0.3s ease; 
+            border-radius: 12px; 
+            background: white; 
+            padding: 20px; 
+            position: relative; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            height: 100%;
+        }
+        .template-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08); 
+        }
         
-        /* تصميم الشريط السفلي الموحد */
         .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1030; }
         .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.75rem; font-weight: 700; transition: all 0.3s ease; border-radius: 15px; padding: 8px 0; cursor: pointer; }
         .nav-item.active { color: var(--navy); background-color: #f1f5f9; transform: translateY(-3px); }
         .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
         .nav-item.active i { color: var(--accent); transform: scale(1.1); }
     </style>
-
-    <script>
-        const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
-        if (fwSettings) {
-            if (fwSettings.primary_color) document.documentElement.style.setProperty('--navy', fwSettings.primary_color);
-            if (fwSettings.accent_color) document.documentElement.style.setProperty('--accent', fwSettings.accent_color);
-        }
-    </script>
 </head>
 <body class="pb-5 mb-5 bg-light">
 
-    <div class="top-nav px-3 d-flex align-items-center justify-content-between shadow-sm sticky-top mb-3" style="background: var(--navy); height: 65px;">
-        <div class="d-flex align-items-center gap-3">
-            <button class="btn btn-sm btn-light border-0 rounded-circle text-navy shadow-sm" onclick="window.location.href='app'" style="width: 35px; height: 35px;">
-                <i class="fas fa-arrow-right"></i>
+    <div class="library-header">
+        <div class="d-flex justify-content-between align-items-center position-relative z-1">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link text-white p-0 text-decoration-none me-3" onclick="window.location.href='app.html'"><i class="fas fa-arrow-right fs-4"></i></button>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-book text-accent me-2"></i> المكتبة والنماذج</h5>
+            </div>
+            <button id="btn-add-template" class="btn btn-sm fw-bold shadow-sm" style="background-color: var(--accent, #64ffda); color: var(--navy, #0a192f); border: none;" onclick="openModal('uploadModal')">
+                <i class="fas fa-plus"></i> إضافة نموذج
             </button>
-            <h6 class="mb-0 fw-bold text-white"><i class="fas fa-book me-2 text-accent"></i> المكتبة والنماذج</h6>
         </div>
-        <button id="btn-add-template" class="btn btn-sm fw-bold shadow-sm" style="background-color: var(--accent, #64ffda); color: var(--navy, #0a192f); border: none;" onclick="openModal('uploadModal')">
-            <i class="fas fa-plus"></i> نموذج
-        </button>
+        <p class="mt-2 mb-0 opacity-75 small position-relative z-1">أرشيف المكتب للتشريعات، العقود، واللوائح الجاهزة.</p>
     </div>
 
-    <div class="container mt-3">
-        <div class="alert alert-info border-info bg-white text-center shadow-sm fw-bold small">
-            <i class="fas fa-info-circle me-1"></i> هذه المكتبة مشتركة وتظهر لجميع المحامين والموظفين في المكتب للوصول السريع للنماذج والتشريعات.
+    <div class="container">
+        <div class="alert alert-info border-0 bg-white text-navy shadow-sm fw-bold small rounded-3 d-flex align-items-center">
+            <i class="fas fa-info-circle fa-2x text-primary me-3"></i>
+            <span>هذه المكتبة مشتركة. أي نموذج يتم رفعه هنا سيكون متاحاً لجميع المحامين في المكتب لتسهيل وسرعة العمل.</span>
         </div>
 
-        <ul class="nav nav-pills mb-4 justify-content-center flex-nowrap overflow-auto pb-2" id="pills-tab" role="tablist" style="white-space: nowrap;">
+        <ul class="nav nav-pills mb-4 justify-content-start flex-nowrap overflow-auto pb-2" id="pills-tab" role="tablist" style="white-space: nowrap;">
             <li class="nav-item-tab">
-                <button class="nav-link active px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-contracts" onclick="filterTemplates('عقود')">عقود</button>
+                <button class="nav-link active px-4" data-bs-toggle="pill" data-bs-target="#tab-contracts" onclick="filterTemplates('عقود')">عقود</button>
             </li>
             <li class="nav-item-tab">
-                <button class="nav-link px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-poa" onclick="filterTemplates('وكالات')">وكالات</button>
+                <button class="nav-link px-4" data-bs-toggle="pill" data-bs-target="#tab-poa" onclick="filterTemplates('وكالات')">وكالات</button>
             </li>
             <li class="nav-item-tab">
-                <button class="nav-link px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-lawsuits" onclick="filterTemplates('لوائح')">لوائح</button>
+                <button class="nav-link px-4" data-bs-toggle="pill" data-bs-target="#tab-lawsuits" onclick="filterTemplates('لوائح')">لوائح ومذكرات</button>
             </li>
             <li class="nav-item-tab">
-                <button class="nav-link px-4 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-laws" onclick="filterTemplates('قوانين')">تشريعات</button>
+                <button class="nav-link px-4" data-bs-toggle="pill" data-bs-target="#tab-laws" onclick="filterTemplates('قوانين')">تشريعات</button>
+            </li>
+            <li class="nav-item-tab">
+                <button class="nav-link px-4" data-bs-toggle="pill" data-bs-target="#tab-other" onclick="filterTemplates('أخرى')">أخرى</button>
             </li>
         </ul>
 
-        <div class="mb-3 position-relative">
-            <input type="text" class="form-control form-control-lg border-0 shadow-sm" id="search-input" placeholder="ابحث عن نموذج، وكالة، أو قانون..." onkeyup="searchTemplates()" style="border-radius: 15px;">
+        <div class="mb-4 position-relative">
+            <input type="text" class="form-control form-control-lg border-0 shadow-sm" id="search-input" placeholder="ابحث عن نموذج، وكالة، أو قانون بالاسم..." onkeyup="searchTemplates()" style="border-radius: 12px; padding-right: 45px;">
             <i class="fas fa-search text-muted position-absolute" style="top: 50%; right: 15px; transform: translateY(-50%);"></i>
         </div>
 
@@ -85,14 +128,14 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-cloud-upload-alt me-2 text-accent"></i> إضافة نموذج للمكتبة</h5>
+                    <h5 class="modal-title fw-bold"><i class="fas fa-cloud-upload-alt me-2 text-accent"></i> أرشفة نموذج جديد</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <form id="uploadForm" onsubmit="uploadTemplate(event)">
                         <div class="mb-3 text-start">
                             <label class="form-label small fw-bold text-muted">اسم النموذج / التشريع <span class="text-danger">*</span></label>
-                            <input type="text" id="tpl_title" class="form-control border-0 shadow-sm" required placeholder="مثال: عقد إيجار تجاري...">
+                            <input type="text" id="tpl_title" class="form-control border-0 shadow-sm" required placeholder="مثال: عقد إيجار تجاري، وكالة خاصة...">
                         </div>
                         <div class="mb-3 text-start">
                             <label class="form-label small fw-bold text-muted">التصنيف <span class="text-danger">*</span></label>
@@ -101,14 +144,15 @@
                                 <option value="وكالات">نماذج وكالات</option>
                                 <option value="لوائح">لوائح ومذكرات</option>
                                 <option value="قوانين">نصوص قانونية / تشريعات</option>
+                                <option value="أخرى">أخرى</option>
                             </select>
                         </div>
                         <div class="mb-4 text-start">
-                            <label class="form-label small fw-bold text-muted">الملف (PDF أو Word) <span class="text-danger">*</span></label>
-                            <input type="file" id="tpl_file" class="form-control border-0 shadow-sm bg-white" accept=".pdf,.doc,.docx" required>
+                            <label class="form-label small fw-bold text-muted">الملف المرفق (PDF, Word, صور) <span class="text-danger">*</span></label>
+                            <input type="file" id="tpl_file" class="form-control border-0 shadow-sm bg-white" required>
                         </div>
                         <button type="submit" id="btn_upload_tpl" class="btn btn-warning w-100 fw-bold py-3 text-dark shadow-sm" style="border-radius: 12px;">
-                            <i class="fas fa-save me-1"></i> رفع وأرشفة النموذج
+                            <i class="fas fa-save me-1"></i> رفع وحفظ في المكتبة
                         </button>
                     </form>
                 </div>
@@ -129,7 +173,7 @@
         <div class="nav-item" onclick="window.location.href='app.html'">
             <i class="fas fa-calendar-check"></i> الأجندة
         </div>
-        <div class="nav-item active" onclick="window.location.href='app.html'">
+        <div class="nav-item active">
             <i class="fas fa-toolbox"></i> الأدوات
         </div>
     </div>
@@ -138,7 +182,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
-    <script src="./js/auth.js"></script>
     <script src="./js/library.js"></script>
 </body>
 </html>

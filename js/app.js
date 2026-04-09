@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المكتملة 100%)
-// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، إصلاح VCard، معالجة الـ Null Dates والـ UUIDs.
+// التحديثات: دعم ERP (الملف التنفيذي، إشارات القضايا)، إدارة CRM (بوابة الموكل)، AI Extraction، سجل الرقابة
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -468,14 +468,17 @@ async function saveClient(event) {
     event.preventDefault();
     const dobValue = document.getElementById('client_dob') ? document.getElementById('client_dob').value : '';
     const validDob = dobValue === '' ? null : dobValue;
+    
     const data = { 
         full_name: document.getElementById('client_full_name').value, phone: document.getElementById('client_phone').value, national_id: document.getElementById('client_national_id').value, 
         email: document.getElementById('client_email') ? document.getElementById('client_email').value : '', client_type: document.getElementById('client_type').value, 
         address: document.getElementById('client_address').value, mother_name: document.getElementById('client_mother') ? document.getElementById('client_mother').value : null,
         date_of_birth: validDob, place_of_birth: document.getElementById('client_pob') ? document.getElementById('client_pob').value : null,
         nationality: document.getElementById('client_nationality') ? document.getElementById('client_nationality').value : null, marital_status: document.getElementById('client_marital') ? document.getElementById('client_marital').value : null,
-        profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null, confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي'
+        profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null, confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي',
+        client_portal_active: document.getElementById('client_portal_active') ? document.getElementById('client_portal_active').checked : true
     };
+    
     const res = await API.addClient(data);
     if (res && !res.error) { closeModal('clientModal'); await loadAllData(); await loadNotifications(); showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم إضافة الموكل بنجاح', res.offline ? 'warning' : 'success'); event.target.reset(); } 
     else { showAlert(res?.error || 'حدث خطأ في الحفظ', 'danger'); }
@@ -492,12 +495,16 @@ async function saveCase(event) {
     const deadlineValue = document.getElementById('case_deadline_date') ? document.getElementById('case_deadline_date').value : ''; const validDeadline = deadlineValue === '' ? null : deadlineValue;
     const statuteValue = document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : ''; const validStatute = statuteValue === '' ? null : statuteValue;
     const parentIdValue = document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : ''; const validParentId = parentIdValue === '' ? null : parentIdValue;
+    
+    const tagsValue = document.getElementById('case_tags') ? document.getElementById('case_tags').value : '';
+    const tagsArray = tagsValue ? tagsValue.split(',').map(t => t.trim()).filter(t => t) : [];
 
     const data = { 
         client_id: document.getElementById('case_client_id').value, case_internal_id: document.getElementById('case_internal_id').value, access_pin: document.getElementById('case_access_pin').value, case_type: document.getElementById('case_type').value, 
         priority_level: document.getElementById('case_priority_level') ? document.getElementById('case_priority_level').value : 'عادي', confidentiality_level: document.getElementById('case_confidentiality') ? document.getElementById('case_confidentiality').value : 'عادي', current_stage: document.getElementById('case_current_stage') ? document.getElementById('case_current_stage').value : '',
         current_court: document.getElementById('case_court') ? document.getElementById('case_court').value : '', court_room: document.getElementById('case_court_room') ? document.getElementById('case_court_room').value : '', court_case_number: document.getElementById('case_court_case_number') ? document.getElementById('case_court_case_number').value : '', case_year: document.getElementById('case_case_year') && document.getElementById('case_case_year').value ? Number(document.getElementById('case_case_year').value) : null, litigation_degree: document.getElementById('case_litigation_degree') ? document.getElementById('case_litigation_degree').value : null, current_judge: document.getElementById('case_current_judge') ? document.getElementById('case_current_judge').value : '', court_clerk: document.getElementById('case_court_clerk') ? document.getElementById('case_court_clerk').value : '',
         parent_case_id: validParentId, deadline_date: validDeadline, statute_of_limitations_date: validStatute, police_station_ref: document.getElementById('case_police_station_ref') ? document.getElementById('case_police_station_ref').value : '', prosecution_ref: document.getElementById('case_prosecution_ref') ? document.getElementById('case_prosecution_ref').value : '',
+        execution_file_number: document.getElementById('case_execution_file_number') ? document.getElementById('case_execution_file_number').value : null, case_tags: tagsArray,
         opponent_name: document.getElementById('case_opponent_name').value, opponent_lawyer: document.getElementById('case_opponent_lawyer') ? document.getElementById('case_opponent_lawyer').value : '', power_of_attorney_number: document.getElementById('case_poa_number') ? document.getElementById('case_poa_number').value : '', poa_details: document.getElementById('case_poa_details') ? document.getElementById('case_poa_details').value : '',
         co_plaintiffs: document.getElementById('case_co_plaintiffs') ? parseToArray(document.getElementById('case_co_plaintiffs').value) : [], co_defendants: document.getElementById('case_co_defendants') ? parseToArray(document.getElementById('case_co_defendants').value) : [], experts_and_witnesses: document.getElementById('case_experts_and_witnesses') ? parseToArray(document.getElementById('case_experts_and_witnesses').value) : [],
         lawsuit_facts: document.getElementById('case_lawsuit_text') ? document.getElementById('case_lawsuit_text').value : '', legal_basis: document.getElementById('case_legal_basis') ? document.getElementById('case_legal_basis').value : '', final_requests: document.getElementById('case_final_requests') ? parseLinesToArray(document.getElementById('case_final_requests').value) : [],

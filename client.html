@@ -3,267 +3,260 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>بوابة الموكل | نظام موكّل</title>
+    <title>بوابة الموكل الإلكترونية</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    
     <style>
         :root {
-            --firm-primary: #0a192f;
-            --firm-accent: #64ffda;
-            --bg-light: #f8fafc;
+            --main-firm-color: #0a192f;
+            --accent-firm-color: #64ffda;
         }
-
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: var(--bg-light); 
-            padding-bottom: 30px; 
-        }
-
-        /* نافذة التحقق الأمنية */
-        #security-layer {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, var(--firm-primary) 0%, #1e293b 100%);
-            z-index: 9999; display: flex; align-items: center; justify-content: center;
-        }
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
-        .security-card {
-            background: white; border-radius: 20px; padding: 2rem; width: 90%; max-width: 400px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center;
-        }
-
-        .pin-input {
-            font-size: 2rem; letter-spacing: 15px; text-align: center;
-            border: 2px solid #e2e8f0; border-radius: 12px; font-weight: bold;
-        }
-        .pin-input:focus { border-color: var(--firm-primary); box-shadow: none; }
-
-        /* الترويسة العلوية */
-        .client-header {
-            background: var(--firm-primary);
+        .portal-header {
+            background: linear-gradient(135deg, var(--main-firm-color) 0%, #1e3a8a 100%);
             color: white;
-            padding: 30px 20px 40px 20px;
-            border-radius: 0 0 30px 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 4px solid var(--accent-firm-color);
             position: relative;
             overflow: hidden;
         }
-        .client-header::after {
-            content: '\f24e'; /* أيقونة الميزان */
-            font-family: 'Font Awesome 6 Free';
+        .portal-header::after {
+            content: '\f0e3'; /* ميزان العدالة */
+            font-family: 'Font Awesome 5 Free';
             font-weight: 900;
             position: absolute;
-            right: -20px;
-            top: -20px;
+            left: -20px;
+            bottom: -30px;
             font-size: 150px;
             opacity: 0.05;
-            color: white;
         }
-
-        /* البطاقات الأساسية */
-        .info-card {
-            background: white; border-radius: 15px; padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
-            border-top: 4px solid var(--firm-accent);
+        .firm-logo {
+            max-height: 90px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            background: white;
+            padding: 5px;
         }
-
-        /* الخط الزمني */
-        .timeline { border-right: 3px solid #e2e8f0; padding-right: 20px; position: relative; margin-top: 10px; }
-        .timeline-item { position: relative; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
-        .timeline-item::after {
-            content: ''; position: absolute; right: -28px; top: 15px;
-            width: 14px; height: 14px; background: var(--firm-primary);
-            border-radius: 50%; border: 3px solid white;
-        }
-
-        /* المالية */
-        .fin-box { text-align: center; padding: 15px 5px; border-radius: 12px; }
         
-        .nav-pills .nav-link { color: var(--firm-primary); font-weight: 700; border-radius: 10px; transition: 0.3s; }
-        .nav-pills .nav-link.active { background-color: var(--firm-primary); color: white; }
-
-        /* Loader */
-        .loader-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9); z-index: 10000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        .card-custom {
+            background: #ffffff;
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+            transition: transform 0.3s ease;
         }
-        .spinner {
-            width: 50px; height: 50px; border: 5px solid #e2e8f0;
-            border-top-color: var(--firm-primary); border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .card-custom:hover { transform: translateY(-3px); }
+        
+        .login-container {
+            max-width: 450px;
+            margin: 8vh auto;
+            padding: 0 15px;
         }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .timeline {
+            border-right: 3px solid #e9ecef;
+            padding-right: 20px;
+            margin-right: 10px;
+            position: relative;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 25px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #f1f5f9;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            right: -29px;
+            top: 15px;
+            width: 14px;
+            height: 14px;
+            background-color: var(--accent-firm-color);
+            border: 3px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px var(--main-firm-color);
+        }
+        
+        .fin-box {
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+        
+        .locked-state {
+            text-align: center;
+            padding: 50px 20px;
+            background: white;
+            border-radius: 15px;
+            margin-top: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .spinner-wrapper {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body>
 
-    <div id="loader" class="loader-overlay">
-        <div class="spinner"></div>
-        <h5 class="mt-3 fw-bold text-navy" style="color: var(--firm-primary);">جاري جلب بيانات الملف...</h5>
+    <div id="loadingSpinner" class="spinner-wrapper d-none">
+        <div class="text-center">
+            <i class="fas fa-balance-scale fa-spin fa-4x mb-3" style="color: var(--main-firm-color);"></i>
+            <h5 class="fw-bold" style="color: var(--main-firm-color);">جاري الاتصال الآمن بالمكتب...</h5>
+        </div>
     </div>
 
-    <div id="security-layer" class="d-none">
-        <div class="security-card">
-            <div id="firm-logo-sec" class="mb-3 d-none">
-                <img src="" id="firm-logo-img" style="max-height: 70px; border-radius: 10px;">
-            </div>
-            <i class="fas fa-lock fa-3x mb-3" style="color: var(--firm-accent);"></i>
-            <h4 class="fw-bold mb-1" style="color: var(--firm-primary);">بوابة الموكل الآمنة</h4>
-            <p class="text-muted small mb-4">يرجى إدخال الرمز السري (PIN) المزود لك من قبل المكتب للوصول لملفك.</p>
+    <div id="loginView" class="login-container">
+        <div class="card-custom p-4 text-center border-top border-4" style="border-color: var(--main-firm-color) !important;">
+            <i class="fas fa-shield-alt fa-3x mb-3" style="color: var(--main-firm-color);"></i>
+            <h4 class="fw-bold mb-1" style="color: var(--main-firm-color);">بوابة الموكل الإلكترونية</h4>
+            <p class="text-muted small mb-4">يرجى إدخال بيانات ملفك للوصول الآمن والخاص</p>
             
-            <form onsubmit="verifyAccess(event)">
-                <input type="password" id="pin_input" class="form-control pin-input mb-3" placeholder="----" maxlength="6" required>
-                <button type="submit" class="btn w-100 fw-bold py-3 text-white" id="btn-verify" style="background-color: var(--firm-primary); border-radius: 12px;">
-                    <i class="fas fa-shield-alt me-1"></i> دخول للوحة المتابعة
+            <form onsubmit="handleClientLogin(event)">
+                <div class="mb-3 text-start">
+                    <label class="form-label fw-bold small text-muted">رقم الملف (المرجع الداخلي للقضية)</label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-folder text-muted"></i></span>
+                        <input type="text" id="login_case_number" class="form-control border-start-0 bg-white" placeholder="مثال: 2024/15" required>
+                    </div>
+                </div>
+                <div class="mb-4 text-start">
+                    <label class="form-label fw-bold small text-muted">الرمز السري (Access PIN)</label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                        <input type="password" id="login_access_pin" class="form-control border-start-0 bg-white" placeholder="أدخل الرمز السري" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-lg w-100 fw-bold shadow-sm text-white" style="background-color: var(--main-firm-color);">
+                    <i class="fas fa-sign-in-alt me-1"></i> دخول آمن
                 </button>
             </form>
-            
-            <div class="mt-4 pt-3 border-top">
-                <small class="text-muted"><i class="fas fa-shield-check"></i> مدعوم بنظام <b>موكّل ERP</b> الآمن</small>
+            <div class="mt-4 pt-3 border-top small text-muted">
+                <i class="fas fa-info-circle me-1"></i> إذا فقدت الرمز السري، يرجى التواصل مع إدارة المكتب لتوليد رمز جديد لك.
             </div>
         </div>
     </div>
 
-    <div id="main-content" class="d-none">
+    <div id="portalView" class="d-none">
         
-        <div class="client-header">
-            <div class="d-flex justify-content-between align-items-start position-relative z-1 mb-3">
-                <div>
-                    <h6 class="text-white-50 mb-1" id="ui-firm-name">مكتب المحاماة</h6>
-                    <h3 class="fw-bold mb-2">أهلاً، <span id="ui-client-name">--</span></h3>
-                    <span class="badge bg-success shadow-sm" style="font-size: 0.9rem;" id="ui-case-status">حالة القضية</span>
-                </div>
-                <div id="ui-firm-logo-container" class="bg-white p-1 rounded d-none shadow-sm">
-                    <img id="ui-firm-logo" src="" style="width: 50px; height: 50px; object-fit: contain;">
-                </div>
+        <div class="portal-header shadow-sm">
+            <div id="firmLogoContainer">
+                <i class="fas fa-balance-scale fa-3x mb-2 text-white opacity-75"></i>
             </div>
-            
-            <div class="position-relative z-1">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <small class="text-white-50 fw-bold" id="ui-progress-text">جاري العمل على الملف...</small>
-                </div>
-                <div class="progress shadow-sm" style="height: 8px; background-color: rgba(255,255,255,0.2);">
-                    <div id="ui-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-accent" role="progressbar" style="width: 50%;"></div>
-                </div>
-            </div>
+            <h3 class="fw-bold mb-1 position-relative z-1" id="firmNameDisplay">مكتب محاماة</h3>
+            <p class="mb-0 text-white-50 position-relative z-1 small"><i class="fas fa-check-circle text-success me-1"></i> اتصال مشفر (End-to-End)</p>
         </div>
 
-        <div class="container mt-4">
+        <div class="container mt-4 pb-5">
             
-            <div class="info-card position-relative z-1" style="margin-top: -35px;">
-                <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--firm-primary);"><i class="fas fa-gavel me-2 text-warning"></i> تفاصيل القضية</h5>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <small class="text-muted fw-bold d-block">رقم الملف الداخلي</small>
-                        <b class="fs-6 text-dark" id="ui-case-id">--</b>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted fw-bold d-block">درجة التقاضي</small>
-                        <b class="fs-6 text-dark" id="ui-litigation">--</b>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted fw-bold d-block">المحكمة / الجهة</small>
-                        <b class="fs-6 text-dark" id="ui-court-name">--</b>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-danger fw-bold d-block">الخصم</small>
-                        <b class="fs-6 text-danger" id="ui-opponent">--</b>
-                    </div>
-                </div>
+            <div class="card-custom p-4 bg-white border-start border-4 border-success">
+                <h5 class="fw-bold mb-1">أهلاً بك، <span id="clientNameDisplay" class="text-success">--</span></h5>
+                <p class="text-muted mb-0 small"><i class="fas fa-folder-open me-1"></i> ملف رقم: <b id="caseNumberDisplay" class="text-dark">--</b></p>
             </div>
 
-            <div class="info-card">
-                <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--firm-primary);"><i class="fas fa-id-card me-2 text-success"></i> بياناتي المسجلة (KYC)</h5>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <small class="text-muted fw-bold d-block">رقم الهاتف</small>
-                        <b class="fs-6 text-dark" id="ui-client-phone" dir="ltr">--</b>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted fw-bold d-block">الرقم الوطني / الهوية</small>
-                        <b class="fs-6 text-dark" id="ui-client-national">--</b>
-                    </div>
-                    <div class="col-6 border-top pt-2 mt-2">
-                        <small class="text-muted fw-bold d-block">الجنسية</small>
-                        <b class="fs-6 text-dark" id="ui-client-nationality">--</b>
-                    </div>
-                    <div class="col-6 border-top pt-2 mt-2">
-                        <small class="text-muted fw-bold d-block">تاريخ الميلاد</small>
-                        <b class="fs-6 text-dark" id="ui-client-dob">--</b>
-                    </div>
-                    <div class="col-12 border-top pt-2 mt-2">
-                        <small class="text-muted fw-bold d-block">العنوان التفصيلي</small>
-                        <b class="fs-6 text-dark" id="ui-client-address">--</b>
-                    </div>
-                </div>
+            <div id="suspendedWarning" class="locked-state d-none">
+                <i class="fas fa-lock fa-4x text-danger mb-3"></i>
+                <h4 class="fw-bold text-dark">تم تعليق الوصول للبوابة</h4>
+                <p class="text-muted">نعتذر منك، تم إيقاف وصولك لهذه البوابة مؤقتاً من قبل إدارة المكتب.<br>يرجى مراجعة المكتب המوكل لتسوية الأوضاع الإدارية أو المالية.</p>
+                <button class="btn btn-outline-danger mt-3 fw-bold px-4" onclick="logoutClient()">تسجيل خروج</button>
             </div>
 
-            <ul class="nav nav-pills mb-4 justify-content-center bg-white p-2 rounded-pill shadow-sm" id="pills-tab" role="tablist">
-                <li class="nav-item flex-fill text-center">
-                    <button class="nav-link active w-100 py-2" data-bs-toggle="pill" data-bs-target="#tab-updates">
-                        <i class="fas fa-stream d-block d-sm-inline mb-1 mb-sm-0 me-sm-1"></i> الإجراءات
-                    </button>
-                </li>
-                <li class="nav-item flex-fill text-center">
-                    <button class="nav-link w-100 py-2" data-bs-toggle="pill" data-bs-target="#tab-finance">
-                        <i class="fas fa-wallet d-block d-sm-inline mb-1 mb-sm-0 me-sm-1"></i> المالية
-                    </button>
-                </li>
-                <li class="nav-item flex-fill text-center">
-                    <button class="nav-link w-100 py-2" data-bs-toggle="pill" data-bs-target="#tab-files">
-                        <i class="fas fa-folder d-block d-sm-inline mb-1 mb-sm-0 me-sm-1"></i> المستندات
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content">
+            <div id="portalContent">
                 
-                <div class="tab-pane fade show active" id="tab-updates">
-                    <h6 class="fw-bold mb-3" style="color: var(--firm-primary);"><i class="fas fa-history me-2 text-warning"></i> السجل الإجرائي</h6>
-                    <div class="timeline" id="ui-timeline-container"></div>
-                </div>
-
-                <div class="tab-pane fade" id="tab-finance">
-                    <div class="row g-2 mb-4">
-                        <div class="col-4">
-                            <div class="fin-box bg-light border">
-                                <small class="text-muted fw-bold d-block">الأتعاب</small>
-                                <b class="text-dark" id="ui-fin-agreed">0</b>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card-custom p-3 h-100">
+                            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--main-firm-color);"><i class="fas fa-info-circle me-2"></i> بيانات الدعوى الأساسية</h6>
+                            <div class="d-flex justify-content-between mb-2 pb-1 border-bottom border-light">
+                                <span class="text-muted small">الخصم:</span>
+                                <b class="text-dark small" id="opponentNameDisplay">--</b>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="fin-box bg-success text-white shadow-sm">
-                                <small class="opacity-75 fw-bold d-block">المُسدّد</small>
-                                <b class="fs-5" id="ui-fin-paid">0</b>
+                            <div class="d-flex justify-content-between mb-2 pb-1 border-bottom border-light">
+                                <span class="text-muted small">المحكمة:</span>
+                                <b class="text-dark small" id="courtNameDisplay">--</b>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="fin-box border border-danger bg-white">
-                                <small class="text-danger fw-bold d-block">المتبقي</small>
-                                <b class="text-danger fs-5" id="ui-fin-rem">0</b>
+                            <div class="d-flex justify-content-between mb-2 pb-1 border-bottom border-light">
+                                <span class="text-muted small">حالة الملف:</span>
+                                <span class="badge bg-primary" id="caseStatusDisplay">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small">المرحلة الحالية:</span>
+                                <b class="text-dark small" id="caseStageDisplay">--</b>
                             </div>
                         </div>
                     </div>
-
-                    <h6 class="fw-bold mb-2 text-success"><i class="fas fa-money-bill-wave me-2"></i> سجل الدفعات</h6>
-                    <div id="ui-payments-container" class="mb-4"></div>
-
-                    <h6 class="fw-bold mb-2 text-danger"><i class="fas fa-receipt me-2"></i> المصروفات والرسوم</h6>
-                    <div id="ui-expenses-container"></div>
-                </div>
-
-                <div class="tab-pane fade" id="tab-files">
-                    <div class="alert alert-info text-center border-info bg-light small fw-bold shadow-sm">
-                        <i class="fas fa-info-circle me-1"></i> هذه المستندات تم إتاحتها من قبل المكتب لتتمكن من الاطلاع عليها وتحميلها.
+                    <div class="col-md-6">
+                        <div class="card-custom p-3 h-100">
+                            <h6 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--main-firm-color);"><i class="fas fa-wallet me-2"></i> الموقف المالي للملف</h6>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="fin-box border border-success border-opacity-25">
+                                        <small class="text-success fw-bold d-block mb-1">المدفوع</small>
+                                        <h5 class="fw-bold text-dark mb-0" id="totalPaidDisplay">0</h5>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="fin-box border border-danger border-opacity-25">
+                                        <small class="text-danger fw-bold d-block mb-1">المتبقي</small>
+                                        <h5 class="fw-bold text-dark mb-0" id="totalRemDisplay">0</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-center">
+                                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#receiptsModal"><i class="fas fa-receipt me-1"></i> عرض الإيصالات الرسمية</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="row g-2" id="ui-files-container"></div>
                 </div>
 
+                <div class="card-custom p-4 mb-4 border-0">
+                    <h6 class="fw-bold mb-4" style="color: var(--main-firm-color);"><i class="fas fa-history me-2"></i> مجريات القضية والجلسات</h6>
+                    <div class="timeline" id="updatesTimeline">
+                        <div class="text-center text-muted small py-3">لا توجد تحديثات متاحة حالياً.</div>
+                    </div>
+                </div>
+
+                <div class="card-custom p-4 mb-4 border-0">
+                    <h6 class="fw-bold mb-3" style="color: var(--main-firm-color);"><i class="fas fa-folder-open me-2"></i> المستندات والقرارات</h6>
+                    <div class="row g-2" id="filesContainer">
+                        <div class="col-12 text-center text-muted small py-3">لا توجد مستندات متاحة حالياً.</div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4 mb-3">
+                    <button class="btn btn-outline-danger fw-bold px-4 rounded-pill shadow-sm" onclick="logoutClient()"><i class="fas fa-sign-out-alt me-1"></i> خروج آمن من البوابة</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="receiptsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header text-white border-0" style="background-color: var(--main-firm-color); border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold fs-6"><i class="fas fa-receipt me-2" style="color: var(--accent-firm-color);"></i> سجل الإيصالات والدفعات</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light p-3" id="receiptsListContainer">
+                    </div>
             </div>
         </div>
     </div>
@@ -271,7 +264,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
-    <script src="./js/api.js"></script>
     <script src="./js/client.js"></script>
 </body>
 </html>
