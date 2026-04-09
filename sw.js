@@ -1,144 +1,110 @@
-// moakkil-sw.js (Service Worker)
-// الدستور المطبق: PWA، Offline Mode، Web Push Notifications
+// sw.js - Service Worker V3.1 (Safari & iOS Fixes)
 
-const CACHE_NAME = 'moakkil-cache-v1.0';
-
-// الملفات الأساسية التي سيتم تخزينها للعمل دون إنترنت
-const URLS_TO_CACHE = [
+const CACHE_NAME = 'moakkil-cache-v3.1';
+// استخدام الروابط النظيفة بدون .html لتجنب أخطاء التوجيه في كلاودفلير وسفاري
+const STATIC_ASSETS = [
     '/',
-    '/login.html',
-    '/app.html',
-    '/assets/css/style.css',
-    '/assets/js/api.js',
-    '/assets/js/auth.js',
-    '/assets/js/app.js',
-    // مكتبة الأيقونات والخطوط لضمان عملها أوفلاين
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap'
+    '/login',
+    '/app',
+    '/css/style.css',
+    '/js/config.js',
+    '/js/api.js',
+    '/js/auth.js',
+    '/js/app.js'
 ];
 
-// ==========================================
-// 1. التثبيت والتخزين المؤقت (Install)
-// ==========================================
 self.addEventListener('install', (event) => {
-    // فرض تفعيل الـ Service Worker الجديد فوراً
     self.skipWaiting();
-    
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('تم فتح الكاش وجاري تخزين الملفات الأساسية');
-                return cache.addAll(URLS_TO_CACHE);
-            })
+        caches.open(CACHE_NAME).then((cache) => {
+            console.log('[Service Worker] جاري تخزين الملفات...');
+            return cache.addAll(STATIC_ASSETS).catch((err) => console.warn('Cache warning:', err));
+        })
     );
 });
 
-// ==========================================
-// 2. التفعيل وتنظيف الكاش القديم (Activate)
-// ==========================================
 self.addEventListener('activate', (event) => {
-    // السيطرة على كل الصفحات المفتوحة فوراً
-    event.waitUntil(self.clients.claim());
-
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log('جاري حذف الكاش القديم:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim())
     );
 });
 
-// ==========================================
-// 3. اعتراض الطلبات (Fetch / Offline Mode)
-// ==========================================
 self.addEventListener('fetch', (event) => {
-    // نتجاهل طلبات الـ API (يجب أن تذهب للخادم دائماً أو تفشل إذا لم يوجد إنترنت)
-    if (event.request.url.includes('/api/')) {
-        return; 
-    }
+    // 1. تجاهل إضافات المتصفح
+    if (!event.request.url.startsWith('http')) return;
 
-    // استراتيجية (Network First, falling back to cache) لملفات الـ HTML
+    const requestUrl = new URL(event.request.url);
+
+    // 2. تجاهل طلبات الـ API والمزامنة
+    if (requestUrl.pathname.startsWith('/api/')) return; 
+
     event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match(event.request).then((response) => {
-                if (response) {
-                    return response;
+        caches.match(event.request).then((cachedResponse) => {
+            const fetchPromise = fetch(event.request).then((networkResponse) => {
+                // إصلاح مشكلة Safari: عدم تخزين أي رد يحتوي على توجيه (Redirected)
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' || networkResponse.redirected) {
+                    return networkResponse;
                 }
-                // إذا لم يجد الملف في الكاش، يمكن توجيهه لصفحة "لا يوجد اتصال"
-                // return caches.match('/offline.html'); 
+
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                    if (event.request.url.startsWith('http')) {
+                        cache.put(event.request, responseToCache);
+                    }
+                });
+
+                return networkResponse;
+            }).catch(() => {
+                return null; 
             });
+
+            return cachedResponse || fetchPromise;
         })
     );
 });
 
-// ==========================================
-// 4. استلام الإشعارات الفورية (Push Notifications)
-// ==========================================
+// إشعارات الدفع (Push Notifications)
 self.addEventListener('push', (event) => {
     if (!event.data) return;
-
     try {
-        // البيانات القادمة من الـ Cloudflare Worker
         const payload = event.data.json();
-        
-        const title = payload.title || 'إشعار من نظام موكّل';
         const options = {
-            body: payload.body || payload.message,
-            icon: '/assets/img/icon-192x192.png', // مسار أيقونة التطبيق (تأكد من إضافتها لاحقاً)
-            badge: '/assets/img/badge-72x72.png', // أيقونة صغيرة تظهر في شريط الإشعارات
-            vibrate: [200, 100, 200],
-            data: {
-                url: payload.url || payload.action_url || '/app.html' // الرابط الذي سيفتح عند النقر
-            },
-            requireInteraction: true // إبقاء الإشعار ظاهراً حتى يغلقه المستخدم
+            body: payload.message || payload.body || 'يوجد تحديث جديد.',
+            icon: '/assets/img/icon-192x192.png',
+            badge: '/assets/img/badge.png',
+            dir: 'rtl',
+            lang: 'ar',
+            vibrate: [200, 100, 200, 100, 200],
+            requireInteraction: true,
+            data: { url: payload.action_url || payload.url || '/app' }
         };
-
-        event.waitUntil(
-            self.registration.showNotification(title, options)
-        );
+        event.waitUntil(self.registration.showNotification(payload.title || 'موكّل', options));
     } catch (e) {
-        // في حال كانت الداتا نص عادي وليس JSON
-        event.waitUntil(
-            self.registration.showNotification('نظام موكّل', {
-                body: event.data.text(),
-                icon: '/assets/img/icon-192x192.png'
-            })
-        );
+        event.waitUntil(self.registration.showNotification('موكّل', { body: event.data.text(), dir: 'rtl' }));
     }
 });
 
-// ==========================================
-// 5. التفاعل مع النقر على الإشعار (Notification Click)
-// ==========================================
 self.addEventListener('notificationclick', (event) => {
-    event.notification.close(); // إغلاق الإشعار
-
-    const urlToOpen = event.notification.data.url;
-
-    // البحث عما إذا كان التطبيق مفتوحاً في إحدى النوافذ (Tabs)
+    event.notification.close();
+    const urlToOpen = event.notification.data?.url || '/app';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // إذا كان التطبيق مفتوحاً، نركز عليه ونوجهه للرابط
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
-                if (client.url.includes(self.location.origin) && 'focus' in client) {
-                    client.focus();
-                    if (urlToOpen && urlToOpen !== '/app.html') {
-                        client.navigate(urlToOpen);
-                    }
-                    return;
+                if (client.url.includes(window.location.origin) && 'focus' in client) {
+                    client.navigate(urlToOpen);
+                    return client.focus();
                 }
             }
-            // إذا كان التطبيق مغلقاً بالكامل، نفتح نافذة جديدة
-            if (clients.openWindow) {
-                return clients.openWindow(urlToOpen);
-            }
+            if (clients.openWindow) return clients.openWindow(urlToOpen);
         })
     );
 });

@@ -2,289 +2,432 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#6f42c1">
-    <title>تسجيل الدخول | نظام موكّل الآمن</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a192f">
+    <meta name="description" content="موكّل - نظام إدارة مكاتب المحاماة الأذكى والأسرع">
     
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="keywords" content="نظام إدارة مكاتب المحاماة, برنامج محاماة, أتمتة القضايا, موكل, استشارات قانونية, SaaS محاماة, إدارة القضايا والموكلين, الذكاء الاصطناعي للمحامين">
+    <meta name="author" content="DamasCodes">
+    <meta property="og:title" content="موكّل | منصة الإدارة القانونية الذكية">
+    <meta property="og:description" content="نظام موكّل ERP هو بيئة العمل السحابية المتكاملة لإدارة مكاتب المحاماة والقضايا بذكاء وأمان.">
+    <meta property="og:image" content="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="موكّل | منصة الإدارة القانونية الذكية">
+    <meta name="twitter:description" content="نظام موكّل ERP هو بيئة العمل السحابية المتكاملة لإدارة مكاتب المحاماة والقضايا بذكاء وأمان.">
+    <meta name="twitter:image" content="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <script>
+        (function() {
+            const token = localStorage.getItem('moakkil_token');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+            if (token) {
+                // إذا كان مسجلاً، اذهب فوراً للتطبيق
+                window.location.href = 'app.html';
+            } else if (isStandalone) {
+                // إذا كان يفتح من التطبيق المثبت وغير مسجل، اذهب فوراً لتسجيل الدخول
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+
+    <title>موكّل | منصة الإدارة القانونية الذكية</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        :root {
-            --primary: #6f42c1;
-            --primary-hover: #59359a;
-            --bg-color: #f4f6f9;
-            --text-color: #333;
-            --danger: #dc3545;
-            --success: #198754;
+        :root { 
+            --navy: #0a192f; 
+            --navy-light: #112240;
+            --accent: #64ffda; 
+            --light-bg: #f8fafc;
+            --text-main: #334155;
         }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Cairo', sans-serif;
-            background: var(--bg-color);
-            background-image: radial-gradient(circle at top right, #e2d9f3 0%, transparent 40%),
-                              radial-gradient(circle at bottom left, #d1e7dd 0%, transparent 40%);
-            display: flex;
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+        
+        .navbar-custom {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.05);
+            padding: 15px 0;
+            transition: 0.3s;
+        }
+        
+        .brand-logo-box {
+            background: var(--navy);
+            width: 45px;
+            height: 45px;
+            min-width: 45px;
+            flex-shrink: 0;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-        }
-
-        .login-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
-            width: 100%;
-            max-width: 450px;
-            padding: 40px;
-            text-align: center;
-            border-top: 5px solid var(--primary);
-            position: relative;
+            border-radius: 12px;
+            margin-left: 10px;
             overflow: hidden;
+            padding: 5px;
+        }
+        
+        .brand-logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
-        .logo-area {
-            margin-bottom: 30px;
-        }
-
-        .logo-area i {
-            font-size: 3.5rem;
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-
-        .logo-area h1 {
-            margin: 0;
+        .navbar-brand {
             font-size: 1.8rem;
-            color: var(--text-color);
-            font-weight: 800;
-        }
-
-        .logo-area p {
-            color: #666;
-            font-size: 0.95rem;
-            margin-top: 5px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            text-align: right;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #555;
-            font-size: 0.9rem;
-        }
-
-        .input-icon-wrapper {
-            position: relative;
-        }
-
-        .input-icon-wrapper i {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #aaa;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 1rem;
-            transition: 0.3s;
-            box-sizing: border-box;
-            background: #fafafa;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary);
-            background: #fff;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
-        }
-
-        .btn-submit {
-            background: var(--primary);
-            color: white;
-            border: none;
-            width: 100%;
-            padding: 14px;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-            font-family: inherit;
+            font-weight: 900;
+            color: var(--navy) !important;
+            letter-spacing: -0.5px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 10px;
+            white-space: nowrap;
         }
-
-        .btn-submit:hover {
-            background: var(--primary-hover);
+        
+        .btn-login {
+            background-color: var(--navy);
+            color: white;
+            border-radius: 10px;
+            padding: 10px 30px;
+            font-weight: 700;
+            transition: 0.3s;
+            border: 2px solid var(--navy);
+            white-space: nowrap;
+        }
+        .btn-login:hover {
+            background-color: transparent;
+            color: var(--navy);
+        }
+        
+        .btn-install {
+            background-color: var(--accent);
+            color: var(--navy);
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-weight: 800;
+            display: inline-block;
+            transition: 0.3s;
+            border: none;
+            white-space: nowrap;
+        }
+        .btn-install:hover {
+            background-color: #ffffff;
             transform: translateY(-2px);
         }
 
-        .btn-submit:disabled {
-            background: #aaa;
-            cursor: not-allowed;
-            transform: none;
+        .hero-section {
+            background: linear-gradient(135deg, var(--navy) 0%, #1e293b 100%);
+            color: white;
+            padding: 120px 0 100px;
+            text-align: center;
+            position: relative;
+            border-bottom: 5px solid var(--accent);
         }
-
-        .biometric-btn {
-            background: transparent;
-            color: var(--text-color);
-            border: 1px solid #ddd;
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-top: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            font-family: inherit;
+        .hero-title {
+            font-weight: 900;
+            font-size: 3.5rem;
+            margin-bottom: 25px;
+            line-height: 1.3;
         }
-
-        .biometric-btn:hover {
-            background: #f8f9fa;
-            border-color: #bbb;
+        .hero-title span { color: var(--accent); }
+        .hero-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.85;
+            margin-bottom: 40px;
+            max-width: 750px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.8;
         }
-
-        .biometric-btn i {
-            color: var(--primary);
+        
+        .btn-hero {
+            background-color: var(--accent);
+            color: var(--navy) !important;
+            border-radius: 12px;
+            padding: 16px 45px;
             font-size: 1.2rem;
+            font-weight: 800;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+            border: 2px solid var(--accent);
+        }
+        .btn-hero:hover, .btn-hero:focus, .btn-hero:active {
+            background-color: #ffffff !important;
+            color: var(--navy) !important;
+            border-color: #ffffff !important;
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(100, 255, 218, 0.4) !important;
+            outline: none !important;
         }
 
-        /* حاويات الخطوات */
-        .step {
-            display: none;
-            animation: fadeIn 0.4s ease-out;
+        .features-section { padding: 90px 0; background-color: white; }
+        .section-title { font-weight: 900; color: var(--navy); margin-bottom: 60px; text-align: center; font-size: 2.5rem; }
+        .feature-card { 
+            padding: 40px 25px; 
+            border-radius: 20px; 
+            background: var(--light-bg); 
+            border: 1px solid #eef2f6; 
+            height: 100%; 
+            transition: 0.4s; 
         }
+        .feature-card:hover { 
+            transform: translateY(-10px); 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.06); 
+            background: white;
+            border-color: var(--accent);
+        }
+        .feature-icon { font-size: 2.5rem; color: var(--accent); margin-bottom: 25px; background: var(--navy); width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; border-radius: 20px; }
 
-        .step.active {
-            display: block;
+        .pricing-section { padding: 90px 0; background-color: var(--light-bg); }
+        .pricing-card { 
+            background: white; 
+            border-radius: 25px; 
+            padding: 50px 40px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05); 
+            border: 2px solid transparent; 
+            height: 100%; 
+            position: relative; 
+            transition: 0.3s; 
         }
+        .pricing-card.popular { 
+            border-color: var(--accent); 
+            transform: scale(1.05); 
+            box-shadow: 0 20px 50px rgba(10, 25, 47, 0.1);
+        }
+        .pricing-card.popular::before { 
+            content: 'الخيار الأذكى والأوفر'; 
+            position: absolute; 
+            top: -18px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: var(--navy); 
+            color: var(--accent); 
+            padding: 8px 20px; 
+            border-radius: 30px; 
+            font-weight: 800; 
+            font-size: 0.9rem; 
+            white-space: nowrap;
+        }
+        .price { font-size: 3.5rem; font-weight: 900; color: var(--navy); }
+        .currency { font-size: 1.5rem; vertical-align: top; margin-left: 5px; color: #64748b; }
+        .duration { color: #94a3b8; font-size: 1.1rem; font-weight: 600; }
+        .pricing-list { list-style: none; padding: 0; margin: 40px 0; text-align: right; }
+        .pricing-list li { margin-bottom: 18px; font-weight: 600; font-size: 1.1rem; color: var(--text-main); }
+        .pricing-list li i { color: var(--accent); background: var(--navy); border-radius: 50%; padding: 3px; margin-left: 12px; font-size: 0.8rem;}
+        
+        .btn-pricing-outline { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: var(--navy); background: transparent; transition: 0.3s; text-decoration: none; display: block; text-align: center;}
+        .btn-pricing-outline:hover { background: var(--navy); color: white; }
+        .btn-pricing-solid { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: white; background: var(--navy); transition: 0.3s; text-decoration: none; display: block; text-align: center;}
+        .btn-pricing-solid:hover { background: var(--accent); color: var(--navy); border-color: var(--accent); }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .footer-unified { 
+            background-color: var(--navy); 
+            color: #cbd5e1; 
+            padding: 60px 0 30px; 
+            text-align: center; 
+            border-top: 5px solid var(--accent);
         }
-
-        .alert-box {
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: none;
+        .footer-brand { color: white; font-weight: 900; font-size: 1.8rem; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;}
+        .footer-links { margin: 25px 0; }
+        .footer-links a { 
+            color: var(--accent); 
+            text-decoration: none; 
+            font-weight: 700; 
+            margin: 0 15px; 
+            transition: 0.3s; 
         }
-
-        .alert-error {
-            background: #f8d7da;
-            color: var(--danger);
-            border: 1px solid #f5c2c7;
-        }
-
-        .alert-success {
-            background: #d1e7dd;
-            color: var(--success);
-            border: 1px solid #badbcc;
-        }
-
-        .security-badge {
-            margin-top: 30px;
-            font-size: 0.8rem;
-            color: #888;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-        }
-
-        .security-badge i {
-            color: var(--success);
-        }
+        .footer-links a:hover { color: white; }
+        .footer-credits { font-size: 0.9rem; opacity: 0.7; margin-top: 20px; line-height: 1.8;}
     </style>
 </head>
 <body>
 
-    <div class="login-container">
-        <div class="logo-area">
-            <i class="fas fa-balance-scale"></i>
-            <h1>نظام موكّل</h1>
-            <p>بوابة الدخول الموحدة والمؤمنة</p>
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand text-decoration-none" href="#">
+                <div class="brand-logo-box"><img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png" alt="موكّل"></div>
+                موكّل
+            </a>
+            <div class="d-flex gap-2 align-items-center">
+                <button id="install-btn" class="btn btn-install shadow-sm"><i class="fas fa-download me-1"></i> تثبيت التطبيق</button>
+                <a href="login.html" id="main-login-btn" class="btn btn-login shadow-sm"><i class="fas fa-user-shield me-2"></i>دخول للمنصة</a>
+            </div>
         </div>
+    </nav>
 
-        <div id="alertBox" class="alert-box"></div>
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">أدر مكتب المحاماة الخاص بك <span>بذكاء وأمان</span></h1>
+            <p class="hero-subtitle">نظام "موكّل ERP" هو بيئة العمل السحابية المتكاملة: إدارة قضايا، محاسبة دقيقة، ذكاء اصطناعي (AI)، وبوابة إلكترونية سرية مخصصة لعملاءك.</p>
+            <a href="#pricing" class="btn btn-hero">ابدأ التحول الرقمي الآن</a>
+        </div>
+    </section>
 
-        <div id="step-phone" class="step active">
-            <form id="phoneForm">
-                <div class="form-group">
-                    <label>رقم الهاتف المعتمد</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fas fa-phone"></i>
-                        <input type="tel" id="userPhone" class="form-control" placeholder="07XXXXXXXX" required dir="ltr" style="text-align: right;">
+    <section class="features-section">
+        <div class="container">
+            <h2 class="section-title">منظومة قانونية متكاملة</h2>
+            <div class="row g-4 text-center">
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-robot"></i></div>
+                        <h5 class="fw-bold text-navy">مساعد قانوني ذكي (AI)</h5>
+                        <p class="text-muted mb-0 mt-3">تحليل اللوائح واستخراج البيانات، توليد المسودات القانونية آلياً، ومسح الهويات بدقة عبر OCR.</p>
                     </div>
                 </div>
-                
-                <button type="submit" class="btn-submit" id="btnRequestOtp">
-                    متابعة <i class="fas fa-arrow-left"></i>
-                </button>
-
-                <div style="position: relative; text-align: center; margin: 20px 0;">
-                    <hr style="border: none; border-top: 1px solid #eee;">
-                    <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; color: #888; font-size: 0.9rem;">أو</span>
-                </div>
-
-                <button type="button" class="biometric-btn" id="btnBiometricLogin">
-                    <i class="fas fa-fingerprint"></i> الدخول السريع بالبصمة
-                </button>
-            </form>
-        </div>
-
-        <div id="step-otp" class="step">
-            <p style="color: #555; margin-bottom: 20px; font-size: 0.95rem;">
-                تم إرسال كود التحقق (OTP) إلى حسابك في تيليغرام.<br>
-                <strong id="displayPhone" dir="ltr"></strong>
-            </p>
-            <form id="otpForm">
-                <div class="form-group">
-                    <label>كود التحقق (6 أرقام)</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fas fa-key"></i>
-                        <input type="text" id="userOtp" class="form-control" placeholder="أدخل الكود هنا" required dir="ltr" style="text-align: center; font-size: 1.2rem; letter-spacing: 5px;" maxlength="6">
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-user-lock"></i></div>
+                        <h5 class="fw-bold text-navy">بوابة الموكلين الآمنة</h5>
+                        <p class="text-muted mb-0 mt-3">امنح موكلك وصولاً خاصاً برقم PIN سري لمتابعة سير قضيته وتحميل مستنداته وحساباته.</p>
                     </div>
                 </div>
-                
-                <button type="submit" class="btn-submit" id="btnVerifyOtp">
-                    تحقق ودخول <i class="fas fa-sign-in-alt"></i>
-                </button>
-
-                <button type="button" style="background:none; border:none; color:var(--primary); margin-top:15px; cursor:pointer; font-family:inherit; font-weight:600; text-decoration:underline;" onclick="resetToPhoneStep()">
-                    تغيير رقم الهاتف
-                </button>
-            </form>
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                        <h5 class="fw-bold text-navy">الفوترة والتقارير المالية</h5>
+                        <p class="text-muted mb-0 mt-3">إصدار سندات قبض رسمية قابلة للطباعة مع تحويل الأرقام لنصوص (تفقيط) آلياً وتقارير شاملة للمدراء.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-sitemap"></i></div>
+                        <h5 class="fw-bold text-navy">إدارة القضايا والفرق</h5>
+                        <p class="text-muted mb-0 mt-3">إسناد القضايا والمهام لفريق العمل، تتبع المواعيد النهائية (Deadlines)، وحفظ الملاحظات السرية.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                        <h5 class="fw-bold text-navy">فحص تعارض المصالح</h5>
+                        <p class="text-muted mb-0 mt-3">محرك بحث سريع للتأكد من نظافة سجل الخصوم قبل استلام أي قضية جديدة للحفاظ على مصداقية المكتب.</p>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="feature-card">
+                        <div class="feature-icon"><i class="fas fa-history"></i></div>
+                        <h5 class="fw-bold text-navy">أمان وسجل نشاطات</h5>
+                        <p class="text-muted mb-0 mt-3">تشفير قوي (JWT) مع سجل شامل للمدير لمراقبة كل حركات الإضافة والتعديل والحذف في النظام.</p>
+                    </div>
+                </div>
+            </div>
         </div>
+    </section>
 
-        <div class="security-badge">
-            <i class="fas fa-shield-check"></i> اتصال مشفر بـ 256-bit وحماية RLS مفعلة
+    <section class="pricing-section" id="pricing">
+        <div class="container">
+            <h2 class="section-title">استثمر في نجاح مكتبك</h2>
+            <div class="row g-4 justify-content-center">
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card text-center">
+                        <h4 class="fw-bold text-navy mb-4">الباقة الشهرية</h4>
+                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>199<span class="duration">/شهرياً</span></div>
+                        <ul class="pricing-list">
+                            <li><i class="fas fa-check"></i> عدد غير محدود من القضايا</li>
+                            <li><i class="fas fa-check"></i> عدد غير محدود من الموكلين</li>
+                            <li><i class="fas fa-check"></i> حسابات لموظفي المكتب</li>
+                            <li><i class="fas fa-check"></i> بوابة إلكترونية للموكلين</li>
+                            <li><i class="fas fa-check"></i> دعم فني في أوقات العمل</li>
+                        </ul>
+                        <a href="https://wa.me/qr/FYIWTXMB3LU6I1" target="_blank" class="btn-pricing-outline">طلب اشتراك شهري</a>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="pricing-card popular text-center">
+                        <h4 class="fw-bold text-navy mb-4">الباقة السنوية</h4>
+                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>1999<span class="duration">/سنوياً</span></div>
+                        <ul class="pricing-list">
+                            <li><i class="fas fa-check"></i> <strong>توفير قيمة شهرين مجاناً</strong></li>
+                            <li><i class="fas fa-check"></i> جميع ميزات الباقة الشهرية</li>
+                            <li><i class="fas fa-check"></i> أرشيف سحابي ومكتبة قانونية</li>
+                            <li><i class="fas fa-check"></i> الوصول لميزات الذكاء الاصطناعي</li>
+                            <li><i class="fas fa-check"></i> أولوية الدعم الفني 24/7</li>
+                        </ul>
+                        <a href="https://wa.me/qr/FYIWTXMB3LU6I1" target="_blank" class="btn-pricing-solid">احجز نسختك السنوية</a>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/auth.js"></script>
+    <footer class="footer-unified">
+        <div class="container">
+            <div class="footer-brand">
+                <div class="brand-logo-box me-2"><img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png" alt="موكّل"></div>
+                موكّل ERP
+            </div>
+            <p class="mb-0 mt-3">المنصة السحابية الأولى لإدارة المكاتب القانونية بذكاء وأمان تام.</p>
+            
+            <div class="footer-links">
+                <a href="terms.html">الشروط والأحكام</a> | 
+                <a href="privacy.html">سياسة الخصوصية</a>
+            </div>
+            
+            <div class="footer-credits">
+                جميع الحقوق محفوظة &copy; 2026 نظام موكّل.<br>
+                Powered with <i class="fas fa-heart text-danger mx-1"></i> by <a href="https://www.damascodes.com/" target="_blank" style="color:var(--accent); text-decoration:none; font-weight:bold;">DamasCodes</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script>
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('✅ ServiceWorker Active'))
+                    .catch(err => console.log('⚠️ ServiceWorker Failed:', err));
+            });
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') installBtn.style.display = 'none';
+                deferredPrompt = null;
+            } else {
+                alert("يرجى إضافة الموقع إلى الشاشة الرئيسية من إعدادات المتصفح الخاص بك لتثبيت التطبيق.");
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            installBtn.style.display = 'none';
+        });
+
+        // تحويل زر الدخول إلى لوحة التحكم إذا كان التوكن موجوداً (احتياطاً)
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('moakkil_token');
+            if (token) {
+                const loginBtn = document.getElementById('main-login-btn');
+                if(loginBtn) {
+                    loginBtn.href = 'app.html';
+                    loginBtn.innerHTML = '<i class="fas fa-th-large me-2"></i>العودة للوحة التحكم';
+                }
+            }
+        });
+    </script>
 </body>
 </html>

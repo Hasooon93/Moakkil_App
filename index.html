@@ -3,431 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a192f">
-    <meta name="description" content="موكّل - نظام إدارة مكاتب المحاماة الأذكى والأسرع">
+    <title>بوابة الموكل | نظام موكّل</title>
     
-    <meta name="keywords" content="نظام إدارة مكاتب المحاماة, برنامج محاماة, أتمتة القضايا, موكل, استشارات قانونية, SaaS محاماة, إدارة القضايا والموكلين, الذكاء الاصطناعي للمحامين">
-    <meta name="author" content="DamasCodes">
-    <meta property="og:title" content="موكّل | منصة الإدارة القانونية الذكية">
-    <meta property="og:description" content="نظام موكّل ERP هو بيئة العمل السحابية المتكاملة لإدارة مكاتب المحاماة والقضايا بذكاء وأمان.">
-    <meta property="og:image" content="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="موكّل | منصة الإدارة القانونية الذكية">
-    <meta name="twitter:description" content="نظام موكّل ERP هو بيئة العمل السحابية المتكاملة لإدارة مكاتب المحاماة والقضايا بذكاء وأمان.">
-    <meta name="twitter:image" content="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
-
-    <script>
-        (function() {
-            const token = localStorage.getItem('moakkil_token');
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-            if (token) {
-                // إذا كان مسجلاً، اذهب فوراً للتطبيق
-                window.location.href = 'app.html';
-            } else if (isStandalone) {
-                // إذا كان يفتح من التطبيق المثبت وغير مسجل، اذهب فوراً لتسجيل الدخول
-                window.location.href = 'login.html';
-            }
-        })();
-    </script>
-
-    <title>موكّل | منصة الإدارة القانونية الذكية</title>
-    
-    <link rel="manifest" href="./manifest.json">
-    <link rel="icon" type="image/png" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
-    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     
     <style>
-        :root { 
-            --navy: #0a192f; 
-            --navy-light: #112240;
-            --accent: #64ffda; 
-            --light-bg: #f8fafc;
-            --text-main: #334155;
+        :root {
+            --firm-primary: #0a192f;
+            --firm-accent: #64ffda;
+            --bg-light: #f8fafc;
         }
-        
+
         body { 
             font-family: 'Cairo', sans-serif; 
-            background-color: var(--light-bg); 
-            color: var(--text-main);
-            overflow-x: hidden;
-        }
-        
-        .navbar-custom {
-            background-color: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 30px rgba(0,0,0,0.05);
-            padding: 15px 0;
-            transition: 0.3s;
-        }
-        
-        .brand-logo-box {
-            background: var(--navy);
-            width: 45px;
-            height: 45px;
-            min-width: 45px;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            margin-left: 10px;
-            overflow: hidden;
-            padding: 5px;
-        }
-        
-        .brand-logo-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
+            background-color: var(--bg-light); 
+            padding-bottom: 30px; 
         }
 
-        .navbar-brand {
-            font-size: 1.8rem;
-            font-weight: 900;
-            color: var(--navy) !important;
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            white-space: nowrap;
+        /* نافذة التحقق الأمنية */
+        #security-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--firm-primary) 0%, #1e293b 100%);
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
         }
         
-        .btn-login {
-            background-color: var(--navy);
-            color: white;
-            border-radius: 10px;
-            padding: 10px 30px;
-            font-weight: 700;
-            transition: 0.3s;
-            border: 2px solid var(--navy);
-            white-space: nowrap;
-        }
-        .btn-login:hover {
-            background-color: transparent;
-            color: var(--navy);
-        }
-        
-        .btn-install {
-            background-color: var(--accent);
-            color: var(--navy);
-            border-radius: 10px;
-            padding: 10px 20px;
-            font-weight: 800;
-            display: inline-block;
-            transition: 0.3s;
-            border: none;
-            white-space: nowrap;
-        }
-        .btn-install:hover {
-            background-color: #ffffff;
-            transform: translateY(-2px);
+        .security-card {
+            background: white; border-radius: 20px; padding: 2rem; width: 90%; max-width: 400px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center;
         }
 
-        .hero-section {
-            background: linear-gradient(135deg, var(--navy) 0%, #1e293b 100%);
+        .pin-input {
+            font-size: 2rem; letter-spacing: 15px; text-align: center;
+            border: 2px solid #e2e8f0; border-radius: 12px; font-weight: bold;
+        }
+        .pin-input:focus { border-color: var(--firm-primary); box-shadow: none; }
+
+        /* الترويسة العلوية */
+        .client-header {
+            background: var(--firm-primary);
             color: white;
-            padding: 120px 0 100px;
-            text-align: center;
+            padding: 30px 20px 40px 20px;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             position: relative;
-            border-bottom: 5px solid var(--accent);
+            overflow: hidden;
         }
-        .hero-title {
+        .client-header::after {
+            content: '\f24e'; /* أيقونة الميزان */
+            font-family: 'Font Awesome 6 Free';
             font-weight: 900;
-            font-size: 3.5rem;
-            margin-bottom: 25px;
-            line-height: 1.3;
+            position: absolute;
+            right: -20px;
+            top: -20px;
+            font-size: 150px;
+            opacity: 0.05;
+            color: white;
         }
-        .hero-title span { color: var(--accent); }
-        .hero-subtitle {
-            font-size: 1.25rem;
-            opacity: 0.85;
-            margin-bottom: 40px;
-            max-width: 750px;
-            margin-left: auto;
-            margin-right: auto;
-            line-height: 1.8;
+
+        /* البطاقات الأساسية */
+        .info-card {
+            background: white; border-radius: 15px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+            border-top: 4px solid var(--firm-accent);
         }
+
+        /* الخط الزمني */
+        .timeline { border-right: 3px solid #e2e8f0; padding-right: 20px; position: relative; margin-top: 10px; }
+        .timeline-item { position: relative; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
+        .timeline-item::after {
+            content: ''; position: absolute; right: -28px; top: 15px;
+            width: 14px; height: 14px; background: var(--firm-primary);
+            border-radius: 50%; border: 3px solid white;
+        }
+
+        /* المالية */
+        .fin-box { text-align: center; padding: 15px 5px; border-radius: 12px; }
         
-        .btn-hero {
-            background-color: var(--accent);
-            color: var(--navy) !important;
-            border-radius: 12px;
-            padding: 16px 45px;
-            font-size: 1.2rem;
-            font-weight: 800;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            display: inline-block;
-            border: 2px solid var(--accent);
-        }
-        .btn-hero:hover, .btn-hero:focus, .btn-hero:active {
-            background-color: #ffffff !important;
-            color: var(--navy) !important;
-            border-color: #ffffff !important;
-            transform: translateY(-4px);
-            box-shadow: 0 15px 30px rgba(100, 255, 218, 0.4) !important;
-            outline: none !important;
-        }
+        .nav-pills .nav-link { color: var(--firm-primary); font-weight: 700; border-radius: 10px; transition: 0.3s; }
+        .nav-pills .nav-link.active { background-color: var(--firm-primary); color: white; }
 
-        .features-section { padding: 90px 0; background-color: white; }
-        .section-title { font-weight: 900; color: var(--navy); margin-bottom: 60px; text-align: center; font-size: 2.5rem; }
-        .feature-card { 
-            padding: 40px 25px; 
-            border-radius: 20px; 
-            background: var(--light-bg); 
-            border: 1px solid #eef2f6; 
-            height: 100%; 
-            transition: 0.4s; 
+        /* Loader */
+        .loader-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .feature-card:hover { 
-            transform: translateY(-10px); 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.06); 
-            background: white;
-            border-color: var(--accent);
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #e2e8f0;
+            border-top-color: var(--firm-primary); border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
-        .feature-icon { font-size: 2.5rem; color: var(--accent); margin-bottom: 25px; background: var(--navy); width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; border-radius: 20px; }
-
-        .pricing-section { padding: 90px 0; background-color: var(--light-bg); }
-        .pricing-card { 
-            background: white; 
-            border-radius: 25px; 
-            padding: 50px 40px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.05); 
-            border: 2px solid transparent; 
-            height: 100%; 
-            position: relative; 
-            transition: 0.3s; 
-        }
-        .pricing-card.popular { 
-            border-color: var(--accent); 
-            transform: scale(1.05); 
-            box-shadow: 0 20px 50px rgba(10, 25, 47, 0.1);
-        }
-        .pricing-card.popular::before { 
-            content: 'الخيار الأذكى والأوفر'; 
-            position: absolute; 
-            top: -18px; 
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: var(--navy); 
-            color: var(--accent); 
-            padding: 8px 20px; 
-            border-radius: 30px; 
-            font-weight: 800; 
-            font-size: 0.9rem; 
-            white-space: nowrap;
-        }
-        .price { font-size: 3.5rem; font-weight: 900; color: var(--navy); }
-        .currency { font-size: 1.5rem; vertical-align: top; margin-left: 5px; color: #64748b; }
-        .duration { color: #94a3b8; font-size: 1.1rem; font-weight: 600; }
-        .pricing-list { list-style: none; padding: 0; margin: 40px 0; text-align: right; }
-        .pricing-list li { margin-bottom: 18px; font-weight: 600; font-size: 1.1rem; color: var(--text-main); }
-        .pricing-list li i { color: var(--accent); background: var(--navy); border-radius: 50%; padding: 3px; margin-left: 12px; font-size: 0.8rem;}
-        
-        .btn-pricing-outline { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: var(--navy); background: transparent; transition: 0.3s; text-decoration: none; display: block; text-align: center;}
-        .btn-pricing-outline:hover { background: var(--navy); color: white; }
-        .btn-pricing-solid { width: 100%; border-radius: 12px; padding: 15px; font-weight: 800; border: 2px solid var(--navy); color: white; background: var(--navy); transition: 0.3s; text-decoration: none; display: block; text-align: center;}
-        .btn-pricing-solid:hover { background: var(--accent); color: var(--navy); border-color: var(--accent); }
-
-        .footer-unified { 
-            background-color: var(--navy); 
-            color: #cbd5e1; 
-            padding: 60px 0 30px; 
-            text-align: center; 
-            border-top: 5px solid var(--accent);
-        }
-        .footer-brand { color: white; font-weight: 900; font-size: 1.8rem; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;}
-        .footer-links { margin: 25px 0; }
-        .footer-links a { 
-            color: var(--accent); 
-            text-decoration: none; 
-            font-weight: 700; 
-            margin: 0 15px; 
-            transition: 0.3s; 
-        }
-        .footer-links a:hover { color: white; }
-        .footer-credits { font-size: 0.9rem; opacity: 0.7; margin-top: 20px; line-height: 1.8;}
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
-        <div class="container">
-            <a class="navbar-brand text-decoration-none" href="#">
-                <div class="brand-logo-box"><img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png" alt="موكّل"></div>
-                موكّل
-            </a>
-            <div class="d-flex gap-2 align-items-center">
-                <button id="install-btn" class="btn btn-install shadow-sm"><i class="fas fa-download me-1"></i> تثبيت التطبيق</button>
-                <a href="login.html" id="main-login-btn" class="btn btn-login shadow-sm"><i class="fas fa-user-shield me-2"></i>دخول للمنصة</a>
-            </div>
-        </div>
-    </nav>
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <h5 class="mt-3 fw-bold text-navy" style="color: var(--firm-primary);">جاري جلب بيانات الملف...</h5>
+    </div>
 
-    <section class="hero-section">
-        <div class="container">
-            <h1 class="hero-title">أدر مكتب المحاماة الخاص بك <span>بذكاء وأمان</span></h1>
-            <p class="hero-subtitle">نظام "موكّل ERP" هو بيئة العمل السحابية المتكاملة: إدارة قضايا، محاسبة دقيقة، ذكاء اصطناعي (AI)، وبوابة إلكترونية سرية مخصصة لعملاءك.</p>
-            <a href="#pricing" class="btn btn-hero">ابدأ التحول الرقمي الآن</a>
-        </div>
-    </section>
-
-    <section class="features-section">
-        <div class="container">
-            <h2 class="section-title">منظومة قانونية متكاملة</h2>
-            <div class="row g-4 text-center">
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon"><i class="fas fa-robot"></i></div>
-                        <h5 class="fw-bold text-navy">مساعد قانوني ذكي (AI)</h5>
-                        <p class="text-muted mb-0 mt-3">تحليل اللوائح واستخراج البيانات، توليد المسودات القانونية آلياً، ومسح الهويات بدقة عبر OCR.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon"><i class="fas fa-user-lock"></i></div>
-                        <h5 class="fw-bold text-navy">بوابة الموكلين الآمنة</h5>
-                        <p class="text-muted mb-0 mt-3">امنح موكلك وصولاً خاصاً برقم PIN سري لمتابعة سير قضيته وتحميل مستنداته وحساباته.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon"><i class="fas fa-file-invoice-dollar"></i></div>
-                        <h5 class="fw-bold text-navy">الفوترة والتقارير المالية</h5>
-                        <p class="text-muted mb-0 mt-3">إصدار سندات قبض رسمية قابلة للطباعة مع تحويل الأرقام لنصوص (تفقيط) آلياً وتقارير شاملة للمدراء.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon"><i class="fas fa-sitemap"></i></div>
-                        <h5 class="fw-bold text-navy">إدارة القضايا والفرق</h5>
-                        <p class="text-muted mb-0 mt-3">إسناد القضايا والمهام لفريق العمل، تتبع المواعيد النهائية (Deadlines)، وحفظ الملاحظات السرية.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
-                        <h5 class="fw-bold text-navy">فحص تعارض المصالح</h5>
-                        <p class="text-muted mb-0 mt-3">محرك بحث سريع للتأكد من نظافة سجل الخصوم قبل استلام أي قضية جديدة للحفاظ على مصداقية المكتب.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon"><i class="fas fa-history"></i></div>
-                        <h5 class="fw-bold text-navy">أمان وسجل نشاطات</h5>
-                        <p class="text-muted mb-0 mt-3">تشفير قوي (JWT) مع سجل شامل للمدير لمراقبة كل حركات الإضافة والتعديل والحذف في النظام.</p>
-                    </div>
-                </div>
+    <div id="security-layer" class="d-none">
+        <div class="security-card">
+            <div id="firm-logo-sec" class="mb-3 d-none">
+                <img src="" id="firm-logo-img" style="max-height: 70px; border-radius: 10px;">
             </div>
-        </div>
-    </section>
-
-    <section class="pricing-section" id="pricing">
-        <div class="container">
-            <h2 class="section-title">استثمر في نجاح مكتبك</h2>
-            <div class="row g-4 justify-content-center">
-                <div class="col-lg-4 col-md-6">
-                    <div class="pricing-card text-center">
-                        <h4 class="fw-bold text-navy mb-4">الباقة الشهرية</h4>
-                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>199<span class="duration">/شهرياً</span></div>
-                        <ul class="pricing-list">
-                            <li><i class="fas fa-check"></i> عدد غير محدود من القضايا</li>
-                            <li><i class="fas fa-check"></i> عدد غير محدود من الموكلين</li>
-                            <li><i class="fas fa-check"></i> حسابات لموظفي المكتب</li>
-                            <li><i class="fas fa-check"></i> بوابة إلكترونية للموكلين</li>
-                            <li><i class="fas fa-check"></i> دعم فني في أوقات العمل</li>
-                        </ul>
-                        <a href="https://wa.me/qr/FYIWTXMB3LU6I1" target="_blank" class="btn-pricing-outline">طلب اشتراك شهري</a>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6">
-                    <div class="pricing-card popular text-center">
-                        <h4 class="fw-bold text-navy mb-4">الباقة السنوية</h4>
-                        <div class="price mb-4"><span class="currency">يبدأ من د.أ</span>1999<span class="duration">/سنوياً</span></div>
-                        <ul class="pricing-list">
-                            <li><i class="fas fa-check"></i> <strong>توفير قيمة شهرين مجاناً</strong></li>
-                            <li><i class="fas fa-check"></i> جميع ميزات الباقة الشهرية</li>
-                            <li><i class="fas fa-check"></i> أرشيف سحابي ومكتبة قانونية</li>
-                            <li><i class="fas fa-check"></i> الوصول لميزات الذكاء الاصطناعي</li>
-                            <li><i class="fas fa-check"></i> أولوية الدعم الفني 24/7</li>
-                        </ul>
-                        <a href="https://wa.me/qr/FYIWTXMB3LU6I1" target="_blank" class="btn-pricing-solid">احجز نسختك السنوية</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <footer class="footer-unified">
-        <div class="container">
-            <div class="footer-brand">
-                <div class="brand-logo-box me-2"><img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png" alt="موكّل"></div>
-                موكّل ERP
-            </div>
-            <p class="mb-0 mt-3">المنصة السحابية الأولى لإدارة المكاتب القانونية بذكاء وأمان تام.</p>
+            <i class="fas fa-lock fa-3x mb-3" style="color: var(--firm-accent);"></i>
+            <h4 class="fw-bold mb-1" style="color: var(--firm-primary);">بوابة الموكل الآمنة</h4>
+            <p class="text-muted small mb-4">يرجى إدخال الرمز السري (PIN) المزود لك من قبل المكتب للوصول لملفك.</p>
             
-            <div class="footer-links">
-                <a href="terms.html">الشروط والأحكام</a> | 
-                <a href="privacy.html">سياسة الخصوصية</a>
+            <form onsubmit="verifyAccess(event)">
+                <input type="password" id="pin_input" class="form-control pin-input mb-3" placeholder="----" maxlength="6" required>
+                <button type="submit" class="btn w-100 fw-bold py-3 text-white" id="btn-verify" style="background-color: var(--firm-primary); border-radius: 12px;">
+                    <i class="fas fa-shield-alt me-1"></i> دخول للوحة المتابعة
+                </button>
+            </form>
+            
+            <div class="mt-4 pt-3 border-top">
+                <small class="text-muted"><i class="fas fa-shield-check"></i> مدعوم بنظام <b>موكّل ERP</b> الآمن</small>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content" class="d-none">
+        
+        <div class="client-header">
+            <div class="d-flex justify-content-between align-items-start position-relative z-1 mb-3">
+                <div>
+                    <h6 class="text-white-50 mb-1" id="ui-firm-name">مكتب المحاماة</h6>
+                    <h3 class="fw-bold mb-2">أهلاً، <span id="ui-client-name">--</span></h3>
+                    <span class="badge bg-success shadow-sm" style="font-size: 0.9rem;" id="ui-case-status">حالة القضية</span>
+                </div>
+                <div id="ui-firm-logo-container" class="bg-white p-1 rounded d-none shadow-sm">
+                    <img id="ui-firm-logo" src="" style="width: 50px; height: 50px; object-fit: contain;">
+                </div>
             </div>
             
-            <div class="footer-credits">
-                جميع الحقوق محفوظة &copy; 2026 نظام موكّل.<br>
-                Powered with <i class="fas fa-heart text-danger mx-1"></i> by <a href="https://www.damascodes.com/" target="_blank" style="color:var(--accent); text-decoration:none; font-weight:bold;">DamasCodes</a>
+            <div class="position-relative z-1">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-white-50 fw-bold" id="ui-progress-text">جاري العمل على الملف...</small>
+                </div>
+                <div class="progress shadow-sm" style="height: 8px; background-color: rgba(255,255,255,0.2);">
+                    <div id="ui-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-accent" role="progressbar" style="width: 50%;"></div>
+                </div>
             </div>
         </div>
-    </footer>
+
+        <div class="container mt-4">
+            
+            <div class="info-card position-relative z-1" style="margin-top: -35px;">
+                <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--firm-primary);"><i class="fas fa-gavel me-2 text-warning"></i> تفاصيل القضية</h5>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">رقم الملف الداخلي</small>
+                        <b class="fs-6 text-dark" id="ui-case-id">--</b>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">درجة التقاضي</small>
+                        <b class="fs-6 text-dark" id="ui-litigation">--</b>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">المحكمة / الجهة</small>
+                        <b class="fs-6 text-dark" id="ui-court-name">--</b>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-danger fw-bold d-block">الخصم</small>
+                        <b class="fs-6 text-danger" id="ui-opponent">--</b>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h5 class="fw-bold border-bottom pb-2 mb-3" style="color: var(--firm-primary);"><i class="fas fa-id-card me-2 text-success"></i> بياناتي المسجلة (KYC)</h5>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">رقم الهاتف</small>
+                        <b class="fs-6 text-dark" id="ui-client-phone" dir="ltr">--</b>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted fw-bold d-block">الرقم الوطني / الهوية</small>
+                        <b class="fs-6 text-dark" id="ui-client-national">--</b>
+                    </div>
+                    <div class="col-6 border-top pt-2 mt-2">
+                        <small class="text-muted fw-bold d-block">الجنسية</small>
+                        <b class="fs-6 text-dark" id="ui-client-nationality">--</b>
+                    </div>
+                    <div class="col-6 border-top pt-2 mt-2">
+                        <small class="text-muted fw-bold d-block">تاريخ الميلاد</small>
+                        <b class="fs-6 text-dark" id="ui-client-dob">--</b>
+                    </div>
+                    <div class="col-12 border-top pt-2 mt-2">
+                        <small class="text-muted fw-bold d-block">العنوان التفصيلي</small>
+                        <b class="fs-6 text-dark" id="ui-client-address">--</b>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="nav nav-pills mb-4 justify-content-center bg-white p-2 rounded-pill shadow-sm" id="pills-tab" role="tablist">
+                <li class="nav-item flex-fill text-center">
+                    <button class="nav-link active w-100 py-2" data-bs-toggle="pill" data-bs-target="#tab-updates">
+                        <i class="fas fa-stream d-block d-sm-inline mb-1 mb-sm-0 me-sm-1"></i> الإجراءات
+                    </button>
+                </li>
+                <li class="nav-item flex-fill text-center">
+                    <button class="nav-link w-100 py-2" data-bs-toggle="pill" data-bs-target="#tab-finance">
+                        <i class="fas fa-wallet d-block d-sm-inline mb-1 mb-sm-0 me-sm-1"></i> المالية
+                    </button>
+                </li>
+                <li class="nav-item flex-fill text-center">
+                    <button class="nav-link w-100 py-2" data-bs-toggle="pill" data-bs-target="#tab-files">
+                        <i class="fas fa-folder d-block d-sm-inline mb-1 mb-sm-0 me-sm-1"></i> المستندات
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                
+                <div class="tab-pane fade show active" id="tab-updates">
+                    <h6 class="fw-bold mb-3" style="color: var(--firm-primary);"><i class="fas fa-history me-2 text-warning"></i> السجل الإجرائي</h6>
+                    <div class="timeline" id="ui-timeline-container"></div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-finance">
+                    <div class="row g-2 mb-4">
+                        <div class="col-4">
+                            <div class="fin-box bg-light border">
+                                <small class="text-muted fw-bold d-block">الأتعاب</small>
+                                <b class="text-dark" id="ui-fin-agreed">0</b>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fin-box bg-success text-white shadow-sm">
+                                <small class="opacity-75 fw-bold d-block">المُسدّد</small>
+                                <b class="fs-5" id="ui-fin-paid">0</b>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fin-box border border-danger bg-white">
+                                <small class="text-danger fw-bold d-block">المتبقي</small>
+                                <b class="text-danger fs-5" id="ui-fin-rem">0</b>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-2 text-success"><i class="fas fa-money-bill-wave me-2"></i> سجل الدفعات</h6>
+                    <div id="ui-payments-container" class="mb-4"></div>
+
+                    <h6 class="fw-bold mb-2 text-danger"><i class="fas fa-receipt me-2"></i> المصروفات والرسوم</h6>
+                    <div id="ui-expenses-container"></div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-files">
+                    <div class="alert alert-info text-center border-info bg-light small fw-bold shadow-sm">
+                        <i class="fas fa-info-circle me-1"></i> هذه المستندات تم إتاحتها من قبل المكتب لتتمكن من الاطلاع عليها وتحميلها.
+                    </div>
+                    <div class="row g-2" id="ui-files-container"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="./js/config.js"></script>
-    <script>
-        let deferredPrompt;
-        const installBtn = document.getElementById('install-btn');
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('✅ ServiceWorker Active'))
-                    .catch(err => console.log('⚠️ ServiceWorker Failed:', err));
-            });
-        }
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-        });
-
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') installBtn.style.display = 'none';
-                deferredPrompt = null;
-            } else {
-                alert("يرجى إضافة الموقع إلى الشاشة الرئيسية من إعدادات المتصفح الخاص بك لتثبيت التطبيق.");
-            }
-        });
-
-        window.addEventListener('appinstalled', () => {
-            installBtn.style.display = 'none';
-        });
-
-        // تحويل زر الدخول إلى لوحة التحكم إذا كان التوكن موجوداً (احتياطاً)
-        window.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('moakkil_token');
-            if (token) {
-                const loginBtn = document.getElementById('main-login-btn');
-                if(loginBtn) {
-                    loginBtn.href = 'app.html';
-                    loginBtn.innerHTML = '<i class="fas fa-th-large me-2"></i>العودة للوحة التحكم';
-                }
-            }
-        });
-    </script>
+    <script src="./js/api.js"></script>
+    <script src="./js/client.js"></script>
 </body>
 </html>

@@ -2,159 +2,94 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0a192f">
-    <title>التقارير والإحصائيات | نظام موكّل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سياسة الخصوصية | نظام موكّل ERP</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="./css/style.css" rel="stylesheet">
     
     <style>
-        .kpi-card { border-radius: 15px; border: none; transition: transform 0.3s; color: white; }
-        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .kpi-icon { font-size: 2.5rem; opacity: 0.8; position: absolute; left: 15px; top: 15px; }
-        .chart-container { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
-        .table-container { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-        .table thead th { background-color: var(--navy); color: white; border: none; font-weight: normal; font-size: 0.9rem; }
-        .table tbody td { vertical-align: middle; font-size: 0.9rem; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #f8fafc; 
+            color: #334155;
+            line-height: 1.8;
+        }
+        
+        .header-hero {
+            background: linear-gradient(135deg, #0a192f 0%, #1e293b 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 5px solid #64ffda;
+        }
+
+        .content-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            margin-top: -30px;
+            margin-bottom: 50px;
+        }
+
+        h5 { color: #0a192f; font-weight: 800; margin-top: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        p, li { font-size: 1.05rem; }
+        ul { margin-bottom: 20px; }
+        
+        .btn-back { background: #64ffda; color: #0a192f; font-weight: bold; border-radius: 10px; padding: 10px 25px; transition: 0.3s; }
+        .btn-back:hover { background: #34d399; color: #0a192f; }
     </style>
 </head>
-<body class="bg-light pb-5">
+<body>
 
-    <div class="top-nav px-3 d-flex align-items-center justify-content-between">
-        <button class="btn btn-link text-white p-0" onclick="window.location.href='app'"><i class="fas fa-arrow-right fs-4"></i></button>
-        <h5 class="mb-0 fw-bold text-white"><i class="fas fa-chart-line text-accent me-2"></i> التقارير والمالية</h5>
-        <button class="btn btn-sm btn-outline-light fw-bold shadow-sm" onclick="printReport()" title="طباعة التقرير"><i class="fas fa-print me-1"></i> طباعة</button>
+    <div class="header-hero">
+        <h1 class="fw-bold mb-3"><i class="fas fa-shield-alt text-accent me-2" style="color: #64ffda;"></i> سياسة الخصوصية وأمن البيانات</h1>
+        <p class="fs-5 text-white-50">كيف نحمي بياناتك وبيانات موكليك بأعلى المعايير العالمية</p>
     </div>
 
-    <div class="container mt-4">
-        
-        <div class="card-custom p-3 mb-4 shadow-sm bg-white border-top border-4 border-accent">
-            <h6 class="fw-bold text-navy mb-3"><i class="fas fa-filter text-accent me-2"></i> تصفية البيانات حسب التاريخ</h6>
-            <div class="row g-2 align-items-end">
-                <div class="col-md-3 col-6">
-                    <label class="form-label small fw-bold text-muted">الفترة الزمنية</label>
-                    <select id="filter_period" class="form-select border-0 shadow-sm bg-light" onchange="handlePeriodChange()">
-                        <option value="all">كل الأوقات (شامل)</option>
-                        <option value="today">اليوم</option>
-                        <option value="this_month">هذا الشهر</option>
-                        <option value="this_year">هذا العام</option>
-                        <option value="custom">تحديد فترة (مخصص)</option>
-                    </select>
-                </div>
-                <div class="col-md-3 col-6 custom-date d-none">
-                    <label class="form-label small fw-bold text-muted">من تاريخ</label>
-                    <input type="date" id="filter_start" class="form-control border-0 shadow-sm bg-light">
-                </div>
-                <div class="col-md-3 col-6 custom-date d-none">
-                    <label class="form-label small fw-bold text-muted">إلى تاريخ</label>
-                    <input type="date" id="filter_end" class="form-control border-0 shadow-sm bg-light">
-                </div>
-                <div class="col-md-3 col-12">
-                    <button class="btn btn-primary-custom w-100 fw-bold shadow-sm" onclick="generateReports()"><i class="fas fa-sync-alt me-1"></i> تطبيق وعرض النتائج</button>
-                </div>
-            </div>
-        </div>
+    <div class="container">
+        <div class="content-card">
+            <p>نحن في <strong>موكّل ERP</strong> ندرك تماماً حساسية وسرية العمل القانوني. لذا، فإن حماية خصوصيتك وبيانات قضاياك وموكليك هي أولويتنا القصوى. توضح هذه السياسة كيفية تعاملنا مع البيانات تقنياً.</p>
 
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-                <div class="card p-3 kpi-card position-relative h-100" style="background: linear-gradient(135deg, #0a192f, #1e3a8a);">
-                    <i class="fas fa-handshake kpi-icon"></i>
-                    <p class="mb-1 small opacity-75">الأتعاب (للقضايا الجديدة)</p>
-                    <h4 class="fw-bold mb-0"><span id="kpi-total-agreed">0</span> <small class="fs-6 fw-normal">د.أ</small></h4>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card p-3 kpi-card position-relative h-100" style="background: linear-gradient(135deg, #10b981, #059669);">
-                    <i class="fas fa-wallet kpi-icon"></i>
-                    <p class="mb-1 small opacity-75">المقبوضات (التحصيلات)</p>
-                    <h4 class="fw-bold mb-0"><span id="kpi-total-paid">0</span> <small class="fs-6 fw-normal">د.أ</small></h4>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card p-3 kpi-card position-relative h-100" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                    <i class="fas fa-exclamation-circle kpi-icon"></i>
-                    <p class="mb-1 small opacity-75">عجز التحصيل (المتبقي)</p>
-                    <h4 class="fw-bold mb-0"><span id="kpi-total-rem">0</span> <small class="fs-6 fw-normal">د.أ</small></h4>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card p-3 kpi-card position-relative h-100" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
-                    <i class="fas fa-money-bill-wave kpi-icon"></i>
-                    <p class="mb-1 small opacity-75">المدفوعات (المصروفات)</p>
-                    <h4 class="fw-bold mb-0"><span id="kpi-total-exp">0</span> <small class="fs-6 fw-normal">د.أ</small></h4>
-                </div>
-            </div>
-        </div>
+            <h5>1. طبيعة البيانات التي يتم جمعها</h5>
+            <p>نقوم باستضافة وتخزين البيانات التي تقوم أنت أو فريق عملك بإدخالها طواعية في النظام، وتشمل:</p>
+            <ul>
+                <li>بيانات الموظفين (الأسماء، أرقام الهواتف، أدوار النظام).</li>
+                <li>بيانات الموكلين والخصوم (الأسماء، الأرقام الوطنية، أرقام الهواتف).</li>
+                <li>سجلات القضايا، الوقائع، المواعيد، والسجلات المالية.</li>
+                <li>المستندات والملفات المرفوعة (PDF, الصور, الوثائق).</li>
+            </ul>
 
-        <div class="row g-3 mb-4">
-            <div class="col-4 text-center">
-                <div class="bg-white p-2 rounded shadow-sm border h-100">
-                    <h3 class="text-navy fw-bold mb-0" id="kpi-cases-count">0</h3>
-                    <small class="text-muted fw-bold">قضايا مسجلة</small>
-                </div>
-            </div>
-            <div class="col-4 text-center">
-                <div class="bg-white p-2 rounded shadow-sm border h-100">
-                    <h3 class="text-success fw-bold mb-0" id="kpi-clients-count">0</h3>
-                    <small class="text-muted fw-bold">موكلين جدد</small>
-                </div>
-            </div>
-            <div class="col-4 text-center">
-                <div class="bg-white p-2 rounded shadow-sm border h-100">
-                    <h3 class="text-warning fw-bold mb-0 text-dark" id="kpi-appts-count">0</h3>
-                    <small class="text-muted fw-bold">مهام وجلسات</small>
-                </div>
-            </div>
-        </div>
+            <h5>2. أين وكيف تُحفظ البيانات؟ (التشفير والأمان)</h5>
+            <p>يعتمد نظامنا على بنية تحتية سحابية متطورة ومحمية:</p>
+            <ul>
+                <li><strong>قواعد البيانات:</strong> تُحفظ البيانات النصية في خوادم Supabase العالمية، وهي مشفرة أثناء النقل (In Transit) وأثناء الحفظ (At Rest) باستخدام بروتوكولات وتشفير AES-256.</li>
+                <li><strong>جدار الحماية (Firewall):</strong> تتم إدارة جميع الاتصالات عبر شبكة Cloudflare العالمية لحماية النظام من هجمات الحرمان من الخدمة (DDoS) والاختراقات.</li>
+                <li><strong>الملفات المرفوعة:</strong> يتم تشفيرها وتخزينها في بيئة سحابية معزولة ولا يمكن الوصول إليها إلا من خلال روابط مخصصة.</li>
+            </ul>
 
-        <div class="row">
-            <div class="col-md-8">
-                <div class="chart-container">
-                    <h6 class="fw-bold text-navy mb-3 border-bottom pb-2"><i class="fas fa-chart-bar text-accent me-2"></i> التدفق المالي للفترة المحددة</h6>
-                    <div style="height: 300px;">
-                        <canvas id="financeChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="chart-container">
-                    <h6 class="fw-bold text-navy mb-3 border-bottom pb-2"><i class="fas fa-chart-pie text-warning me-2"></i> حالة القضايا (ضمن الفترة)</h6>
-                    <div style="height: 300px; display: flex; justify-content: center; align-items: center;">
-                        <canvas id="casesChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <h5>3. من يمكنه الوصول إلى البيانات؟</h5>
+            <p><strong>أنت فقط وفريق عملك المصرح له.</strong> نحن نطبق نظام صلاحيات صارم (Role-Based Access Control):</p>
+            <ul>
+                <li>المدير (المالك) يمتلك الصلاحية المطلقة لرؤية بيانات مكتبه فقط.</li>
+                <li>المحامي يرى فقط القضايا والموكلين المسندين إليه من قِبل الإدارة.</li>
+                <li><strong>إدارة نظام "موكّل"</strong> لا تقوم بالدخول إلى بيانات الموكلين أو الاطلاع على تفاصيل القضايا بأي شكل من الأشكال إلا في حالات الدعم الفني الطارئة وبناءً على طلب كتابي صريح منك.</li>
+            </ul>
 
-        <h6 class="fw-bold text-navy mb-3 mt-2"><i class="fas fa-history text-danger me-2"></i> الحركات المالية التفصيلية (ضمن الفترة)</h6>
-        <div class="table-responsive table-container shadow-sm border-0">
-            <table class="table table-hover mb-0 text-center bg-white">
-                <thead>
-                    <tr>
-                        <th class="py-3">التاريخ</th>
-                        <th class="py-3">نوع الحركة</th>
-                        <th class="py-3">المبلغ (د.أ)</th>
-                        <th class="py-3">البيان / القضية</th>
-                        <th class="py-3">الحالة</th>
-                    </tr>
-                </thead>
-                <tbody id="recent-transactions-tbody">
-                    <tr><td colspan="5" class="py-4 text-muted fw-bold"><i class="fas fa-spinner fa-spin me-2"></i> جاري تحميل وتحليل البيانات...</td></tr>
-                </tbody>
-            </table>
+            <h5>4. مشاركة البيانات مع أطراف ثالثة</h5>
+            <p>نحن نلتزم التزاماً قاطعاً <strong>بعدم بيع، أو تأجير، أو مشاركة</strong> أي من بياناتك أو بيانات عملائك مع أي وكالات إعلانية أو أطراف ثالثة. البيانات تُستخدم حصرياً لتشغيل النظام الخاص بك.</p>
+
+            <h5>5. حق حذف البيانات (النسيان)</h5>
+            <p>عند إنهاء اشتراكك معنا، يحق لك طلب تزويدك بنسخة من بياناتك، وبعدها تلتزم إدارة النظام بمسح وحذف جميع بيانات مكتبك، قضاياك، وموكليك من خوادمنا بشكل نهائي وغير قابل للاسترجاع.</p>
+
+            <div class="text-center mt-5">
+                <a href="index.html" class="btn btn-back text-decoration-none"><i class="fas fa-arrow-right me-2"></i> العودة للصفحة الرئيسية</a>
+            </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script src="./js/config.js"></script>
-    <script src="./js/api.js"></script>
-    <script src="./js/auth.js"></script>
-    <script src="./js/reports.js"></script>
 </body>
 </html>
