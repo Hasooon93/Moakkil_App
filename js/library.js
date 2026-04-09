@@ -1,5 +1,5 @@
 // js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
-// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي.
+// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي، ودعم حقول الـ ERP.
 
 let currentUser = null;
 let allTemplates = [];
@@ -157,18 +157,21 @@ async function uploadTemplate(event) {
     }
 
     const file = fileInput.files[0];
+    const fileExt = file.name.split('.').pop().toLowerCase();
     
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي...';
 
     try {
         let finalFileUrl = "";
+        let finalFileId = null;
 
         // محاولة الرفع لجوجل درايف عبر دالة API الموحدة
         try {
             const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
             if (driveRes && driveRes.url) {
                 finalFileUrl = driveRes.url;
+                finalFileId = driveRes.id || null;
             } else {
                 throw new Error("لم يتم إرجاع رابط من جوجل درايف");
             }
@@ -178,12 +181,17 @@ async function uploadTemplate(event) {
             showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ)', 'info');
         }
         
+        // الحقن الجراحي: استخدام الحقول القياسية لجدول mo_files بدقة
         let payload = { 
             file_name: titleInput || file.name, 
             file_type: file.type, 
+            file_extension: fileExt,
             file_category: catInput, 
-            drive_file_id: finalFileUrl, // الحقل القياسي المتفق عليه في db
-            is_template: true
+            file_url: finalFileUrl,
+            drive_file_id: finalFileId || finalFileUrl, 
+            is_template: true,
+            is_analyzed: false,
+            ai_summary: null
         };
 
         // استخدام دالة إضافة الملف في API.js (لتسجيل الـ Audit Logs تلقائياً)

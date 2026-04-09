@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المكتملة 100%)
-// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، إصلاح VCard، معالجة الـ Null Dates والـ UUIDs.
+// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، إصلاح VCard، معالجة الـ Null Dates والـ UUIDs، والـ ERP Injection (Tags, Audit Time Machine).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -317,14 +317,83 @@ function renderKanbanBoard() {
     board.innerHTML = cols.map(col => `<div class="kanban-col border-top border-4 border-${col.color} shadow-sm bg-white mx-2" style="width: 280px; flex-shrink: 0;"><div class="kanban-header text-${col.color} mb-3 pb-2 border-bottom border-light"><i class="fas fa-circle me-1 small"></i> ${col.l} (${globalData.appointments.filter(col.f).length})</div><div class="d-flex flex-column gap-2" style="max-height: 55vh; overflow-y: auto;">${globalData.appointments.filter(col.f).sort((a,b) => new Date(b.appt_date) - new Date(a.appt_date)).map(a => { let notesSnippet = (a.notes && a.notes.trim() !== '') ? `<div class="mt-2 pt-2 border-top border-light text-muted small"><i class="fas fa-info-circle text-info me-1"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${escapeHTML(a.notes)}</span></div>` : ''; return `<div class="card-custom appt-card p-2 shadow-sm border border-light bg-light" style="font-size:13px; border-radius:10px;"><b class="text-navy d-block text-truncate mb-1" title="${escapeHTML(a.title)}">${escapeHTML(a.title)}</b><small class="text-muted"><i class="fas fa-calendar-alt me-1 text-secondary"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small>${notesSnippet}</div>`; }).join('')}</div></div>`).join('');
 }
 
+// ----------------- سجل الرقابة (آلة الزمن / Time Machine) -----------------
 function renderActivityLogs() {
     const list = document.getElementById('audit-list'); if(!list) return;
     if(globalData.activityLogs.length === 0) { list.innerHTML = '<div class="text-center p-3 text-muted">لا يوجد حركات مسجلة حالياً</div>'; return; }
-    const actionTypes = { 'CREATE': 'إضافة', 'UPDATE': 'تعديل', 'DELETE': 'حذف' }; const entityNames = { 'mo_cases': 'قضية', 'mo_clients': 'موكل', 'mo_appointments': 'موعد', 'mo_users': 'موظف', 'mo_installments': 'دفعة', 'mo_expenses': 'مصروف', 'mo_files': 'مستند', 'mo_firms': 'مكتب' };
+    
+    const actionTypes = { 'CREATE': 'إضافة', 'UPDATE': 'تعديل', 'DELETE': 'حذف' }; 
+    const entityNames = { 'mo_cases': 'قضية', 'mo_clients': 'موكل', 'mo_appointments': 'موعد', 'mo_users': 'موظف', 'mo_installments': 'دفعة', 'mo_expenses': 'مصروف', 'mo_files': 'مستند', 'mo_firms': 'مكتب' };
+    
     list.innerHTML = globalData.activityLogs.slice(0, 100).map(log => {
-        const staffName = globalData.staff.find(s => s.id === log.user_id)?.full_name || 'مجهول'; const action = actionTypes[log.action_type] || log.action_type; const entity = entityNames[log.entity_type] || log.entity_type; const badgeColor = log.action_type === 'CREATE' ? 'success' : (log.action_type === 'DELETE' ? 'danger' : 'warning');
-        return `<div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-${badgeColor} bg-white" style="border-radius:12px;"><div class="d-flex justify-content-between align-items-center mb-1"><strong class="text-navy"><i class="fas fa-user-tie me-1 text-secondary"></i> ${escapeHTML(staffName)}</strong><span class="badge bg-${badgeColor} shadow-sm">${action} ${entity}</span></div><small class="text-muted d-block mb-1"><i class="fas fa-clock me-1"></i> ${new Date(log.created_at).toLocaleString('ar-EG')}</small><div class="text-muted" style="font-size: 11px; overflow-wrap: anywhere; user-select: all;">المعرف: ${log.entity_id}</div></div>`;
+        const staffName = globalData.staff.find(s => s.id === log.user_id)?.full_name || 'مجهول'; 
+        const action = actionTypes[log.action_type] || log.action_type; 
+        const entity = entityNames[log.entity_type] || log.entity_type; 
+        const badgeColor = log.action_type === 'CREATE' ? 'success' : (log.action_type === 'DELETE' ? 'danger' : 'warning');
+        
+        return `
+        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-${badgeColor} bg-white" style="border-radius:12px;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-navy"><i class="fas fa-user-tie me-1 text-secondary"></i> ${escapeHTML(staffName)}</strong>
+                <span class="badge bg-${badgeColor} shadow-sm">${action} ${entity}</span>
+            </div>
+            <small class="text-muted d-block mb-2"><i class="fas fa-clock me-1"></i> ${new Date(log.created_at).toLocaleString('ar-EG')}</small>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted" style="font-size: 11px; overflow-wrap: anywhere; user-select: all;">المعرف: ${log.entity_id}</div>
+                <button class="btn btn-sm btn-outline-navy py-0 px-2 fw-bold shadow-sm" onclick="showAuditDiff('${log.id}')"><i class="fas fa-code-branch me-1"></i> التفاصيل</button>
+            </div>
+        </div>`;
     }).join('');
+}
+
+window.showAuditDiff = function(logId) {
+    const log = globalData.activityLogs.find(l => l.id === logId);
+    if (!log) return;
+    const modalBody = document.getElementById('auditDiffModalBody');
+    if (!modalBody) return;
+    let diffHTML = '';
+
+    if (log.action_type === 'CREATE') {
+        diffHTML = `<div class="alert alert-success border-0 shadow-sm fw-bold"><i class="fas fa-plus-circle me-1"></i> تم إنشاء السجل بالبيانات التالية:</div><div dir="ltr" class="text-start bg-white p-3 rounded border shadow-sm" style="font-family:monospace; font-size:0.85rem; overflow-x:auto;">${syntaxHighlight(log.new_data)}</div>`;
+    } else if (log.action_type === 'DELETE') {
+        diffHTML = `<div class="alert alert-danger border-0 shadow-sm fw-bold"><i class="fas fa-trash me-1"></i> تم حذف السجل نهائياً. البيانات قبل الحذف:</div><div dir="ltr" class="text-start bg-white p-3 rounded border shadow-sm" style="font-family:monospace; font-size:0.85rem; overflow-x:auto;">${syntaxHighlight(log.old_data)}</div>`;
+    } else if (log.action_type === 'UPDATE') {
+        diffHTML = `<div class="alert alert-info border-0 shadow-sm fw-bold"><i class="fas fa-exchange-alt me-1"></i> مقارنة التعديلات (الأحمر مُلغى، الأخضر مُضاف):</div><div dir="ltr" class="text-start bg-white p-3 rounded border shadow-sm" style="font-family:monospace; font-size:0.85rem; overflow-x:auto;">`;
+        const oldData = log.old_data || {};
+        const newData = log.new_data || {};
+        const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+        diffHTML += `{\n`;
+        let hasChanges = false;
+        allKeys.forEach(key => {
+            if (key === 'updated_at') return;
+            const oldVal = oldData[key];
+            const newVal = newData[key];
+            if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+                hasChanges = true;
+                diffHTML += `  <strong class="text-primary">"${key}"</strong>: \n`;
+                if (oldVal !== undefined) diffHTML += `    <span style="background:#ffe6e6; color:#cc0000; text-decoration:line-through; padding:2px 4px; border-radius:4px; display:inline-block; margin-bottom:2px;">- ${JSON.stringify(oldVal)}</span>\n`;
+                if (newVal !== undefined) diffHTML += `    <span style="background:#e6ffe6; color:#008000; font-weight:bold; padding:2px 4px; border-radius:4px; display:inline-block; margin-bottom:2px;">+ ${JSON.stringify(newVal)}</span>\n`;
+            }
+        });
+        if (!hasChanges) diffHTML += `  <span class="text-muted">// لم يتم رصد تغييرات جوهرية في القيم</span>\n`;
+        diffHTML += `}</div>`;
+    }
+    modalBody.innerHTML = diffHTML;
+    openModal('auditDiffModal');
+};
+
+function syntaxHighlight(json) {
+    if (typeof json != 'string') json = JSON.stringify(json, undefined, 2);
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'text-info fw-bold';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) cls = 'text-primary fw-bold';
+            else cls = 'text-success';
+        } else if (/true|false/.test(match)) cls = 'text-warning fw-bold';
+        else if (/null/.test(match)) cls = 'text-danger fw-bold';
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
 }
 
 // =================================================================
@@ -461,7 +530,7 @@ window.generateStrongPIN = function() {
 };
 
 // =================================================================
-// 💾 دوال حفظ البيانات الرئيسية (معالجة الـ Null Dates والـ UUID)
+// 💾 دوال حفظ البيانات الرئيسية (معالجة الـ ERP Injection)
 // =================================================================
 
 async function saveClient(event) {
@@ -474,7 +543,8 @@ async function saveClient(event) {
         address: document.getElementById('client_address').value, mother_name: document.getElementById('client_mother') ? document.getElementById('client_mother').value : null,
         date_of_birth: validDob, place_of_birth: document.getElementById('client_pob') ? document.getElementById('client_pob').value : null,
         nationality: document.getElementById('client_nationality') ? document.getElementById('client_nationality').value : null, marital_status: document.getElementById('client_marital') ? document.getElementById('client_marital').value : null,
-        profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null, confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي'
+        profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null, confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي',
+        client_portal_active: document.getElementById('client_portal_active') ? document.getElementById('client_portal_active').checked : true
     };
     const res = await API.addClient(data);
     if (res && !res.error) { closeModal('clientModal'); await loadAllData(); await loadNotifications(); showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم إضافة الموكل بنجاح', res.offline ? 'warning' : 'success'); event.target.reset(); } 
@@ -493,6 +563,9 @@ async function saveCase(event) {
     const statuteValue = document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : ''; const validStatute = statuteValue === '' ? null : statuteValue;
     const parentIdValue = document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : ''; const validParentId = parentIdValue === '' ? null : parentIdValue;
 
+    const tagsInput = document.getElementById('case_tags');
+    const tagsArray = tagsInput && tagsInput.value ? tagsInput.value.split('،').map(t=>t.trim()).filter(t=>t) : [];
+
     const data = { 
         client_id: document.getElementById('case_client_id').value, case_internal_id: document.getElementById('case_internal_id').value, access_pin: document.getElementById('case_access_pin').value, case_type: document.getElementById('case_type').value, 
         priority_level: document.getElementById('case_priority_level') ? document.getElementById('case_priority_level').value : 'عادي', confidentiality_level: document.getElementById('case_confidentiality') ? document.getElementById('case_confidentiality').value : 'عادي', current_stage: document.getElementById('case_current_stage') ? document.getElementById('case_current_stage').value : '',
@@ -502,7 +575,9 @@ async function saveCase(event) {
         co_plaintiffs: document.getElementById('case_co_plaintiffs') ? parseToArray(document.getElementById('case_co_plaintiffs').value) : [], co_defendants: document.getElementById('case_co_defendants') ? parseToArray(document.getElementById('case_co_defendants').value) : [], experts_and_witnesses: document.getElementById('case_experts_and_witnesses') ? parseToArray(document.getElementById('case_experts_and_witnesses').value) : [],
         lawsuit_facts: document.getElementById('case_lawsuit_text') ? document.getElementById('case_lawsuit_text').value : '', legal_basis: document.getElementById('case_legal_basis') ? document.getElementById('case_legal_basis').value : '', final_requests: document.getElementById('case_final_requests') ? parseLinesToArray(document.getElementById('case_final_requests').value) : [],
         claim_amount: Number(document.getElementById('case_claim_amount').value), total_agreed_fees: Number(document.getElementById('case_agreed_fees').value), success_probability: document.getElementById('case_success_prob') && document.getElementById('case_success_prob').value ? Number(document.getElementById('case_success_prob').value) : null,
-        assigned_lawyer_id: lawyers, status: 'نشطة', public_token: crypto.randomUUID()
+        assigned_lawyer_id: lawyers, status: 'نشطة', public_token: crypto.randomUUID(),
+        execution_file_number: document.getElementById('case_execution_file_number') ? document.getElementById('case_execution_file_number').value : null,
+        case_tags: tagsArray
     };
     
     const btn = event.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';

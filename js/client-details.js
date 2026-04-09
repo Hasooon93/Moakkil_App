@@ -1,5 +1,5 @@
 // js/client-details.js - محرك صفحة الموكل الشاملة (النسخة المتوافقة 100% مع api.js)
-// التحديثات: دعم المزامنة (Offline Mode) للتعديلات والحذف، ومنع أخطاء الرفع السحابي أثناء انقطاع الإنترنت.
+// التحديثات: عرض حالة البوابة وآخر زيارة لها (Last Seen)، منع أخطاء الرفع السحابي، والمزامنة.
 
 let currentClientId = localStorage.getItem('current_client_id') || new URLSearchParams(window.location.search).get('id');
 let clientObj = null;
@@ -16,7 +16,7 @@ const escapeHTML = (str) => {
 
 window.onload = async () => {
     applyFirmSettings();
-    if (!currentClientId) { window.location.href = 'app'; return; }
+    if (!currentClientId) { window.location.href = 'app.html'; return; }
     await loadClientData();
 };
 
@@ -28,64 +28,94 @@ function applyFirmSettings() {
     if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
 }
 
+function goBack() { window.location.href = 'app.html'; }
+
 window.manualSync = async () => {
     await loadClientData();
-    showAlert('تم التحديث بنجاح', 'success');
+    showAlert('تمت المزامنة بنجاح', 'success');
 };
 
-function goBack() { window.location.href = 'app'; }
-
-// جلب البيانات بالاعتماد على الدوال المخصصة في api.js
 async function loadClientData() {
     try {
-        Swal.fire({ title: 'جاري تحميل بيانات الموكل...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
         const [clientsRes, casesRes, filesRes] = await Promise.all([
             API.getClients(),
             API.getCases(),
-            API.getFiles() // نجلب كافة الملفات ثم نفلترها برقم الموكل
+            API.getFiles() // بافتراض وجود دالة عامة لجلب الملفات
         ]);
 
-        const allClients = Array.isArray(clientsRes) ? clientsRes : [];
-        clientObj = allClients.find(c => c.id == currentClientId);
+        if (!clientsRes || clientsRes.length === 0) { window.location.href = 'app.html'; return; }
         
-        if (!clientObj) { 
-            Swal.close();
-            window.location.href = 'app'; 
-            return; 
-        }
+        clientObj = clientsRes.find(c => c.id === currentClientId);
+        if (!clientObj) { window.location.href = 'app.html'; return; }
 
-        const allCases = Array.isArray(casesRes) ? casesRes : [];
-        clientCases = allCases.filter(c => c.client_id == currentClientId);
-        
-        const allFiles = Array.isArray(filesRes) ? filesRes : [];
-        // فلترة الملفات الخاصة بهذا الموكل تحديداً
-        clientFiles = allFiles.filter(f => f.client_id == currentClientId);
+        clientCases = Array.isArray(casesRes) ? casesRes.filter(c => c.client_id === currentClientId) : [];
+        clientFiles = Array.isArray(filesRes) ? filesRes.filter(f => f.client_id === currentClientId) : [];
 
+        let totalAgreed = 0, totalPaid = 0;
+        clientCases.forEach(c => {
+            totalAgreed += Number(c.total_agreed_fees) || 0;
+            totalPaid += Number(c.total_paid) || 0;
+        });
+
+        renderHeaderAndSummary(totalAgreed, totalPaid);
         renderClientInfo();
-        renderClientCases();
-        renderClientFiles();
-        calculateClientFinances();
+        renderCasesList();
+        renderFilesList();
 
-        Swal.close();
-    } catch (error) {
-        console.error(error);
-        Swal.close();
-        showAlert('خطأ في جلب البيانات', 'error');
+    } catch (error) { 
+        console.error("Load Error:", error);
+        showAlert('خطأ في جلب بيانات الموكل', 'warning'); 
     }
 }
 
-// عرض بيانات الهوية الشاملة
-function renderClientInfo() {
+function renderHeaderAndSummary(totalAgreed, totalPaid) {
     document.getElementById('header-client-name').innerText = escapeHTML(clientObj.full_name);
     document.getElementById('det-full-name').innerText = escapeHTML(clientObj.full_name);
     document.getElementById('det-phone').innerText = escapeHTML(clientObj.phone || 'لا يوجد رقم');
-    
-    let badges = '';
-    if (clientObj.client_type === 'شركة') badges += `<span class="badge bg-primary ms-1 shadow-sm"><i class="fas fa-building"></i> شركة</span>`;
-    if (clientObj.confidentiality_level === 'سري') badges += `<span class="badge bg-dark ms-1 shadow-sm"><i class="fas fa-lock text-warning"></i> سري جداً</span>`;
-    document.getElementById('client-badges').innerHTML = badges;
 
+    let badgesHtml = '';
+    if (clientObj.client_type === 'شركة') badgesHtml += `<span class="badge bg-primary shadow-sm"><i class="fas fa-building"></i> شركة</span>`;
+    if (clientObj.confidentiality_level === 'سري') badgesHtml += `<span class="badge bg-danger shadow-sm ms-1"><i class="fas fa-user-secret"></i> سري</span>`;
+    document.getElementById('client-badges').innerHTML = badgesHtml;
+
+    // حالة بوابة الموكل
+    const portalBadge = document.getElementById('portal_status_badge');
+    if (portalBadge) {
+        if (clientObj.client_portal_active !== false) {
+            portalBadge.className = 'badge bg-success text-white shadow-sm border-0 px-3 py-2';
+            portalBadge.innerHTML = '<i class="fas fa-globe me-1"></i> البوابة الإلكترونية مفعلة';
+        } else {
+            portalBadge.className = 'badge bg-danger text-white shadow-sm border-0 px-3 py-2';
+            portalBadge.innerHTML = '<i class="fas fa-lock me-1"></i> وصول البوابة معلق';
+        }
+    }
+
+    // حساب وعرض آخر زيارة للبوابة
+    let lastSeenDate = null;
+    clientCases.forEach(c => {
+        if (c.client_last_seen) {
+            const d = new Date(c.client_last_seen);
+            if (!lastSeenDate || d > lastSeenDate) lastSeenDate = d;
+        }
+    });
+
+    const lastSeenBadge = document.getElementById('portal_last_seen_badge');
+    if (lastSeenBadge) {
+        if (lastSeenDate) {
+            lastSeenBadge.innerHTML = `<i class="fas fa-eye me-1"></i> آخر زيارة: ${lastSeenDate.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}`;
+            lastSeenBadge.className = 'badge bg-info text-white shadow-sm border-0 px-3 py-2';
+        } else {
+            lastSeenBadge.innerHTML = `<i class="fas fa-eye-slash me-1"></i> لم يزر البوابة بعد`;
+            lastSeenBadge.className = 'badge bg-light text-muted border px-3 py-2 shadow-sm';
+        }
+    }
+
+    document.getElementById('fin-total-agreed').innerText = totalAgreed.toLocaleString();
+    document.getElementById('fin-total-paid').innerText = totalPaid.toLocaleString();
+    document.getElementById('fin-remaining').innerText = (totalAgreed - totalPaid).toLocaleString();
+}
+
+function renderClientInfo() {
     document.getElementById('det-national-id').innerText = escapeHTML(clientObj.national_id || '--');
     document.getElementById('det-email').innerText = escapeHTML(clientObj.email || '--');
     document.getElementById('det-address').innerText = escapeHTML(clientObj.address || '--');
@@ -97,189 +127,136 @@ function renderClientInfo() {
     document.getElementById('det-profession').innerText = escapeHTML(clientObj.profession || '--');
 }
 
-// عرض قضايا الموكل
-function renderClientCases() {
+function renderCasesList() {
+    const list = document.getElementById('client-cases-list');
     document.getElementById('cases-count').innerText = clientCases.length;
-    const container = document.getElementById('client-cases-list');
     
-    if (clientCases.length === 0) {
-        container.innerHTML = '<div class="text-center p-4 text-muted small bg-white rounded border shadow-sm">لا توجد قضايا مسجلة لهذا الموكل.</div>';
-        return;
+    if (clientCases.length === 0) { 
+        list.innerHTML = '<div class="text-center p-4 text-muted small bg-white rounded border shadow-sm">لا توجد قضايا مسجلة لهذا الموكل.</div>'; 
+        return; 
     }
-
-    container.innerHTML = clientCases.map(c => {
+    
+    list.innerHTML = clientCases.map(c => {
         let statusColor = c.status === 'نشطة' ? 'success' : (c.status === 'مكتملة' ? 'secondary' : 'warning');
         return `
-        <div class="card-custom case-card p-3 mb-3 bg-white shadow-sm border-start border-4 border-${statusColor}" onclick="viewCase('${c.id}')" style="cursor:pointer; border-radius:12px;">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <h6 class="fw-bold text-navy mb-0">${escapeHTML(c.case_internal_id || 'ملف بلا رقم')}</h6>
-                <span class="badge bg-${statusColor}">${escapeHTML(c.status || 'نشطة')}</span>
+        <div class="card-custom case-card p-3 mb-2 d-flex justify-content-between align-items-center bg-white border-start border-4 border-${statusColor}" onclick="goToCase('${c.id}')" style="cursor:pointer; border-radius:12px;">
+            <div>
+                <b class="text-navy d-block mb-1">${escapeHTML(c.case_internal_id || 'ملف بلا رقم')}</b>
+                <small class="text-muted"><i class="fas fa-balance-scale"></i> ${escapeHTML(c.current_court || 'محكمة غير محددة')}</small>
             </div>
-            <div class="small text-muted mb-2">
-                <i class="fas fa-user-shield text-danger me-1"></i> الخصم: ${escapeHTML(c.opponent_name || '--')}
+            <div class="text-end">
+                <span class="badge bg-${statusColor} shadow-sm mb-1">${escapeHTML(c.status)}</span><br>
+                <small class="text-danger fw-bold" style="font-size:0.7rem;">الخصم: ${escapeHTML(c.opponent_name || '--')}</small>
             </div>
-            <div class="d-flex justify-content-between text-muted" style="font-size: 0.75rem;">
-                <span><i class="fas fa-balance-scale"></i> ${escapeHTML(c.current_court || '--')}</span>
-                <span class="text-navy fw-bold">الأتعاب: ${Number(c.total_agreed_fees || 0).toLocaleString()} د.أ</span>
-            </div>
-        </div>
-        `;
+        </div>`;
     }).join('');
 }
 
-// عرض المستندات الشخصية للموكل
-function renderClientFiles() {
+function renderFilesList() {
     const container = document.getElementById('client-files-list');
-    if (!clientFiles || clientFiles.length === 0) { 
-        container.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white rounded shadow-sm">لا توجد مستندات شخصية للموكل.</div>'; 
+    if (clientFiles.length === 0) { 
+        container.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white rounded shadow-sm">لا يوجد مستندات مؤرشفة.</div>'; 
         return; 
     }
-
+    
     container.innerHTML = clientFiles.map(f => {
-        const isImage = f.file_type && f.file_type.includes('image');
-        const iconHtml = (isImage && f.drive_file_id) ? `<i class="fas fa-image fs-1 text-primary mb-2"></i>` : `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
+        const isImage = f.file_extension && ['jpg','jpeg','png'].includes(f.file_extension);
+        const iconHtml = isImage ? `<i class="fas fa-image fs-2 text-success mb-2"></i>` : `<i class="fas fa-file-pdf fs-2 text-danger mb-2"></i>`;
         const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
         
         return `
-        <div class="col-6">
-            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative">
+        <div class="col-6 mb-2">
+            <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative rounded-3">
                 <button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteClientFile('${f.id}')"><i class="fas fa-trash"></i></button>
                 <span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>
-                ${iconHtml}
-                <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
+                ${iconHtml} 
+                <h6 class="small fw-bold text-truncate mt-1 mb-0 text-navy" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
                 ${expiryBadge}
-                <div class="d-flex gap-1 mt-2">
-                    <a href="${escapeHTML(f.drive_file_id || '#')}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>
+                <div class="mt-3">
+                    <a href="${escapeHTML(f.file_url || f.drive_file_id || '#')}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-eye me-1"></i> عرض</a>
                 </div>
             </div>
-        </div>
-        `;
+        </div>`;
     }).join('');
 }
 
-// حساب الموقف المالي للموكل
-function calculateClientFinances() {
-    let totalAgreed = 0;
-    let totalPaid = 0;
-    
-    clientCases.forEach(c => {
-        totalAgreed += Number(c.total_agreed_fees) || 0;
-        totalPaid += Number(c.total_paid) || 0; 
-    });
-
-    const remaining = totalAgreed - totalPaid;
-
-    document.getElementById('fin-total-agreed').innerText = totalAgreed.toLocaleString();
-    document.getElementById('fin-total-paid').innerText = totalPaid.toLocaleString();
-    document.getElementById('fin-remaining').innerText = remaining.toLocaleString();
-}
-
-function viewCase(id) {
-    localStorage.setItem('current_case_id', id);
+function goToCase(caseId) {
+    localStorage.setItem('current_case_id', caseId);
     window.location.href = 'case-details.html';
 }
 
-function callClient() {
-    if(clientObj && clientObj.phone) {
-        window.location.href = `tel:${clientObj.phone}`;
-    } else {
-        showAlert('لا يوجد رقم هاتف للموكل', 'warning');
-    }
-}
+window.callClient = function() {
+    if (clientObj && clientObj.phone) window.open(`tel:${clientObj.phone}`);
+    else showAlert('لا يوجد رقم هاتف مسجل', 'warning');
+};
 
-function whatsappClient() {
-    if(clientObj && clientObj.phone) {
-        let phoneStr = String(clientObj.phone);
-        if (phoneStr.startsWith('0')) phoneStr = '962' + phoneStr.substring(1);
-        window.open(`https://wa.me/${phoneStr}`, '_blank');
+window.whatsappClient = function() {
+    if (clientObj && clientObj.phone) {
+        let p = String(clientObj.phone);
+        if (p.startsWith('0')) p = '962' + p.substring(1);
+        window.open(`https://wa.me/${p}`, '_blank');
     } else {
-        showAlert('لا يوجد رقم هاتف للموكل', 'warning');
+        showAlert('لا يوجد رقم هاتف مسجل', 'warning');
     }
-}
+};
 
-// وظائف التعديل (باستخدام API.updateClient المخصص)
-function openEditModal() {
+window.openEditModal = function() {
     document.getElementById('edit_full_name').value = clientObj.full_name || '';
     document.getElementById('edit_phone').value = clientObj.phone || '';
     document.getElementById('edit_national_id').value = clientObj.national_id || '';
+    document.getElementById('edit_mother').value = clientObj.mother_name || '';
+    document.getElementById('edit_dob').value = clientObj.date_of_birth || '';
+    document.getElementById('edit_pob').value = clientObj.place_of_birth || '';
+    document.getElementById('edit_nationality').value = clientObj.nationality || 'أردني';
+    document.getElementById('edit_marital').value = clientObj.marital_status || '';
+    document.getElementById('edit_profession').value = clientObj.profession || '';
     document.getElementById('edit_email').value = clientObj.email || '';
     document.getElementById('edit_address').value = clientObj.address || '';
     document.getElementById('edit_client_type').value = clientObj.client_type || 'فرد';
     document.getElementById('edit_confidentiality').value = clientObj.confidentiality_level || 'عادي';
     
-    document.getElementById('edit_mother').value = clientObj.mother_name || '';
-    document.getElementById('edit_dob').value = clientObj.date_of_birth || '';
-    document.getElementById('edit_pob').value = clientObj.place_of_birth || '';
-    document.getElementById('edit_nationality').value = clientObj.nationality || '';
-    document.getElementById('edit_marital').value = clientObj.marital_status || '';
-    document.getElementById('edit_profession').value = clientObj.profession || '';
+    const portalActiveEl = document.getElementById('edit_portal_active');
+    if (portalActiveEl) {
+        portalActiveEl.checked = clientObj.client_portal_active !== false;
+    }
 
     openModal('editClientModal');
-}
+};
 
-async function updateClient(e) {
-    e.preventDefault();
+window.updateClient = async function(event) {
+    event.preventDefault();
     const btn = document.getElementById('btn_save_client');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> حفظ...';
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
 
     const data = {
         full_name: document.getElementById('edit_full_name').value,
         phone: document.getElementById('edit_phone').value,
-        national_id: document.getElementById('edit_national_id').value,
-        email: document.getElementById('edit_email').value,
-        address: document.getElementById('edit_address').value,
+        national_id: document.getElementById('edit_national_id').value || null,
+        mother_name: document.getElementById('edit_mother').value || null,
+        date_of_birth: document.getElementById('edit_dob').value || null,
+        place_of_birth: document.getElementById('edit_pob').value || null,
+        nationality: document.getElementById('edit_nationality').value || null,
+        marital_status: document.getElementById('edit_marital').value || null,
+        profession: document.getElementById('edit_profession').value || null,
+        email: document.getElementById('edit_email').value || null,
+        address: document.getElementById('edit_address').value || null,
         client_type: document.getElementById('edit_client_type').value,
         confidentiality_level: document.getElementById('edit_confidentiality').value,
-        mother_name: document.getElementById('edit_mother').value,
-        date_of_birth: document.getElementById('edit_dob').value || null,
-        place_of_birth: document.getElementById('edit_pob').value,
-        nationality: document.getElementById('edit_nationality').value,
-        marital_status: document.getElementById('edit_marital').value,
-        profession: document.getElementById('edit_profession').value
+        client_portal_active: document.getElementById('edit_portal_active') ? document.getElementById('edit_portal_active').checked : true
     };
 
-    try {
-        const res = await API.updateClient(currentClientId, data);
-        if(res && !res.error) {
-            closeModal('editClientModal');
-            showAlert(res.offline ? 'أنت غير متصل. تم حفظ التعديلات محلياً' : 'تم تحديث بيانات الموكل بنجاح', res.offline ? 'warning' : 'success');
-            await loadClientData();
-        } else {
-            showAlert(res?.error || 'حدث خطأ في التحديث', 'error');
-        }
-    } catch(err) {
-        showAlert('فشل التحديث: ' + err.message, 'error');
-    } finally {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التعديلات';
+    const res = await API.updateClient(currentClientId, data);
+    if (res && !res.error) {
+        closeModal('editClientModal');
+        showAlert(res.offline ? 'تم التحديث محلياً' : 'تم التحديث بنجاح', res.offline ? 'warning' : 'success');
+        await loadClientData();
+    } else {
+        showAlert(res?.error || 'حدث خطأ أثناء التحديث', 'error');
     }
-}
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التعديلات';
+};
 
-// دالة الحذف (باستخدام API.deleteClient)
-async function deleteClient() {
-    if (clientCases.length > 0) {
-        showAlert('لا يمكن حذف الموكل لارتباطه بقضايا نشطة', 'error');
-        return;
-    }
-    
-    const confirm = await Swal.fire({ title: 'هل أنت متأكد؟', text: "سيتم حذف الموكل نهائياً!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'نعم، احذف', cancelButtonText: 'إلغاء' });
-    
-    if (confirm.isConfirmed) {
-        try {
-            const res = await API.deleteClient(currentClientId);
-            if(res && !res.error) {
-                showAlert(res.offline ? 'أنت غير متصل، تم أمر الحذف محلياً' : 'تم حذف الموكل بنجاح', res.offline ? 'warning' : 'success');
-                setTimeout(() => { goBack(); }, 1500);
-            } else {
-                showAlert(res?.error || 'حدث خطأ في الحذف', 'error');
-            }
-        } catch(e) {
-            showAlert('فشل الحذف، تأكد من الصلاحيات', 'error');
-        }
-    }
-}
-
-// وظائف رفع الملفات الخاصة بالموكل (باستخدام API.addFileRecord)
-async function saveClientFile(event) {
+window.saveClientFile = async function(event) {
     event.preventDefault();
     const fileInput = document.getElementById('file_input');
     const titleInput = document.getElementById('file_title_input').value;
@@ -288,33 +265,32 @@ async function saveClientFile(event) {
     const btn = document.getElementById('btn_upload');
     
     if (!fileInput.files.length) return;
-    const file = fileInput.files[0];
+    if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات بلا إنترنت.', 'warning'); return; }
     
-    if (!navigator.onLine) {
-        showAlert('عذراً، لا يمكن رفع الملفات السحابية أثناء انقطاع الإنترنت.', 'warning');
-        return;
-    }
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة...';
     
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الأرشفة...';
     try {
-        const driveRes = await API.uploadToDrive(file, clientObj.full_name, "Client_Files_Folder");
+        const driveRes = await API.uploadToDrive(fileInput.files[0], `موكل-${clientObj.full_name}`, "Client_Docs");
         if(driveRes && driveRes.url) {
             const payload = { 
                 client_id: currentClientId, 
-                file_name: titleInput || file.name, 
-                file_type: file.type, 
+                file_name: titleInput || fileInput.files[0].name, 
+                file_type: fileInput.files[0].type, 
+                file_extension: fileInput.files[0].name.split('.').pop().toLowerCase(),
                 file_category: catInput, 
-                drive_file_id: driveRes.url, 
+                file_url: driveRes.url,
+                drive_file_id: driveRes.id || null, 
                 is_template: false, 
                 expiry_date: expiryInput || null 
             };
-            
             const res = await API.addFileRecord(payload);
-            if(res && !res.error) {
+            if(res && !res.error) { 
                 closeModal('fileModal'); 
                 document.getElementById('fileForm').reset(); 
-                showAlert('تم الحفظ في ملف الموكل', 'success'); 
+                showAlert('تم حفظ المستند', 'success'); 
                 await loadClientData(); 
+            } else {
+                throw new Error(res?.error || 'خطأ في الحفظ');
             }
         }
     } catch (err) { 
@@ -322,10 +298,9 @@ async function saveClientFile(event) {
     } finally { 
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> حفظ في أرشيف الموكل'; 
     }
-}
+};
 
-// دالة حذف الملف (باستخدام API.deleteFile)
-async function deleteClientFile(id) {
+window.deleteClientFile = async function(id) {
     const res = await Swal.fire({ title: 'هل أنت متأكد؟', text: "سيتم إزالة المستند من أرشيف الموكل!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف', cancelButtonText: 'إلغاء' });
     if(!res.isConfirmed) return;
     try {
@@ -337,8 +312,34 @@ async function deleteClientFile(id) {
             showAlert(delRes?.error || 'حدث خطأ', 'error');
         }
     } catch(e) { showAlert('حدث خطأ أثناء الحذف', 'error'); }
-}
+};
+
+window.deleteClient = async function() {
+    if (clientCases.length > 0) {
+        Swal.fire('غير مسموح', 'لا يمكن حذف موكل لديه قضايا مرتبطة في النظام. يرجى حذف قضاياه أولاً.', 'warning');
+        return;
+    }
+    const confirm = await Swal.fire({ title: 'حذف الموكل؟', text: "هذا الإجراء نهائي ولا يمكن التراجع عنه!", icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف نهائياً', cancelButtonText: 'إلغاء' });
+    if(!confirm.isConfirmed) return;
+    try {
+        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+        const baseUrl = window.API_BASE_URL || CONFIG.API_URL;
+        const res = await fetch(`${baseUrl}/api/clients?id=eq.${currentClientId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if(res.ok || res.status === 204) {
+            await Swal.fire('تم الحذف', 'تم حذف الموكل من السجلات.', 'success');
+            window.location.href = 'app.html';
+        } else {
+            throw new Error('خطأ أثناء الحذف');
+        }
+    } catch(e) {
+        Swal.fire('خطأ', e.message, 'error');
+    }
+};
 
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
-function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); m?.hide(); } }
-function showAlert(m, t) { if(typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: t === 'danger' ? 'error' : (t === 'warning' ? 'warning' : 'success'), title: escapeHTML(m), showConfirmButton: false, timer: 3000 }); }
+function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
+function showAlert(message, type = 'success') { if (typeof Swal !== 'undefined') { Swal.fire({ toast: true, position: 'top-end', icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type), title: escapeHTML(message), showConfirmButton: false, timer: 3000, timerProgressBar: true }); } else { alert(message); } }
