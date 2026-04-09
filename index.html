@@ -17,6 +17,21 @@
     <meta name="twitter:description" content="نظام موكّل ERP هو بيئة العمل السحابية المتكاملة لإدارة مكاتب المحاماة والقضايا بذكاء وأمان.">
     <meta name="twitter:image" content="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
 
+    <script>
+        (function() {
+            const token = localStorage.getItem('moakkil_token');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+            if (token) {
+                // إذا كان مسجلاً، اذهب فوراً للتطبيق
+                window.location.href = 'app.html';
+            } else if (isStandalone) {
+                // إذا كان يفتح من التطبيق المثبت وغير مسجل، اذهب فوراً لتسجيل الدخول
+                window.location.href = 'login.html';
+            }
+        })();
+    </script>
+
     <title>موكّل | منصة الإدارة القانونية الذكية</title>
     
     <link rel="manifest" href="./manifest.json">
@@ -43,7 +58,6 @@
             overflow-x: hidden;
         }
         
-        /* الشريط العلوي */
         .navbar-custom {
             background-color: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -52,7 +66,6 @@
             transition: 0.3s;
         }
         
-        /* إصلاح اللوغو: منع الانضغاط والمحافظة على الأبعاد */
         .brand-logo-box {
             background: var(--navy);
             width: 45px;
@@ -65,10 +78,9 @@
             border-radius: 12px;
             margin-left: 10px;
             overflow: hidden;
-            padding: 5px; /* مسافة داخلية صغيرة لجمالية الشعار */
+            padding: 5px;
         }
         
-        /* منع تمطط الصور داخل الشعار في حال استخدام صورة بدلاً من الأيقونة */
         .brand-logo-box img {
             width: 100%;
             height: 100%;
@@ -82,7 +94,7 @@
             letter-spacing: -0.5px;
             display: flex;
             align-items: center;
-            white-space: nowrap; /* منع انكسار النص */
+            white-space: nowrap;
         }
         
         .btn-login {
@@ -106,7 +118,7 @@
             border-radius: 10px;
             padding: 10px 20px;
             font-weight: 800;
-            display: inline-block; /* إظهار الزر بشكل دائم بناء على طلبك */
+            display: inline-block;
             transition: 0.3s;
             border: none;
             white-space: nowrap;
@@ -252,7 +264,7 @@
             </a>
             <div class="d-flex gap-2 align-items-center">
                 <button id="install-btn" class="btn btn-install shadow-sm"><i class="fas fa-download me-1"></i> تثبيت التطبيق</button>
-                <a href="login" id="main-login-btn" class="btn btn-login shadow-sm"><i class="fas fa-user-shield me-2"></i>دخول للمنصة</a>
+                <a href="login.html" id="main-login-btn" class="btn btn-login shadow-sm"><i class="fas fa-user-shield me-2"></i>دخول للمنصة</a>
             </div>
         </div>
     </nav>
@@ -385,7 +397,6 @@
             });
         }
 
-        // كود الـ PWA لزر تثبيت التطبيق
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -406,15 +417,13 @@
             installBtn.style.display = 'none';
         });
 
-        // التحقق مما إذا كان المحامي مسجلاً لدخوله مسبقاً لتحويل زر "دخول" إلى "لوحة التحكم"
+        // تحويل زر الدخول إلى لوحة التحكم إذا كان التوكن موجوداً (احتياطاً)
         window.addEventListener('DOMContentLoaded', () => {
-            const tokenKey = (typeof CONFIG !== 'undefined' && CONFIG.TOKEN_KEY) ? CONFIG.TOKEN_KEY : 'moakkil_token';
-            const token = localStorage.getItem(tokenKey);
-            
+            const token = localStorage.getItem('moakkil_token');
             if (token) {
                 const loginBtn = document.getElementById('main-login-btn');
                 if(loginBtn) {
-                    loginBtn.href = 'app';
+                    loginBtn.href = 'app.html';
                     loginBtn.innerHTML = '<i class="fas fa-th-large me-2"></i>العودة للوحة التحكم';
                 }
             }

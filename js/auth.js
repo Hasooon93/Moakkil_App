@@ -1,19 +1,19 @@
 // js/auth.js - نظام المصادقة وإدارة الهوية (V3.0 Enterprise)
-// الدعم: OTP عبر تيليغرام، الدخول بالبصمة (WebAuthn / FaceID / TouchID)، الجلسات المحمية (JWT)، والتوجيه الذكي.
+// التحديث الأخير: إضافة ميزة طلب البصمة تلقائياً عند فتح صفحة الدخول (Auto-Biometric Prompt)
 
 const AUTH = {
     // =================================================================
     // 1. إدارة الجلسات (Session Management)
     // =================================================================
     
-    // التحقق من الجلسة (يُستدعى في بداية كل صفحة محمية مثل app.html)
+    // التحقق من الجلسة (يُستدعى في بداية كل صفحة محمية)
     checkSession: () => {
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         const user = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
         
         if (!token || !user) {
             console.warn("[Auth] جلسة غير صالحة. جاري التوجيه لصفحة الدخول...");
-            window.location.replace('login');
+            window.location.replace('login.html');
             return null;
         }
 
@@ -30,9 +30,8 @@ const AUTH = {
         localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
         localStorage.removeItem(CONFIG.FIRM_KEY);
-        // لا نحذف OFFLINE_QUEUE_KEY لتجنب ضياع بيانات المزامنة غير المكتملة
-        // لا نحذف moakkil_full_user_backup لكي تعمل البصمة عند العودة بصلاحيات كاملة
-        window.location.replace('login');
+        // ملاحظة: لا نحذف بيانات البصمة moakkil_biometric_id لكي يتمكن من الدخول بها لاحقاً
+        window.location.replace('login.html');
     },
 
     // =================================================================
@@ -70,19 +69,19 @@ const AUTH = {
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             
-            // 🔥 النسخة الاحتياطية الكاملة: تستخدمها البصمة لاحقاً لضمان عدم ضياع الصلاحيات
+            // نسخة احتياطية لضمان عمل البصمة بكفاءة لاحقاً
             localStorage.setItem('moakkil_full_user_backup', JSON.stringify(data.user));
 
             if (data.user.firm_id) {
                 localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
             }
 
-            // التوجيه الذكي بعد تسجيل الدخول (Routing)
+            // التوجيه الذكي
             const userRole = data.user.role || data.user.user_type;
-            if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
-                window.location.href = 'register'; 
+            if (userRole === 'super_admin' || userRole === 'superadmin') {
+                window.location.href = 'super-admin.html'; 
             } else {
-                window.location.href = 'app';
+                window.location.href = 'app.html';
             }
 
             return data;
@@ -96,7 +95,6 @@ const AUTH = {
     // 3. نظام الدخول بالبصمة (Biometrics - WebAuthn API)
     // =================================================================
     
-    // أدوات مساعدة لتحويل التشفير (ArrayBuffer <-> Base64)
     _bufferToBase64: (buffer) => {
         const bytes = new Uint8Array(buffer);
         let str = '';
@@ -111,24 +109,21 @@ const AUTH = {
         return bytes.buffer;
     },
 
-    // توليد تحدي عشوائي (Challenge) للأمان
     _generateChallenge: () => {
         const randomValues = new Uint8Array(32);
         window.crypto.getRandomValues(randomValues);
         return randomValues.buffer;
     },
 
-    // أ) تسجيل جهاز جديد بالبصمة (يُستدعى من إعدادات المستخدم من داخل النظام)
     registerBiometric: async () => {
         if (!window.PublicKeyCredential) {
-            throw new Error("متصفحك أو جهازك لا يدعم تقنية البصمة (WebAuthn).");
+            throw new Error("متصفحك لا يدعم تقنية البصمة.");
         }
 
         const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
         if (!user) throw new Error("يجب تسجيل الدخول بـ OTP أولاً لتفعيل البصمة.");
 
         try {
-            // 1. طلب البصمة من نظام التشغيل (ويندوز/أندرويد/iOS)
             const publicKey = {
                 challenge: AUTH._generateChallenge(),
                 rp: { name: "نظام موكّل القانوني", id: window.location.hostname },
@@ -145,45 +140,35 @@ const AUTH = {
 
             const credential = await navigator.credentials.create({ publicKey });
 
-            // 2. إرسال بيانات البصمة للسيرفر لربطها بحساب الموظف
             const payload = {
                 credential_id: credential.id,
                 public_key: AUTH._bufferToBase64(credential.response.clientDataJSON), 
-                device_name: navigator.userAgent.split(') ')[0].split(' (')[1] || 'جهاز غير معروف'
+                device_name: navigator.userAgent.includes('Mobi') ? 'هاتف ذكي' : 'جهاز كمبيوتر'
             };
 
             const res = await API.registerBiometric(payload);
             if (res.error) throw new Error(res.error);
             
-            // حفظ الـ credential_id محلياً لتسريع الدخول المرات القادمة
             localStorage.setItem('moakkil_biometric_id', credential.id);
             localStorage.setItem('moakkil_saved_phone', user.phone);
-            
-            // تحديث النسخة الاحتياطية لضمان تطابق الأمان
             localStorage.setItem('moakkil_full_user_backup', JSON.stringify(user));
             
-            return { success: true, message: "تم تفعيل الدخول بالبصمة لهذا الجهاز بنجاح!" };
+            return { success: true, message: "تم تفعيل البصمة بنجاح!" };
         } catch (error) {
             console.error("[Biometric Register Error]:", error);
-            throw new Error(error.message || "تم إلغاء أو فشل تسجيل البصمة.");
+            throw new Error(error.message || "فشل تسجيل البصمة.");
         }
     },
 
-    // ب) تسجيل الدخول السريع باستخدام البصمة (من صفحة login.html)
-    loginBiometric: async () => {
-        if (!window.PublicKeyCredential) {
-            throw new Error("متصفحك لا يدعم الدخول بالبصمة.");
-        }
+    loginWithBiometric: async () => {
+        if (!window.PublicKeyCredential) throw new Error("البصمة غير مدعومة.");
 
         const savedCredId = localStorage.getItem('moakkil_biometric_id');
         const savedPhone = localStorage.getItem('moakkil_saved_phone');
 
-        if (!savedCredId || !savedPhone) {
-            throw new Error("لم تقم بتفعيل البصمة على هذا الجهاز مسبقاً. يرجى الدخول بـ OTP وتفعيلها من الإعدادات.");
-        }
+        if (!savedCredId || !savedPhone) throw new Error("البصمة غير مفعلة.");
 
         try {
-            // 1. طلب قراءة البصمة للمطابقة
             const publicKey = {
                 challenge: AUTH._generateChallenge(),
                 rpId: window.location.hostname,
@@ -198,36 +183,48 @@ const AUTH = {
 
             const assertion = await navigator.credentials.get({ publicKey });
 
-            // 2. إرسال البصمة للباك إند للحصول على التوكن
             const payload = {
                 credential_id: assertion.id,
                 phone: savedPhone
             };
 
-            // نستخدم API.biometricLogin التي تدمج بيانات السيرفر مع الذاكرة الاحتياطية
             const data = await API.biometricLogin(payload);
-            
             if (data.error) throw new Error(data.error);
 
-            // 3. تخزين بيانات الجلسة بنجاح (الآن تحتوي على firm_id و role كاملة)
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
-            if (data.user.firm_id) {
-                localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
-            }
+            if (data.user.firm_id) localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
 
-            // التوجيه الذكي بعد الدخول بالبصمة
             const userRole = data.user.role || data.user.user_type;
-            if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
-                window.location.href = 'register'; 
-            } else {
-                window.location.href = 'app';
-            }
+            window.location.href = (userRole === 'super_admin' || userRole === 'superadmin') ? 'super-admin.html' : 'app.html';
 
             return data;
         } catch (error) {
             console.error("[Biometric Login Error]:", error);
-            throw new Error(error.message || "فشل التحقق من البصمة. يرجى المحاولة أو الدخول بالرمز (OTP).");
+            throw error;
         }
     }
 };
+
+// =================================================================
+// 🚀 سكريبت التشغيل التلقائي (Auto-Initializer)
+// =================================================================
+
+window.addEventListener('DOMContentLoaded', async () => {
+    const isLoginPage = window.location.pathname.includes('login');
+    const hasBiometric = localStorage.getItem('moakkil_biometric_id');
+
+    // إذا كنا في صفحة الدخول ويوجد بصمة مسجلة، نطلبها فوراً
+    if (isLoginPage && hasBiometric) {
+        console.log("🤖 نظام موكّل: تم اكتشاف بصمة مسجلة. جاري طلب التحقق...");
+        
+        // تأخير بسيط لضمان راحة عين المستخدم وتجهيز المتصفح
+        setTimeout(async () => {
+            try {
+                await AUTH.loginWithBiometric();
+            } catch (err) {
+                console.log("فشل طلب البصمة التلقائي (ربما ألغاه المستخدم أو يحتاج OTP)");
+            }
+        }, 800);
+    }
+});
