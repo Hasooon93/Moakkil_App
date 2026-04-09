@@ -76,7 +76,7 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 15px;">
                     <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="openModal('settingsModal')" id="firm-settings-btn" style="display:none;"><i class="fas fa-cog text-muted me-2"></i>إعدادات المكتب</a></li>
                     
-                    <li><a class="dropdown-item py-2 fw-bold text-navy" href="#" onclick="window.location.href='history.html'" id="audit-trail-btn" style="display:none;"><i class="fas fa-history text-muted me-2"></i>سجل الرقابة (Audit)</a></li>
+                    <li><a class="dropdown-item py-2 fw-bold text-navy" href="#" onclick="switchView('audit')" id="audit-trail-btn" style="display:none;"><i class="fas fa-history text-muted me-2"></i>سجل الرقابة (Audit)</a></li>
 
                     <li><a class="dropdown-item py-2 fw-bold text-success" href="#" onclick="registerBiometricBtn()"><i class="fas fa-fingerprint me-2"></i>تفعيل البصمة للجهاز</a></li>
                     
@@ -132,7 +132,7 @@
                     </div>
                 </div>
                 <div class="col-6" id="stat-staff-card" style="display:none;">
-                    <div class="card-custom p-3 text-center shadow-sm h-100" onclick="window.location.href='staff.html'" style="cursor:pointer">
+                    <div class="card-custom p-3 text-center shadow-sm h-100" onclick="window.location.href='staff'" style="cursor:pointer">
                         <div class="icon-box bg-light text-dark mx-auto mb-2"><i class="fas fa-user-tie fs-4"></i></div>
                         <h3 class="fw-bold text-navy mb-0" id="stat-staff">0</h3>
                         <small class="text-muted fw-bold">الموارد البشرية</small>
@@ -154,7 +154,7 @@
                     <span class="text-muted small fw-bold"><i class="fas fa-exclamation-circle me-1 text-danger"></i> إجمالي المتبقي:</span>
                     <b class="text-danger fs-5"><span id="fin-rem">0</span> <small>د.أ</small></b>
                 </div>
-                <button id="admin-reports-btn" class="btn btn-outline-primary btn-sm w-100 fw-bold mt-3 d-none" onclick="window.location.href='reports.html'"><i class="fas fa-chart-line me-1"></i> عرض التقارير التفصيلية</button>
+                <button id="admin-reports-btn" class="btn btn-outline-primary btn-sm w-100 fw-bold mt-3 d-none" onclick="window.location.href='reports'"><i class="fas fa-chart-line me-1"></i> عرض التقارير التفصيلية</button>
             </div>
             
             <div id="install-pwa-container" class="text-center mb-4">
@@ -234,21 +234,21 @@
             
             <div class="row g-3">
                 <div class="col-12">
-                    <div class="card-custom p-4 shadow-sm text-center" onclick="window.location.href='ai-chat.html'" style="cursor:pointer; background: linear-gradient(135deg, #1e3a8a, #0a192f); color: white;">
+                    <div class="card-custom p-4 shadow-sm text-center" onclick="window.location.href='ai-chat'" style="cursor:pointer; background: linear-gradient(135deg, #1e3a8a, #0a192f); color: white;">
                         <i class="fas fa-robot fa-3x mb-3 text-accent"></i>
                         <h4 class="fw-bold">المساعد القانوني الذكي (AI)</h4>
                         <p class="small opacity-75 mb-0">تحليل القضايا، صياغة اللوائح والمذكرات، واستشارات قانونية فورية.</p>
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="card-custom p-3 shadow-sm text-center h-100" onclick="window.location.href='calculators.html'" style="cursor:pointer;">
+                    <div class="card-custom p-3 shadow-sm text-center h-100" onclick="window.location.href='calculators'" style="cursor:pointer;">
                         <i class="fas fa-calculator fa-2x mb-2 text-warning"></i>
                         <h6 class="fw-bold text-navy">الحاسبات القانونية</h6>
                         <small class="text-muted">مواريث، رسوم، أتعاب</small>
                     </div>
                 </div>
                 <div class="col-6">
-                    <div class="card-custom p-3 shadow-sm text-center h-100" onclick="window.location.href='library.html'" style="cursor:pointer;">
+                    <div class="card-custom p-3 shadow-sm text-center h-100" onclick="window.location.href='library'" style="cursor:pointer;">
                         <i class="fas fa-book fa-2x mb-2 text-success"></i>
                         <h6 class="fw-bold text-navy">المكتبة والنماذج</h6>
                         <small class="text-muted">لوائح، عقود، تشريعات</small>
@@ -354,7 +354,7 @@
                             <label class="form-label fw-bold small text-muted">العنوان التفصيلي</label>
                             <textarea id="client_address" class="form-control border-0 shadow-sm" rows="2" placeholder="المدينة، المنطقة، الشارع..."></textarea>
                         </div>
-                        <div class="row g-2 mb-3 border-top pt-3">
+                        <div class="row g-2 mb-4 border-top pt-3">
                             <div class="col-6">
                                 <label class="form-label fw-bold small text-muted">صفة الموكل <span class="text-danger">*</span></label>
                                 <select id="client_type" class="form-select border-0 shadow-sm" required>
@@ -370,14 +370,6 @@
                                 </select>
                             </div>
                         </div>
-                        
-                        <div class="mb-4">
-                            <div class="form-check form-switch bg-white p-2 rounded border shadow-sm d-flex justify-content-between align-items-center">
-                                <label class="form-check-label fw-bold text-navy small mb-0" for="client_portal_active"><i class="fas fa-laptop-house text-primary me-2"></i> تفعيل بوابة الموكل الإلكترونية (Client Portal)</label>
-                                <input class="form-check-input ms-0 me-2" type="checkbox" id="client_portal_active" checked style="width: 2.5rem; height: 1.25rem;">
-                            </div>
-                        </div>
-
                         <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow"><i class="fas fa-save me-1"></i> حفظ بيانات الموكل</button>
                     </form>
                 </div>
@@ -448,10 +440,6 @@
                                     <label class="form-label fw-bold small text-muted">المرحلة الحالية</label>
                                     <input type="text" id="case_current_stage" class="form-control border-0 shadow-sm" placeholder="مثال: قيد التسجيل، تبليغ...">
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold small text-muted"><i class="fas fa-tags text-info"></i> تصنيفات القضية (Tags) لتسهيل الفلترة والبحث</label>
-                                    <input type="text" id="case_tags" class="form-control border-0 shadow-sm" placeholder="مثال: صلح_جزاء, قضايا_بنوك (افصل بفاصلة)">
-                                </div>
                             </div>
 
                             <div class="tab-pane fade" id="add-court">
@@ -459,7 +447,6 @@
                                     <div class="col-6"><label class="form-label fw-bold small text-muted">المحكمة المختصة</label><input type="text" id="case_court" class="form-control border-0 shadow-sm"></div>
                                     <div class="col-6"><label class="form-label fw-bold small text-muted">الغرفة / الهيئة</label><input type="text" id="case_court_room" class="form-control border-0 shadow-sm"></div>
                                     <div class="col-6"><label class="form-label fw-bold small text-muted">رقم الدعوى</label><input type="text" id="case_court_case_number" class="form-control border-0 shadow-sm"></div>
-                                    <div class="col-6"><label class="form-label fw-bold small text-muted">رقم الملف التنفيذي</label><input type="text" id="case_execution_file_number" class="form-control border-0 shadow-sm" placeholder="دائرة التنفيذ"></div>
                                     <div class="col-6"><label class="form-label fw-bold small text-muted">سنة الدعوى</label><input type="number" id="case_case_year" class="form-control border-0 shadow-sm"></div>
                                     <div class="col-6">
                                         <label class="form-label fw-bold small text-muted">درجة التقاضي</label>
