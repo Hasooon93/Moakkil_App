@@ -2,202 +2,201 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>إدارة الموظفين (HR) | نظام موكّل</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link href="./css/style.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موكّل | الموارد البشرية والرواتب</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .staff-card {
-            transition: all 0.3s ease;
-            border-radius: 15px;
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-        }
-        .staff-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-            border-color: var(--accent);
-        }
-        .staff-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid var(--accent);
-            background-color: var(--navy);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0 auto;
-        }
-        .nav-pills .nav-link {
-            border-radius: 10px;
-            color: #64748b;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .nav-pills .nav-link.active {
-            background-color: var(--navy);
-            color: white;
-        }
-        .doc-item {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        /* تنسيقات خاصة بقسم الموارد البشرية */
+        .hr-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        
+        .staff-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; border-right: 5px solid #ccc; transition: 0.3s;}
+        .staff-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); }
+        .staff-card.role-admin { border-right-color: #dc3545; }
+        .staff-card.role-lawyer { border-right-color: #0d6efd; }
+        .staff-card.role-secretary { border-right-color: #20c997; }
+        
+        .staff-avatar { width: 60px; height: 60px; border-radius: 50%; background: #f8f9fa; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; color: #6f42c1; margin-bottom: 15px; border: 2px solid #e9ecef;}
+        .staff-name { font-size: 1.25rem; font-weight: bold; color: #333; margin-bottom: 5px; }
+        .staff-role-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; background: #e9ecef; color: #495057; margin-bottom: 15px; }
+        .staff-info { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+        .staff-info i { width: 20px; color: #6f42c1; }
+        
+        .card-actions { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+        .btn-action { flex: 1; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; }
+        .btn-edit { background: #e2d9f3; color: #6f42c1; }
+        .btn-edit:hover { background: #6f42c1; color: white; }
+        .btn-toggle { background: #f8d7da; color: #dc3545; }
+        .btn-toggle.active { background: #d1e7dd; color: #198754; }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 0; border-radius: 12px; width: 95%; max-width: 800px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { padding: 20px; background: #6f42c1; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; background: #f8f9fa; }
+        .modal-footer { padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+        
+        /* Section styling inside modal */
+        .form-section { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); border: 1px solid #eee;}
+        .form-section-title { font-size: 1.1rem; color: #6f42c1; margin-bottom: 15px; border-bottom: 2px solid #e2d9f3; padding-bottom: 5px; font-weight: bold; display: flex; align-items: center; gap: 10px;}
+        
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #444; font-size: 0.9rem;}
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; transition: 0.3s;}
+        .form-control:focus { border-color: #6f42c1; outline: none; box-shadow: 0 0 5px rgba(111, 66, 193, 0.3); }
+        
+        .salary-box { background: #d1e7dd; border: 1px solid #badbcc; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        .checkbox-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; }
+        .checkbox-wrapper input { width: 18px; height: 18px; }
     </style>
 </head>
-<body class="bg-light pb-5 mb-5">
-
-    <div class="top-nav px-3 d-flex align-items-center justify-content-between">
-        <button class="btn btn-link text-white p-0" onclick="window.location.href='app'"><i class="fas fa-arrow-right fs-4"></i></button>
-        <h5 class="mb-0 fw-bold text-white text-truncate mx-2">الموارد البشرية (فريق العمل)</h5>
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" onclick="window.registerDeviceBiometric()" title="تفعيل الدخول بالبصمة لجهازي الحالي"><i class="fas fa-fingerprint text-warning"></i> بصمتي</button>
-            <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm" onclick="loadStaff()" title="تحديث البيانات"><i class="fas fa-sync"></i></button>
-        </div>
-    </div>
-
-    <div id="alertBox"></div>
-
-    <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold text-navy mb-0"><i class="fas fa-users-cog me-2"></i> دليل الموظفين والمحامين</h5>
-            <button class="btn btn-primary-custom shadow-sm fw-bold" onclick="openStaffModal()"><i class="fas fa-user-plus me-1"></i> إضافة موظف</button>
-        </div>
-
-        <div class="row g-3" id="staff-container">
-            <div class="col-12 text-center p-5 text-muted bg-white rounded border shadow-sm">
-                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>جاري تحميل بيانات الفريق...
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="staffModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title fw-bold" id="staffModalLabel"><i class="fas fa-id-card me-2 text-accent"></i> ملف الموظف</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<body>
+    <div class="app-container">
+        <main class="main-content">
+            <header class="hr-header">
+                <div>
+                    <h1 style="margin:0;"><i class="fas fa-users-cog"></i> الموارد البشرية (HR)</h1>
+                    <p style="color: gray; margin-top: 5px;">إدارة الموظفين، الرواتب، والصلاحيات</p>
                 </div>
-                <div class="modal-body p-0 bg-light">
-                    
-                    <ul class="nav nav-pills bg-white p-2 border-bottom overflow-auto flex-nowrap" id="staffTabs" role="tablist">
-                        <li class="nav-item"><button class="nav-link active px-3" data-bs-toggle="pill" data-bs-target="#tab-personal" type="button">الشخصية</button></li>
-                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#tab-professional" type="button">المهنية والنقابة</button></li>
-                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#tab-financial" type="button">الرواتب والطوارئ</button></li>
-                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#tab-documents" type="button">الأرشيف والوثائق</button></li>
-                    </ul>
+                <button class="btn-action" style="background:#6f42c1; color:white; width: auto; padding: 10px 20px;" onclick="openStaffModal()">
+                    <i class="fas fa-user-plus"></i> إضافة موظف جديد
+                </button>
+            </header>
 
-                    <form id="staffForm" onsubmit="saveStaff(event)" class="p-3">
-                        <input type="hidden" id="staff_id">
-                        <div class="tab-content">
-                            
-                            <div class="tab-pane fade show active" id="tab-personal">
-                                <div class="alert alert-info border-0 shadow-sm mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div><i class="fas fa-magic text-primary me-1"></i> <b>التعبئة الذكية:</b> انسخ نص الهوية (OCR) للذكاء الاصطناعي لملء الحقول آلياً.</div>
-                                        <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="openAiIdModal()">استخراج <i class="fas fa-robot"></i></button>
-                                    </div>
-                                </div>
-                                <div class="row g-3 mb-3">
-                                    <div class="col-12"><label class="form-label fw-bold small text-muted">الاسم الرباعي <span class="text-danger">*</span></label><input type="text" class="form-control border-0 shadow-sm" id="s_full_name" required></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رقم الهاتف <span class="text-danger">*</span></label><input type="tel" class="form-control border-0 shadow-sm" id="s_phone" dir="ltr" required placeholder="مثال: 079..."></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">معرف تيليغرام (للتنبيهات)</label><input type="number" class="form-control border-0 shadow-sm" id="s_telegram_id" dir="ltr" placeholder="اختياري"></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">تاريخ الميلاد</label><input type="date" class="form-control border-0 shadow-sm" id="s_dob"></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رابط صورة شخصية</label><input type="url" class="form-control border-0 shadow-sm" id="s_avatar" dir="ltr" placeholder="https://..."></div>
-                                    <div class="col-12"><label class="form-label fw-bold small text-muted">عنوان السكن</label><input type="text" class="form-control border-0 shadow-sm" id="s_address" placeholder="المدينة، المنطقة، الشارع..."></div>
-                                </div>
+            <div class="staff-grid" id="staffGrid">
+                <div style="text-align: center; grid-column: 1 / -1; padding: 50px;">
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color: #6f42c1;"></i> جاري تحميل بيانات الموظفين...
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal" id="staffModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle" style="margin: 0;"><i class="fas fa-user-tie"></i> إضافة موظف جديد</h3>
+                <i class="fas fa-times" style="cursor: pointer; font-size: 1.2rem;" onclick="closeStaffModal()"></i>
+            </div>
+            
+            <div class="modal-body">
+                <form id="staffForm">
+                    <input type="hidden" id="user_id">
+
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-id-card"></i> البيانات الأساسية ودخول النظام</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>الاسم الرباعي <span style="color:red;">*</span></label>
+                                <input type="text" id="full_name" class="form-control" required placeholder="مثال: أحمد محمود علي">
                             </div>
-
-                            <div class="tab-pane fade" id="tab-professional">
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">الدور والصلاحيات <span class="text-danger">*</span></label>
-                                        <select class="form-select border-0 shadow-sm" id="s_role" required>
-                                            <option value="lawyer">محامي مزاول</option>
-                                            <option value="secretary">سكرتير تنفيذي</option>
-                                            <option value="admin">مدير / شريك</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">المسمى الوظيفي / التخصص</label><input type="text" class="form-control border-0 shadow-sm" id="s_specialization" placeholder="مثال: محامي شركات، متدرب..."></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">تاريخ الانضمام للمكتب</label><input type="date" class="form-control border-0 shadow-sm" id="s_join_date"></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">سنوات الخبرة</label><input type="number" class="form-control border-0 shadow-sm" id="s_experience" min="0" value="0"></div>
-                                    <hr class="mt-4 mb-2">
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رقم الهوية النقابية</label><input type="text" class="form-control border-0 shadow-sm" id="s_syndicate_num"></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted text-danger">تاريخ انتهاء النقابة (للتذكير)</label><input type="date" class="form-control border-0 shadow-sm" id="s_syndicate_expiry"></div>
-                                </div>
+                            <div class="form-group">
+                                <label>رقم الهاتف (للدخول OTP) <span style="color:red;">*</span></label>
+                                <input type="text" id="phone" class="form-control" required placeholder="مثال: 0791234567">
                             </div>
-
-                            <div class="tab-pane fade" id="tab-financial">
-                                <div class="row g-3 mb-3">
-                                    <h6 class="text-navy fw-bold border-bottom pb-2">التفاصيل المالية</h6>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">الراتب الأساسي (د.أ)</label><input type="number" class="form-control border-0 shadow-sm" id="s_salary" min="0"></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">نسبة العمولة (%)</label><input type="number" class="form-control border-0 shadow-sm" id="s_commission" min="0" max="100" placeholder="مثال: 10"></div>
-                                    
-                                    <h6 class="text-navy fw-bold border-bottom pb-2 mt-4">جهة الاتصال للطوارئ</h6>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">اسم شخص للطوارئ</label><input type="text" class="form-control border-0 shadow-sm" id="s_em_name"></div>
-                                    <div class="col-md-6"><label class="form-label fw-bold small text-muted">رقم هاتفه</label><input type="tel" class="form-control border-0 shadow-sm" id="s_em_phone" dir="ltr"></div>
-                                    <div class="col-12"><label class="form-label fw-bold small text-muted">صلة القرابة</label><input type="text" class="form-control border-0 shadow-sm" id="s_em_relation"></div>
-                                </div>
-                            </div>
-
-                            <div class="tab-pane fade" id="tab-documents">
-                                <div class="alert alert-warning border-0 shadow-sm small fw-bold">
-                                    <i class="fas fa-exclamation-triangle"></i> يرجى حفظ بيانات الموظف (الأساسية) أولاً لتتمكن من رفع وإدارة الوثائق.
-                                </div>
-                                <div id="documents-area" class="d-none">
-                                    <div class="mb-3 p-3 bg-white border rounded shadow-sm">
-                                        <label class="form-label fw-bold text-navy small">رفع مستند جديد (هوية، شهادة، عقد...)</label>
-                                        <div class="input-group">
-                                            <input type="text" id="doc_name" class="form-control" placeholder="اسم الوثيقة">
-                                            <input type="file" id="doc_file" class="form-control">
-                                            <button type="button" class="btn btn-warning text-dark fw-bold" id="btnUploadDoc" onclick="uploadStaffDoc()"><i class="fas fa-upload"></i> رفع</button>
-                                        </div>
-                                    </div>
-                                    <h6 class="fw-bold text-muted border-bottom pb-2">سجل الوثائق المحفوظة</h6>
-                                    <div id="staff-docs-list"></div>
-                                </div>
-                            </div>
-
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 fw-bold mt-4 shadow" id="btn_save_staff"><i class="fas fa-save me-1"></i> حفظ بيانات الموظف</button>
-                    </form>
-                </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>المنصب / الدور الوظيفي <span style="color:red;">*</span></label>
+                                <select id="role" class="form-control" required>
+                                    <option value="lawyer">محامي</option>
+                                    <option value="secretary">سكرتاريا / إداري</option>
+                                    <option value="admin">مدير نظام</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>معرف تيليغرام (Telegram ID)</label>
+                                <input type="text" id="telegram_id" class="form-control" placeholder="لإرسال الإشعارات والتذكيرات">
+                            </div>
+                        </div>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="can_login" checked>
+                            <label for="can_login" style="margin:0; font-weight:normal;">السماح لهذا الموظف بتسجيل الدخول للنظام (يستهلك من كوتا الباقة)</label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-briefcase"></i> الملف المهني والنقابي</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>التخصص القانوني</label>
+                                <select id="specialization" class="form-control">
+                                    <option value="">-- غير محدد --</option>
+                                    <option value="تجاري وشركات">تجاري وشركات</option>
+                                    <option value="جنائي">جنائي</option>
+                                    <option value="عمالي">عمالي</option>
+                                    <option value="شرعي وأسرة">شرعي وأسرة</option>
+                                    <option value="إداري عام">شؤون إدارية</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>سنوات الخبرة</label>
+                                <input type="number" id="experience_years" class="form-control" min="0" placeholder="مثال: 5">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>رقم النقابة (للمحامين)</label>
+                                <input type="text" id="syndicate_number" class="form-control" placeholder="رقم المزاولة">
+                            </div>
+                            <div class="form-group">
+                                <label>تاريخ الانضمام للمكتب (Join Date)</label>
+                                <input type="date" id="join_date" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section salary-box">
+                        <div class="form-section-title" style="color: #0f5132; border-color: #badbcc;"><i class="fas fa-money-bill-wave"></i> تفاصيل الراتب (Salary Details)</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>الراتب الأساسي (دينار)</label>
+                                <input type="number" id="salary_basic" class="form-control" min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>بدل تنقلات / اتصالات</label>
+                                <input type="number" id="salary_allowance" class="form-control" min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label>النسبة من القضايا (إن وجدت %)</label>
+                                <input type="number" id="salary_commission" class="form-control" min="0" max="100" placeholder="مثال: 10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-ambulance"></i> جهة الاتصال في حالات الطوارئ</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>اسم شخص الطوارئ</label>
+                                <input type="text" id="emergency_name" class="form-control" placeholder="اسم قريب أو صديق">
+                            </div>
+                            <div class="form-group">
+                                <label>رقم هاتف الطوارئ</label>
+                                <input type="text" id="emergency_phone" class="form-control" placeholder="رقم الهاتف">
+                            </div>
+                            <div class="form-group">
+                                <label>صلة القرابة</label>
+                                <input type="text" id="emergency_relation" class="form-control" placeholder="مثال: أخ، أب، زوجة">
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-action" style="background:#198754; color:white; font-weight:bold; padding: 12px 20px;" onclick="saveStaff()">
+                    <i class="fas fa-save"></i> حفظ بيانات الموظف
+                </button>
+                <button type="button" class="btn-action" style="background:#e9ecef; color:#333; padding: 12px 20px;" onclick="closeStaffModal()">إلغاء</button>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="aiIdModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-info text-white border-0">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-robot me-2"></i> المحلل الذكي للهويات</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-3 bg-light">
-                    <p class="small text-muted fw-bold mb-2">قم بنسخ ولصق النص المستخرج من صورة الهوية أو البطاقة النقابية هنا، وسيقوم الذكاء الاصطناعي بفرزه تلقائياً.</p>
-                    <textarea class="form-control border-0 shadow-sm mb-3" id="ai_id_text" rows="5" placeholder="الصق نص الهوية هنا..."></textarea>
-                    <button class="btn btn-info text-white w-100 fw-bold shadow-sm" id="btn_process_id" onclick="processIdAI()"><i class="fas fa-magic me-1"></i> تحليل وملء الحقول</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="./js/config.js"></script>
-    <script src="./js/api.js"></script>
-    <script src="./js/auth.js"></script>
-    <script src="./js/staff.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/staff.js"></script>
 </body>
 </html>

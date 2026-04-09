@@ -1,375 +1,228 @@
-// js/staff.js - محرك إدارة الموارد البشرية والموظفين (HR)
-// التحديثات: دعم المزامنة (Offline Mode) للصلاحيات والرواتب، حماية الذكاء الاصطناعي والرفع السحابي من انقطاع الشبكة، وتجهيز دالة البصمة.
+// moakkil-staff.js
+// الدستور المطبق: نظام HR متكامل، استغلال JSONB، لا حذف جذري، تحصين الأمان.
 
-let allStaff = [];
-let currentEditingStaff = null;
-
-const escapeHTML = (str) => {
-    if (str === null || str === undefined) return '';
-    return str.toString().replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-    );
-};
-
-window.onload = async () => {
-    applyFirmSettings();
+document.addEventListener('DOMContentLoaded', () => {
     
-    // التحقق من الصلاحيات (للمدير فقط)
-    const userStr = localStorage.getItem(CONFIG.USER_KEY);
-    if (!userStr) { window.location.href = 'login.html'; return; }
-    const user = JSON.parse(userStr);
-    if (user.role !== 'admin' && user.role !== 'مدير') {
-        Swal.fire({icon: 'error', title: 'مرفوض', text: 'صلاحية الدخول للموارد البشرية مقتصرة على مدراء المكتب.'})
-            .then(() => window.location.href = 'app.html');
-        return;
-    }
+    // تعريف عناصر الواجهة
+    const staffGrid = document.getElementById('staffGrid');
+    const modal = document.getElementById('staffModal');
+    const form = document.getElementById('staffForm');
+    const modalTitle = document.getElementById('modalTitle');
     
-    await loadStaff();
-};
+    let allStaff = [];
 
-function applyFirmSettings() {
-    const settings = JSON.parse(localStorage.getItem('firm_settings'));
-    if (!settings) return;
-    const root = document.documentElement;
-    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
-    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
-}
-
-// دالة جاهزة لربط جهاز الموظف بالبصمة (تُستدعى من الواجهة عند النقر على زر "تفعيل البصمة لجهازي")
-window.registerDeviceBiometric = async () => {
-    if (!navigator.onLine) {
-        Swal.fire('تنبيه', 'لا يمكن تفعيل البصمة أثناء انقطاع الإنترنت، يرجى الاتصال بالشبكة أولاً.', 'warning');
-        return;
-    }
-    try {
-        Swal.fire({title: 'جاري إعداد البصمة...', text: 'يرجى تأكيد هويتك عبر جهازك', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-        const res = await AUTH.registerBiometric();
-        Swal.fire('نجاح', res.message || 'تم تسجيل البصمة بنجاح', 'success');
-    } catch (err) {
-        Swal.fire('خطأ', err.message || 'فشل إعداد البصمة', 'error');
-    }
-};
-
-async function loadStaff() {
-    const container = document.getElementById('staff-container');
-    container.innerHTML = '<div class="col-12 text-center p-5 text-muted bg-white rounded border"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>جاري تحميل البيانات...</div>';
-    
-    try {
-        const res = await API.getStaff();
-        allStaff = Array.isArray(res) ? res : [];
-        renderStaffCards();
-    } catch (e) {
-        container.innerHTML = '<div class="col-12 alert alert-danger text-center border-0 shadow-sm">حدث خطأ في تحميل البيانات.</div>';
-    }
-}
-
-function renderStaffCards() {
-    const container = document.getElementById('staff-container');
-    if (allStaff.length === 0) {
-        container.innerHTML = '<div class="col-12 text-center p-4 text-muted bg-white rounded border">لا يوجد موظفين مسجلين في النظام.</div>';
-        return;
+    // ==========================================
+    // 1. جلب بيانات الموظفين وعرضها
+    // ==========================================
+    async function loadStaff() {
+        try {
+            // جلب كافة بيانات الموظفين (متضمنة الحقول المخفية JSONB)
+            const response = await api.get('/api/users?select=*');
+            allStaff = response || [];
+            renderStaff(allStaff);
+        } catch (error) {
+            console.error("خطأ في جلب بيانات الموظفين:", error);
+            staffGrid.innerHTML = `<div style="text-align:center; grid-column: 1/-1; color:red;">فشل تحميل النظام: ${error.message}</div>`;
+        }
     }
 
-    container.innerHTML = allStaff.map(staff => {
-        const isActive = staff.is_active !== false;
-        const canLogin = staff.can_login !== false;
+    function renderStaff(staffList) {
+        staffGrid.innerHTML = '';
         
-        let statusBadge = isActive ? '<span class="badge bg-success shadow-sm px-2"><i class="fas fa-check-circle"></i> نشط</span>' : '<span class="badge bg-danger shadow-sm px-2"><i class="fas fa-ban"></i> موقوف</span>';
-        let loginBadge = canLogin ? '<span class="badge bg-soft-primary text-primary border border-primary px-2"><i class="fas fa-key"></i> يملك وصول</span>' : '<span class="badge bg-light text-muted border px-2"><i class="fas fa-lock"></i> وصول مسحوب</span>';
-        
-        let roleName = staff.role === 'admin' ? 'مدير/شريك' : (staff.role === 'secretary' ? 'سكرتير' : 'محامي');
-        let avatarHtml = staff.avatar_url ? `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3">` : `<div class="staff-avatar mt-3">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        if (staffList.length === 0) {
+            staffGrid.innerHTML = '<div style="text-align:center; grid-column: 1/-1; color: gray;">لا يوجد موظفين مسجلين حالياً.</div>';
+            return;
+        }
 
-        return `
-        <div class="col-lg-4 col-md-6">
-            <div class="card bg-white staff-card h-100 ${!isActive ? 'opacity-75' : ''}">
-                <div class="position-relative text-center pb-3 border-bottom">
-                    ${avatarHtml}
-                    <h5 class="fw-bold text-navy mt-3 mb-0">${escapeHTML(staff.full_name)}</h5>
-                    <p class="text-muted small mb-2">${escapeHTML(staff.specialization || roleName)}</p>
-                    <div class="d-flex justify-content-center gap-2 mb-2">${statusBadge} ${loginBadge}</div>
+        staffList.forEach(user => {
+            // تحديد أيقونة ولون المنصب
+            let roleName = 'غير محدد'; let roleClass = ''; let roleIcon = 'fa-user';
+            if (user.role === 'admin') { roleName = 'مدير نظام'; roleClass = 'role-admin'; roleIcon = 'fa-user-shield'; }
+            else if (user.role === 'lawyer') { roleName = 'محامي'; roleClass = 'role-lawyer'; roleIcon = 'fa-gavel'; }
+            else if (user.role === 'secretary') { roleName = 'سكرتاريا / إداري'; roleClass = 'role-secretary'; roleIcon = 'fa-user-edit'; }
+
+            // حساب الراتب الإجمالي إن وجد (لقراءته من الـ JSONB)
+            let totalSalary = 0;
+            if (user.salary_details && typeof user.salary_details === 'object') {
+                const basic = parseFloat(user.salary_details.basic) || 0;
+                const allowance = parseFloat(user.salary_details.allowance) || 0;
+                totalSalary = basic + allowance;
+            }
+
+            // تحديد حالة الدخول للنظام
+            const statusBtnClass = user.can_login ? 'active' : '';
+            const statusBtnText = user.can_login ? '<i class="fas fa-unlock"></i> مصرح بالدخول' : '<i class="fas fa-lock"></i> موقوف الدخول';
+            const statusBtnStyle = user.can_login ? 'background:#d1e7dd; color:#198754;' : 'background:#f8d7da; color:#dc3545;';
+
+            // بناء الكرت الوظيفي
+            const card = document.createElement('div');
+            card.className = `staff-card ${roleClass}`;
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div class="staff-avatar"><i class="fas ${roleIcon}"></i></div>
+                    ${user.specialization ? `<span style="font-size:0.8rem; background:#eee; padding:3px 8px; border-radius:10px; color:#666;">${user.specialization}</span>` : ''}
                 </div>
-                <div class="card-body p-3 small text-muted">
-                    <div class="mb-1"><i class="fas fa-phone text-success"></i> ${escapeHTML(staff.phone)}</div>
-                    <div class="mb-1"><i class="fab fa-telegram text-primary"></i> ${escapeHTML(staff.telegram_id || 'غير مربوط')}</div>
-                    <div class="mb-1"><i class="fas fa-calendar-alt text-warning"></i> انضم: ${escapeHTML(staff.join_date || 'غير محدد')}</div>
-                </div>
-                <div class="card-footer bg-light border-0 p-2 d-flex gap-2">
-                    <button class="btn btn-sm btn-primary fw-bold w-50 shadow-sm" onclick="openStaffModal('${staff.id}')"><i class="fas fa-edit"></i> تعديل الملف</button>
-                    <button class="btn btn-sm ${isActive ? 'btn-outline-danger' : 'btn-outline-success'} fw-bold w-50 shadow-sm" onclick="toggleStaffStatus('${staff.id}', ${isActive})">
-                        <i class="fas ${isActive ? 'fa-user-slash' : 'fa-user-check'}"></i> ${isActive ? 'إيقاف' : 'تفعيل'}
+                
+                <div class="staff-name">${user.full_name || 'بدون اسم'}</div>
+                <div class="staff-role-badge">${roleName}</div>
+                
+                <div class="staff-info"><i class="fas fa-phone-alt"></i> ${user.phone || '--'}</div>
+                <div class="staff-info"><i class="fab fa-telegram-plane"></i> ${user.telegram_id || 'غير مربوط'}</div>
+                ${totalSalary > 0 ? `<div class="staff-info" style="color:#0f5132;"><i class="fas fa-wallet"></i> إجمالي الراتب: ${totalSalary.toFixed(2)} د.أ</div>` : ''}
+                
+                <div class="card-actions">
+                    <button class="btn-action btn-edit" onclick="openStaffModal('${user.id}')" title="تعديل الملف المهني">
+                        <i class="fas fa-pen"></i> تعديل
+                    </button>
+                    <button class="btn-action ${statusBtnClass}" style="${statusBtnStyle}" onclick="toggleAccess('${user.id}', ${!user.can_login})" title="إيقاف / تفعيل الحساب">
+                        ${statusBtnText}
                     </button>
                 </div>
-            </div>
-        </div>
-        `;
-    }).join('');
-}
-
-function openStaffModal(id = null) {
-    document.getElementById('staffForm').reset();
-    document.getElementById('staff_id').value = '';
-    document.getElementById('documents-area').classList.add('d-none');
-    
-    // تعيين الافتراضيات
-    document.getElementById('s_join_date').value = new Date().toISOString().split('T')[0];
-
-    if (id) {
-        const staff = allStaff.find(s => s.id === id);
-        if (staff) {
-            currentEditingStaff = staff;
-            document.getElementById('staff_id').value = staff.id;
-            document.getElementById('s_full_name').value = staff.full_name || '';
-            document.getElementById('s_phone').value = staff.phone || '';
-            document.getElementById('s_telegram_id').value = staff.telegram_id || '';
-            document.getElementById('s_dob').value = staff.date_of_birth || '';
-            document.getElementById('s_avatar').value = staff.avatar_url || '';
-            document.getElementById('s_address').value = staff.address || '';
-            
-            document.getElementById('s_role').value = staff.role || 'lawyer';
-            document.getElementById('s_specialization').value = staff.specialization || '';
-            document.getElementById('s_join_date').value = staff.join_date || '';
-            document.getElementById('s_experience').value = staff.experience_years || 0;
-            document.getElementById('s_syndicate_num').value = staff.syndicate_number || '';
-            document.getElementById('s_syndicate_expiry').value = staff.syndicate_expiry_date || '';
-
-            if (staff.salary_details) {
-                document.getElementById('s_salary').value = staff.salary_details.basic || '';
-                document.getElementById('s_commission').value = staff.salary_details.commission || '';
-            }
-
-            if (staff.emergency_contact) {
-                document.getElementById('s_em_name').value = staff.emergency_contact.name || '';
-                document.getElementById('s_em_phone').value = staff.emergency_contact.phone || '';
-                document.getElementById('s_em_relation').value = staff.emergency_contact.relation || '';
-            }
-
-            // إظهار قسم الوثائق وعرضها
-            document.getElementById('documents-area').classList.remove('d-none');
-            renderStaffDocs(staff.staff_documents || []);
-        }
-    } else {
-        currentEditingStaff = null;
+            `;
+            staffGrid.appendChild(card);
+        });
     }
+
+    // ==========================================
+    // 2. التحكم بالنافذة المنبثقة (Modal) ومعالجة البيانات
+    // ==========================================
     
-    const m = new bootstrap.Modal(document.getElementById('staffModal'));
-    m.show();
-}
+    // فتح النافذة للإضافة أو التعديل
+    window.openStaffModal = (userId = null) => {
+        form.reset();
+        document.getElementById('user_id').value = '';
+        modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> إضافة موظف جديد';
+        
+        // إذا كان تعديلاً، نقوم بتعبئة الحقول بذكاء
+        if (userId) {
+            const user = allStaff.find(u => u.id === userId);
+            if (user) {
+                modalTitle.innerHTML = `<i class="fas fa-user-edit"></i> تعديل ملف: ${user.full_name}`;
+                document.getElementById('user_id').value = user.id;
+                
+                // الحقول الأساسية
+                document.getElementById('full_name').value = user.full_name || '';
+                document.getElementById('phone').value = user.phone || '';
+                document.getElementById('role').value = user.role || 'lawyer';
+                document.getElementById('telegram_id').value = user.telegram_id || '';
+                document.getElementById('can_login').checked = user.can_login !== false;
+                
+                // الحقول المهنية
+                document.getElementById('specialization').value = user.specialization || '';
+                document.getElementById('experience_years').value = user.experience_years || '';
+                document.getElementById('syndicate_number').value = user.syndicate_number || '';
+                document.getElementById('join_date').value = user.join_date ? user.join_date.split('T')[0] : '';
 
-async function saveStaff(event) {
-    event.preventDefault();
-    const btn = document.getElementById('btn_save_staff');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
+                // فك تشفير JSONB (الرواتب)
+                if (user.salary_details && typeof user.salary_details === 'object') {
+                    document.getElementById('salary_basic').value = user.salary_details.basic || '';
+                    document.getElementById('salary_allowance').value = user.salary_details.allowance || '';
+                    document.getElementById('salary_commission').value = user.salary_details.commission || '';
+                }
 
-    const id = document.getElementById('staff_id').value;
-    const data = {
-        full_name: document.getElementById('s_full_name').value.trim(),
-        phone: document.getElementById('s_phone').value.trim(),
-        telegram_id: document.getElementById('s_telegram_id').value || null,
-        date_of_birth: document.getElementById('s_dob').value || null,
-        avatar_url: document.getElementById('s_avatar').value || null,
-        address: document.getElementById('s_address').value || null,
-        role: document.getElementById('s_role').value,
-        specialization: document.getElementById('s_specialization').value || null,
-        join_date: document.getElementById('s_join_date').value || null,
-        experience_years: parseInt(document.getElementById('s_experience').value) || 0,
-        syndicate_number: document.getElementById('s_syndicate_num').value || null,
-        syndicate_expiry_date: document.getElementById('s_syndicate_expiry').value || null,
-        salary_details: {
-            basic: document.getElementById('s_salary').value || 0,
-            commission: document.getElementById('s_commission').value || 0
-        },
-        emergency_contact: {
-            name: document.getElementById('s_em_name').value || '',
-            phone: document.getElementById('s_em_phone').value || '',
-            relation: document.getElementById('s_em_relation').value || ''
+                // فك تشفير JSONB (الطوارئ)
+                if (user.emergency_contact && typeof user.emergency_contact === 'object') {
+                    document.getElementById('emergency_name').value = user.emergency_contact.name || '';
+                    document.getElementById('emergency_phone').value = user.emergency_contact.phone || '';
+                    document.getElementById('emergency_relation').value = user.emergency_contact.relation || '';
+                }
+            }
+        }
+        
+        modal.classList.add('active');
+    };
+
+    window.closeStaffModal = () => {
+        modal.classList.remove('active');
+        form.reset();
+    };
+
+    // ==========================================
+    // 3. الحفظ وإرسال الداتا للباك إند (POST / PATCH)
+    // ==========================================
+    window.saveStaff = async () => {
+        // التحقق من الحقول الإجبارية
+        const fullName = document.getElementById('full_name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        
+        if (!fullName || !phone) {
+            alert('يرجى إدخال الاسم ورقم الهاتف كحد أدنى.');
+            return;
+        }
+
+        // بناء كائن JSONB للراتب
+        const salaryDetails = {
+            basic: parseFloat(document.getElementById('salary_basic').value) || 0,
+            allowance: parseFloat(document.getElementById('salary_allowance').value) || 0,
+            commission: parseFloat(document.getElementById('salary_commission').value) || 0
+        };
+
+        // بناء كائن JSONB للطوارئ
+        const emergencyContact = {
+            name: document.getElementById('emergency_name').value.trim(),
+            phone: document.getElementById('emergency_phone').value.trim(),
+            relation: document.getElementById('emergency_relation').value.trim()
+        };
+
+        // تجميع كل البيانات
+        const userData = {
+            full_name: fullName,
+            phone: phone,
+            role: document.getElementById('role').value,
+            telegram_id: document.getElementById('telegram_id').value.trim() || null,
+            can_login: document.getElementById('can_login').checked,
+            specialization: document.getElementById('specialization').value,
+            experience_years: parseInt(document.getElementById('experience_years').value) || 0,
+            syndicate_number: document.getElementById('syndicate_number').value.trim(),
+            join_date: document.getElementById('join_date').value || null,
+            salary_details: salaryDetails, // سيتم تخزينها كـ JSONB تلقائياً
+            emergency_contact: emergencyContact // سيتم تخزينها كـ JSONB تلقائياً
+        };
+
+        const userId = document.getElementById('user_id').value;
+        const btnSave = document.querySelector('.modal-footer button:first-child');
+        const originalText = btnSave.innerHTML;
+        btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+        btnSave.disabled = true;
+
+        try {
+            if (userId) {
+                // تعديل (PATCH)
+                await api.patch(`/api/users?id=eq.${userId}`, userData);
+                alert('تم تحديث ملف الموظف بنجاح.');
+            } else {
+                // إضافة جديد (POST)
+                userData.is_active = true; // تفعيل افتراضي
+                await api.post('/api/users', userData);
+                alert('تم تعيين الموظف بنجاح.');
+            }
+            
+            closeStaffModal();
+            loadStaff(); // إعادة تحميل الشبكة
+        } catch (error) {
+            alert("فشل الحفظ: " + error.message);
+        } finally {
+            btnSave.innerHTML = originalText;
+            btnSave.disabled = false;
         }
     };
 
-    try {
-        let res;
-        if (id) {
-            res = await API.updateStaff(id, data);
-            if(res && !res.error) {
-                Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الحفظ محلياً (Offline)' : 'تم التحديث بنجاح', showConfirmButton: false, timer: 2000});
-            }
-        } else {
-            data.is_active = true;
-            data.can_login = true;
-            res = await API.addStaff(data);
-            if(res && !res.error) {
-                Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الإضافة للطابور المحلي' : 'تمت إضافة الموظف بنجاح', showConfirmButton: false, timer: 2000});
-            }
+    // ==========================================
+    // 4. إيقاف / تفعيل دخول الموظف (Security)
+    // ==========================================
+    window.toggleAccess = async (userId, newStatus) => {
+        const actionText = newStatus ? "تفعيل" : "إيقاف";
+        if (!confirm(`هل أنت متأكد من ${actionText} صلاحية الدخول لهذا الموظف؟`)) return;
+
+        try {
+            // نحدث حقل can_login فقط
+            await api.patch(`/api/users?id=eq.${userId}`, { can_login: newStatus });
+            loadStaff(); // إعادة تحميل الواجهة لتحديث الأزرار
+        } catch (error) {
+            alert(`فشل ${actionText} الحساب: ` + error.message);
         }
-        
-        if(res && res.error) throw new Error(res.error);
-        
-        const m = bootstrap.Modal.getInstance(document.getElementById('staffModal'));
-        if (m) m.hide();
-        await loadStaff();
-    } catch (err) {
-        Swal.fire('خطأ', err.message || 'تعذر حفظ بيانات الموظف. قد يكون الحد الأقصى للموظفين قد اكتمل.', 'error');
-    } finally {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ بيانات الموظف';
-    }
-}
+    };
 
-// إيقاف الموظف (Soft Delete) مع دعم الأوفلاين
-async function toggleStaffStatus(id, currentActiveStatus) {
-    const actionName = currentActiveStatus ? "إيقاف" : "تفعيل";
-    const newStatus = !currentActiveStatus;
-
-    const confirm = await Swal.fire({
-        title: `هل تريد ${actionName} هذا الموظف؟`,
-        text: currentActiveStatus ? "سيتم منعه من تسجيل الدخول للنظام نهائياً، مع الاحتفاظ ببياناته وقضاياه." : "سيتمكن من الدخول للنظام مجدداً.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: currentActiveStatus ? '#d33' : '#10b981',
-        confirmButtonText: `نعم، ${actionName}`,
-        cancelButtonText: 'إلغاء'
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    try {
-        const res = await API.updateStaff(id, { is_active: newStatus, can_login: newStatus });
-        if(res && !res.error) {
-            Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الحفظ محلياً' : `تم ${actionName} الموظف بنجاح`, showConfirmButton: false, timer: 2000});
-            await loadStaff();
-        } else {
-            throw new Error(res?.error || 'حدث خطأ');
-        }
-    } catch (err) {
-        Swal.fire('خطأ', 'تعذر تغيير حالة الموظف: ' + err.message, 'error');
-    }
-}
-
-// ----------------- الذكاء الاصطناعي للهويات -----------------
-function openAiIdModal() {
-    document.getElementById('ai_id_text').value = '';
-    const m = new bootstrap.Modal(document.getElementById('aiIdModal'));
-    m.show();
-}
-
-async function processIdAI() {
-    if (!navigator.onLine) {
-        Swal.fire('تنبيه', 'لا يمكن استخدام الذكاء الاصطناعي أثناء انقطاع الإنترنت.', 'warning');
-        return;
-    }
-
-    const text = document.getElementById('ai_id_text').value.trim();
-    if (!text) { Swal.fire('تنبيه', 'يرجى لصق نص الهوية أولاً', 'warning'); return; }
-
-    const btn = document.getElementById('btn_process_id');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحليل الذكي...';
-
-    try {
-        const aiRes = await API.extractDataAI(text, 'id_extractor');
-        if (aiRes && aiRes.extracted_json) {
-            const data = aiRes.extracted_json;
-            if (data.full_name) document.getElementById('s_full_name').value = data.full_name;
-            if (data.date_of_birth) document.getElementById('s_dob').value = data.date_of_birth;
-            if (data.address) document.getElementById('s_address').value = data.address;
-            if (data.syndicate_number) document.getElementById('s_syndicate_num').value = data.syndicate_number;
-            
-            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تم التعبئة التلقائية', showConfirmButton: false, timer: 2000});
-            const m = bootstrap.Modal.getInstance(document.getElementById('aiIdModal'));
-            if (m) m.hide();
-        } else {
-            Swal.fire('خطأ', 'لم يتمكن الذكاء الاصطناعي من فهم النص.', 'error');
-        }
-    } catch (err) {
-        Swal.fire('خطأ', 'فشل الاتصال بالمحرك الذكي', 'error');
-    } finally {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic me-1"></i> تحليل وملء الحقول';
-    }
-}
-
-// ----------------- أرشيف الوثائق -----------------
-function renderStaffDocs(docs) {
-    const list = document.getElementById('staff-docs-list');
-    if (!docs || docs.length === 0) {
-        list.innerHTML = '<div class="text-muted small text-center p-3 border rounded bg-light">لا توجد وثائق مؤرشفة لهذا الموظف.</div>';
-        return;
-    }
-    
-    list.innerHTML = docs.map((doc, index) => `
-        <div class="doc-item">
-            <div>
-                <i class="fas fa-file-alt text-navy me-2 fs-5"></i>
-                <span class="fw-bold text-dark small">${escapeHTML(doc.name)}</span>
-                <small class="d-block text-muted" style="font-size:0.7rem;">${new Date(doc.date).toLocaleDateString('ar-EG')}</small>
-            </div>
-            <div>
-                <a href="${escapeHTML(doc.url)}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-0"><i class="fas fa-eye"></i></a>
-                <button type="button" class="btn btn-sm btn-outline-danger px-2 py-0 ms-1" onclick="deleteStaffDoc(${index})"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
-    `).join('');
-}
-
-async function uploadStaffDoc() {
-    if (!navigator.onLine) {
-        Swal.fire('تنبيه', 'لا يمكن رفع الملفات السحابية أثناء انقطاع الإنترنت.', 'warning');
-        return;
-    }
-
-    const fileInput = document.getElementById('doc_file');
-    const nameInput = document.getElementById('doc_name').value.trim();
-    
-    if (!fileInput.files.length) { Swal.fire('تنبيه', 'يرجى اختيار ملف أولاً', 'warning'); return; }
-    
-    const btn = document.getElementById('btnUploadDoc');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    
-    try {
-        const file = fileInput.files[0];
-        const driveRes = await API.uploadToDrive(file, "موظف-" + currentEditingStaff.full_name, "HR-Docs");
-        
-        if (driveRes && driveRes.url) {
-            let currentDocs = currentEditingStaff.staff_documents || [];
-            currentDocs.push({
-                name: nameInput || file.name,
-                url: driveRes.url,
-                date: new Date().toISOString()
-            });
-            
-            const res = await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
-            if(res && !res.error) {
-                currentEditingStaff.staff_documents = currentDocs; // تحديث محلي
-                
-                document.getElementById('doc_file').value = '';
-                document.getElementById('doc_name').value = '';
-                renderStaffDocs(currentDocs);
-                Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة', showConfirmButton: false, timer: 2000});
-            } else {
-                throw new Error(res?.error || 'خطأ في التحديث');
-            }
-        }
-    } catch (err) {
-        Swal.fire('خطأ', 'فشل الرفع السحابي: ' + err.message, 'error');
-    } finally {
-        btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload"></i> رفع';
-    }
-}
-
-async function deleteStaffDoc(index) {
-    const confirm = await Swal.fire({title: 'حذف الوثيقة؟', icon: 'warning', showCancelButton: true, confirmButtonText: 'نعم', cancelButtonText: 'إلغاء'});
-    if (!confirm.isConfirmed) return;
-    
-    let currentDocs = currentEditingStaff.staff_documents || [];
-    currentDocs.splice(index, 1);
-    
-    try {
-        const res = await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
-        if(res && !res.error) {
-            currentEditingStaff.staff_documents = currentDocs;
-            renderStaffDocs(currentDocs);
-            Swal.fire({toast: true, position: 'top-end', icon: res.offline ? 'warning' : 'success', title: res.offline ? 'تم الحذف محلياً' : 'تم الحذف', showConfirmButton: false, timer: 2000});
-        } else {
-            throw new Error(res?.error || 'خطأ في الحذف');
-        }
-    } catch (err) {
-        Swal.fire('خطأ', 'تعذر حذف الوثيقة: ' + err.message, 'error');
-    }
-}
+    // التشغيل التلقائي عند فتح الصفحة
+    loadStaff();
+});
