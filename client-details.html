@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a192f">
+    <title>تفاصيل الموكل | نظام موكّل</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .client-avatar { width: 80px; height: 80px; font-size: 2rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg, var(--navy), #1e3a8a); color: white; margin: 0 auto 15px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .data-label { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-bottom: 2px; display: block; }
+        .data-value { font-size: 0.95rem; color: var(--navy); font-weight: 600; }
+        .case-card { transition: transform 0.2s; border: 1px solid #e2e8f0; }
+        .case-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 10px 15px rgba(0,0,0,0.05) !important; }
+        .nav-pills .nav-link { border-radius: 10px; color: #64748b; font-weight: bold; margin-bottom: 5px; text-align: center; border: 1px solid transparent; }
+        .nav-pills .nav-link.active { background-color: var(--navy); color: white; border-color: var(--navy); }
+    </style>
+</head>
+<body class="bg-light pb-5 mb-5">
+
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between">
+        <button class="btn btn-link text-white p-0" onclick="goBack()"><i class="fas fa-arrow-right fs-4"></i></button>
+        <h5 class="mb-0 fw-bold text-white text-truncate mx-2" id="header-client-name">تفاصيل الموكل</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm" onclick="manualSync()" title="مزامنة البيانات">
+                <i class="fas fa-sync"></i>
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius: 15px;">
+                    <li><a class="dropdown-item py-2 fw-bold" href="#" onclick="openEditModal()"><i class="fas fa-edit text-warning me-2"></i> تعديل بيانات الموكل</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2 fw-bold text-danger" href="#" onclick="deleteClient()"><i class="fas fa-trash-alt me-2"></i> حذف الموكل</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="container mt-4">
+        
+        <div class="card-custom p-4 mb-4 shadow-sm bg-white text-center position-relative border-top border-4 border-accent">
+            <div id="client-badges" class="position-absolute top-0 end-0 p-2"></div>
+            
+            <div class="client-avatar" id="client-avatar-icon"><i class="fas fa-user-tie"></i></div>
+            <h4 class="fw-bold text-navy mb-1" id="det-full-name">--</h4>
+            <div class="text-muted small fw-bold mb-3" dir="ltr" id="det-phone">--</div>
+            
+            <div class="d-flex justify-content-center gap-2 mb-3">
+                <button class="btn btn-sm btn-success fw-bold px-3 rounded-pill shadow-sm" onclick="callClient()"><i class="fas fa-phone-alt me-1"></i> اتصال</button>
+                <button class="btn btn-sm btn-outline-success fw-bold px-3 rounded-pill shadow-sm" onclick="whatsappClient()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
+            </div>
+
+            <div class="row g-2 mt-3 pt-3 border-top">
+                <div class="col-4">
+                    <div class="p-2 bg-light rounded border border-info">
+                        <small class="data-label text-info">إجمالي الأتعاب</small>
+                        <span class="data-value" id="fin-total-agreed">0</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 bg-light rounded border border-success">
+                        <small class="data-label text-success">إجمالي المدفوع</small>
+                        <span class="data-value" id="fin-total-paid">0</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="p-2 bg-light rounded border border-danger">
+                        <small class="data-label text-danger">الرصيد المتبقي</small>
+                        <span class="data-value fs-5 text-danger" id="fin-remaining">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-pills mb-3 border-0 gap-2 d-flex flex-nowrap overflow-auto hide-scrollbar" id="clientTabs" role="tablist">
+            <li class="nav-item flex-shrink-0 flex-grow-1" role="presentation">
+                <button class="nav-link active w-100 shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-cases" type="button"><i class="fas fa-gavel me-1"></i> القضايا</button>
+            </li>
+            <li class="nav-item flex-shrink-0 flex-grow-1" role="presentation">
+                <button class="nav-link w-100 shadow-sm bg-white" data-bs-toggle="pill" data-bs-target="#tab-files" type="button"><i class="fas fa-folder-open me-1"></i> المستندات</button>
+            </li>
+            <li class="nav-item flex-shrink-0 flex-grow-1" role="presentation">
+                <button class="nav-link w-100 shadow-sm bg-white" data-bs-toggle="pill" data-bs-target="#tab-info" type="button"><i class="fas fa-id-card me-1"></i> الهوية</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            
+            <div class="tab-pane fade show active" id="tab-cases">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-navy mb-0">قضايا الموكل (<span id="cases-count">0</span>)</h6>
+                </div>
+                <div id="client-cases-list">
+                    <div class="text-center p-4 text-muted small bg-white rounded border shadow-sm"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-files">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-navy mb-0">مستندات الموكل الشخصية</h6>
+                    <button class="btn btn-sm btn-warning fw-bold shadow-sm text-dark" onclick="openModal('fileModal')"><i class="fas fa-cloud-upload-alt"></i> رفع مستند</button>
+                </div>
+                <div class="row g-2" id="client-files-list">
+                    <div class="text-center p-4 text-muted small bg-white rounded border shadow-sm w-100"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-info">
+                <div class="card-custom p-3 shadow-sm bg-white border-start border-4 border-navy">
+                    <h6 class="fw-bold text-navy border-bottom pb-2 mb-3"><i class="fas fa-address-card text-accent me-2"></i> البيانات الشخصية والمهنية</h6>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <span class="data-label">الرقم الوطني / الشركة</span>
+                            <span class="data-value" id="det-national-id">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="data-label">البريد الإلكتروني</span>
+                            <span class="data-value text-break" dir="ltr" id="det-email">--</span>
+                        </div>
+                        <div class="col-12">
+                            <span class="data-label">العنوان التفصيلي</span>
+                            <span class="data-value" id="det-address">--</span>
+                        </div>
+                        <div class="col-12"><hr class="my-1 border-light"></div>
+                        
+                        <div class="col-6">
+                            <span class="data-label">اسم الأم</span>
+                            <span class="data-value" id="det-mother">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="data-label">تاريخ الولادة</span>
+                            <span class="data-value" id="det-dob">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="data-label">مكان الولادة</span>
+                            <span class="data-value" id="det-pob">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="data-label">الجنسية</span>
+                            <span class="data-value" id="det-nationality">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="data-label">الحالة الاجتماعية</span>
+                            <span class="data-value" id="det-marital">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="data-label">المهنة</span>
+                            <span class="data-value" id="det-profession">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div class="modal fade" id="editClientModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2 text-warning"></i> تعديل بيانات الموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <form id="editClientForm" onsubmit="updateClient(event)">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">اسم الموكل / الشركة <span class="text-danger">*</span></label>
+                            <input type="text" id="edit_full_name" class="form-control border-0 shadow-sm" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">رقم الهاتف</label>
+                                <input type="tel" id="edit_phone" class="form-control border-0 shadow-sm" dir="ltr">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الرقم الوطني/الشركة</label>
+                                <input type="text" id="edit_national_id" class="form-control border-0 shadow-sm">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3 border-top pt-3">
+                            <div class="col-6"><label class="form-label fw-bold small text-muted">اسم الأم</label><input type="text" id="edit_mother" class="form-control border-0 shadow-sm"></div>
+                            <div class="col-6"><label class="form-label fw-bold small text-muted">تاريخ الميلاد</label><input type="date" id="edit_dob" class="form-control border-0 shadow-sm"></div>
+                            <div class="col-6"><label class="form-label fw-bold small text-muted">مكان الولادة</label><input type="text" id="edit_pob" class="form-control border-0 shadow-sm"></div>
+                            <div class="col-6"><label class="form-label fw-bold small text-muted">الجنسية</label><input type="text" id="edit_nationality" class="form-control border-0 shadow-sm"></div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">الحالة الاجتماعية</label>
+                                <select id="edit_marital" class="form-select border-0 shadow-sm">
+                                    <option value="">غير محدد</option><option value="أعزب">أعزب</option><option value="متزوج">متزوج</option><option value="مطلق">مطلق</option><option value="أرمل">أرمل</option>
+                                </select>
+                            </div>
+                            <div class="col-6"><label class="form-label fw-bold small text-muted">المهنة</label><input type="text" id="edit_profession" class="form-control border-0 shadow-sm"></div>
+                        </div>
+
+                        <div class="mb-3 border-top pt-3">
+                            <label class="form-label fw-bold small text-muted">البريد الإلكتروني</label>
+                            <input type="email" id="edit_email" class="form-control border-0 shadow-sm" dir="ltr">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">العنوان التفصيلي</label>
+                            <textarea id="edit_address" class="form-control border-0 shadow-sm" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="row g-2 mb-4 border-top pt-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted">صفة الموكل</label>
+                                <select id="edit_client_type" class="form-select border-0 shadow-sm">
+                                    <option value="فرد">أفراد (شخص طبيعي)</option><option value="شركة">شركات (شخص اعتباري)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small text-muted"><i class="fas fa-lock text-warning"></i> مستوى السرية</label>
+                                <select id="edit_confidentiality" class="form-select border-0 shadow-sm">
+                                    <option value="عادي">عادي (متاح للمكتب)</option><option value="سري">سري (للمدير والمحامي المسؤول)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold shadow" id="btn_save_client"><i class="fas fa-save me-1"></i> حفظ التعديلات</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fileModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold fs-6"><i class="fas fa-cloud-upload-alt me-2"></i> مستند شخصي للموكل</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <form id="fileForm" onsubmit="saveClientFile(event)">
+                        <div class="mb-3 text-center border rounded p-4 bg-white shadow-sm" style="border: 2px dashed #cbd5e1 !important;">
+                            <i class="fas fa-id-card fa-3x text-muted mb-2"></i>
+                            <input type="file" id="file_input" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-navy">اسم المستند (اختياري)</label>
+                            <input type="text" id="file_title_input" class="form-control border-0 shadow-sm" placeholder="مثال: صورة الهوية، وكالة عامة...">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-navy">تصنيف المستند</label>
+                            <select id="file_category_input" class="form-select border-0 shadow-sm">
+                                <option value="هوية شخصية">صورة هوية/جواز</option>
+                                <option value="وكالة عامة">وكالة عامة</option>
+                                <option value="سجل تجاري">سجل تجاري</option>
+                                <option value="أخرى">أخرى</option>
+                            </select>
+                        </div>
+                        <div class="mb-4 p-2 bg-white rounded border shadow-sm">
+                            <label class="form-label small fw-bold text-danger"><i class="fas fa-hourglass-end me-1"></i> تاريخ انتهاء الصلاحية (إن وجد)</label>
+                            <input type="date" id="file_expiry_date" class="form-control border-0 bg-light text-center">
+                        </div>
+                        <button type="submit" id="btn_upload" class="btn btn-warning w-100 fw-bold shadow text-dark"><i class="fas fa-upload me-1"></i> حفظ في أرشيف الموكل</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/client-details.js"></script>
+</body>
+</html>

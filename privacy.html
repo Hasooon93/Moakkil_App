@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سياسة الخصوصية | نظام موكّل ERP</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #f8fafc; 
+            color: #334155;
+            line-height: 1.8;
+        }
+        
+        .header-hero {
+            background: linear-gradient(135deg, #0a192f 0%, #1e293b 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 5px solid #64ffda;
+        }
+
+        .content-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            margin-top: -30px;
+            margin-bottom: 50px;
+        }
+
+        h5 { color: #0a192f; font-weight: 800; margin-top: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        p, li { font-size: 1.05rem; }
+        ul { margin-bottom: 20px; }
+        
+        .btn-back { background: #64ffda; color: #0a192f; font-weight: bold; border-radius: 10px; padding: 10px 25px; transition: 0.3s; }
+        .btn-back:hover { background: #34d399; color: #0a192f; }
+    </style>
+</head>
+<body>
+
+    <div class="header-hero">
+        <h1 class="fw-bold mb-3"><i class="fas fa-shield-alt text-accent me-2" style="color: #64ffda;"></i> سياسة الخصوصية وأمن البيانات</h1>
+        <p class="fs-5 text-white-50">كيف نحمي بياناتك وبيانات موكليك بأعلى المعايير العالمية</p>
+    </div>
+
+    <div class="container">
+        <div class="content-card">
+            <p>نحن في <strong>موكّل ERP</strong> ندرك تماماً حساسية وسرية العمل القانوني. لذا، فإن حماية خصوصيتك وبيانات قضاياك وموكليك هي أولويتنا القصوى. توضح هذه السياسة كيفية تعاملنا مع البيانات تقنياً.</p>
+
+            <h5>1. طبيعة البيانات التي يتم جمعها</h5>
+            <p>نقوم باستضافة وتخزين البيانات التي تقوم أنت أو فريق عملك بإدخالها طواعية في النظام، وتشمل:</p>
+            <ul>
+                <li>بيانات الموظفين (الأسماء، أرقام الهواتف، أدوار النظام).</li>
+                <li>بيانات الموكلين والخصوم (الأسماء، الأرقام الوطنية، أرقام الهواتف).</li>
+                <li>سجلات القضايا، الوقائع، المواعيد، والسجلات المالية.</li>
+                <li>المستندات والملفات المرفوعة (PDF, الصور, الوثائق).</li>
+            </ul>
+
+            <h5>2. أين وكيف تُحفظ البيانات؟ (التشفير والأمان)</h5>
+            <p>يعتمد نظامنا على بنية تحتية سحابية متطورة ومحمية:</p>
+            <ul>
+                <li><strong>قواعد البيانات:</strong> تُحفظ البيانات النصية في خوادم Supabase العالمية، وهي مشفرة أثناء النقل (In Transit) وأثناء الحفظ (At Rest) باستخدام بروتوكولات وتشفير AES-256.</li>
+                <li><strong>جدار الحماية (Firewall):</strong> تتم إدارة جميع الاتصالات عبر شبكة Cloudflare العالمية لحماية النظام من هجمات الحرمان من الخدمة (DDoS) والاختراقات.</li>
+                <li><strong>الملفات المرفوعة:</strong> يتم تشفيرها وتخزينها في بيئة سحابية معزولة ولا يمكن الوصول إليها إلا من خلال روابط مخصصة.</li>
+            </ul>
+
+            <h5>3. من يمكنه الوصول إلى البيانات؟</h5>
+            <p><strong>أنت فقط وفريق عملك المصرح له.</strong> نحن نطبق نظام صلاحيات صارم (Role-Based Access Control):</p>
+            <ul>
+                <li>المدير (المالك) يمتلك الصلاحية المطلقة لرؤية بيانات مكتبه فقط.</li>
+                <li>المحامي يرى فقط القضايا والموكلين المسندين إليه من قِبل الإدارة.</li>
+                <li><strong>إدارة نظام "موكّل"</strong> لا تقوم بالدخول إلى بيانات الموكلين أو الاطلاع على تفاصيل القضايا بأي شكل من الأشكال إلا في حالات الدعم الفني الطارئة وبناءً على طلب كتابي صريح منك.</li>
+            </ul>
+
+            <h5>4. مشاركة البيانات مع أطراف ثالثة</h5>
+            <p>نحن نلتزم التزاماً قاطعاً <strong>بعدم بيع، أو تأجير، أو مشاركة</strong> أي من بياناتك أو بيانات عملائك مع أي وكالات إعلانية أو أطراف ثالثة. البيانات تُستخدم حصرياً لتشغيل النظام الخاص بك.</p>
+
+            <h5>5. حق حذف البيانات (النسيان)</h5>
+            <p>عند إنهاء اشتراكك معنا، يحق لك طلب تزويدك بنسخة من بياناتك، وبعدها تلتزم إدارة النظام بمسح وحذف جميع بيانات مكتبك، قضاياك، وموكليك من خوادمنا بشكل نهائي وغير قابل للاسترجاع.</p>
+
+            <div class="text-center mt-5">
+                <a href="index.html" class="btn btn-back text-decoration-none"><i class="fas fa-arrow-right me-2"></i> العودة للصفحة الرئيسية</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
