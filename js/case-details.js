@@ -1,4 +1,4 @@
-// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة المصلحة 100%)
+// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة مع الذكاء الاصطناعي المتقدم)
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -151,11 +151,11 @@ function renderHeaderAndSummary() {
     if(caseObj.ai_entities) {
         try {
             let ai = typeof caseObj.ai_entities === 'string' ? JSON.parse(caseObj.ai_entities) : caseObj.ai_entities;
-            document.getElementById('det-ai-facts').innerText = ai.lawsuit_facts || '--';
-            document.getElementById('det-ai-legal').innerText = ai.legal_basis || '--';
-            let reqs = ai.final_requests;
-            if(Array.isArray(reqs)) reqs = reqs.join('، ');
-            document.getElementById('det-ai-requests').innerText = reqs || '--';
+            // دعم المفاتيح العربية والإنجليزية معاً للعرض
+            document.getElementById('det-ai-facts').innerText = ai.lawsuit_facts || ai["الوقائع"] || '--';
+            document.getElementById('det-ai-legal').innerText = ai.legal_basis || ai["الأسانيد"] || '--';
+            let reqs = ai.final_requests || ai["الطلبات"];
+            document.getElementById('det-ai-requests').innerText = Array.isArray(reqs) ? reqs.join('، ') : (reqs || '--');
         } catch(e) { console.error("Error parsing AI entities", e); }
     } else {
         document.getElementById('det-ai-facts').innerText = '--';
@@ -293,20 +293,50 @@ async function updateCaseDetails(event) {
 
 function openUpdateModal() { document.getElementById('upd_extracted_json').value = ''; openModal('updateModal'); }
 
+// 🤖 الدالة الذكية المحدثة للاستخراج (تترجم الأسماء العربية تلقائياً)
 async function previewAIExtraction() {
     const details = document.getElementById('upd_details').value;
     if(!details) return showAlert('الرجاء كتابة النص أولاً', 'warning');
+    
     const btn = document.getElementById('btn_ai_extract');
     if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> التحليل العميق...'; }
+    
     try {
-        const aiRes = await API.extractDataAI(details);
-        if(aiRes && aiRes.extracted_json) {
-            const ex = aiRes.extracted_json;
-            if(ex.next_hearing_date && document.getElementById('upd_next_hearing')) document.getElementById('upd_next_hearing').value = ex.next_hearing_date;
-            if (ex.lawsuit_facts || ex.legal_basis) document.getElementById('upd_extracted_json').value = JSON.stringify(ex);
-            showAlert('تم استخلاص الوقائع والأسانيد', 'success');
+        // نستخدم الدالة الشاملة التي تنظف الـ Markdown وتقرأ أي صيغة
+        const ex = await API.extractLegalData(details);
+        
+        if(ex && !ex.error) {
+            // فلتر اصطياد البيانات سواء أرسلها الذكاء بأسماء إنجليزية أو عربية
+            const facts = ex.lawsuit_facts || ex["الوقائع"] || ex["وقائع"] || ex["وقائع الدعوى"] || '';
+            const legal = ex.legal_basis || ex["الأسانيد"] || ex["السند القانوني"] || ex["الاسانيد"] || '';
+            const reqs = ex.final_requests || ex["الطلبات"] || ex["الطلبات الختامية"] || '';
+            const nextDate = ex.next_hearing_date || ex["الجلسة القادمة"] || ex["تاريخ الجلسة"] || '';
+
+            if(nextDate && document.getElementById('upd_next_hearing')) {
+                document.getElementById('upd_next_hearing').value = nextDate;
+            }
+
+            // توحيدها بالصيغة الإنجليزية المعتمدة في قاعدة بياناتك
+            const cleanJson = {
+                lawsuit_facts: Array.isArray(facts) ? facts.join('\n') : facts,
+                legal_basis: Array.isArray(legal) ? legal.join('\n') : legal,
+                final_requests: Array.isArray(reqs) ? reqs.join('\n') : reqs
+            };
+
+            // حفظ النتيجة النظيفة في الحقل المخفي لكي يتم حفظها في الداتا بيز
+            if (cleanJson.lawsuit_facts || cleanJson.legal_basis) {
+                document.getElementById('upd_extracted_json').value = JSON.stringify(cleanJson);
+                showAlert('تم استخلاص الوقائع والأسانيد بنجاح', 'success');
+            } else {
+                showAlert('تم التحليل، لكن لم نجد وقائع واضحة للاستخلاص.', 'warning');
+            }
+        } else {
+            throw new Error('فشل التحليل');
         }
-    } catch(e) { showAlert('فشل محرك الذكاء الاصطناعي', 'error'); }
+    } catch(e) { 
+        showAlert('فشل محرك الذكاء الاصطناعي', 'error'); 
+    }
+    
     if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> استخلاص البيانات'; }
 }
 
@@ -334,7 +364,6 @@ async function saveUpdate(event) {
     const rawHearing = document.getElementById('upd_hearing_date').value || null;
     const rawNextHearing = document.getElementById('upd_next_hearing').value || null;
 
-    // 🚀 استخدام المسمى الصحيح `ai_extracted_entities` لجدول التحديثات لمنع خطأ 500
     const data = {
         case_id: currentCaseId, update_title: document.getElementById('upd_title').value, update_details: details,
         hearing_date: rawHearing ? applyJordanTimeHackLocal(rawHearing) : null, next_hearing_date: rawNextHearing ? applyJordanTimeHackLocal(rawNextHearing) : null,
@@ -344,9 +373,14 @@ async function saveUpdate(event) {
     try {
         const res = await API.addUpdate(data);
         if(res && !res.error) { 
+            // تحديث الملف الرئيسي بالقضية (لأننا ضمنّا أن extractedData تحتوي على lawsuit_facts دائماً بفضل المترجم الجديد)
             if (extractedData.lawsuit_facts || extractedData.legal_basis) {
-                // 🚀 استخدام المسمى الصحيح `ai_entities` لجدول القضايا
-                await API.updateCase(currentCaseId, { ai_entities: extractedData, lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, legal_basis: extractedData.legal_basis || caseObj.legal_basis, ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100) });
+                await API.updateCase(currentCaseId, { 
+                    ai_entities: extractedData, 
+                    lawsuit_facts: extractedData.lawsuit_facts || caseObj.lawsuit_facts, 
+                    legal_basis: extractedData.legal_basis || caseObj.legal_basis, 
+                    ai_cumulative_summary: (caseObj.ai_cumulative_summary ? caseObj.ai_cumulative_summary + "\n" : "") + (extractedData.lawsuit_facts || details).substring(0,100) 
+                });
             }
             if (hasFile) { closeModal('updateModal'); showAlert(res.offline ? 'حفظ محلي' : 'تمت الإضافة', res.offline ? 'warning' : 'success'); }
             document.getElementById('updateForm').reset(); await loadCaseFullDetails(); 
@@ -486,15 +520,7 @@ function startDictation(elementId) {
         const textArea = document.getElementById(elementId); const origPlaceholder = textArea.placeholder;
         recognition.onstart = function() { textArea.placeholder = "تحدث الآن."; showAlert('الميكروفون يعمل', 'info'); };
         recognition.onresult = function(e) { textArea.value += (textArea.value ? ' ' : '') + e.results[0][0].transcript; showAlert('تم إدراج النص.', 'success'); };
-        
-        // 🛡️ تجاهل رسالة الخطأ في حال توقف المايكروفون طبيعياً
-        recognition.onerror = function(e) { 
-            if(e.error === 'aborted') return; 
-            console.error(e); 
-            showAlert('خطأ بالميكروفون: ' + e.error, 'danger'); 
-            textArea.placeholder = origPlaceholder; 
-        };
-        
+        recognition.onerror = function(e) { if(e.error==='aborted') return; console.error(e); showAlert('خطأ بالميكروفون.', 'danger'); textArea.placeholder = origPlaceholder; };
         recognition.onend = function() { textArea.placeholder = origPlaceholder; };
         recognition.start();
     } catch (e) { showAlert('فشل خدمة الصوت.', 'danger'); }
@@ -587,4 +613,3 @@ function sendWhatsAppReminder(amount, dueDate) {
 function goToClientProfile() { if (caseObj && caseObj.client_id) { localStorage.setItem('current_client_id', caseObj.client_id); window.location.href = 'client-details.html'; } }
 function openModal(id) { const el = document.getElementById(id); if(el) { const m = new bootstrap.Modal(el); m.show(); } }
 function closeModal(id) { const el = document.getElementById(id); if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); document.body.classList.remove('modal-open'); document.body.style.overflow = ''; document.body.style.paddingRight = ''; } }
-function showAlert(message, type = 'info') { if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type), title: escapeHTML(message), showConfirmButton: false, timer: 3000 }); else alert(message); }
