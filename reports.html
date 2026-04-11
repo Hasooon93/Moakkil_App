@@ -18,19 +18,26 @@
         .table-container { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
         .table thead th { background-color: var(--navy); color: white; border: none; font-weight: normal; font-size: 0.9rem; }
         .table tbody td { vertical-align: middle; font-size: 0.9rem; }
+
+        /* تنسيقات الشريط السفلي القياسي (Bottom Navigation) */
+        .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1030; }
+        .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.75rem; font-weight: 700; transition: all 0.3s ease; border-radius: 15px; padding: 8px 0; cursor: pointer; }
+        .nav-item.active { color: var(--navy); background-color: #f1f5f9; transform: translateY(-3px); }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--accent); transform: scale(1.1); }
     </style>
 </head>
-<body class="bg-light pb-5">
+<body class="bg-light pb-5 mb-5">
 
-    <div class="top-nav px-3 d-flex align-items-center justify-content-between">
-        <button class="btn btn-link text-white p-0" onclick="window.location.href='app'"><i class="fas fa-arrow-right fs-4"></i></button>
+    <div class="top-nav px-3 d-flex align-items-center justify-content-between d-print-none">
+        <button class="btn btn-link text-white p-0" onclick="window.location.href='app.html'"><i class="fas fa-arrow-right fs-4"></i></button>
         <h5 class="mb-0 fw-bold text-white"><i class="fas fa-chart-line text-accent me-2"></i> التقارير والمالية</h5>
         <button class="btn btn-sm btn-outline-light fw-bold shadow-sm" onclick="printReport()" title="طباعة التقرير"><i class="fas fa-print me-1"></i> طباعة</button>
     </div>
 
     <div class="container mt-4">
         
-        <div class="card-custom p-3 mb-4 shadow-sm bg-white border-top border-4 border-accent">
+        <div class="card-custom p-3 mb-4 shadow-sm bg-white border-top border-4 border-accent d-print-none">
             <h6 class="fw-bold text-navy mb-3"><i class="fas fa-filter text-accent me-2"></i> تصفية البيانات حسب التاريخ</h6>
             <div class="row g-2 align-items-end">
                 <div class="col-md-3 col-6">
@@ -129,8 +136,27 @@
             </div>
         </div>
 
+        <h6 class="fw-bold text-navy mb-3 mt-4"><i class="fas fa-user-tie text-success me-2"></i> تقرير أداء المحامين والموظفين (ضمن الفترة)</h6>
+        <div class="table-responsive table-container shadow-sm border-0 mb-4">
+            <table class="table table-hover mb-0 text-center bg-white">
+                <thead>
+                    <tr>
+                        <th class="py-3 text-start ps-3">المحامي / الموظف</th>
+                        <th class="py-3">قضايا مسندة</th>
+                        <th class="py-3">قضايا نشطة</th>
+                        <th class="py-3">قضايا منجزة</th>
+                        <th class="py-3">مهام أُنجزت</th>
+                        <th class="py-3">تحصيلات ماليّة (د.أ)</th>
+                    </tr>
+                </thead>
+                <tbody id="staff-performance-tbody">
+                    <tr><td colspan="6" class="py-4 text-muted fw-bold"><i class="fas fa-spinner fa-spin me-2"></i> جاري تقييم الأداء...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <h6 class="fw-bold text-navy mb-3 mt-2"><i class="fas fa-history text-danger me-2"></i> الحركات المالية التفصيلية (ضمن الفترة)</h6>
-        <div class="table-responsive table-container shadow-sm border-0">
+        <div class="table-responsive table-container shadow-sm border-0 mb-4">
             <table class="table table-hover mb-0 text-center bg-white">
                 <thead>
                     <tr>
@@ -145,6 +171,24 @@
                     <tr><td colspan="5" class="py-4 text-muted fw-bold"><i class="fas fa-spinner fa-spin me-2"></i> جاري تحميل وتحليل البيانات...</td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="bottom-nav d-flex justify-content-around d-print-none">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> الرئيسية
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item active" onclick="window.location.href='app.html'">
+            <i class="fas fa-toolbox"></i> الأدوات
         </div>
     </div>
 

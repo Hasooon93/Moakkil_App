@@ -1,11 +1,12 @@
-// js/reports.js - العقل المدبر للتقارير والرسوم البيانية مع ميزة الفلترة الزمنية الذكية (Date Filtering)
-// التحديثات: دعم تنبيهات وضع عدم الاتصال (Offline Mode) للتقارير لمنع تجميد الشاشة.
+// js/reports.js - العقل المدبر للتقارير والرسوم البيانية وتقييم الأداء العميق
+// التحديثات: دعم تنبيهات وضع عدم الاتصال (Offline Mode) للتقارير، وإضافة محرك احتساب أداء المحامين والموظفين مالياً وإدارياً.
 
 let rawCases = [];
 let rawInstallments = [];
 let rawExpenses = [];
 let rawAppointments = [];
 let rawClients = [];
+let rawStaff = []; // مصفوفة الموظفين الجديدة
 
 let financeChartInstance = null;
 let casesChartInstance = null;
@@ -51,7 +52,7 @@ window.handlePeriodChange = function() {
     }
 };
 
-// جلب كل البيانات الخام مرة واحدة باستخدام الدوال المخصصة في api.js
+// جلب كل البيانات الخام مرة واحدة باستخدام الدوال المخصصة في api.js بما فيها الموظفين
 async function fetchAllData() {
     try {
         Swal.fire({ title: 'جاري تحميل السجلات...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -60,16 +61,16 @@ async function fetchAllData() {
             Swal.fire({toast: true, position: 'top-end', icon: 'warning', title: 'أنت غير متصل بالإنترنت. تعذر جلب أحدث الإحصائيات.', showConfirmButton: false, timer: 4000});
         }
 
-        // تم استبدال API.get بالدوال المخصصة API.getInstallments() و API.getExpenses()
-        const [casesRes, clientsRes, apptsRes, instRes, expRes] = await Promise.all([
+        // جلب جميع الجداول مع جدول الموظفين (getStaff)
+        const [casesRes, clientsRes, apptsRes, instRes, expRes, staffRes] = await Promise.all([
             API.getCases(),
             API.getClients(),
             API.getAppointments(),
             API.getInstallments(), 
-            API.getExpenses()
+            API.getExpenses(),
+            API.getStaff()
         ]);
 
-        // التحقق من أن الاستجابة ليست خطأ اتصال (Offline Error)
         if (casesRes && casesRes.error && !Array.isArray(casesRes)) {
             throw new Error(casesRes.error);
         }
@@ -79,6 +80,7 @@ async function fetchAllData() {
         rawAppointments = Array.isArray(apptsRes) ? apptsRes : [];
         rawInstallments = Array.isArray(instRes) ? instRes : [];
         rawExpenses = Array.isArray(expRes) ? expRes : [];
+        rawStaff = Array.isArray(staffRes) ? staffRes : [];
 
         Swal.close();
     } catch (error) {
@@ -125,40 +127,28 @@ window.generateReports = function() {
     // فلترة المصفوفات
     const filteredCases = period === 'all' ? rawCases : rawCases.filter(c => isDateInRange(c.created_at));
     const filteredClients = period === 'all' ? rawClients : rawClients.filter(c => isDateInRange(c.created_at));
-    
-    // المهام نفلترها بناءً على تاريخ الاستحقاق
     const filteredAppts = period === 'all' ? rawAppointments : rawAppointments.filter(a => isDateInRange(a.appt_date));
-    
-    // الماديات نفلترها بناءً على تاريخ الدفع أو الصرف الفعلي
     const filteredInstallments = period === 'all' ? rawInstallments : rawInstallments.filter(i => isDateInRange(i.paid_date || i.due_date || i.created_at));
     const filteredExpenses = period === 'all' ? rawExpenses : rawExpenses.filter(e => isDateInRange(e.expense_date || e.created_at));
 
-    // تحديث الأرقام والرسوم والجدول
+    // تحديث الأرقام والجدول
     calculateKPIs(filteredCases, filteredClients, filteredAppts, filteredInstallments, filteredExpenses);
     updateCharts(filteredCases, filteredInstallments, filteredExpenses);
+    updateStaffPerformance(filteredCases, filteredAppts, filteredInstallments); // التقرير الدقيق المضاف
     updateTransactionsTable(filteredInstallments, filteredExpenses);
 };
 
 // حساب مؤشرات الأداء بناءً على الداتا المفلترة
 function calculateKPIs(cases, clients, appts, installments, expenses) {
-    // الأتعاب فقط للقضايا التي فُتحت في هذه الفترة
     const totalAgreed = cases.reduce((sum, c) => sum + (Number(c.total_agreed_fees) || 0), 0);
-    
-    // التحصيلات التي تمت في هذه الفترة (فقط المقبوضة)
     const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-    
-    // المصروفات التي صُرفت في هذه الفترة
     const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-
-    // المتبقي من القضايا التي فُتحت في هذه الفترة
     const totalRem = totalAgreed - totalPaid;
 
-    // الأنيميشن للأرقام
     animateValue('kpi-total-agreed', totalAgreed);
     animateValue('kpi-total-paid', totalPaid);
     animateValue('kpi-total-exp', totalExpenses);
     animateValue('kpi-total-rem', totalRem > 0 ? totalRem : 0);
-
     animateValue('kpi-cases-count', cases.length);
     animateValue('kpi-clients-count', clients.length);
     animateValue('kpi-appts-count', appts.length);
@@ -175,9 +165,7 @@ function animateValue(id, end) {
         if (!startTimestamp) startTimestamp = timestamp;
         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
         obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
-        if (progress < 1) {
-            window.requestAnimationFrame(step);
-        }
+        if (progress < 1) window.requestAnimationFrame(step);
     };
     window.requestAnimationFrame(step);
 }
@@ -187,7 +175,6 @@ function updateCharts(cases, installments, expenses) {
     const rootStyles = getComputedStyle(document.documentElement);
     const primaryColor = rootStyles.getPropertyValue('--navy').trim() || '#0a192f';
 
-    // 1. حسابات التدفق المالي
     const totalAgreed = cases.reduce((sum, c) => sum + (Number(c.total_agreed_fees) || 0), 0);
     const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
@@ -208,18 +195,12 @@ function updateCharts(cases, installments, expenses) {
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { beginAtZero: true, ticks: { callback: function(value) { return value.toLocaleString(); } } }
-            }
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return value.toLocaleString(); } } } }
         }
     });
 
-    // 2. حسابات حالة القضايا المفلترة
     const activeCases = cases.filter(c => c.status === 'نشطة').length;
     const completedCases = cases.filter(c => c.status === 'مكتملة').length;
     const appealCases = cases.filter(c => c.status === 'استئناف' || c.status === 'تمييز').length;
@@ -234,26 +215,70 @@ function updateCharts(cases, installments, expenses) {
             datasets: [{
                 data: [activeCases, completedCases, appealCases],
                 backgroundColor: ['#10b981', '#64748b', '#f59e0b'],
-                borderWidth: 2,
-                hoverOffset: 4
+                borderWidth: 2, hoverOffset: 4
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '65%',
-            plugins: {
-                legend: { position: 'bottom', labels: { font: { family: 'inherit', size: 13 } } }
-            }
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: { legend: { position: 'bottom', labels: { font: { family: 'inherit', size: 13 } } } }
         }
     });
+}
+
+// =================================================================
+// 📊 تقييم أداء المحامين والموظفين (الاستعلامات والربط الدقيق)
+// =================================================================
+function updateStaffPerformance(cases, appts, installments) {
+    const tbody = document.getElementById('staff-performance-tbody');
+    if (!rawStaff || rawStaff.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-muted border-0 bg-white fw-bold">لا يوجد موظفين مسجلين.</td></tr>`;
+        return;
+    }
+
+    let performanceData = [];
+
+    rawStaff.forEach(staff => {
+        // حصر القضايا المسندة لهذا المحامي ضمن الفترة المحددة
+        const assignedCases = cases.filter(c => c.assigned_lawyer_id && Array.isArray(c.assigned_lawyer_id) && c.assigned_lawyer_id.includes(staff.id));
+        const activeCases = assignedCases.filter(c => c.status === 'نشطة').length;
+        const completedCases = assignedCases.filter(c => c.status === 'مكتملة' || c.status === 'مغلقة').length;
+
+        // حصر المهام والمواعيد التي أُسندت إليه
+        const assignedAppts = appts.filter(a => a.assigned_to && Array.isArray(a.assigned_to) && a.assigned_to.includes(staff.id));
+        const completedAppts = assignedAppts.filter(a => a.status === 'تم').length;
+
+        // حصر التحصيلات المالية للقضايا التابعة لهذا المحامي (تقييم الإيرادات الفردية)
+        const caseIds = assignedCases.map(c => c.id);
+        const collections = installments.filter(i => i.status === 'مدفوعة' && caseIds.includes(i.case_id)).reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+
+        performanceData.push({
+            name: staff.full_name,
+            totalCases: assignedCases.length,
+            activeCases: activeCases,
+            completedCases: completedCases,
+            completedAppts: completedAppts,
+            collections: collections
+        });
+    });
+
+    // الترتيب: الأفضل أداءً مالياً ثم حسب عدد القضايا المنجزة
+    performanceData.sort((a, b) => b.collections - a.collections || b.completedCases - a.completedCases);
+
+    tbody.innerHTML = performanceData.map(p => `
+        <tr class="bg-white border-bottom">
+            <td class="fw-bold text-navy text-start ps-3 text-truncate" style="max-width: 150px;" title="${escapeHTML(p.name)}"><i class="fas fa-user-tie me-2 text-secondary"></i>${escapeHTML(p.name)}</td>
+            <td class="fw-bold text-primary">${p.totalCases}</td>
+            <td class="text-warning fw-bold">${p.activeCases}</td>
+            <td class="text-success fw-bold">${p.completedCases}</td>
+            <td class="text-info text-dark fw-bold">${p.completedAppts}</td>
+            <td class="fw-bold text-success">${p.collections.toLocaleString()}</td>
+        </tr>
+    `).join('');
 }
 
 // تحديث جدول المعاملات الأحدث (خلال الفترة المفلترة)
 function updateTransactionsTable(installments, expenses) {
     const tbody = document.getElementById('recent-transactions-tbody');
-    
-    // دمج الدفعات والمصروفات المفلترة في مصفوفة واحدة
     let transactions = [];
     
     installments.forEach(i => {

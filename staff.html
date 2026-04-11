@@ -55,6 +55,18 @@
             justify-content: space-between;
             align-items: center;
         }
+        /* كلاسات مخصصة لنافذة العرض (View Profile) */
+        .data-label { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-bottom: 2px; display: block; }
+        .data-value { font-size: 0.95rem; color: var(--navy); font-weight: 600; }
+        .view-section { background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #f1f5f9; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .view-section h6 { color: var(--navy); border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; }
+        
+        /* شريط التنقل السفلي */
+        .bottom-nav { background: #ffffff; box-shadow: 0 -4px 20px rgba(0,0,0,0.05); border-radius: 25px 25px 0 0; padding: 10px 5px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; z-index: 1030; }
+        .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.75rem; font-weight: 700; transition: all 0.3s ease; border-radius: 15px; padding: 8px 0; cursor: pointer; }
+        .nav-item.active { color: var(--navy); background-color: #f1f5f9; transform: translateY(-3px); }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--accent); transform: scale(1.1); }
     </style>
 </head>
 <body class="bg-light pb-5 mb-5">
@@ -71,9 +83,14 @@
     <div id="alertBox"></div>
 
     <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold text-navy mb-0"><i class="fas fa-users-cog me-2"></i> دليل الموظفين والمحامين</h5>
             <button class="btn btn-primary-custom shadow-sm fw-bold" onclick="openStaffModal()"><i class="fas fa-user-plus me-1"></i> إضافة موظف</button>
+        </div>
+
+        <div class="mb-4 position-relative">
+            <input type="text" class="form-control form-control-lg border-0 shadow-sm" id="search_staff" placeholder="ابحث باسم الموظف، التخصص، أو رقم الهاتف..." onkeyup="filterStaffList()" style="border-radius: 12px; padding-right: 45px;">
+            <i class="fas fa-search text-muted position-absolute" style="top: 50%; right: 15px; transform: translateY(-50%);"></i>
         </div>
 
         <div class="row g-3" id="staff-container">
@@ -83,11 +100,126 @@
         </div>
     </div>
 
+    <div class="modal fade" id="viewStaffModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-address-card me-2 text-accent"></i> الملف الشخصي والوظيفي</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 bg-light">
+                    
+                    <div class="text-center bg-white pt-4 pb-3 border-bottom">
+                        <div id="v_avatar_container" class="mb-3"></div>
+                        <h4 class="fw-bold text-navy mb-1" id="v_full_name">--</h4>
+                        <span class="badge bg-light text-muted border shadow-sm" id="v_role_badge">--</span>
+                        <div class="mt-2 d-flex justify-content-center gap-2" id="v_status_badges"></div>
+                    </div>
+
+                    <ul class="nav nav-pills bg-white p-2 border-bottom overflow-auto flex-nowrap" id="viewStaffTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active px-3" data-bs-toggle="pill" data-bs-target="#v-tab-personal" type="button">الشخصية</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#v-tab-professional" type="button">المهنية والوظيفية</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#v-tab-financial" type="button">الرواتب والمالية</button></li>
+                        <li class="nav-item"><button class="nav-link px-3" data-bs-toggle="pill" data-bs-target="#v-tab-documents" type="button">الوثائق المحفوظة</button></li>
+                    </ul>
+
+                    <div class="tab-content p-3">
+                        
+                        <div class="tab-pane fade show active" id="v-tab-personal">
+                            <div class="view-section">
+                                <h6><i class="fas fa-user me-2 text-primary"></i> البيانات الشخصية</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><span class="data-label">رقم الهاتف</span><span class="data-value" id="v_phone" dir="ltr">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">الرقم الوطني</span><span class="data-value" id="v_national_id">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">الجنس</span><span class="data-value" id="v_gender">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">تاريخ الميلاد</span><span class="data-value" id="v_dob">--</span></div>
+                                    <div class="col-12"><span class="data-label">العنوان</span><span class="data-value" id="v_address">--</span></div>
+                                </div>
+                            </div>
+                            <div class="view-section border-danger border-opacity-25">
+                                <h6 class="text-danger"><i class="fas fa-ambulance me-2"></i> جهة اتصال الطوارئ</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4"><span class="data-label">الاسم</span><span class="data-value" id="v_em_name">--</span></div>
+                                    <div class="col-md-4"><span class="data-label">رقم الهاتف</span><span class="data-value" id="v_em_phone" dir="ltr">--</span></div>
+                                    <div class="col-md-4"><span class="data-label">صلة القرابة</span><span class="data-value" id="v_em_relation">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="v-tab-professional">
+                            <div class="view-section">
+                                <h6><i class="fas fa-briefcase me-2 text-warning"></i> المعلومات الوظيفية</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><span class="data-label">المسمى / التخصص</span><span class="data-value" id="v_specialization">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">تاريخ الانضمام</span><span class="data-value" id="v_join_date">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">سنوات الخبرة</span><span class="data-value" id="v_experience">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">حساب التيليغرام</span><span class="data-value" id="v_telegram_id" dir="ltr">--</span></div>
+                                </div>
+                            </div>
+                            <div class="view-section border-info border-opacity-25">
+                                <h6><i class="fas fa-id-badge me-2 text-info"></i> السجل النقابي (للمحامين)</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><span class="data-label">رقم النقابة</span><span class="data-value" id="v_syndicate_num">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">تاريخ انتهاء الهوية النقابية</span><span class="data-value" id="v_syndicate_expiry">--</span></div>
+                                </div>
+                            </div>
+                            <div class="view-section">
+                                <h6><i class="fas fa-shield-alt me-2 text-success"></i> الصلاحيات في النظام</h6>
+                                <div class="d-flex flex-wrap gap-2 mt-2" id="v_permissions">--</div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="v-tab-financial">
+                            <div class="view-section border-success border-opacity-25 text-center">
+                                <h6><i class="fas fa-money-check-alt me-2 text-success"></i> الراتب والبدلات</h6>
+                                <div class="row g-3 mt-1">
+                                    <div class="col-4">
+                                        <span class="data-label">الراتب الأساسي</span>
+                                        <h4 class="fw-bold text-success mb-0"><span id="v_salary">0</span> <small class="fs-6 text-muted">د.أ</small></h4>
+                                    </div>
+                                    <div class="col-4 border-start border-end">
+                                        <span class="data-label">بدل تنقلات</span>
+                                        <h5 class="fw-bold text-navy mb-0"><span id="v_allowance">0</span> <small class="fs-6 text-muted">د.أ</small></h5>
+                                    </div>
+                                    <div class="col-4">
+                                        <span class="data-label">نسبة العمولة</span>
+                                        <h5 class="fw-bold text-danger mb-0"><span id="v_commission">0</span>%</h5>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="view-section">
+                                <h6><i class="fas fa-university me-2 text-navy"></i> الحساب البنكي</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6"><span class="data-label">اسم البنك</span><span class="data-value" id="v_bank_name">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">رقم الآيبان (IBAN)</span><span class="data-value text-break" id="v_bank_iban" dir="ltr">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="v-tab-documents">
+                            <div class="view-section">
+                                <h6><i class="fas fa-folder-open me-2 text-primary"></i> أرشيف الموظف</h6>
+                                <div id="v_documents_list">
+                                    <div class="text-center p-3 text-muted small border rounded bg-light">جاري التحميل...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-white">
+                    <button type="button" class="btn btn-outline-navy fw-bold px-4" data-bs-dismiss="modal">إغلاق</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4 shadow-sm" id="btn_open_edit" onclick=""><i class="fas fa-edit me-1"></i> تعديل البيانات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="staffModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title fw-bold" id="staffModalLabel"><i class="fas fa-id-card me-2 text-accent"></i> ملف الموظف</h5>
+                    <h5 class="modal-title fw-bold" id="staffModalLabel"><i class="fas fa-edit me-2 text-warning"></i> نموذج التعديل والإضافة</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0 bg-light">
@@ -205,6 +337,24 @@
                     <button class="btn btn-info text-white w-100 fw-bold shadow-sm" id="btn_process_id" onclick="processIdAI()"><i class="fas fa-magic me-1"></i> تحليل وملء الحقول</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav d-flex justify-content-around">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> الرئيسية
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-user-tie"></i> الموظفين
         </div>
     </div>
 

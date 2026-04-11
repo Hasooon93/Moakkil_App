@@ -1,4 +1,4 @@
-// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة والنهائية - تم حقن الـ ERP والـ AI)
+// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة والنهائية - تم حقن الـ ERP والـ AI ومعالجة التواريخ الفارغة)
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -42,12 +42,12 @@ function closeModal(id) {
 }
 
 function applyJordanTimeHackLocal(dateString) {
-    if (!dateString) return dateString;
+    if (!dateString || dateString.trim() === '') return null;
     try {
         let d = new Date(dateString);
         d.setHours(d.getHours() + 3);
         return d.toISOString();
-    } catch(e) { return dateString; }
+    } catch(e) { return null; }
 }
 
 // =================================================================
@@ -317,6 +317,7 @@ function openEditModal() {
     openModal('editCaseModal');
 }
 
+// 🔥 دالة الحفظ الجراحية (التي تمنع إرسال تواريخ فارغة كـ "")
 async function updateCaseDetails(event) {
     event.preventDefault();
     const btn = document.getElementById('btn_save_case_edit');
@@ -326,41 +327,74 @@ async function updateCaseDetails(event) {
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
     const parseLinesToArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(s => s) : [];
 
-    const parentIdValue = document.getElementById('edit_parent_case_id') ? document.getElementById('edit_parent_case_id').value : '';
-    const validParentId = parentIdValue === '' ? null : parentIdValue;
+    // دوال مساعدة لضمان إرسال null بدلاً من نص فارغ (إصلاح الـ Error 500)
+    const getStr = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+    const getNull = (id) => { const el = document.getElementById(id); return (el && el.value.trim() !== '') ? el.value : null; };
+    const getNumZero = (id) => { const el = document.getElementById(id); return (el && el.value.trim() !== '') ? Number(el.value) : 0; };
+    const getNumNull = (id) => { const el = document.getElementById(id); return (el && el.value.trim() !== '') ? Number(el.value) : null; };
 
     const data = {
-        case_internal_id: document.getElementById('edit_internal_id').value, status: document.getElementById('edit_status').value,
-        access_pin: document.getElementById('edit_access_pin').value, case_type: document.getElementById('edit_type').value, 
-        priority_level: document.getElementById('edit_priority_level').value, confidentiality_level: document.getElementById('edit_confidentiality_level').value,
-        current_stage: document.getElementById('edit_current_stage').value, assigned_lawyer_id: selectedLawyers.length > 0 ? selectedLawyers : null,
-        current_court: document.getElementById('edit_court').value, court_room: document.getElementById('edit_court_chamber').value, 
-        court_case_number: document.getElementById('edit_court_case_number').value, case_year: document.getElementById('edit_case_year').value ? Number(document.getElementById('edit_case_year').value) : null,
-        litigation_degree: document.getElementById('edit_litigation_degree').value, current_judge: document.getElementById('edit_judge').value,
-        court_clerk: document.getElementById('edit_court_clerk') ? document.getElementById('edit_court_clerk').value : '', parent_case_id: validParentId,
-        deadline_date: document.getElementById('edit_deadline_date').value || null, statute_of_limitations_date: document.getElementById('edit_statute_of_limitations_date') ? document.getElementById('edit_statute_of_limitations_date').value : null,
-        judgment_date: document.getElementById('edit_judgment_date') ? document.getElementById('edit_judgment_date').value : null, police_station_ref: document.getElementById('edit_police_station_ref') ? document.getElementById('edit_police_station_ref').value : '',
-        prosecution_ref: document.getElementById('edit_prosecution_ref') ? document.getElementById('edit_prosecution_ref').value : '', opponent_name: document.getElementById('edit_opponent').value,
-        opponent_lawyer: document.getElementById('edit_opponent_lawyer').value, power_of_attorney_number: document.getElementById('edit_poa_number').value,
-        poa_details: document.getElementById('edit_poa_details') ? document.getElementById('edit_poa_details').value : '', co_plaintiffs: document.getElementById('edit_co_plaintiffs') ? parseToArray(document.getElementById('edit_co_plaintiffs').value) : [],
-        co_defendants: document.getElementById('edit_co_defendants') ? parseToArray(document.getElementById('edit_co_defendants').value) : [], experts_and_witnesses: document.getElementById('edit_experts_and_witnesses') ? parseToArray(document.getElementById('edit_experts_and_witnesses').value) : [],
-        lawsuit_facts: document.getElementById('edit_lawsuit_facts').value, legal_basis: document.getElementById('edit_legal_basis').value,
-        final_requests: parseLinesToArray(document.getElementById('edit_final_requests').value), case_outcome: document.getElementById('edit_case_outcome') ? document.getElementById('edit_case_outcome').value : '',
-        success_probability: document.getElementById('edit_success_probability') && document.getElementById('edit_success_probability').value ? Number(document.getElementById('edit_success_probability').value) : null,
-        closure_reason: document.getElementById('edit_closure_reason') ? document.getElementById('edit_closure_reason').value : '', physical_archive_location: document.getElementById('edit_physical_archive_location') ? document.getElementById('edit_physical_archive_location').value : '',
-        claim_amount: document.getElementById('edit_claim').value ? Number(document.getElementById('edit_claim').value) : null,
-        total_agreed_fees: document.getElementById('edit_fees').value ? Number(document.getElementById('edit_fees').value) : 0,
-        court_fees_paid: document.getElementById('edit_court_fees_paid') ? Number(document.getElementById('edit_court_fees_paid').value) : 0,
-        court_deposits: document.getElementById('edit_court_deposits') ? Number(document.getElementById('edit_court_deposits').value) : 0,
+        case_internal_id: getStr('edit_internal_id'), 
+        status: getStr('edit_status'),
+        access_pin: getStr('edit_access_pin'), 
+        case_type: getStr('edit_type'), 
+        priority_level: getStr('edit_priority_level') || 'عادي', 
+        confidentiality_level: getStr('edit_confidentiality_level') || 'عادي',
+        current_stage: getStr('edit_current_stage'), 
+        assigned_lawyer_id: selectedLawyers.length > 0 ? selectedLawyers : null,
+        current_court: getStr('edit_court'), 
+        court_room: getStr('edit_court_chamber'), 
+        court_case_number: getStr('edit_court_case_number'), 
+        case_year: getNumNull('edit_case_year'),
+        litigation_degree: getNull('edit_litigation_degree'), 
+        current_judge: getStr('edit_judge'),
+        court_clerk: getStr('edit_court_clerk'), 
+        parent_case_id: getNull('edit_parent_case_id'),
         
-        // ERP Injection Here
-        execution_file_number: document.getElementById('edit_execution_file_number') ? document.getElementById('edit_execution_file_number').value : null,
-        case_tags: document.getElementById('edit_case_tags') ? parseToArray(document.getElementById('edit_case_tags').value) : []
+        // التواريخ المحمية
+        deadline_date: getNull('edit_deadline_date'), 
+        statute_of_limitations_date: getNull('edit_statute_of_limitations_date'),
+        judgment_date: getNull('edit_judgment_date'), 
+        
+        police_station_ref: getStr('edit_police_station_ref'),
+        prosecution_ref: getStr('edit_prosecution_ref'), 
+        opponent_name: getStr('edit_opponent'),
+        opponent_lawyer: getStr('edit_opponent_lawyer'), 
+        power_of_attorney_number: getStr('edit_poa_number'),
+        poa_details: getStr('edit_poa_details'), 
+        co_plaintiffs: parseToArray(getStr('edit_co_plaintiffs')),
+        co_defendants: parseToArray(getStr('edit_co_defendants')), 
+        experts_and_witnesses: parseToArray(getStr('edit_experts_and_witnesses')),
+        lawsuit_facts: getStr('edit_lawsuit_facts'), 
+        legal_basis: getStr('edit_legal_basis'),
+        final_requests: parseLinesToArray(getStr('edit_final_requests')), 
+        case_outcome: getStr('edit_case_outcome'),
+        success_probability: getNumNull('edit_success_probability'),
+        closure_reason: getStr('edit_closure_reason'), 
+        physical_archive_location: getStr('edit_physical_archive_location'),
+        claim_amount: getNumNull('edit_claim'),
+        total_agreed_fees: getNumZero('edit_fees'),
+        court_fees_paid: getNumZero('edit_court_fees_paid'),
+        court_deposits: getNumZero('edit_court_deposits'),
+        
+        execution_file_number: getNull('edit_execution_file_number'),
+        case_tags: parseToArray(getStr('edit_case_tags'))
     };
 
-    const res = await API.updateCase(currentCaseId, data);
-    if(res && !res.error) { closeModal('editCaseModal'); showAlert(res.offline ? 'مخزن محلياً' : 'تم التحديث بنجاح', res.offline ? 'warning' : 'success'); await loadCaseFullDetails(); }
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> حفظ التعديلات';
+    try {
+        const res = await API.updateCase(currentCaseId, data);
+        if(res && !res.error) { 
+            closeModal('editCaseModal'); 
+            showAlert(res.offline ? 'مخزن محلياً' : 'تم التحديث بنجاح', res.offline ? 'warning' : 'success'); 
+            await loadCaseFullDetails(); 
+        } else {
+            throw new Error(res?.error || 'خطأ في التحديث');
+        }
+    } catch (error) {
+        showAlert('فشل التحديث: ' + error.message, 'error');
+    } finally {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التعديلات الشاملة';
+    }
 }
 
 // =================================================================
@@ -428,20 +462,30 @@ async function saveUpdate(event) {
         try {
             const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
             finalAttachmentUrl = driveRes.url;
-        } catch(e) { showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> إضافة التحديث'; return; }
+        } catch(e) { showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; return; }
     } else {
         closeModal('updateModal'); showAlert('تمت إضافة الواقعة', 'success');
     }
 
     const extractedStr = document.getElementById('upd_extracted_json') ? document.getElementById('upd_extracted_json').value : '';
     const extractedData = extractedStr ? JSON.parse(extractedStr) : {};
-    const rawHearing = document.getElementById('upd_hearing_date').value || null;
-    const rawNextHearing = document.getElementById('upd_next_hearing').value || null;
+    
+    // 🔥 حماية تواريخ الإجراء
+    const hearingVal = document.getElementById('upd_hearing_date') ? document.getElementById('upd_hearing_date').value : '';
+    const nextHearingVal = document.getElementById('upd_next_hearing') ? document.getElementById('upd_next_hearing').value : '';
+    
+    const validHearing = hearingVal.trim() !== '' ? applyJordanTimeHackLocal(hearingVal) : null;
+    const validNextHearing = nextHearingVal.trim() !== '' ? applyJordanTimeHackLocal(nextHearingVal) : null;
 
     const data = {
-        case_id: currentCaseId, update_title: document.getElementById('upd_title').value, update_details: details,
-        hearing_date: rawHearing ? applyJordanTimeHackLocal(rawHearing) : null, next_hearing_date: rawNextHearing ? applyJordanTimeHackLocal(rawNextHearing) : null,
-        is_visible_to_client: document.getElementById('upd_visible') ? document.getElementById('upd_visible').checked : true, ai_extracted_entities: extractedData, attachment_url: finalAttachmentUrl
+        case_id: currentCaseId, 
+        update_title: document.getElementById('upd_title').value, 
+        update_details: details,
+        hearing_date: validHearing, 
+        next_hearing_date: validNextHearing,
+        is_visible_to_client: document.getElementById('upd_visible') ? document.getElementById('upd_visible').checked : true, 
+        ai_extracted_entities: extractedData, 
+        attachment_url: finalAttachmentUrl
     };
     
     try {
@@ -458,7 +502,7 @@ async function saveUpdate(event) {
             if (hasFile) { closeModal('updateModal'); showAlert(res.offline ? 'حفظ محلي' : 'تمت الإضافة', res.offline ? 'warning' : 'success'); }
             document.getElementById('updateForm').reset(); await loadCaseFullDetails(); 
         } else throw new Error(res?.error || 'حدث خطأ');
-    } catch(err) { showAlert(err.message, 'error'); } finally { if (hasFile) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> إضافة التحديث'; } }
+    } catch(err) { showAlert(err.message, 'error'); } finally { if (hasFile) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; } }
 }
 
 function renderTimeline(updates) {
@@ -507,7 +551,6 @@ function calculateFinances(installments, expenses) {
     const netEl = document.getElementById('sum-net');
     if(netEl) { netEl.innerText = clientRemaining.toLocaleString() + ' د.أ'; netEl.className = clientRemaining > 0 ? 'text-danger fw-bold fs-5' : 'text-success fw-bold fs-5'; }
 
-    // الحقن الجراحي (شريط التقدم المالي)
     const progressEl = document.getElementById('fin_progress');
     if(progressEl) {
         let progressPct = agreedFees > 0 ? Math.round((totalPaid / agreedFees) * 100) : 0;
@@ -548,7 +591,6 @@ function renderFiles(files) {
         const iconHtml = (isImage && f.drive_file_id) ? `<i class="fas fa-image fs-1 text-primary mb-2"></i>` : `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
         const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
         
-        // الحقن الجراحي (زر الذكاء الاصطناعي للملف)
         const aiButton = `<button class="btn btn-sm ${f.is_analyzed ? 'btn-info text-white' : 'btn-outline-secondary'} mt-2 w-100 fw-bold shadow-sm" onclick="viewAiSummary('${f.id}')"><i class="fas fa-robot"></i> ${f.is_analyzed ? 'عرض التلخيص' : 'تحليل ذكي'}</button>`;
         
         return `<div class="col-6"><div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative"><button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteRecord('file', '${f.id}')"><i class="fas fa-trash"></i></button><span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>${iconHtml} <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>${expiryBadge}<div class="d-flex flex-column gap-1 mt-2"><a href="${escapeHTML(f.drive_file_id || f.file_url)}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>${aiButton}</div></div></div>`;
@@ -557,16 +599,23 @@ function renderFiles(files) {
 
 async function savePayment(event) { 
     event.preventDefault(); 
+    // 🔥 حماية تاريخ الدفعة
     const rawDate = document.getElementById('pay_due_date').value;
-    const data = { case_id: currentCaseId, amount: Number(document.getElementById('pay_amount').value), due_date: applyJordanTimeHackLocal(rawDate), status: document.getElementById('pay_status').value }; 
+    const validDate = rawDate.trim() !== '' ? applyJordanTimeHackLocal(rawDate) : new Date().toISOString();
+    
+    const data = { case_id: currentCaseId, amount: Number(document.getElementById('pay_amount').value), due_date: validDate, status: document.getElementById('pay_status').value }; 
     closeModal('paymentModal'); document.getElementById('paymentForm').reset(); showAlert('تم تسجيل الدفعة', 'success'); 
     try { const res = await API.addInstallment(data); if(res && !res.error) await loadCaseFullDetails(); else throw new Error(res?.error || 'خطأ'); } catch(e) { showAlert(e.message, 'error'); }
 }
 
 async function saveExpense(event) { 
     event.preventDefault(); 
+    // 🔥 حماية تاريخ المصروف
     const rawDate = document.getElementById('exp_date').value;
-    const data = { case_id: currentCaseId, amount: Number(document.getElementById('exp_amount').value), description: document.getElementById('exp_desc').value, expense_date: applyJordanTimeHackLocal(rawDate), receipt_url: document.getElementById('exp_receipt_url') ? document.getElementById('exp_receipt_url').value : null }; 
+    const validDate = rawDate.trim() !== '' ? applyJordanTimeHackLocal(rawDate) : new Date().toISOString();
+    const receipt = document.getElementById('exp_receipt_url') ? document.getElementById('exp_receipt_url').value : '';
+    
+    const data = { case_id: currentCaseId, amount: Number(document.getElementById('exp_amount').value), description: document.getElementById('exp_desc').value, expense_date: validDate, receipt_url: receipt.trim() !== '' ? receipt : null }; 
     closeModal('expenseModal'); document.getElementById('expenseForm').reset(); showAlert('تم تسجيل المصروف', 'success'); 
     try { const res = await API.addExpense(data); if(res && !res.error) await loadCaseFullDetails(); else throw new Error(res?.error || 'خطأ'); } catch(e) { showAlert(e.message, 'error'); }
 }
@@ -576,7 +625,11 @@ async function saveFile(event) {
     const fileInput = document.getElementById('file_input');
     const titleInput = document.getElementById('file_title_input').value;
     const catInput = document.getElementById('file_category_input').value;
+    
+    // 🔥 حماية تاريخ انتهاء الملف
     const expiryInput = document.getElementById('file_expiry_date').value;
+    const validExpiry = expiryInput.trim() !== '' ? expiryInput : null;
+
     const btn = document.getElementById('btn_upload');
     if (!fileInput.files.length) return;
     if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات السحابية بلا إنترنت.', 'warning'); return; }
@@ -584,8 +637,6 @@ async function saveFile(event) {
     try {
         const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
         if(driveRes && driveRes.url) {
-            
-            // الحقن الجراحي (تفعيل قراءة الـ OCR آلياً)
             let aiSummaryText = null;
             let isAnalyzed = false;
             if (fileInput.files[0].type.startsWith('image/')) {
@@ -608,7 +659,7 @@ async function saveFile(event) {
                 case_id: currentCaseId, file_name: titleInput || fileInput.files[0].name, 
                 file_type: fileInput.files[0].type, file_category: catInput, 
                 file_url: driveRes.url, drive_file_id: driveRes.id || driveRes.url, 
-                is_template: false, expiry_date: expiryInput || null,
+                is_template: false, expiry_date: validExpiry,
                 ai_summary: aiSummaryText, is_analyzed: isAnalyzed 
             };
             
@@ -618,7 +669,6 @@ async function saveFile(event) {
     } catch (err) { showAlert("فشل: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> رفع للأرشيف'; }
 }
 
-// دالة عرض الملخص الذكي المضافة جراحياً
 window.viewAiSummary = function(fileId) {
     const file = window.firmFiles ? window.firmFiles.find(f => f.id === fileId) : caseFiles.find(f => f.id === fileId);
     if (!file) return;
