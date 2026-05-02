@@ -1,6 +1,7 @@
-// sw.js - Service Worker V5.0 (Bulletproof Offline Cache & Redirect Fix)
+// sw.js - Service Worker V3.1 (Safari & iOS Fixes)
 
-const CACHE_NAME = 'moakkil-cache-v5.0';
+const CACHE_NAME = 'moakkil-cache-v3.1';
+// استخدام الروابط النظيفة بدون .html لتجنب أخطاء التوجيه في كلاودفلير وسفاري
 const STATIC_ASSETS = [
     '/',
     '/login',
@@ -16,7 +17,7 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('[Service Worker] جاري تخزين ملفات النظام...');
+            console.log('[Service Worker] جاري تخزين الملفات...');
             return cache.addAll(STATIC_ASSETS).catch((err) => console.warn('Cache warning:', err));
         })
     );
@@ -27,7 +28,9 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) return caches.delete(cacheName);
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
                 })
             );
         }).then(() => self.clients.claim())
@@ -35,42 +38,53 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // 1. تجاهل إضافات المتصفح
+    if (!event.request.url.startsWith('http')) return;
+
     const requestUrl = new URL(event.request.url);
 
-    // 🛡️ تجاهل الروابط الخارجية، وطلبات الـ API لعدم تكييشها
-    if (requestUrl.origin !== location.origin || requestUrl.pathname.startsWith('/api/')) {
-        return; 
-    }
+    // 2. تجاهل طلبات الـ API والمزامنة
+    if (requestUrl.pathname.startsWith('/api/')) return; 
 
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             const fetchPromise = fetch(event.request).then((networkResponse) => {
-                // 🛡️ الحل الجذري لمشكلة الـ Redirect Error: تمرير الرد الموجه بدون تكييش
+                // إصلاح مشكلة Safari: عدم تخزين أي رد يحتوي على توجيه (Redirected)
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' || networkResponse.redirected) {
                     return networkResponse;
                 }
+
                 const responseToCache = networkResponse.clone();
                 caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseToCache);
+                    if (event.request.url.startsWith('http')) {
+                        cache.put(event.request, responseToCache);
+                    }
                 });
+
                 return networkResponse;
-            }).catch(() => null);
+            }).catch(() => {
+                return null; 
+            });
 
             return cachedResponse || fetchPromise;
         })
     );
 });
 
+// إشعارات الدفع (Push Notifications)
 self.addEventListener('push', (event) => {
     if (!event.data) return;
     try {
         const payload = event.data.json();
         const options = {
-            body: payload.message || payload.body || 'تحديث جديد',
-            icon: '/icons/icon-192.png',
-            dir: 'rtl', lang: 'ar',
-            vibrate: [200, 100, 200],
-            data: { url: payload.url || '/app' }
+            body: payload.message || payload.body || 'يوجد تحديث جديد.',
+            icon: '/assets/img/icon-192x192.png',
+            badge: '/assets/img/badge.png',
+            dir: 'rtl',
+            lang: 'ar',
+            vibrate: [200, 100, 200, 100, 200],
+            requireInteraction: true,
+            data: { url: payload.action_url || payload.url || '/app' }
         };
         event.waitUntil(self.registration.showNotification(payload.title || 'موكّل', options));
     } catch (e) {
@@ -80,5 +94,17 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(clients.openWindow(event.notification.data.url || '/app'));
+    const urlToOpen = event.notification.data?.url || '/app';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if (client.url.includes(window.location.origin) && 'focus' in client) {
+                    client.navigate(urlToOpen);
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) return clients.openWindow(urlToOpen);
+        })
+    );
 });

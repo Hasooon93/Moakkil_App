@@ -1,5 +1,5 @@
-// js/library.js - محرك المكتبة القانونية الذكية (Cloudflare R2 Secured)
-// التحديثات: دمج API.getSecureUrl لتأمين الملفات السحابية، دعم المزامنة المتأخرة، الحماية من ثغرات 401.
+// js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
+// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي، ودعم حقول الـ ERP.
 
 let currentUser = null;
 let allTemplates = [];
@@ -44,7 +44,7 @@ window.onload = async () => {
 async function loadTemplates() {
     try {
         // المحاولة الأولى: جلب النماذج عبر استعلام مباشر وسليم
-        let files = await API.getFiles('is_template=eq.true'); 
+        let files = await API.getFiles('is_template=eq.true'); // استخدام دوال API.js
         
         // خوارزمية العلاج الذاتي: إذا فشل الاستعلام، نجلب كل الملفات ونفلتر محلياً
         if (files && files.error) {
@@ -113,16 +113,8 @@ function renderTemplates() {
         const delBtn = canDelete(t.added_by) ? 
             `<button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm" onclick="deleteRecord('${t.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
 
-        // استخراج الرابط الخام من أي حقل متوفر في قاعدة البيانات
-        const rawUrl = t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#';
-        
-        // 🔒 التحديث الأمني: تغليف الرابط بدالة getSecureUrl لضمان مرور الـ JWT Token لـ R2
-        let secureLink = rawUrl;
-        if (rawUrl !== '#' && typeof API !== 'undefined' && typeof API.getSecureUrl === 'function') {
-            secureLink = API.getSecureUrl(rawUrl);
-        }
-        
-        const safeLink = escapeHTML(secureLink);
+        // استخراج الرابط من أي حقل متوفر في قاعدة البيانات
+        const fileLink = escapeHTML(t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#');
 
         return `
         <div class="col-12 col-md-6">
@@ -136,8 +128,8 @@ function renderTemplates() {
                     </div>
                 </div>
                 <div class="mt-3 text-end">
-                    <a href="${safeLink}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
-                        <i class="fas fa-eye me-1"></i> عرض وتنزيل
+                    <a href="${fileLink}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
+                        <i class="fas fa-download me-1"></i> تحميل أو عرض
                     </a>
                 </div>
             </div>
@@ -168,25 +160,25 @@ async function uploadTemplate(event) {
     const fileExt = file.name.split('.').pop().toLowerCase();
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي R2...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي...';
 
     try {
         let finalFileUrl = "";
         let finalFileId = null;
 
-        // الرفع المباشر إلى Cloudflare R2
+        // محاولة الرفع لجوجل درايف عبر دالة API الموحدة
         try {
-            // نمرر أسماء ثابتة للمجلدات الافتراضية داخل R2 لتنظيم المكتبة
-            const cloudRes = await API.uploadToCloudR2(file, "المكتبة_القانونية", "نماذج_عامة");
-            if (cloudRes && cloudRes.success) {
-                finalFileUrl = cloudRes.file_url;
-                finalFileId = cloudRes.r2_key; // مفتاح الملف داخل الـ Bucket
+            const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
+            if (driveRes && driveRes.url) {
+                finalFileUrl = driveRes.url;
+                finalFileId = driveRes.id || null;
             } else {
-                throw new Error("فشل إرجاع الرابط السحابي");
+                throw new Error("لم يتم إرجاع رابط من جوجل درايف");
             }
-        } catch (cloudError) {
-            console.warn("تعذر الرفع للتخزين السحابي R2:", cloudError);
-            throw new Error("فشل الرفع السحابي (R2). تأكد من إعدادات الربط في السيرفر.");
+        } catch (gasError) {
+            console.warn("تعذر الرفع لجوجل درايف، سيتم وضع مسار وهمي لغايات العرض:", gasError);
+            finalFileUrl = "https://drive.google.com/file/d/placeholder";
+            showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ)', 'info');
         }
         
         // الحقن الجراحي: استخدام الحقول القياسية لجدول mo_files بدقة
@@ -223,7 +215,7 @@ async function uploadTemplate(event) {
         if (res && !res.error) {
             closeModal('uploadModal');
             document.getElementById('uploadForm').reset();
-            showAlert('تم حفظ النموذج في المكتبة السحابية بنجاح', 'success');
+            showAlert('تم حفظ النموذج في المكتبة بنجاح', 'success');
             await loadTemplates();
         } else {
             throw new Error(res.error || "خطأ أثناء تسجيل الملف في قاعدة البيانات");

@@ -1,5 +1,5 @@
 // js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المكتملة 100%)
-// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، معالجة الـ Null Dates والـ UUIDs، وإسكات أخطاء السوبر أدمن بالكامل.
+// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، إصلاح VCard، معالجة الـ Null Dates والـ UUIDs، والـ ERP Injection (Tags, Audit Time Machine).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -74,13 +74,6 @@ async function requestPushPermission() {
 window.onload = async () => {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
     if (!localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || !currentUser) { window.location.href = 'login.html'; return; }
-
-    // 🔥 الحماية الأولى: التوجيه الفوري للسوبر أدمن قبل تحميل أي بيانات
-    if (currentUser.role === 'super_admin' || currentUser.role === 'superadmin' || currentUser.id === 'super_admin_id') {
-        window.location.replace('register.html');
-        return; // إيقاف التنفيذ فوراً
-    }
-
     setupUserInfo(); applyRoleBasedUI(); loadFirmSettings(); 
     await loadAllData(); await loadNotifications(); startSmartBackgroundSync();
     if ('Notification' in window && Notification.permission === 'default') setTimeout(() => requestPushPermission(), 3000);
@@ -124,11 +117,7 @@ window.manualSync = async () => {
     if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i>'; }
 };
 
-// 🔥 الحماية الثانية: منع الـ Timer من العمل للسوبر أدمن
-function startSmartBackgroundSync() { 
-    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'superadmin' || currentUser.id === 'super_admin_id')) return;
-    backgroundSyncTimer = setInterval(async () => { try { await loadNotifications(true); } catch(e) {} }, 15000); 
-}
+function startSmartBackgroundSync() { backgroundSyncTimer = setInterval(async () => { try { await loadNotifications(true); } catch(e) {} }, 15000); }
 
 async function loadFirmSettings() {
     const localSettings = JSON.parse(localStorage.getItem('firm_settings'));
@@ -633,9 +622,6 @@ function populateSelects() {
 }
 
 async function loadNotifications(silent = false) {
-    // 🔥 الحماية الثالثة: التأكد التام قبل إرسال الطلب للسيرفر
-    if (currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'superadmin' || currentUser.id === 'super_admin_id')) return;
-    
     try {
         const res = await API.getNotifications(); if (!res || res.error) return;
         globalData.notifications = Array.isArray(res) ? res : [];
