@@ -325,6 +325,26 @@ const API = {
         return this.uploadToCloudR2(file, caseInternalId, "غير_محدد");
     },
 
+    // 🔥 دالة الحماية الجديدة: تغليف الروابط بالـ Token ورابط السيرفر الصحيح للوصول لملفات R2 المحمية
+    getSecureUrl: (url) => {
+        if (!url) return '#';
+        // إذا كان الرابط هو رابطنا المحمي في السيرفر
+        if (url.startsWith('/api/files/download')) {
+            const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+            // تأمين جلب الرابط الأساسي للسيرفر لتجنب خطأ 404
+            let baseUrl = '';
+            if (typeof CONFIG !== 'undefined' && CONFIG.API_URL) {
+                baseUrl = CONFIG.API_URL;
+            } else if (window.API_BASE_URL) {
+                baseUrl = window.API_BASE_URL;
+            }
+            // إزالة رمز ( / ) من نهاية الرابط إن وجد لمنع التكرار
+            baseUrl = baseUrl.replace(/\/$/, '');
+            return `${baseUrl}${url}&token=${token}`;
+        }
+        return url; // للملفات القديمة المخزنة على Google Drive
+    },
+
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
     getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
     
