@@ -1,10 +1,10 @@
-// sw.js - Service Worker V4.0 (Cloudflare Analytics Fix & Offline Cache)
+// sw.js - Service Worker V5.0 (Bulletproof Offline Cache & Redirect Fix)
 
-const CACHE_NAME = 'moakkil-cache-v4.0';
+const CACHE_NAME = 'moakkil-cache-v5.0';
 const STATIC_ASSETS = [
     '/',
-    '/login.html',
-    '/app.html',
+    '/login',
+    '/app',
     '/css/style.css',
     '/js/config.js',
     '/js/api.js',
@@ -16,6 +16,7 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
+            console.log('[Service Worker] جاري تخزين ملفات النظام...');
             return cache.addAll(STATIC_ASSETS).catch((err) => console.warn('Cache warning:', err));
         })
     );
@@ -36,7 +37,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
-    // 🛡️ التحديث الجوهري: تجاهل تام لأي رابط خارجي (يحل خطأ 408 لـ Cloudflare Insights) وتجاهل الـ API
+    // 🛡️ تجاهل الروابط الخارجية، وطلبات الـ API لعدم تكييشها
     if (requestUrl.origin !== location.origin || requestUrl.pathname.startsWith('/api/')) {
         return; 
     }
@@ -44,7 +45,8 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             const fetchPromise = fetch(event.request).then((networkResponse) => {
-                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                // 🛡️ الحل الجذري لمشكلة الـ Redirect Error: تمرير الرد الموجه بدون تكييش
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' || networkResponse.redirected) {
                     return networkResponse;
                 }
                 const responseToCache = networkResponse.clone();
@@ -68,7 +70,7 @@ self.addEventListener('push', (event) => {
             icon: '/icons/icon-192.png',
             dir: 'rtl', lang: 'ar',
             vibrate: [200, 100, 200],
-            data: { url: payload.url || '/app.html' }
+            data: { url: payload.url || '/app' }
         };
         event.waitUntil(self.registration.showNotification(payload.title || 'موكّل', options));
     } catch (e) {
@@ -78,5 +80,5 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(clients.openWindow(event.notification.data.url || '/app.html'));
+    event.waitUntil(clients.openWindow(event.notification.data.url || '/app'));
 });

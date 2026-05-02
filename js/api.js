@@ -1,5 +1,5 @@
-// js/api.js - المحرك الموحد المحدث V8.0 (Enterprise R2 Core)
-// الدعم الكامل: JWT، العزل (RLS)، الذكاء الاصطناعي الشامل، الرفع الآمن (Base64 JSON)، والحذف المادي.
+// js/api.js - المحرك الموحد المحدث V11.0 (Enterprise R2 Core & Base64 JSON Upload)
+// الدعم الكامل: JWT، العزل (RLS)، الذكاء الاصطناعي الشامل، الرفع الآمن المضمون، والحذف المادي.
 
 const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
 
@@ -59,7 +59,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
         if (response.status === 401 && !isPublic) {
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
-            window.location.replace('login.html');
+            window.location.replace('/login');
             return null;
         }
 
@@ -98,7 +98,7 @@ const API = {
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
     deletePOA: (id) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE'),
 
-    // ⚖️ القضايا والإجراءات (Legal Core)
+    // ⚖️ القضايا والإجراءات
     getCases: () => fetchAPI(getCurrentUser().firm_id ? `/api/cases?firm_id=eq.${getCurrentUser().firm_id}` : '/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
@@ -110,7 +110,7 @@ const API = {
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    // 🧑‍💼 الموارد البشرية (HR)
+    // 🧑‍💼 الموارد البشرية
     getStaff: () => fetchAPI(getCurrentUser().firm_id ? `/api/users?firm_id=eq.${getCurrentUser().firm_id}` : '/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
@@ -122,7 +122,7 @@ const API = {
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
-    // 💰 المالية (Financial Engine)
+    // 💰 المالية
     getInstallments: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/installments?${param}` : `/api/installments?case_id=eq.${param}`) : '/api/installments'),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
     deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
@@ -130,7 +130,7 @@ const API = {
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
 
     // =================================================================
-    // 🧠 محركات الذكاء الاصطناعي (AI Core)
+    // 🧠 محركات الذكاء الاصطناعي (AI Core & Semantic Search)
     // =================================================================
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
@@ -150,10 +150,7 @@ const API = {
             
             let extracted = data.extracted_json || data;
             if (typeof extracted === 'string') {
-                try {
-                    const cleanString = extracted.replace(/```json/g, '').replace(/```/g, '').trim();
-                    extracted = JSON.parse(cleanString);
-                } catch (e) { extracted = {}; }
+                try { extracted = JSON.parse(extracted.replace(/```json/g, '').replace(/```/g, '').trim()); } catch (e) { extracted = {}; }
             }
             return extracted;
         } catch (error) { return { error: error.message }; }
@@ -179,10 +176,9 @@ const API = {
     },
 
     // =================================================================
-    // ☁️ محرك التخزين السحابي وحل المشاكل الجذرية للرفع والحذف (R2 Cloud)
+    // ☁️ محرك التخزين السحابي (R2 Cloud) والروابط الآمنة
     // =================================================================
     
-    // 1. الدالة المانعة لانهيار المتصفح (تأمين الروابط)
     getSecureUrl: (fileKey) => {
         if (!fileKey || typeof fileKey !== 'string' || fileKey === '#' || fileKey.startsWith('blob:') || fileKey.startsWith('data:')) {
             return fileKey;
@@ -202,22 +198,28 @@ const API = {
         }
     },
 
-    // 2. الرفع المباشر والآمن إلى Cloudflare R2 بـ (JSON Base64) يحل خطأ 400 و 500
+    // 🛡️ الحل الجذري لخطأ 400: استخدام JSON Base64 بدلاً من FormData لضمان استقرار Cloudflare
     uploadToCloudR2: async (file, folderName, subFolder) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async () => {
                 try {
+                    // استخراج النص المشفر للملف
                     const base64Data = reader.result.split(',')[1];
                     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
                     
-                    // 🛡️ الحقنة الذكية الشاملة: تضمين أسماء المتغيرات القديمة والجديدة لترضي الباك إند مهما كانت برمجته
+                    // بناء حزمة JSON صارمة تحتوي على كل الاحتمالات التي قد يتطلبها الباك إند
                     const payload = {
-                        fileName: file.name, file_name: file.name,
-                        mimeType: file.type, file_type: file.type,
-                        fileData: base64Data, file_data: base64Data,
-                        caseNumber: folderName || 'عام', folder: folderName || 'عام',
-                        driveFolderId: subFolder || 'غير_محدد', subfolder: subFolder || 'غير_محدد'
+                        file_name: file.name,
+                        fileName: file.name,
+                        file_type: file.type,
+                        mimeType: file.type,
+                        file_data: base64Data,
+                        fileData: base64Data,
+                        folder: folderName || 'عام',
+                        caseNumber: folderName || 'عام',
+                        subfolder: subFolder || 'غير_محدد',
+                        driveFolderId: subFolder || 'غير_محدد'
                     };
 
                     const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
@@ -225,12 +227,20 @@ const API = {
 
                     const res = await fetch(`${cleanBase}/api/files/upload`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        headers: { 
+                            'Content-Type': 'application/json', // تحديد النوع كـ JSON
+                            'Authorization': `Bearer ${token}` 
+                        },
                         body: JSON.stringify(payload)
                     });
 
-                    if (!res.ok) throw new Error(`Cloudflare Upload Error: ${res.status}`);
-                    resolve(await res.json());
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        throw new Error(`Cloudflare Upload Error: ${res.status} - ${errorText}`);
+                    }
+                    
+                    const data = await res.json();
+                    resolve(data);
 
                 } catch (e) {
                     console.error("Upload R2 Error:", e);
@@ -238,11 +248,11 @@ const API = {
                 }
             };
             reader.onerror = () => resolve({ error: "فشل قراءة الملف محلياً" });
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(file); // قراءة الملف כـ Base64
         });
     },
 
-    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي للـ Orphan Files)
+    // الحذف المادي الفعلي من R2
     deleteFromCloudR2: async (fileKey) => {
         if (!fileKey || typeof fileKey !== 'string' || fileKey === '#') return;
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
@@ -250,22 +260,22 @@ const API = {
             let cleanKey = fileKey;
             if (fileKey.startsWith('http')) {
                 const urlObj = new URL(fileKey);
-                cleanKey = urlObj.searchParams.get('file_key') || urlObj.pathname.substring(1);
+                cleanKey = urlObj.searchParams.get('file_key') || urlObj.pathname.split('/').pop();
             }
 
             const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
             const cleanBase = baseUrl.replace(/\/$/, '');
 
-            // نرسل المفتاح بكافة الصيغ المحتملة التي قد يطلبها الباك إند
+            // إرسال طلب الحذف بصيغة JSON مقروءة
             await fetch(`${cleanBase}/api/files/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ file_key: cleanKey, fileUrl: cleanKey, url: cleanKey })
-            });
+                body: JSON.stringify({ file_key: cleanKey, fileId: cleanKey, url: fileKey })
+            }).catch(e=>{});
+
         } catch (e) { console.warn('R2 Physical Deletion warning:', e); }
     },
 
-    // 4. دوال إدارة الملفات (قراءة -> إعدام مادي -> حذف من قاعدة البيانات)
     getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
     
     addFileRecord: (data) => {
@@ -275,7 +285,6 @@ const API = {
         return fetchAPI('/api/files', 'POST', payload);
     },
 
-    // مسار الحذف المزدوج: الإعدام المادي أولاً ثم المسح من الجدول
     deleteFile: async (id) => {
         try {
             const fileRes = await fetchAPI(`/api/files?id=eq.${id}`);
@@ -307,7 +316,6 @@ const API = {
         } catch(e) { return { error: e.message }; }
     },
 
-    // 🌐 بوابة الموكل العامة
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
     getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
     verifyReceipt: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-receipt?id=${id}` : '/api/public/verify-receipt', 'GET', null, true),
