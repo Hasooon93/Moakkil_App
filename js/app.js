@@ -74,6 +74,13 @@ async function requestPushPermission() {
 window.onload = async () => {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
     if (!localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || !currentUser) { window.location.href = 'login.html'; return; }
+
+    // 🔥 التعديل الجراحي: توجيه الإدارة العليا ومنعهم من استدعاء دوال المكاتب (حل خطأ 403)
+    if (currentUser.role === 'super_admin' || currentUser.role === 'superadmin' || currentUser.id === 'super_admin_id') {
+        window.location.replace('register.html');
+        return; // إيقاف التنفيذ فوراً
+    }
+
     setupUserInfo(); applyRoleBasedUI(); loadFirmSettings(); 
     await loadAllData(); await loadNotifications(); startSmartBackgroundSync();
     if ('Notification' in window && Notification.permission === 'default') setTimeout(() => requestPushPermission(), 3000);
