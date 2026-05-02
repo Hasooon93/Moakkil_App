@@ -1,5 +1,5 @@
-// js/api.js - المحرك الموحد المحدث V11.0 (Enterprise R2 Core & Base64 JSON Upload)
-// الدعم الكامل: JWT، العزل (RLS)، الذكاء الاصطناعي الشامل، الرفع الآمن المضمون، والحذف المادي.
+// js/api.js - المحرك الموحد المحدث V12.0 (Enterprise R2 Core & Pure JSON Base64 Upload)
+// الدعم الكامل: JWT، العزل التام (RLS)، الذكاء الاصطناعي الشامل، الرفع الآمن المضمون (JSON)، والحذف المادي.
 
 const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
 
@@ -130,7 +130,7 @@ const API = {
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
 
     // =================================================================
-    // 🧠 محركات الذكاء الاصطناعي (AI Core & Semantic Search)
+    // 🧠 محركات الذكاء الاصطناعي (AI Core)
     // =================================================================
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
@@ -198,20 +198,20 @@ const API = {
         }
     },
 
-    // 🛡️ الحل الجذري لخطأ 400: استخدام JSON Base64 بدلاً من FormData لضمان استقرار Cloudflare
+    // 🛡️ الحل الجذري والنهائي للرفع: استخدام Pure JSON Object لتوافق 100% مع الباك إند
     uploadToCloudR2: async (file, folderName, subFolder) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async () => {
                 try {
-                    // استخراج النص المشفر للملف
+                    // استخراج الـ Base64 الصافي بدون ترويسة البيانات (data:image/png;base64, ...)
                     const base64Data = reader.result.split(',')[1];
                     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
                     
-                    // بناء حزمة JSON صارمة تحتوي على كل الاحتمالات التي قد يتطلبها الباك إند
+                    // بناء حزمة JSON نقية تتوافق مع Header (application/json)
                     const payload = {
                         file_name: file.name,
-                        fileName: file.name,
+                        fileName: file.name, // دعم التسمية القديمة
                         file_type: file.type,
                         mimeType: file.type,
                         file_data: base64Data,
@@ -235,12 +235,11 @@ const API = {
                     });
 
                     if (!res.ok) {
-                        const errorText = await res.text();
-                        throw new Error(`Cloudflare Upload Error: ${res.status} - ${errorText}`);
+                        const errText = await res.text();
+                        throw new Error(`Upload Error ${res.status}: ${errText}`);
                     }
                     
-                    const data = await res.json();
-                    resolve(data);
+                    resolve(await res.json());
 
                 } catch (e) {
                     console.error("Upload R2 Error:", e);
@@ -252,7 +251,7 @@ const API = {
         });
     },
 
-    // الحذف المادي الفعلي من R2
+    // الحذف المادي الفعلي
     deleteFromCloudR2: async (fileKey) => {
         if (!fileKey || typeof fileKey !== 'string' || fileKey === '#') return;
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
@@ -266,7 +265,6 @@ const API = {
             const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
             const cleanBase = baseUrl.replace(/\/$/, '');
 
-            // إرسال طلب الحذف بصيغة JSON مقروءة
             await fetch(`${cleanBase}/api/files/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
