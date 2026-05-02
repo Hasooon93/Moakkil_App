@@ -1,5 +1,5 @@
-// js/api.js - المحرك الموحد المحدث V4.0 (Enterprise Edition)
-// الدعم الكامل: JWT، سجل النشاطات المفلتر، البصمة، المزامنة السحابية (Offline Mode)، الرفع المباشر لـ R2 و Google Drive.
+// js/api.js - المحرك الموحد المحدث V4.1 (Enterprise Edition)
+// الدعم الكامل: JWT، سجل النشاطات المفلتر، البصمة، المزامنة السحابية (Offline Mode)، الرفع المباشر السريع لـ R2 بـ FormData.
 
 // =================================================================
 // 🔄 نظام المزامنة الذكي (Offline Queue System)
@@ -13,7 +13,7 @@ function saveToOfflineQueue(endpoint, method, body) {
     console.warn(`[Offline Mode] تم حفظ الطلب للمزامنة لاحقاً: ${endpoint}`);
     
     if(window.showToast) {
-        window.showToast('أنت غير متصل بالإنترنت. تم حفظ العملية وستتم المزامنة تلقائياً عند عودة الاتصال.', 'warning');
+        window.showToast('أنت غير متصل بالإنترنت. تم حفظ العملية وستتم المزامنة تلقائياً.', 'warning');
     }
 }
 
@@ -45,7 +45,7 @@ async function processOfflineQueue() {
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
     if (remainingQueue.length === 0) {
         console.log('[Sync] تمت المزامنة بنجاح.');
-        if(window.showToast) window.showToast('تمت مزامنة جميع البيانات مع السيرفر بنجاح!', 'success');
+        if(window.showToast) window.showToast('تمت مزامنة جميع البيانات بنجاح!', 'success');
     }
 }
 
@@ -72,7 +72,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
             saveToOfflineQueue(endpoint, method, body);
             return { success: true, offline: true, message: "تم الحفظ محلياً لحين عودة الإنترنت" };
         } else {
-            return { error: 'أنت غير متصل بالإنترنت، ولا يمكن جلب أحدث البيانات حالياً.' };
+            return { error: 'أنت غير متصل بالإنترنت حالياً.' };
         }
     }
 
@@ -90,7 +90,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
         const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
         
         if (response.status === 401 && !isPublic) {
-            console.warn("⚠️ تم رفض الجلسة. الجلسة الأحادية قيد التفعيل، جاري تسجيل الخروج...");
+            console.warn("⚠️ جلسة غير صالحة. جاري تسجيل الخروج...");
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
             window.location.href = 'login.html';
@@ -109,12 +109,10 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
 
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
-        
         if (error.message === 'Failed to fetch' && ['POST', 'PATCH', 'DELETE'].includes(method)) {
             saveToOfflineQueue(endpoint, method, body);
-            return { success: true, offline: true, message: "تم الحفظ محلياً بسبب انقطاع الاتصال المفاجئ" };
+            return { success: true, offline: true, message: "تم الحفظ محلياً" };
         }
-        
         return { error: error.message }; 
     }
 }
@@ -125,12 +123,10 @@ const getCurrentUser = () => JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 
 // 📚 مكتبة الموجهات (API Endpoints Library)
 // =================================================================
 const API = {
-    // إعدادات المكتب والاشتراكات
     getFirmSettings: () => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`),
     updateFirmSettings: (data) => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`, 'PATCH', data),
     getSubscriptions: () => fetchAPI('/api/subscriptions'),
 
-    // إدارة الموكلين والوكالات (CRM)
     getClients: () => fetchAPI(getCurrentUser().firm_id ? `/api/clients?firm_id=eq.${getCurrentUser().firm_id}` : '/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
@@ -139,13 +135,11 @@ const API = {
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
     deletePOA: (id) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE'),
 
-    // إدارة القضايا (Legal Core)
     getCases: () => fetchAPI(getCurrentUser().firm_id ? `/api/cases?firm_id=eq.${getCurrentUser().firm_id}` : '/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
     deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
     
-    // التحديثات والجلسات
     getUpdates: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/updates?${param}` : `/api/updates?case_id=eq.${param}`) : '/api/updates'),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
     deleteUpdate: (id) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE'),
@@ -155,13 +149,11 @@ const API = {
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
     deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
 
-    // الموارد البشرية
     getStaff: () => fetchAPI(getCurrentUser().firm_id ? `/api/users?firm_id=eq.${getCurrentUser().firm_id}` : '/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
     deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
     
-    // المواعيد والأجندة
     getAppointments: () => fetchAPI(getCurrentUser().firm_id ? `/api/appointments?firm_id=eq.${getCurrentUser().firm_id}` : '/api/appointments'),
     addAppointment: async (data) => {
         if (data.appt_date) data.appt_date = applyJordanTimeHack(data.appt_date);
@@ -170,7 +162,6 @@ const API = {
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
-    // الإدارة المالية
     getInstallments: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/installments?${param}` : `/api/installments?case_id=eq.${param}`) : '/api/installments'),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
     deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
@@ -179,14 +170,13 @@ const API = {
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
     deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
 
-    // الذكاء الاصطناعي (AI Core)
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
     
     extractLegalData: async (text) => {
         try {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-            const baseUrl = window.API_BASE_URL || CONFIG.API_URL;
+            const baseUrl = window.API_BASE_URL || CONFIG.API_URL || 'https://curly-pond-9975.hassan-alsakka.workers.dev';
             const res = await fetch(`${baseUrl}/api/ai/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -202,10 +192,7 @@ const API = {
                 catch (e) { extracted = {}; }
             }
             return extracted;
-        } catch (error) {
-            console.error('AI Extraction Error:', error);
-            return { error: error.message };
-        }
+        } catch (error) { return { error: error.message }; }
     },
 
     readOCR: (imageBase64) => fetchAPI('/api/ai/ocr', 'POST', { image_base_64: imageBase64 }),
@@ -213,7 +200,6 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    // الإشعارات والأمان
     getNotifications: () => fetchAPI(getCurrentUser().id ? `/api/notifications?user_id=eq.${getCurrentUser().id}&order=created_at.desc` : '/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
@@ -233,13 +219,14 @@ const API = {
     
     getHistory: (entityId = null) => fetchAPI(entityId ? `/api/history?entity_id=eq.${entityId}` : '/api/history'),
 
-    // إدارة الملفات والرفع (تم إصلاح خطأ الـ R2 Upload 400 باستخدام FormData)
     getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
-    
+
+    // 🚀 تحديث جذري: الرفع المباشر والآمن السريع عبر FormData لحل مشكلة الـ 500
     uploadToCloudR2: async (file, title, category, expiryDate = null) => {
         if (!navigator.onLine) throw new Error("لا يمكن رفع الملفات في وضع عدم الاتصال.");
         
+        // استخدام FormData يمنع استهلاك الذاكرة كـ Base64 ويرسل الملف كـ Stream
         const formData = new FormData();
         formData.append('file', file);
         if (title) formData.append('title', title);
@@ -248,7 +235,8 @@ const API = {
 
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         const headers = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`; // لا تضع Content-Type مع FormData
+        // ⚠️ مهم جداً: لا تقم بتحديد Content-Type هنا! المتصفح سيضع multipart/form-data مع الـ boundary تلقائياً
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
         try {
             const response = await fetch(`${CONFIG.API_URL}/api/files/upload`, {
@@ -257,7 +245,7 @@ const API = {
                 body: formData
             });
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'فشل الرفع السحابي (R2 Error)');
+            if (!response.ok) throw new Error(data.error || 'فشل الرفع السحابي');
             return data;
         } catch (error) {
             console.error('Cloudflare R2 Upload Error:', error);
@@ -265,14 +253,6 @@ const API = {
         }
     },
 
-    addFileRecord: (data) => {
-        const currentUser = getCurrentUser();
-        const firmId = currentUser.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
-        const payload = { ...data, added_by: currentUser.id || null, firm_id: firmId || null };
-        return fetchAPI('/api/files', 'POST', payload);
-    },
-
-    // بوابة الموكل والتحقق (Public Access)
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),
     getPublicPortalData: (token) => fetchAPI(`/api/public/client?token=${token}`, 'GET', null, true),
     verifyReceipt: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-receipt?id=${id}` : '/api/public/verify-receipt', 'GET', null, true),
