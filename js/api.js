@@ -1,8 +1,11 @@
-// js/api.js - المحرك الموحد المحدث V6.0 (Enterprise Edition & Bulletproof R2)
-// الدعم الكامل: JWT، العزل التام (RLS)، الذكاء الاصطناعي، الحذف الفعلي من R2، منع الحلقات المفرغة 404.
+// js/api.js - المحرك الموحد المحدث V7.0 (Enterprise Edition & Base64 R2 Core)
+// الدعم الكامل: JWT، العزل التام (RLS)، الذكاء الاصطناعي الشامل، الرفع الآمن (Base64)، والحذف الفعلي المادي.
 
 const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
 
+// =================================================================
+// 🔄 نظام المزامنة الذكي (Offline Queue System)
+// =================================================================
 function saveToOfflineQueue(endpoint, method, body) {
     let queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
     queue.push({ endpoint, method, body, timestamp: Date.now() });
@@ -42,6 +45,10 @@ async function processOfflineQueue() {
 }
 
 window.addEventListener('online', processOfflineQueue);
+
+// =================================================================
+// 🚀 المحرك الرئيسي للاتصال (Main Fetch Wrapper)
+// =================================================================
 
 function applyJordanTimeHack(isoString) {
     if (!isoString) return isoString;
@@ -99,13 +106,16 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
 
 const getCurrentUser = () => JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user')) || {};
 
+// =================================================================
+// 📚 مكتبة الموجهات (API Endpoints Library & Multi-Tenancy RLS)
+// =================================================================
 const API = {
     // ⚙️ إعدادات المكتب
     getFirmSettings: () => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`),
     updateFirmSettings: (data) => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`, 'PATCH', data),
     getSubscriptions: () => fetchAPI('/api/subscriptions'),
 
-    // 👥 الموكلين
+    // 👥 الموكلين والوكالات
     getClients: () => fetchAPI(getCurrentUser().firm_id ? `/api/clients?firm_id=eq.${getCurrentUser().firm_id}` : '/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
@@ -114,7 +124,7 @@ const API = {
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
     deletePOA: (id) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE'),
 
-    // ⚖️ القضايا والإجراءات
+    // ⚖️ القضايا والإجراءات (Legal Core)
     getCases: () => fetchAPI(getCurrentUser().firm_id ? `/api/cases?firm_id=eq.${getCurrentUser().firm_id}` : '/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
@@ -143,7 +153,7 @@ const API = {
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
     deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
 
-    // 💰 النزاهة المالية
+    // 💰 النزاهة المالية (Financial Engine)
     getInstallments: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/installments?${param}` : `/api/installments?case_id=eq.${param}`) : '/api/installments'),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
     deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
@@ -157,6 +167,7 @@ const API = {
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
     
+    // محرك التفتيت الذكي للوائح وبناء الـ JSONB
     extractLegalData: async (text) => {
         try {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
@@ -170,6 +181,7 @@ const API = {
             if (!res.ok) throw new Error('فشل الاتصال بالذكاء الاصطناعي');
             const data = await res.json();
             
+            // معالجة الأخطاء المحتملة لتنسيق الماركداون الراجع من الذكاء الاصطناعي
             let extracted = data.extracted_json || data;
             if (typeof extracted === 'string') {
                 try {
@@ -185,7 +197,7 @@ const API = {
     smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    // 🔔 الإشعارات وسجل الرقابة
+    // 🔔 الإشعارات وسجل الرقابة (Audit Trail)
     getNotifications: () => fetchAPI(getCurrentUser().id ? `/api/notifications?user_id=eq.${getCurrentUser().id}&order=created_at.desc` : '/api/notifications'),
     markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
@@ -203,7 +215,7 @@ const API = {
     },
 
     // =================================================================
-    // ☁️ محرك التخزين السحابي وحل الحلقات المفرغة (Bulletproof R2 Cloud)
+    // ☁️ محرك التخزين السحابي وحل المشاكل الجذرية (Bulletproof R2 Cloud)
     // =================================================================
     
     // 1. الدالة المانعة لانهيار المتصفح والحلقة المفرغة
@@ -214,66 +226,92 @@ const API = {
         try {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || '';
             
-            // إذا كان الرابط كاملاً ومصدراً من نظامنا الخارجي أو درايف
+            // إذا كان الرابط كاملاً ومصدراً من نظامنا الخارجي
             if (fileKey.startsWith('http')) {
                 if (fileKey.includes('token=')) return fileKey;
                 const sep = fileKey.includes('?') ? '&' : '?';
                 return `${fileKey}${sep}token=${token}`;
             }
             
-            // إذا كان فقط (R2 Key) مثل: firm/client/case/file.pdf
+            // إذا كان فقط (R2 Key)
             const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
-            return `${baseUrl}/api/files/download?file_key=${encodeURIComponent(fileKey)}&token=${token}`;
+            const cleanBase = baseUrl.replace(/\/$/, '');
+            return `${cleanBase}/api/files/download?file_key=${encodeURIComponent(fileKey)}&token=${token}`;
         } catch (e) {
             return fileKey; 
         }
     },
 
-    // 2. الرفع المباشر إلى Cloudflare R2 (حل مشكلة الـ 404)
+    // 2. الرفع المباشر والآمن إلى Cloudflare R2 بـ (Base64) لمنع الخطأ 500
     uploadToCloudR2: async (file, folderName, subFolder) => {
-        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('folder', folderName || 'عام');
-        formData.append('subfolder', subFolder || 'غير_محدد');
-        
-        try {
-            // المسار الصحيح القياسي للرفع (بدل /api/r2/upload المفقود)
-            const res = await fetch(`${CONFIG.API_URL}/api/files/upload`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }, 
-                body: formData
-            });
-            if (!res.ok) throw new Error(`Cloudflare Upload Error: ${res.status}`);
-            return await res.json();
-        } catch (e) { 
-            console.error("Upload R2 Error:", e);
-            return { error: e.message }; 
-        }
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    // استخراج Base64 الصافي
+                    const base64Data = reader.result.split(',')[1];
+                    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+                    
+                    const payload = {
+                        file_name: file.name,
+                        mime_type: file.type,
+                        file_data: base64Data, // إرسال الملف كنص مشفر Base64
+                        folder: folderName || 'عام',
+                        subfolder: subFolder || 'غير_محدد'
+                    };
+
+                    const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+                    const cleanBase = baseUrl.replace(/\/$/, '');
+
+                    // استخدام application/json بدلاً من FormData لمنع الخطأ 500 في السيرفر
+                    const res = await fetch(`${cleanBase}/api/files/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!res.ok) throw new Error(`Cloudflare Upload Error: ${res.status}`);
+                    const data = await res.json();
+                    resolve(data);
+
+                } catch (e) {
+                    console.error("Upload R2 Error:", e);
+                    resolve({ error: e.message });
+                }
+            };
+            reader.onerror = () => resolve({ error: "فشل قراءة الملف محلياً" });
+            reader.readAsDataURL(file);
+        });
     },
 
-    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي للـ Orphans)
+    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي)
     deleteFromCloudR2: async (fileKey) => {
         if (!fileKey || typeof fileKey !== 'string' || fileKey === '#') return;
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         try {
-            // استخلاص مفتاح الملف النظيف من الرابط الكامل
+            // استخلاص مفتاح الملف النظيف من الرابط الكامل إن وجد
             let cleanKey = fileKey;
             if (fileKey.startsWith('http')) {
                 const urlObj = new URL(fileKey);
                 cleanKey = urlObj.searchParams.get('file_key') || urlObj.pathname.substring(1);
             }
 
-            // إرسال طلب الحذف للمسار الصحيح
-            await fetch(`${CONFIG.API_URL}/api/files/delete`, {
-                method: 'POST', // أو DELETE بناءً على إعدادات Worker
+            const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+            const cleanBase = baseUrl.replace(/\/$/, '');
+
+            // إرسال طلب الحذف الفعلي للباك إند
+            await fetch(`${cleanBase}/api/files/delete`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ file_key: cleanKey })
             });
         } catch (e) { console.warn('R2 Physical Deletion warning:', e); }
     },
 
-    // 4. دوال إدارة الملفات (قراءة -> حذف مادي -> حذف من قاعدة البيانات)
+    // 4. دوال إدارة الملفات (قراءة -> إعدام مادي -> حذف من قاعدة البيانات)
     getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
     
     addFileRecord: (data) => {
@@ -283,7 +321,7 @@ const API = {
         return fetchAPI('/api/files', 'POST', payload);
     },
 
-    // مسار الحذف المزدوج: الإعدام المادي أولاً ثم مسح السجل
+    // مسار الحذف المزدوج: الإعدام المادي أولاً ثم المسح من الجدول لتسجيل الرقابة
     deleteFile: async (id) => {
         try {
             const fileRes = await fetchAPI(`/api/files?id=eq.${id}`);
