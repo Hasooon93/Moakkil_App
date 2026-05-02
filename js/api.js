@@ -1,5 +1,5 @@
-// js/api.js - المحرك الموحد المحدث V5.0 (Enterprise Edition & Bulletproof R2)
-// الدعم الكامل: JWT، العزل التام للبيانات (RLS)، سجل النشاطات، الذكاء الاصطناعي، الحذف المادي من R2.
+// js/api.js - المحرك الموحد المحدث V6.0 (Enterprise Edition & Bulletproof R2)
+// الدعم الكامل: JWT، العزل التام (RLS)، الذكاء الاصطناعي، الحذف الفعلي من R2، منع الحلقات المفرغة.
 
 const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
 
@@ -203,26 +203,29 @@ const API = {
     },
 
     // =================================================================
-    // ☁️ محرك التخزين السحابي وحل الحلقات المفرغة (Bulletproof R2)
+    // ☁️ محرك التخزين السحابي (Bulletproof R2 Cloud)
     // =================================================================
     
     // 1. الدالة المانعة لانهيار المتصفح (Bulletproof Secure URL)
     getSecureUrl: (url) => {
-        // حماية قصوى: التأكد من أن الرابط نص صالح
+        // حماية قصوى: منع انهيار الـ DOM إذا كان الرابط تالفاً
         if (!url || typeof url !== 'string' || url === '#' || url.startsWith('blob:') || url.startsWith('data:')) {
             return url;
         }
         
         try {
+            // عدم العبث بالروابط الخارجية لتجنب تكسيرها
+            if (!url.includes(CONFIG.API_URL) && !url.includes('workers.dev')) {
+                return url;
+            }
+
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || '';
-            // منع إضافة التوكن مرتين
             if (url.includes('token=')) return url; 
             
             const separator = url.includes('?') ? '&' : '?';
             return `${url}${separator}token=${token}`;
         } catch (e) {
-            // في حال حدوث أي خطأ برمجي، أعد الرابط الأصلي ولا تكسر الواجهة
-            return url; 
+            return url; // في حال حدوث خطأ، أعد الرابط الأصلي ولا تكسر الواجهة
         }
     },
 
@@ -237,28 +240,39 @@ const API = {
         try {
             const res = await fetch(`${CONFIG.API_URL}/api/r2/upload`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }, 
+                headers: { 'Authorization': `Bearer ${token}` }, // لا تضع Content-Type ليقوم المتصفح بضبط الـ boundary
                 body: formData
             });
+            // إذا أعاد الباك إند 404 فهذا يعني أن مسار /api/r2/upload غير مبرمج في Worker بعد
+            if (!res.ok) throw new Error(`Cloudflare Error: ${res.status}`);
             return await res.json();
-        } catch (e) { return { error: e.message }; }
+        } catch (e) { 
+            console.error("Upload R2 Error:", e);
+            return { error: e.message }; 
+        }
     },
 
-    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي للـ Orphans)
+    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي)
     deleteFromCloudR2: async (fileKey) => {
         if (!fileKey || typeof fileKey !== 'string' || fileKey === '#') return;
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         try {
-            const payload = { file_key: fileKey, file_url: fileKey };
+            // استخلاص مسار الملف النظيف من الرابط الكامل (إذا تم تمرير رابط)
+            let cleanKey = fileKey;
+            if (fileKey.startsWith('http')) {
+                const urlObj = new URL(fileKey);
+                cleanKey = urlObj.pathname.substring(1); // إزالة הـ Slash الأولى
+            }
+
             await fetch(`${CONFIG.API_URL}/api/r2/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ file_key: cleanKey })
             });
         } catch (e) { console.warn('R2 Physical Deletion warning:', e); }
     },
 
-    // 4. دوال إدارة الملفات المقترنة بالحذف المادي
+    // 4. دوال إدارة الملفات (قراءة -> حذف مادي -> حذف من قاعدة البيانات)
     getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
     
     addFileRecord: (data) => {
@@ -268,7 +282,6 @@ const API = {
         return fetchAPI('/api/files', 'POST', payload);
     },
 
-    // القراءة ⬅️ الحذف المادي ⬅️ الحذف من الداتا بيز
     deleteFile: async (id) => {
         try {
             const fileRes = await fetchAPI(`/api/files?id=eq.${id}`);
