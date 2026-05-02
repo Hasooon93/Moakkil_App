@@ -1,5 +1,5 @@
 // js/api.js - المحرك الموحد المحدث V6.0 (Enterprise Edition & Bulletproof R2)
-// الدعم الكامل: JWT، العزل التام (RLS)، الذكاء الاصطناعي، الحذف الفعلي من R2، منع الحلقات المفرغة.
+// الدعم الكامل: JWT، العزل التام (RLS)، الذكاء الاصطناعي، الحذف الفعلي من R2، منع الحلقات المفرغة 404.
 
 const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
 
@@ -203,33 +203,33 @@ const API = {
     },
 
     // =================================================================
-    // ☁️ محرك التخزين السحابي (Bulletproof R2 Cloud)
+    // ☁️ محرك التخزين السحابي وحل الحلقات المفرغة (Bulletproof R2 Cloud)
     // =================================================================
     
-    // 1. الدالة المانعة لانهيار المتصفح (Bulletproof Secure URL)
-    getSecureUrl: (url) => {
-        // حماية قصوى: منع انهيار الـ DOM إذا كان الرابط تالفاً
-        if (!url || typeof url !== 'string' || url === '#' || url.startsWith('blob:') || url.startsWith('data:')) {
-            return url;
+    // 1. الدالة المانعة لانهيار المتصفح والحلقة المفرغة
+    getSecureUrl: (fileKey) => {
+        if (!fileKey || typeof fileKey !== 'string' || fileKey === '#' || fileKey.startsWith('blob:') || fileKey.startsWith('data:')) {
+            return fileKey;
         }
-        
         try {
-            // عدم العبث بالروابط الخارجية لتجنب تكسيرها
-            if (!url.includes(CONFIG.API_URL) && !url.includes('workers.dev')) {
-                return url;
-            }
-
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || '';
-            if (url.includes('token=')) return url; 
             
-            const separator = url.includes('?') ? '&' : '?';
-            return `${url}${separator}token=${token}`;
+            // إذا كان الرابط كاملاً ومصدراً من نظامنا الخارجي أو درايف
+            if (fileKey.startsWith('http')) {
+                if (fileKey.includes('token=')) return fileKey;
+                const sep = fileKey.includes('?') ? '&' : '?';
+                return `${fileKey}${sep}token=${token}`;
+            }
+            
+            // إذا كان فقط (R2 Key) مثل: firm/client/case/file.pdf
+            const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+            return `${baseUrl}/api/files/download?file_key=${encodeURIComponent(fileKey)}&token=${token}`;
         } catch (e) {
-            return url; // في حال حدوث خطأ، أعد الرابط الأصلي ولا تكسر الواجهة
+            return fileKey; 
         }
     },
 
-    // 2. الرفع المباشر إلى Cloudflare R2
+    // 2. الرفع المباشر إلى Cloudflare R2 (حل مشكلة الـ 404)
     uploadToCloudR2: async (file, folderName, subFolder) => {
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         const formData = new FormData();
@@ -238,13 +238,13 @@ const API = {
         formData.append('subfolder', subFolder || 'غير_محدد');
         
         try {
-            const res = await fetch(`${CONFIG.API_URL}/api/r2/upload`, {
+            // المسار الصحيح القياسي للرفع (بدل /api/r2/upload المفقود)
+            const res = await fetch(`${CONFIG.API_URL}/api/files/upload`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }, // لا تضع Content-Type ليقوم المتصفح بضبط الـ boundary
+                headers: { 'Authorization': `Bearer ${token}` }, 
                 body: formData
             });
-            // إذا أعاد الباك إند 404 فهذا يعني أن مسار /api/r2/upload غير مبرمج في Worker بعد
-            if (!res.ok) throw new Error(`Cloudflare Error: ${res.status}`);
+            if (!res.ok) throw new Error(`Cloudflare Upload Error: ${res.status}`);
             return await res.json();
         } catch (e) { 
             console.error("Upload R2 Error:", e);
@@ -252,20 +252,21 @@ const API = {
         }
     },
 
-    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي)
+    // 3. الحذف المادي من التخزين السحابي (الإعدام الرقمي للـ Orphans)
     deleteFromCloudR2: async (fileKey) => {
         if (!fileKey || typeof fileKey !== 'string' || fileKey === '#') return;
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         try {
-            // استخلاص مسار الملف النظيف من الرابط الكامل (إذا تم تمرير رابط)
+            // استخلاص مفتاح الملف النظيف من الرابط الكامل
             let cleanKey = fileKey;
             if (fileKey.startsWith('http')) {
                 const urlObj = new URL(fileKey);
-                cleanKey = urlObj.pathname.substring(1); // إزالة הـ Slash الأولى
+                cleanKey = urlObj.searchParams.get('file_key') || urlObj.pathname.substring(1);
             }
 
-            await fetch(`${CONFIG.API_URL}/api/r2/delete`, {
-                method: 'POST',
+            // إرسال طلب الحذف للمسار الصحيح
+            await fetch(`${CONFIG.API_URL}/api/files/delete`, {
+                method: 'POST', // أو DELETE بناءً على إعدادات Worker
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ file_key: cleanKey })
             });
@@ -282,6 +283,7 @@ const API = {
         return fetchAPI('/api/files', 'POST', payload);
     },
 
+    // مسار الحذف المزدوج: الإعدام المادي أولاً ثم مسح السجل
     deleteFile: async (id) => {
         try {
             const fileRes = await fetchAPI(`/api/files?id=eq.${id}`);
