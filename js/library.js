@@ -1,5 +1,5 @@
-// js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
-// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، دمج محرك Cloudflare R2 الجديد.
+// js/library.js - محرك المكتبة القانونية الذكية (Cloudflare R2 Secured)
+// التحديثات: دمج API.getSecureUrl لتأمين الملفات السحابية، دعم المزامنة المتأخرة، الحماية من ثغرات 401.
 
 let currentUser = null;
 let allTemplates = [];
@@ -113,8 +113,16 @@ function renderTemplates() {
         const delBtn = canDelete(t.added_by) ? 
             `<button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm" onclick="deleteRecord('${t.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
 
-        // استخراج الرابط من أي حقل متوفر في قاعدة البيانات
-        const fileLink = escapeHTML(t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#');
+        // استخراج الرابط الخام من أي حقل متوفر في قاعدة البيانات
+        const rawUrl = t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#';
+        
+        // 🔒 التحديث الأمني: تغليف الرابط بدالة getSecureUrl لضمان مرور الـ JWT Token لـ R2
+        let secureLink = rawUrl;
+        if (rawUrl !== '#' && typeof API !== 'undefined' && typeof API.getSecureUrl === 'function') {
+            secureLink = API.getSecureUrl(rawUrl);
+        }
+        
+        const safeLink = escapeHTML(secureLink);
 
         return `
         <div class="col-12 col-md-6">
@@ -128,8 +136,8 @@ function renderTemplates() {
                     </div>
                 </div>
                 <div class="mt-3 text-end">
-                    <a href="${fileLink}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
-                        <i class="fas fa-download me-1"></i> تحميل أو عرض
+                    <a href="${safeLink}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
+                        <i class="fas fa-eye me-1"></i> عرض وتنزيل
                     </a>
                 </div>
             </div>
@@ -166,7 +174,7 @@ async function uploadTemplate(event) {
         let finalFileUrl = "";
         let finalFileId = null;
 
-        // التحديث الجوهري: الرفع المباشر إلى Cloudflare R2
+        // الرفع المباشر إلى Cloudflare R2
         try {
             // نمرر أسماء ثابتة للمجلدات الافتراضية داخل R2 لتنظيم المكتبة
             const cloudRes = await API.uploadToCloudR2(file, "المكتبة_القانونية", "نماذج_عامة");
@@ -178,7 +186,7 @@ async function uploadTemplate(event) {
             }
         } catch (cloudError) {
             console.warn("تعذر الرفع للتخزين السحابي R2:", cloudError);
-            throw new Error("فشل الرفع السحابي (R2). تأكد من إعدادات الربط في لوحة تحكم Cloudflare.");
+            throw new Error("فشل الرفع السحابي (R2). تأكد من إعدادات الربط في السيرفر.");
         }
         
         // الحقن الجراحي: استخدام الحقول القياسية لجدول mo_files بدقة

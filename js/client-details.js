@@ -1,5 +1,5 @@
-// js/client-details.js - محرك صفحة الموكل الشاملة (النسخة المتوافقة 100% مع api.js)
-// التحديثات: عرض حالة البوابة وآخر زيارة لها (Last Seen)، دمج التخزين السحابي الجديد (Cloudflare R2).
+// js/client-details.js - محرك صفحة الموكل الشاملة (Cloudflare R2 Secured)
+// التحديثات: عرض حالة البوابة وآخر زيارة لها (Last Seen)، دمج التخزين السحابي الجديد (Cloudflare R2) وتأمين روابط الوثائق.
 
 let currentClientId = localStorage.getItem('current_client_id') || new URLSearchParams(window.location.search).get('id');
 let clientObj = null;
@@ -160,9 +160,13 @@ function renderFilesList() {
     }
     
     container.innerHTML = clientFiles.map(f => {
-        const isImage = f.file_extension && ['jpg','jpeg','png'].includes(f.file_extension);
+        const isImage = f.file_extension && ['jpg','jpeg','png'].includes(f.file_extension.toLowerCase());
         const iconHtml = isImage ? `<i class="fas fa-image fs-2 text-success mb-2"></i>` : `<i class="fas fa-file-pdf fs-2 text-danger mb-2"></i>`;
         const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
+        
+        // 🔒 التحديث الأمني: تغليف الرابط بدالة getSecureUrl لضمان مرور الـ JWT Token لـ R2
+        const rawUrl = f.file_url || f.drive_file_id || '#';
+        const secureUrl = rawUrl !== '#' && typeof API !== 'undefined' && typeof API.getSecureUrl === 'function' ? API.getSecureUrl(rawUrl) : rawUrl;
         
         return `
         <div class="col-6 mb-2">
@@ -173,7 +177,7 @@ function renderFilesList() {
                 <h6 class="small fw-bold text-truncate mt-1 mb-0 text-navy" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
                 ${expiryBadge}
                 <div class="mt-3">
-                    <a href="${escapeHTML(f.file_url || f.drive_file_id || '#')}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-eye me-1"></i> عرض</a>
+                    <a href="${escapeHTML(secureUrl)}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-eye me-1"></i> عرض</a>
                 </div>
             </div>
         </div>`;
