@@ -63,7 +63,11 @@ self.addEventListener('fetch', (event) => {
 
                 return networkResponse;
             }).catch(() => {
-                return null; 
+                // الحل الجراحي: إرجاع استجابة صالحة (Response Object) بدلاً من null لتجنب الانهيار
+                return new Response('Network error occurred or resource blocked.', {
+                    status: 408,
+                    headers: { 'Content-Type': 'text/plain' },
+                });
             });
 
             return cachedResponse || fetchPromise;
