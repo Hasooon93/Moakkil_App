@@ -95,7 +95,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
             console.warn("⚠️ تم رفض الجلسة. جاري تسجيل الخروج...");
             localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
-            window.location.href = 'login';
+            window.location.href = 'login.html';
             return null;
         }
 
@@ -261,29 +261,45 @@ const API = {
         const payload = { ...data, added_by: currentUser.id || null, firm_id: firmId || null };
         return fetchAPI('/api/files', 'POST', payload);
     },
-    getDriveUploadUrl: () => fetchAPI('/api/drive/generate-upload-url'),
 
-    uploadToDrive: async (file, caseInternalId, driveFolderId = null) => {
+    // =================================================================
+    // 🚀 تحديث محرك الرفع السحابي ليعمل مع Cloudflare R2
+    // =================================================================
+    
+    // دالة الرفع المباشر إلى مسار Worker R2
+    uploadToCloudR2: async (file, caseInternalId = "عام", clientName = "عام") => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async () => {
                 const base64Data = reader.result.split(',')[1];
-                const payload = { fileName: file.name, mimeType: file.type, fileData: base64Data, caseNumber: caseInternalId || "عام", driveFolderId: driveFolderId };
-                const attemptUpload = async (retriesLeft) => {
-                    try {
-                        const res = await fetch(CONFIG.GAS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), redirect: 'follow' });
-                        const result = await res.json();
-                        if(result?.success) resolve(result);
-                        else throw new Error(result.error || "فشل إرجاع الرابط من جوجل درايف");
-                    } catch (err) {
-                        if (retriesLeft > 0) setTimeout(() => attemptUpload(retriesLeft - 1), 2500); 
-                        else reject(new Error("تعذر الاتصال بخوادم جوجل السحابية: " + err.message));
-                    }
+                const payload = {
+                    file_name: file.name,
+                    file_type: file.type,
+                    file_data_base64: base64Data,
+                    case_internal_id: caseInternalId,
+                    client_name: clientName
                 };
-                attemptUpload(3);
+                try {
+                    const res = await fetchAPI('/api/files/upload', 'POST', payload);
+                    if (res && res.success) {
+                        resolve(res);
+                    } else {
+                        reject(new Error(res?.error || "فشل الرفع إلى التخزين السحابي"));
+                    }
+                } catch (err) {
+                    reject(err);
+                }
             };
+            reader.onerror = () => reject(new Error("فشل قراءة الملف محلياً"));
             reader.readAsDataURL(file);
         });
+    },
+
+    // الحفاظ على اسم الدالة القديمة (التوافقية الرجعية) لعدم انهيار أي واجهة
+    // حتى يتم تعديل جميع الواجهات لتقرأ من الدالة الجديدة.
+    uploadToDrive: async function(file, caseInternalId, driveFolderId = null) {
+        // توجيه الطلب فوراً إلى الدالة الجديدة (R2)
+        return this.uploadToCloudR2(file, caseInternalId, "غير_محدد");
     },
 
     publicLogin: (data) => fetchAPI('/api/public/client/login', 'POST', data, true),

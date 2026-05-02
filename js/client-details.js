@@ -1,5 +1,5 @@
 // js/client-details.js - محرك صفحة الموكل الشاملة (النسخة المتوافقة 100% مع api.js)
-// التحديثات: عرض حالة البوابة وآخر زيارة لها (Last Seen)، منع أخطاء الرفع السحابي، والمزامنة.
+// التحديثات: عرض حالة البوابة وآخر زيارة لها (Last Seen)، دمج التخزين السحابي الجديد (Cloudflare R2).
 
 let currentClientId = localStorage.getItem('current_client_id') || new URLSearchParams(window.location.search).get('id');
 let clientObj = null;
@@ -270,16 +270,19 @@ window.saveClientFile = async function(event) {
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة...';
     
     try {
-        const driveRes = await API.uploadToDrive(fileInput.files[0], `موكل-${clientObj.full_name}`, "Client_Docs");
-        if(driveRes && driveRes.url) {
+        const file = fileInput.files[0];
+        // التحديث الجوهري: توجيه الرفع المباشر إلى Cloudflare R2
+        const cloudRes = await API.uploadToCloudR2(file, "ملفات_شخصية", clientObj.full_name);
+        
+        if(cloudRes && cloudRes.success) {
             const payload = { 
                 client_id: currentClientId, 
-                file_name: titleInput || fileInput.files[0].name, 
-                file_type: fileInput.files[0].type, 
-                file_extension: fileInput.files[0].name.split('.').pop().toLowerCase(),
+                file_name: titleInput || file.name, 
+                file_type: file.type, 
+                file_extension: file.name.split('.').pop().toLowerCase(),
                 file_category: catInput, 
-                file_url: driveRes.url,
-                drive_file_id: driveRes.id || null, 
+                file_url: cloudRes.file_url,
+                drive_file_id: cloudRes.r2_key || null, 
                 is_template: false, 
                 expiry_date: expiryInput || null 
             };
@@ -287,11 +290,13 @@ window.saveClientFile = async function(event) {
             if(res && !res.error) { 
                 closeModal('fileModal'); 
                 document.getElementById('fileForm').reset(); 
-                showAlert('تم حفظ المستند', 'success'); 
+                showAlert('تم حفظ المستند في الأرشيف السحابي', 'success'); 
                 await loadClientData(); 
             } else {
-                throw new Error(res?.error || 'خطأ في الحفظ');
+                throw new Error(res?.error || 'خطأ في الحفظ في قاعدة البيانات');
             }
+        } else {
+            throw new Error("فشل إرجاع الرابط السحابي من R2");
         }
     } catch (err) { 
         showAlert("فشل الرفع: " + err.message, 'error'); 

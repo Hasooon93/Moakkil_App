@@ -1,4 +1,5 @@
 // js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة والنهائية - تم حقن الـ ERP والـ AI ومعالجة التواريخ الفارغة)
+// التحديثات: تم دمج الرفع السحابي عبر Cloudflare R2 بأمان وبناء مسارات ديناميكية لكل قضية وموكل.
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -460,9 +461,21 @@ async function saveUpdate(event) {
         if (!navigator.onLine) { showAlert('لا رفع بدون إنترنت.', 'warning'); return; }
         btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> رفع...';
         try {
-            const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
-            finalAttachmentUrl = driveRes.url;
-        } catch(e) { showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; return; }
+            // التحديث الجوهري: استبدال الرفع لـ Drive بالرفع لـ R2 
+            const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
+            const clientName = client ? client.full_name : "عام";
+            const cloudRes = await API.uploadToCloudR2(fileInput.files[0], caseObj.case_internal_id, clientName);
+            if (cloudRes && cloudRes.success) {
+                finalAttachmentUrl = cloudRes.file_url;
+            } else {
+                throw new Error("فشل إرجاع الرابط السحابي");
+            }
+        } catch(e) { 
+            showAlert('فشل رفع المرفق: ' + e.message, 'error'); 
+            btn.disabled = false; 
+            btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; 
+            return; 
+        }
     } else {
         closeModal('updateModal'); showAlert('تمت إضافة الواقعة', 'success');
     }
@@ -635,8 +648,12 @@ async function saveFile(event) {
     if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات السحابية بلا إنترنت.', 'warning'); return; }
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة وتحليل...';
     try {
-        const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
-        if(driveRes && driveRes.url) {
+        // التحديث الجوهري: استبدال الرفع لـ Drive بالرفع لـ R2
+        const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
+        const clientName = client ? client.full_name : "عام";
+        const cloudRes = await API.uploadToCloudR2(fileInput.files[0], caseObj.case_internal_id, clientName);
+        
+        if(cloudRes && cloudRes.success) {
             let aiSummaryText = null;
             let isAnalyzed = false;
             if (fileInput.files[0].type.startsWith('image/')) {
@@ -658,13 +675,15 @@ async function saveFile(event) {
             const payload = { 
                 case_id: currentCaseId, file_name: titleInput || fileInput.files[0].name, 
                 file_type: fileInput.files[0].type, file_category: catInput, 
-                file_url: driveRes.url, drive_file_id: driveRes.id || driveRes.url, 
+                file_url: cloudRes.file_url, drive_file_id: cloudRes.r2_key || cloudRes.file_url, 
                 is_template: false, expiry_date: validExpiry,
                 ai_summary: aiSummaryText, is_analyzed: isAnalyzed 
             };
             
             const res = await API.addFileRecord ? await API.addFileRecord(payload) : await API.post('/api/files', payload);
             if(res && !res.error) { closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ والتحليل', 'success'); await loadCaseFullDetails(); }
+        } else {
+            throw new Error("فشل إرجاع الرابط السحابي من R2");
         }
     } catch (err) { showAlert("فشل: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> رفع للأرشيف'; }
 }
@@ -802,14 +821,14 @@ window.openShareModal = function() {
 };
 
 window.copyShareLink = function() { navigator.clipboard.writeText(`مرحباً، رابط قضيتك:\n${currentShareLink}\nالرمز (PIN): ${document.getElementById('share_pin_input').value}`).then(() => showAlert('نسخ الرابط', 'success')); };
-window.sendViaWhatsApp = function() { window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`مرحباً، رابط قضيتك:\n${currentShareLink}\nالرمز (PIN): ${document.getElementById('share_pin_input').value}`)}`, '_blank'); };
+window.sendViaWhatsApp = function() { window.open(`[https://api.whatsapp.com/send?text=$](https://api.whatsapp.com/send?text=$){encodeURIComponent(`مرحباً، رابط قضيتك:\n${currentShareLink}\nالرمز (PIN): ${document.getElementById('share_pin_input').value}`)}`, '_blank'); };
 
 function sendWhatsAppReminder(amount, dueDate) {
     const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
     if (!client || !client.phone) { showAlert('لا يوجد هاتف مسجل.', 'warning'); return; }
     let phoneStr = String(client.phone); if (phoneStr.startsWith('0')) phoneStr = '962' + phoneStr.substring(1);
     const text = `تحية طيبة السيد/ة ${client.full_name}،\nتذكير بدفعة بقيمة *${amount} دينار*، بتاريخ (${dueDate}).\nإدارة المكتب.`;
-    window.open(`https://wa.me/${phoneStr}?text=${encodeURIComponent(text)}`, '_blank');
+    window.open(`[https://wa.me/$](https://wa.me/$){phoneStr}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
 function goToClientProfile() { if (caseObj && caseObj.client_id) { localStorage.setItem('current_client_id', caseObj.client_id); window.location.href = 'client-details.html'; } }

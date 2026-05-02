@@ -246,9 +246,9 @@
                 const user = JSON.parse(userStr);
                 const userRole = user.role || user.user_type;
                 if (userRole === 'super_admin' || userRole === 'superadmin' || user.is_setup_required) {
-                    window.location.replace('register');
+                    window.location.replace('register.html');
                 } else {
-                    window.location.replace('app');
+                    window.location.replace('app.html');
                 }
             }
 

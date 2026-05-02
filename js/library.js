@@ -1,5 +1,5 @@
 // js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
-// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي، ودعم حقول الـ ERP.
+// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، دمج محرك Cloudflare R2 الجديد.
 
 let currentUser = null;
 let allTemplates = [];
@@ -44,7 +44,7 @@ window.onload = async () => {
 async function loadTemplates() {
     try {
         // المحاولة الأولى: جلب النماذج عبر استعلام مباشر وسليم
-        let files = await API.getFiles('is_template=eq.true'); // استخدام دوال API.js
+        let files = await API.getFiles('is_template=eq.true'); 
         
         // خوارزمية العلاج الذاتي: إذا فشل الاستعلام، نجلب كل الملفات ونفلتر محلياً
         if (files && files.error) {
@@ -160,25 +160,25 @@ async function uploadTemplate(event) {
     const fileExt = file.name.split('.').pop().toLowerCase();
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي R2...';
 
     try {
         let finalFileUrl = "";
         let finalFileId = null;
 
-        // محاولة الرفع لجوجل درايف عبر دالة API الموحدة
+        // التحديث الجوهري: الرفع المباشر إلى Cloudflare R2
         try {
-            const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
-            if (driveRes && driveRes.url) {
-                finalFileUrl = driveRes.url;
-                finalFileId = driveRes.id || null;
+            // نمرر أسماء ثابتة للمجلدات الافتراضية داخل R2 لتنظيم المكتبة
+            const cloudRes = await API.uploadToCloudR2(file, "المكتبة_القانونية", "نماذج_عامة");
+            if (cloudRes && cloudRes.success) {
+                finalFileUrl = cloudRes.file_url;
+                finalFileId = cloudRes.r2_key; // مفتاح الملف داخل الـ Bucket
             } else {
-                throw new Error("لم يتم إرجاع رابط من جوجل درايف");
+                throw new Error("فشل إرجاع الرابط السحابي");
             }
-        } catch (gasError) {
-            console.warn("تعذر الرفع لجوجل درايف، سيتم وضع مسار وهمي لغايات العرض:", gasError);
-            finalFileUrl = "https://drive.google.com/file/d/placeholder";
-            showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ)', 'info');
+        } catch (cloudError) {
+            console.warn("تعذر الرفع للتخزين السحابي R2:", cloudError);
+            throw new Error("فشل الرفع السحابي (R2). تأكد من إعدادات الربط في لوحة تحكم Cloudflare.");
         }
         
         // الحقن الجراحي: استخدام الحقول القياسية لجدول mo_files بدقة
@@ -215,7 +215,7 @@ async function uploadTemplate(event) {
         if (res && !res.error) {
             closeModal('uploadModal');
             document.getElementById('uploadForm').reset();
-            showAlert('تم حفظ النموذج في المكتبة بنجاح', 'success');
+            showAlert('تم حفظ النموذج في المكتبة السحابية بنجاح', 'success');
             await loadTemplates();
         } else {
             throw new Error(res.error || "خطأ أثناء تسجيل الملف في قاعدة البيانات");

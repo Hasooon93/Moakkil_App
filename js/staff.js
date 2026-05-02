@@ -1,5 +1,5 @@
 // js/staff.js - محرك إدارة الموارد البشرية والموظفين (HR)
-// التحديثات: إضافة دالة العرض المقروء فقط (View Profile) وفصلها عن دالة التعديل (Edit Profile).
+// التحديثات: إضافة دالة العرض المقروء فقط (View Profile) وفصلها عن دالة التعديل (Edit Profile). دمج التخزين السحابي الجديد R2.
 
 let allStaff = [];
 let currentEditingStaff = null;
@@ -474,13 +474,14 @@ async function uploadStaffDoc() {
     
     try {
         const file = fileInput.files[0];
-        const driveRes = await API.uploadToDrive(file, "موظف-" + currentEditingStaff.full_name, "HR-Docs");
+        // التحديث الجوهري: استبدال Google Drive بـ Cloudflare R2
+        const cloudRes = await API.uploadToCloudR2(file, "ملفات_الموظفين", currentEditingStaff.full_name);
         
-        if (driveRes && driveRes.url) {
+        if (cloudRes && cloudRes.success) {
             let currentDocs = currentEditingStaff.staff_documents || [];
             currentDocs.push({
                 name: nameInput || file.name,
-                url: driveRes.url,
+                url: cloudRes.file_url,
                 date: new Date().toISOString()
             });
             
@@ -491,10 +492,12 @@ async function uploadStaffDoc() {
                 document.getElementById('doc_file').value = '';
                 document.getElementById('doc_name').value = '';
                 renderStaffDocs(currentDocs);
-                Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة', showConfirmButton: false, timer: 2000});
+                Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة بنجاح', showConfirmButton: false, timer: 2000});
             } else {
                 throw new Error(res?.error || 'خطأ في التحديث');
             }
+        } else {
+            throw new Error("فشل إرجاع الرابط السحابي من R2");
         }
     } catch (err) {
         Swal.fire('خطأ', 'فشل الرفع السحابي: ' + err.message, 'error');
