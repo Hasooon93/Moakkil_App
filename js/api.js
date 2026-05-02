@@ -232,10 +232,28 @@ const API = {
     checkConflict: (name) => fetchAPI(`/api/check-conflict?name=${encodeURIComponent(name)}`),
     getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
 
-    // 🔥 حل مشكلة الإشعارات: طلب إشعارات "هذا المستخدم فقط"
-    getNotifications: () => fetchAPI(getCurrentUser().id ? `/api/notifications?user_id=eq.${getCurrentUser().id}&order=created_at.desc` : '/api/notifications'),
-    markNotificationAsRead: (id) => fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true }),
-    subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
+    // 🔥 التعديل الجراحي لإسكات خطأ 403 (إيقاف استدعاء الإشعارات للسوبر أدمن)
+    getNotifications: async () => {
+        const user = getCurrentUser();
+        // إذا كان المستخدم هو السوبر أدمن، نقوم بإرجاع مصفوفة فارغة فوراً ولا نتصل بالسيرفر
+        if (!user.id || user.id === 'super_admin_id' || user.role === 'super_admin' || user.role === 'superadmin') {
+            return [];
+        }
+        return fetchAPI(`/api/notifications?user_id=eq.${user.id}&order=created_at.desc`);
+    },
+    
+    markNotificationAsRead: async (id) => {
+        const user = getCurrentUser();
+        if (!user.id || user.id === 'super_admin_id' || user.role === 'super_admin') return { success: true };
+        return fetchAPI(`/api/notifications?id=eq.${id}`, 'PATCH', { is_read: true });
+    },
+
+    subscribePush: async (data) => {
+        const user = getCurrentUser();
+        if (!user.id || user.id === 'super_admin_id' || user.role === 'super_admin') return { success: true };
+        return fetchAPI('/api/notifications/subscribe', 'POST', data);
+    },
+
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
     
     biometricLogin: async (data) => {
@@ -255,10 +273,15 @@ const API = {
     // 🧠 دالة ذكية للملفات تقبل فلاتر معقدة مثل: is_template=eq.true
     getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
     deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
+    
+    // 🔥 التعديل الجراحي لإصلاح خطأ Invalid input syntax for UUID 
     addFileRecord: (data) => {
         const currentUser = getCurrentUser();
-        const firmId = currentUser.firm_id || localStorage.getItem(CONFIG.FIRM_KEY);
-        const payload = { ...data, added_by: currentUser.id || null, firm_id: firmId || null };
+        // تأمين رقم المكتب والمستخدم لمنع إرسال نصوص عادية (Strings) مثل 'super_admin_id'
+        const firmId = (currentUser.firm_id && currentUser.firm_id.includes('-')) ? currentUser.firm_id : null;
+        const userId = (currentUser.id && currentUser.id.includes('-')) ? currentUser.id : null;
+        
+        const payload = { ...data, added_by: userId, firm_id: firmId };
         return fetchAPI('/api/files', 'POST', payload);
     },
 
