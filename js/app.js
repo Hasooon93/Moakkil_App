@@ -1,4 +1,4 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة المستقرة)
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة المستقرة والنظيفة)
 // يتضمن: تأمين العرض (Zero Trust)، البحث الدلالي، وإسكات الإدارة العليا.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
