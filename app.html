@@ -49,7 +49,7 @@
 
     <div class="top-nav px-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
-            <div class="avatar bg-accent text-navy fw-bold fs-5 shadow-sm me-2 d-flex justify-content-center align-items-center overflow-hidden" id="top-user-avatar" style="width: 40px; height: 40px; border-radius: 50%;">م</div>
+            <div class="avatar bg-accent text-navy fw-bold fs-5 shadow-sm me-2" id="top-user-avatar">م</div>
             <div>
                 <h6 class="mb-0 fw-bold text-white" id="top-user-name">مستخدم</h6>
                 <small class="text-white-50" id="top-firm-name"><i class="fas fa-balance-scale text-accent me-1"></i> موكّل</small>
@@ -700,6 +700,32 @@
         </div>
     </div>
 
+    <div class="modal fade" id="shareModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold fs-6"><i class="fas fa-share-alt text-accent me-2"></i> مشاركة بوابة الموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 text-center bg-light">
+                    <div id="share-qrcode" class="mb-3 d-flex justify-content-center p-2 bg-white rounded shadow-sm mx-auto" style="width: fit-content;"></div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">الرابط المباشر:</label>
+                        <input type="text" id="share_link_input" class="form-control form-control-sm text-start bg-white border-0 shadow-sm" dir="ltr" readonly>
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label small fw-bold text-muted">الرمز السري (PIN):</label>
+                        <input type="text" id="share_pin_input" class="form-control text-center fw-bold text-danger fs-5 bg-white border-0 shadow-sm" readonly>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success w-50 fw-bold shadow-sm" onclick="sendShareViaWhatsApp()"><i class="fab fa-whatsapp me-1"></i> واتساب</button>
+                        <button class="btn btn-outline-secondary w-50 fw-bold shadow-sm" onclick="copyShareLinkApp()"><i class="fas fa-copy me-1"></i> نسخ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="vCardModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 text-center p-4 shadow-lg" style="border-radius: 20px;">
@@ -707,6 +733,19 @@
                 <p class="text-muted small mb-3">دع العميل يمسح الكود بكاميرا هاتفه ليتم حفظ بيانات المكتب في جهات اتصاله فوراً.</p>
                 <div id="vcard-qrcode" class="d-flex justify-content-center mb-3 p-2 bg-white border rounded shadow-sm mx-auto" style="width: fit-content;"></div>
                 <button class="btn btn-light text-navy fw-bold w-100 border shadow-sm" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="auditDiffModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-navy text-white border-0" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-search-plus me-2 text-accent"></i> التفاصيل الدقيقة للتعديلات (Time Machine)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light" id="auditDiffModalBody">
+                    </div>
             </div>
         </div>
     </div>
