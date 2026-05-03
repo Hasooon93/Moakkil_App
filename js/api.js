@@ -10,14 +10,23 @@ if (typeof window.API === 'undefined') {
     // تعريف الثوابت داخل النطاق الآمن
     const API_BASE_URL = 'https://your-worker-url.workers.dev'; // تنبيه: ضع رابط الوركر الخاص بك هنا
 
+    // دالة مساعدة للحصول على اسم المفتاح الصحيح من الإعدادات لمنع حلقة التوجيه اللانهائية
+    const getTokenKey = () => (typeof CONFIG !== 'undefined' && CONFIG.TOKEN_KEY) ? CONFIG.TOKEN_KEY : 'moakkil_token';
+    const getUserKey = () => (typeof CONFIG !== 'undefined' && CONFIG.USER_KEY) ? CONFIG.USER_KEY : 'moakkil_user';
+
     const API_CORE = {
-        // 1. إدارة الهوية والتوثيق
-        getToken: () => localStorage.getItem('moakkil_jwt_token'),
+        // 1. إدارة الهوية والتوثيق (تم توحيد المفاتيح للقضاء على Infinite Loop)
+        getToken: () => localStorage.getItem(getTokenKey()),
         
-        setToken: (token) => localStorage.setItem('moakkil_jwt_token', token),
+        setToken: (token) => localStorage.setItem(getTokenKey(), token),
         
         clearSession: () => {
-            localStorage.removeItem('moakkil_jwt_token');
+            // تدمير جميع المفاتيح المحتملة (القديمة والجديدة) لضمان طرد آمن ومنع تذبذب الصفحات
+            localStorage.removeItem(getTokenKey());
+            localStorage.removeItem(getUserKey());
+            localStorage.removeItem('moakkil_jwt_token'); 
+            
+            // التوجيه لصفحة تسجيل الدخول
             window.location.href = '/login.html';
         },
 
@@ -66,6 +75,7 @@ if (typeof window.API === 'undefined') {
         get: (endpoint) => API_CORE.request(endpoint, 'GET'),
         post: (endpoint, body) => API_CORE.request(endpoint, 'POST', body),
         put: (endpoint, body) => API_CORE.request(endpoint, 'PUT', body),
+        patch: (endpoint, body) => API_CORE.request(endpoint, 'PATCH', body),
         delete: (endpoint) => API_CORE.request(endpoint, 'DELETE'),
 
         // 4. نظام إدارة الملفات السحابية (Cloudflare R2 Integration)
@@ -146,9 +156,19 @@ if (typeof window.API === 'undefined') {
 
     // تسجيل المحرك بأمان في الـ Window ليكون متاحاً لجميع الملفات
     window.API = API_CORE;
-    window.API_BASE_URL = API_BASE_URL; // نتيح الرابط عالمياً للسكربتات الأخرى في حال احتاجه ملف خارجي
+    window.API_BASE_URL = API_BASE_URL; // نتيح الرابط عالمياً للسكربتات الأخرى
     
-    console.log('[System] API Engine Loaded Successfully.');
+    // [إصلاح خطأ صفحة التسجيل]: دالة عالمية قسرية لإنهاء الجلسة 
+    window.logout = function() {
+        API_CORE.clearSession();
+    };
+
+    // تأمين كائن AUTH في حال لم يتم تحميله بعد لمنع أخطاء الواجهة
+    if (typeof window.AUTH === 'undefined') {
+        window.AUTH = { logout: window.logout };
+    }
+    
+    console.log('[System] API Engine Loaded Successfully. Anti-Loop applied.');
 } else {
     // تم استدعاء الملف سابقاً، نتجاهل الأمر لمنع الانهيار
     console.warn('[System] API Engine is already loaded. Skipping re-declaration.');
