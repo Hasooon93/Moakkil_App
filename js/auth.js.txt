@@ -1,13 +1,11 @@
 // js/auth.js - نظام المصادقة وإدارة الهوية (V3.0 Enterprise)
-// الدستور المطبق: Single Session (الجلسة الأحادية)، Security First، UX
-// التحديث الأخير: ربط معرّف الجهاز (Device ID) لضمان العزل والطرد الذكي للجلسات السابقة، وتوحيد مسميات الدوال.
+// التحديث الأخير: توجيه السوبر أدمن الصحيح إلى register.html وإضافةหน่วง زمني للإشعارات
 
 const AUTH = {
     // =================================================================
     // 1. إدارة الجلسات (Session Management)
     // =================================================================
     
-    // التحقق من الجلسة (يُستدعى في بداية كل صفحة محمية)
     checkSession: () => {
         const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         const user = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
@@ -26,12 +24,11 @@ const AUTH = {
         }
     },
 
-    // تسجيل الخروج الآمن
     logout: () => {
         localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
         localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
-        localStorage.removeItem(CONFIG.FIRM_KEY || 'moakkil_firm_id');
-        // ملاحظة أمنية وتجربة مستخدم: لا نحذف بيانات البصمة moakkil_biometric_id أو معرف الجهاز moakkil_device_id لكي يتمكن من الدخول بها لاحقاً
+        localStorage.removeItem(CONFIG.FIRM_KEY);
+        // ملاحظة: لا نحذف بيانات البصمة moakkil_biometric_id لكي يتمكن من الدخول بها لاحقاً
         window.location.replace('login.html');
     },
 
@@ -55,17 +52,15 @@ const AUTH = {
         }
     },
 
-    // تم التعديل: إضافة deviceId وتمريره في الـ Headers لتطبيق الجلسة الأحادية (Single Session)
-    verifyOTP: async (phone, otp, deviceId) => {
+    verifyOTP: async (phone, otp) => {
         try {
-            // جلب المعرف في حال لم يتم تمريره لتجنب الأخطاء
-            const currentDeviceId = deviceId || localStorage.getItem('moakkil_device_id') || 'unknown-device';
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
 
             const response = await fetch(`${CONFIG.API_URL}/api/auth/verify-otp`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'x-device-id': currentDeviceId 
+                    'x-device-id': deviceId
                 },
                 body: JSON.stringify({ phone, otp })
             });
@@ -76,21 +71,22 @@ const AUTH = {
             // حفظ التوكن وبيانات المستخدم
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
-            
-            // نسخة احتياطية لضمان عمل البصمة بكفاءة لاحقاً
             localStorage.setItem('moakkil_full_user_backup', JSON.stringify(data.user));
 
             if (data.user.firm_id) {
-                localStorage.setItem(CONFIG.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
+                localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
             }
 
-            // التوجيه الذكي للمدير العام أو للمستخدمين العاديين
+            // التوجيه الذكي والصحيح بناءً على الدور
             const userRole = data.user.role || data.user.user_type;
-            if (userRole === 'super_admin' || userRole === 'superadmin') {
-                window.location.href = 'super-admin.html'; 
-            } else {
-                window.location.href = 'app.html';
-            }
+            
+            setTimeout(() => {
+                if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
+                    window.location.replace('register.html'); 
+                } else {
+                    window.location.replace('app.html');
+                }
+            }, 800); // تأخير ليظهر إشعار النجاح في الفرونت إند
 
             return data;
         } catch (error) {
@@ -154,7 +150,7 @@ const AUTH = {
                 device_name: navigator.userAgent.includes('Mobi') ? 'هاتف ذكي' : 'جهاز كمبيوتر'
             };
 
-            const res = await API.registerBiometric(payload); // يفترض أن هذه الدالة في api.js
+            const res = await API.registerBiometric(payload);
             if (res.error) throw new Error(res.error);
             
             localStorage.setItem('moakkil_biometric_id', credential.id);
@@ -168,9 +164,7 @@ const AUTH = {
         }
     },
 
-    // تم التعديل: تغيير الاسم من loginWithBiometric إلى loginBiometric ليطابق login.html
-    // وإضافة deviceId لتمريره في الـ Headers
-    loginBiometric: async (deviceId) => {
+    loginWithBiometric: async () => {
         if (!window.PublicKeyCredential) throw new Error("البصمة غير مدعومة.");
 
         const savedCredId = localStorage.getItem('moakkil_biometric_id');
@@ -198,27 +192,22 @@ const AUTH = {
                 phone: savedPhone
             };
 
-            const currentDeviceId = deviceId || localStorage.getItem('moakkil_device_id') || 'unknown-device';
-
-            // استخدام fetch مباشرة لضمان حقن ترويسة x-device-id لتطبيق قاعدة الجلسة الأحادية
-            const response = await fetch(`${CONFIG.API_URL}/api/auth/biometric-login`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'x-device-id': currentDeviceId 
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'فشل تسجيل الدخول بالبصمة');
+            const data = await API.biometricLogin(payload);
+            if (data.error) throw new Error(data.error);
 
             localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
             localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
-            if (data.user.firm_id) localStorage.setItem(CONFIG.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
+            if (data.user.firm_id) localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
 
             const userRole = data.user.role || data.user.user_type;
-            window.location.href = (userRole === 'super_admin' || userRole === 'superadmin') ? 'super-admin.html' : 'app.html';
+            
+            setTimeout(() => {
+                if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
+                    window.location.replace('register.html'); 
+                } else {
+                    window.location.replace('app.html');
+                }
+            }, 800);
 
             return data;
         } catch (error) {
@@ -236,16 +225,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     const isLoginPage = window.location.pathname.includes('login');
     const hasBiometric = localStorage.getItem('moakkil_biometric_id');
 
-    // إذا كنا في صفحة الدخول ويوجد بصمة مسجلة، نطلبها فوراً
     if (isLoginPage && hasBiometric) {
         console.log("🤖 نظام موكّل: تم اكتشاف بصمة مسجلة. جاري طلب التحقق...");
-        
-        // تأخير بسيط لضمان راحة عين المستخدم وتجهيز المتصفح
         setTimeout(async () => {
             try {
-                const currentDeviceId = localStorage.getItem('moakkil_device_id');
-                // تم التعديل للاسم الجديد والممرر فيه معرّف الجهاز
-                await AUTH.loginBiometric(currentDeviceId);
+                await AUTH.loginWithBiometric();
             } catch (err) {
                 console.log("فشل طلب البصمة التلقائي (ربما ألغاه المستخدم أو يحتاج OTP)");
             }
