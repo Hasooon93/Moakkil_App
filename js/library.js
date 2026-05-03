@@ -1,50 +1,59 @@
 /**
  * js/library.js
  * وحدة إدارة المكتبة القانونية والنماذج
- * الدستور المطبق: التخزين السحابي عبر R2، تأمين الروابط (Zero Trust)، والعزل التام.
+ * الدستور المطبق: تحصين الواجهات (Null-Safe)، التخزين السحابي عبر R2، وتأمين الروابط.
  */
 
+// تأمين دالة الرجوع
+window.goBack = function() {
+    window.history.back();
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    // التحقق من الجلسة أولاً
+    // 1. التحقق من الجلسة
     if (!API.getToken()) {
         window.location.href = '/login.html';
         return;
     }
 
-    const libraryContainer = document.getElementById('library-files-container');
-    const uploadForm = document.getElementById('upload-library-file-form');
-    const fileInput = document.getElementById('library-file-input');
-    const categorySelect = document.getElementById('library-category-select');
-    const searchInput = document.getElementById('search-library');
+    const elements = {
+        libraryContainer: document.getElementById('library-files-container'),
+        uploadForm: document.getElementById('upload-library-file-form'),
+        fileInput: document.getElementById('library-file-input'),
+        categorySelect: document.getElementById('library-category-select'),
+        searchInput: document.getElementById('search-library'),
+        loader: document.getElementById('library-loader') // إن وجد
+    };
 
     let allFiles = [];
 
-    // 1. جلب الملفات من قاعدة البيانات (فقط النماذج والملفات العامة للمكتب)
+    // 2. جلب الملفات
     const loadLibraryFiles = async () => {
         try {
-            libraryContainer.innerHTML = '<div class="loader">جاري تحميل المكتبة...</div>';
-            // استدعاء الملفات التي تم تصنيفها كنماذج (is_template = true)
+            if(elements.libraryContainer) elements.libraryContainer.innerHTML = '<div class="loader text-center p-4"><i class="fas fa-spinner fa-spin"></i> جاري تحميل المكتبة...</div>';
+            
             const files = await API.get('/api/files?is_template=eq.true&order=created_at.desc');
             allFiles = files;
             renderFiles(files);
         } catch (error) {
             console.error('[Library Error]:', error);
-            libraryContainer.innerHTML = `<div class="error-msg">حدث خطأ أثناء تحميل المكتبة: ${error.message}</div>`;
+            if(elements.libraryContainer) {
+                elements.libraryContainer.innerHTML = `<div class="alert alert-danger">حدث خطأ أثناء تحميل المكتبة: ${error.message}</div>`;
+            }
         }
     };
 
-    // 2. عرض الملفات بشكل ديناميكي (UI Render)
+    // 3. العرض
     const renderFiles = (filesToRender) => {
+        if (!elements.libraryContainer) return;
+
         if (!filesToRender || filesToRender.length === 0) {
-            libraryContainer.innerHTML = '<div class="empty-state">لا توجد ملفات في المكتبة حالياً.</div>';
+            elements.libraryContainer.innerHTML = '<div class="alert alert-info text-center w-100 mt-3">لا توجد ملفات في المكتبة حالياً.</div>';
             return;
         }
 
-        libraryContainer.innerHTML = filesToRender.map(file => {
-            // [التحديث الأمني]: إحاطة الرابط بدالة getSecureUrl لدمج التوكن وفك تشفير R2
+        elements.libraryContainer.innerHTML = filesToRender.map(file => {
             const secureDownloadUrl = API.getSecureUrl(file.file_url || file.attachment_url);
-            
-            // تحديد أيقونة الملف بناءً على الامتداد
             const ext = (file.file_extension || '').toLowerCase();
             let icon = '📄';
             if (['pdf'].includes(ext)) icon = '📕';
@@ -52,78 +61,82 @@ document.addEventListener('DOMContentLoaded', () => {
             if (['jpg', 'jpeg', 'png'].includes(ext)) icon = '🖼️';
 
             return `
-                <div class="file-card" data-id="${file.id}">
-                    <div class="file-icon">${icon}</div>
-                    <div class="file-info">
-                        <h4 class="file-name" title="${file.file_name}">${file.file_name}</h4>
-                        <span class="file-category badge">${file.file_category || 'عام'}</span>
-                        <span class="file-date">${new Date(file.created_at).toLocaleDateString('ar-EG')}</span>
-                    </div>
-                    <div class="file-actions">
-                        <a href="${secureDownloadUrl}" target="_blank" class="btn btn-sm btn-primary">عرض / تحميل</a>
-                        <button class="btn btn-sm btn-danger delete-file-btn" data-id="${file.id}">حذف</button>
+                <div class="col-md-4 mb-3">
+                    <div class="card file-card h-100 shadow-sm border-0 bg-white" data-id="${file.id}">
+                        <div class="card-body text-center">
+                            <div class="display-4 mb-2">${icon}</div>
+                            <h6 class="file-name text-truncate text-navy fw-bold" title="${file.file_name}">${file.file_name}</h6>
+                            <span class="badge bg-light text-dark border mb-2">${file.file_category || 'عام'}</span>
+                            <div class="small text-muted mb-3">${new Date(file.created_at).toLocaleDateString('ar-EG')}</div>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="${secureDownloadUrl}" target="_blank" class="btn btn-sm btn-primary w-50 fw-bold">عرض</a>
+                                <button class="btn btn-sm btn-outline-danger w-50 fw-bold delete-file-btn" data-id="${file.id}">حذف</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
 
-        // تفعيل أزرار الحذف
         document.querySelectorAll('.delete-file-btn').forEach(btn => {
             btn.addEventListener('click', (e) => deleteFile(e.target.dataset.id));
         });
     };
 
-    // 3. رفع ملف جديد إلى السحابة (Cloudflare R2 Migration)
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', async (e) => {
+    // 4. الرفع للسحابة R2
+    if (elements.uploadForm) {
+        elements.uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const file = fileInput.files[0];
-            const category = categorySelect.value || 'نماذج عامة';
+            if(!elements.fileInput) return;
+            const file = elements.fileInput.files[0];
+            const category = elements.categorySelect ? elements.categorySelect.value : 'نماذج عامة';
 
             if (!file) return alert('يرجى اختيار ملف أولاً.');
 
-            const submitBtn = uploadForm.querySelector('button[type="submit"]');
-            const originalBtnText = submitBtn.innerHTML;
-            submitBtn.innerHTML = 'جاري الرفع للسحابة (R2)... <span class="spinner"></span>';
-            submitBtn.disabled = true;
+            const submitBtn = elements.uploadForm.querySelector('button[type="submit"]');
+            if(submitBtn) {
+                submitBtn.innerHTML = 'جاري الرفع للسحابة (R2)... <span class="spinner-border spinner-border-sm"></span>';
+                submitBtn.disabled = true;
+            }
 
             try {
-                // الخطوة أ: رفع الملف الفعلي للسحابة عبر المسار الآمن
                 const uploadResult = await API.uploadToCloudR2(file, 'library_templates');
 
-                // الخطوة ب: حفظ بيانات الملف (Metadata) في جدول mo_files
                 const fileMetadata = {
                     file_name: file.name,
                     file_extension: file.name.split('.').pop(),
                     file_type: file.type,
                     file_category: category,
-                    file_url: uploadResult.file_path, // حفظ مسار R2
-                    is_template: true, // تمييزه كنموذج مكتبة
-                    // ai_summary: يمكن لاحقاً ربطها بمحرك الاستخراج
+                    file_url: uploadResult.file_path, 
+                    is_template: true
                 };
 
                 await API.post('/api/files', fileMetadata);
 
                 alert('تم رفع الملف بنجاح وإضافته للمكتبة.');
-                uploadForm.reset();
-                loadLibraryFiles(); // إعادة تحميل القائمة
+                elements.uploadForm.reset();
+                if(typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFileModal'));
+                    if(modal) modal.hide();
+                }
+                loadLibraryFiles(); 
 
             } catch (error) {
                 console.error('[Upload Error]:', error);
                 alert(`فشل رفع الملف: ${error.message}`);
             } finally {
-                submitBtn.innerHTML = originalBtnText;
-                submitBtn.disabled = false;
+                if(submitBtn) {
+                    submitBtn.innerHTML = 'رفع النموذج';
+                    submitBtn.disabled = false;
+                }
             }
         });
     }
 
-    // 4. حذف الملف من المكتبة (الرقابة والأمان)
+    // 5. الحذف
     const deleteFile = async (fileId) => {
         if (!confirm('هل أنت متأكد من حذف هذا المستند؟ لا يمكن التراجع عن هذه العملية.')) return;
-
         try {
-            // ملاحظة: الحذف هنا يحذف السجل من قاعدة البيانات ويتم توثيقه في mo_activity_logs بواسطة الوركر
             await API.delete(`/api/files?id=eq.${fileId}`);
             alert('تم حذف الملف بنجاح.');
             loadLibraryFiles();
@@ -133,9 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 5. محرك البحث الداخلي
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
+    // 6. البحث
+    if (elements.searchInput) {
+        elements.searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             const filtered = allFiles.filter(f => 
                 (f.file_name && f.file_name.toLowerCase().includes(query)) || 

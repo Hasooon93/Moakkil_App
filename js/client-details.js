@@ -1,11 +1,16 @@
 /**
  * js/client-details.js
  * وحدة الإدارة الشاملة لملف الموكل (Client Profile & Portal Management)
- * الدستور المطبق: استغلال 100% لبيانات الهوية، التخزين السحابي R2، والتحكم ببوابة الموكل.
+ * الدستور المطبق: تحصين الواجهات (Null-Safe)، استغلال 100% للبيانات، التخزين السحابي R2، وبوابة الموكل.
  */
 
+// تأمين دالة الرجوع في حال تم استدعاؤها من الواجهة
+window.goBack = function() {
+    window.history.back();
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. التحقق من الجلسة (Security First)
+    // 1. التحقق من الجلسة
     if (!API.getToken()) {
         window.location.href = '/login.html';
         return;
@@ -21,11 +26,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 2. المتغيرات ومؤشرات واجهة المستخدم (UI Elements)
+    // 2. المتغيرات ومؤشرات واجهة المستخدم (Null-Safe)
     // ==========================================
     const elements = {
-        loader: document.getElementById('client-loader'),
-        content: document.getElementById('client-content'),
+        loader: document.getElementById('client-loader') || document.getElementById('main-loader'),
+        content: document.getElementById('client-content') || document.getElementById('main-content'),
         
         // البيانات الأساسية والشخصية
         fullName: document.getElementById('client-full-name'),
@@ -35,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         address: document.getElementById('client-address'),
         dob: document.getElementById('client-dob'),
         
-        // الحقول الذهبية المستردة (Zero Data Loss)
+        // الحقول الذهبية المستردة
         motherName: document.getElementById('client-mother-name'),
         placeOfBirth: document.getElementById('client-pob'),
         nationality: document.getElementById('client-nationality'),
@@ -59,12 +64,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentClientData = null;
 
     // ==========================================
-    // 3. المحرك الرئيسي لجلب البيانات (Data Fetching)
+    // 3. المحرك الرئيسي لجلب البيانات
     // ==========================================
     const loadClientDetails = async () => {
         try {
-            elements.content.style.display = 'none';
-            elements.loader.style.display = 'block';
+            if(elements.content) elements.content.style.display = 'none';
+            if(elements.loader) elements.loader.style.display = 'block';
 
             // جلب بيانات الموكل
             const clientReq = await API.get(`/api/clients?id=eq.${clientId}`);
@@ -78,11 +83,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderClientDocuments(currentClientData.identity_documents);
             renderClientCases(casesReq);
 
-            elements.loader.style.display = 'none';
-            elements.content.style.display = 'block';
+            if(elements.loader) elements.loader.style.display = 'none';
+            if(elements.content) elements.content.style.display = 'block';
         } catch (error) {
             console.error('[Client Details Error]:', error);
-            elements.loader.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            if(elements.loader) {
+                elements.loader.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            } else {
+                alert(`خطأ: ${error.message}`);
+            }
         }
     };
 
@@ -99,7 +108,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(elements.address) elements.address.textContent = safe(data.address);
         if(elements.dob) elements.dob.textContent = safe(data.date_of_birth);
         
-        // الحقول العميقة المستردة
         if(elements.motherName) elements.motherName.textContent = safe(data.mother_name);
         if(elements.placeOfBirth) elements.placeOfBirth.textContent = safe(data.place_of_birth);
         if(elements.nationality) elements.nationality.textContent = safe(data.nationality);
@@ -109,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(elements.clientType) elements.clientType.textContent = safe(data.client_type);
         if(elements.notes) elements.notes.textContent = safe(data.notes);
 
-        // حالة بوابة الموكل
         if (elements.portalStatusBadge) {
             if (data.client_portal_active) {
                 elements.portalStatusBadge.className = 'badge bg-success';
@@ -145,7 +152,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         elements.documentsList.innerHTML = docs.map((doc, index) => {
-            // [التأمين (Zero Trust)]: تشفير رابط عرض الهوية/الوكالة
             const secureDocUrl = API.getSecureUrl(doc.url || doc.file_path);
             const docName = doc.file_name || doc.name || `وثيقة رقم ${index + 1}`;
             
@@ -173,7 +179,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         elements.casesList.innerHTML = cases.map(c => {
-            // تجهيز رمز الدخول الخاص بالموكل (Access PIN) لعرضه للمحامي ليعطيه للموكل
             const portalAccessInfo = currentClientData.client_portal_active 
                 ? `<strong>رمز الدخول:</strong> ${c.access_pin || 'غير محدد'}` 
                 : '<span class="text-muted">البوابة معطلة</span>';
@@ -191,10 +196,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 5. العمليات التفاعلية والإدخال (Forms & Actions)
+    // 5. العمليات التفاعلية والإدخال
     // ==========================================
 
-    // أ. التحكم بحالة بوابة الموكل
     if (elements.togglePortalBtn) {
         elements.togglePortalBtn.addEventListener('click', async () => {
             const newStatus = !currentClientData.client_portal_active;
@@ -211,7 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await API.put(`/api/clients?id=eq.${clientId}`, { client_portal_active: newStatus });
                 alert('تم تحديث حالة البوابة بنجاح.');
-                loadClientDetails(); // إعادة تحميل الواجهة
+                loadClientDetails(); 
             } catch (error) {
                 alert(`حدث خطأ: ${error.message}`);
                 elements.togglePortalBtn.innerHTML = btnOriginalText;
@@ -220,10 +224,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ب. رفع الوثائق الثبوتية والوكالات إلى R2
     if (elements.uploadDocForm) {
         elements.uploadDocForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if(!elements.docFileInput) return;
             const file = elements.docFileInput.files[0];
             const docTitleInput = document.getElementById('client-doc-title');
             const docTitle = docTitleInput ? docTitleInput.value : file.name;
@@ -231,14 +235,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!file) return alert('يرجى اختيار المستند.');
 
             const submitBtn = elements.uploadDocForm.querySelector('button[type="submit"]');
-            submitBtn.innerHTML = 'جاري الرفع للسحابة (R2)... <span class="spinner-border spinner-border-sm"></span>';
-            submitBtn.disabled = true;
+            if(submitBtn) {
+                submitBtn.innerHTML = 'جاري الرفع للسحابة (R2)... <span class="spinner-border spinner-border-sm"></span>';
+                submitBtn.disabled = true;
+            }
 
             try {
-                // 1. رفع الملف الفعلي للسحابة في مسار معزول خاص بالموكل
                 const uploadResult = await API.uploadToCloudR2(file, `clients/${clientId}/documents`);
 
-                // 2. جلب مصفوفة الوثائق الحالية وتحديثها
                 let currentDocs = [];
                 if (typeof currentClientData.identity_documents === 'string') {
                     try { currentDocs = JSON.parse(currentClientData.identity_documents); } catch(err) {}
@@ -246,28 +250,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     currentDocs = currentClientData.identity_documents;
                 }
 
-                const newDocObj = {
+                currentDocs.push({
                     file_name: docTitle || file.name,
-                    url: uploadResult.file_path, // مسار R2 المحمي
+                    url: uploadResult.file_path, 
                     uploaded_at: new Date().toISOString()
-                };
+                });
 
-                currentDocs.push(newDocObj);
-
-                // 3. تحديث حقل identity_documents (JSONB) في قاعدة البيانات
                 await API.put(`/api/clients?id=eq.${clientId}`, { identity_documents: currentDocs });
 
                 alert('تم رفع الوثيقة بنجاح.');
                 elements.uploadDocForm.reset();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('uploadClientDocModal'));
-                if(modal) modal.hide();
+                if(typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('uploadClientDocModal'));
+                    if(modal) modal.hide();
+                }
                 loadClientDetails();
             } catch (error) {
                 console.error('[Document Upload Error]:', error);
                 alert(`فشل رفع الوثيقة: ${error.message}`);
             } finally {
-                submitBtn.innerHTML = 'رفع الوثيقة';
-                submitBtn.disabled = false;
+                if(submitBtn) {
+                    submitBtn.innerHTML = 'رفع الوثيقة';
+                    submitBtn.disabled = false;
+                }
             }
         });
     }
