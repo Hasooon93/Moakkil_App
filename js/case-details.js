@@ -1,7 +1,7 @@
 /**
  * js/case-details.js
  * وحدة الإدارة الشاملة لتفاصيل القضية (Case Dashboard)
- * الدستور المطبق: استغلال 100% من هيكلية البيانات، الربط السحابي R2، والنزاهة المالية.
+ * الدستور المطبق: استغلال 100% من هيكلية البيانات، الربط السحابي R2، النزاهة المالية، الرقابة وآلة الزمن.
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const elements = {
         loader: document.getElementById('case-loader'),
         content: document.getElementById('case-content'),
+        
         // البيانات الأساسية
         internalId: document.getElementById('case-internal-id'),
         clientName: document.getElementById('case-client-name'),
@@ -32,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         caseType: document.getElementById('case-type'),
         courtName: document.getElementById('case-court'),
         status: document.getElementById('case-status'),
+        
         // الحقول الذهبية المستردة (Zero Data Loss)
         confidentialityLevel: document.getElementById('case-confidentiality'),
         physicalArchive: document.getElementById('case-physical-archive'),
@@ -40,17 +42,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         coDefendants: document.getElementById('case-co-defendants'),
         expertsWitnesses: document.getElementById('case-experts-witnesses'),
         aiSummary: document.getElementById('case-ai-summary'),
+        caseTags: document.getElementById('case-tags'), // حاوية الوسوم الذكية
+        
         // القوائم والجداول
         updatesList: document.getElementById('case-updates-list'),
         filesList: document.getElementById('case-files-list'),
         installmentsList: document.getElementById('case-installments-list'),
         expensesList: document.getElementById('case-expenses-list'),
-        // النماذج (Forms)
+        
+        // النماذج (Forms) وأزرار التحكم
         addUpdateForm: document.getElementById('add-update-form'),
         uploadFileForm: document.getElementById('upload-file-form'),
         fileInput: document.getElementById('case-file-input'),
         addExpenseForm: document.getElementById('add-expense-form'),
-        addInstallmentForm: document.getElementById('add-installment-form')
+        addInstallmentForm: document.getElementById('add-installment-form'),
+        timeMachineBtn: document.getElementById('btn-time-machine') // زر آلة الزمن
     };
 
     let currentCaseData = null;
@@ -121,6 +127,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // ملخص الذكاء الاصطناعي
         if(elements.aiSummary) elements.aiSummary.textContent = safe(data.ai_cumulative_summary || data.ai_summary);
+
+        // [ميزة جديدة] عرض الوسوم الذكية (Smart Tags)
+        if(elements.caseTags) {
+            let tags = [];
+            try {
+                tags = typeof data.case_tags === 'string' ? JSON.parse(data.case_tags) : data.case_tags;
+            } catch(e) {}
+            
+            if (Array.isArray(tags) && tags.length > 0) {
+                elements.caseTags.innerHTML = tags.map(t => `<span class="badge bg-primary me-1 shadow-sm">#${t}</span>`).join('');
+            } else {
+                elements.caseTags.innerHTML = '<span class="text-muted small">لا توجد وسوم تحليلية</span>';
+            }
+        }
     };
 
     const renderUpdates = (updates) => {
@@ -160,11 +180,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             return `
                 <div class="col-md-4 mb-3">
-                    <div class="card file-card h-100">
+                    <div class="card file-card h-100 border-0 shadow-sm">
                         <div class="card-body text-center">
                             <div class="display-4 mb-2">${icon}</div>
                             <h6 class="card-title text-truncate" title="${f.file_name}">${f.file_name}</h6>
-                            <a href="${secureUrl}" target="_blank" class="btn btn-sm btn-primary w-100 mt-2">عرض المستند</a>
+                            <a href="${secureUrl}" target="_blank" class="btn btn-sm btn-outline-primary w-100 mt-2">عرض المستند</a>
                         </div>
                     </div>
                 </div>
@@ -199,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // عرض المصاريف
         if (elements.expensesList) {
             elements.expensesList.innerHTML = expenses.length ? expenses.map(exp => {
-                const receiptLink = exp.receipt_url ? `<a href="${API.getSecureUrl(exp.receipt_url)}" target="_blank">📄</a>` : '-';
+                const receiptLink = exp.receipt_url ? `<a href="${API.getSecureUrl(exp.receipt_url)}" target="_blank" class="text-decoration-none">📄 فاتورة</a>` : '-';
                 return `
                 <tr>
                     <td>${exp.amount}</td>
@@ -212,7 +232,94 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ==========================================
-    // 4. العمليات والإدخال (Forms Handling)
+    // 4. آلة الزمن (سجل الرقابة - Time Machine)
+    // ==========================================
+    const viewTimeMachine = async () => {
+        try {
+            const btnOriginalText = elements.timeMachineBtn.innerHTML;
+            elements.timeMachineBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري التحميل...';
+            elements.timeMachineBtn.disabled = true;
+
+            // جلب سجلات القضية من الباك إند
+            const history = await API.get(`/api/history?entity_type=eq.mo_cases&entity_id=eq.${caseId}&order=created_at.desc`);
+            
+            if (!history || history.length === 0) {
+                alert('لا توجد سجلات تعديل لهذه القضية حتى الآن.');
+                elements.timeMachineBtn.innerHTML = btnOriginalText;
+                elements.timeMachineBtn.disabled = false;
+                return;
+            }
+
+            let htmlContent = '<div class="timeline" dir="rtl">';
+            history.forEach(log => {
+                const actionColor = log.action_type === 'CREATE' ? 'success' : (log.action_type === 'UPDATE' ? 'warning' : 'danger');
+                const actionText = log.action_type === 'CREATE' ? 'إنشاء' : (log.action_type === 'UPDATE' ? 'تعديل' : 'حذف');
+                const date = new Date(log.created_at).toLocaleString('ar-EG');
+                
+                // حساب الفروقات إذا كان الإجراء تعديلاً
+                let diffHtml = '';
+                if (log.action_type === 'UPDATE' && log.old_data && log.new_data) {
+                    diffHtml += '<ul class="mt-2 text-muted" style="font-size: 0.85rem; list-style-type: square; padding-right: 20px;">';
+                    for (let key in log.new_data) {
+                        if (log.new_data[key] !== log.old_data[key] && key !== 'updated_at') {
+                            diffHtml += `<li><strong>${key}:</strong> من [${log.old_data[key] || 'فارغ'}] إلى <span class="text-dark fw-bold">[${log.new_data[key] || 'فارغ'}]</span></li>`;
+                        }
+                    }
+                    diffHtml += '</ul>';
+                }
+
+                htmlContent += `
+                    <div class="timeline-item mb-3 p-3 border rounded border-start border-${actionColor} border-4 bg-light shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-${actionColor}">${actionText}</span>
+                            <small class="text-secondary fw-bold">⏰ ${date}</small>
+                        </div>
+                        <strong class="d-block mb-1 text-dark">👤 قام المستخدم (المعرف: ${log.user_id}) بهذا الإجراء</strong>
+                        ${diffHtml}
+                    </div>
+                `;
+            });
+            htmlContent += '</div>';
+
+            // العرض في Modal أو نافذة منبثقة
+            const modalBody = document.getElementById('history-modal-body');
+            if (modalBody) {
+                modalBody.innerHTML = htmlContent;
+                new bootstrap.Modal(document.getElementById('historyModal')).show();
+            } else {
+                const win = window.open("", "آلة الزمن - سجل القضية", "width=650,height=750");
+                win.document.write(`
+                    <html dir="rtl">
+                    <head>
+                        <title>سجل التعديلات (Time Machine)</title>
+                        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+                    </head>
+                    <body class="p-4" style="background-color: #f8f9fa;">
+                        <h4 class="mb-4 text-primary">🛡️ سجل الرقابة والأمان (Audit Trail)</h4>
+                        <hr>
+                        ${htmlContent}
+                    </body>
+                    </html>
+                `);
+            }
+        } catch (err) {
+            console.error('[Time Machine Error]:', err);
+            alert('حدث خطأ أثناء تحميل سجل الرقابة.');
+        } finally {
+            if(elements.timeMachineBtn) {
+                elements.timeMachineBtn.innerHTML = 'آلة الزمن (سجل التعديلات) ⏪';
+                elements.timeMachineBtn.disabled = false;
+            }
+        }
+    };
+
+    // ربط الزر التفاعلي لآلة الزمن
+    if (elements.timeMachineBtn) {
+        elements.timeMachineBtn.addEventListener('click', viewTimeMachine);
+    }
+
+    // ==========================================
+    // 5. العمليات والإدخال (Forms Handling)
     // ==========================================
 
     // أ. رفع الملفات السحابية (R2 Integration)
