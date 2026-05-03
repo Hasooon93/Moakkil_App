@@ -1,209 +1,227 @@
-// js/register.js - لوحة تحكم السوبر أدمن (V4.2 Enterprise)
-// يدعم إدارة المكاتب، وتعديل الكوتا، والمصادقة بالـ JWT.
+// js/register.js - المحرك البرمجي للوحة الإدارة العليا (Super Admin V3.0)
+// الدستور المطبق: حماية المسارات، الاتصال المباشر مع API السوبر أدمن، إدارة الكوتا.
 
+// 1. إنشاء محرك اتصال مخصص للإدارة العليا (لضمان إرسال توكن الإدارة)
+const SUPER_API = {
+    fetch: async (endpoint, method = 'GET', body = null) => {
+        const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+        const options = { method, headers };
+        if (body) options.body = JSON.stringify(body);
+
+        try {
+            const res = await fetch(`${CONFIG?.API_URL || ''}${endpoint}`, options);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'خطأ في الاتصال بالخادم السحابي');
+            return data;
+        } catch (err) {
+            console.error(`[SuperAdmin API Error] ${endpoint}:`, err);
+            throw err;
+        }
+    }
+};
+
+// 2. التهيئة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    // التحقق من الصلاحية عند تحميل الصفحة
-    const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
-    if (!userStr) {
-        window.location.replace('login.html');
+    // التحقق الأمني القطعي (لمنع أي طرد خاطئ للسوبر أدمن)
+    const user = AUTH.checkSession();
+    if (!user || (user.role !== 'super_admin' && user.role !== 'superadmin')) {
+        window.location.replace('app.html');
         return;
     }
-    const user = JSON.parse(userStr);
-    if (user.role !== 'super_admin') {
-        Swal.fire({ icon: 'error', title: 'غير مصرح', text: 'هذه الصفحة مخصصة للإدارة العليا فقط' }).then(() => {
-            window.location.replace('app');
-        });
-        return;
-    }
-    
-    // تحميل البيانات إذا كان المستخدم سوبر أدمن
+
+    // تحميل البيانات بمجرد التأكد من الهوية
+    loadStats();
     loadFirms();
 });
 
-// دالة الاتصال المخصصة للإدارة العليا باستخدام التوكن (JWT)
-async function superFetch(endpoint, method = 'GET', body = null) {
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-    
-    const options = {
-        method,
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` 
-        }
-    };
-    if (body) options.body = JSON.stringify(body);
-
+// 3. دالة جلب الإحصائيات العلوية
+async function loadStats() {
     try {
-        const response = await fetch(`${CONFIG.API_URL}${endpoint}`, options);
-        const data = await response.json();
+        const data = await SUPER_API.fetch('/api/super/stats');
         
-        // طرد المستخدم إذا تلاعب بالتوكن
-        if (response.status === 401 || response.status === 403) {
-            Swal.fire({ icon: 'error', title: 'وصول مرفوض', text: 'انتهت الجلسة أو لا تملك صلاحية.' }).then(()=> {
-                if(typeof logout === 'function') logout();
-                else window.location.href = 'login.html';
-            });
-            return null;
-        }
-        if (!response.ok) throw new Error(data.error || 'خطأ في السيرفر');
-        return data;
+        // تأثير حركي (Animation) لعداد الأرقام
+        animateValue('stat-firms', 0, data.firms_count || 0, 1000);
+        animateValue('stat-users', 0, data.users_count || 0, 1000);
+        animateValue('stat-cases', 0, data.cases_count || 0, 1000);
     } catch (error) {
-        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
-        return null;
+        console.error("فشل تحميل الإحصائيات:", error);
     }
 }
 
-// تحميل قائمة المكاتب
+// 4. دالة جلب المكاتب وعرضها في الجدول
 async function loadFirms() {
-    const tbody = document.querySelector('#firmsTable tbody');
-    if(!tbody) return;
+    const tbody = document.getElementById('firmsTableBody');
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary fa-2x"></i><br>جاري تحميل المكاتب...</td></tr>`;
     
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i> جاري التحميل...</td></tr>';
-    
-    const firms = await superFetch('/api/super/firms');
-    if (!firms) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">تعذر تحميل البيانات.</td></tr>';
-        return;
-    }
+    try {
+        const firms = await SUPER_API.fetch('/api/super/firms');
+        tbody.innerHTML = '';
 
-    if (firms.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">لا يوجد مكاتب مسجلة حتى الآن.</td></tr>';
-        return;
-    }
+        if (!firms || firms.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted fw-bold py-4">لا توجد مكاتب مسجلة حتى الآن</td></tr>`;
+            return;
+        }
 
-    tbody.innerHTML = '';
-    firms.forEach(firm => {
-        const endDate = new Date(firm.subscription_end_date);
-        const isExpired = endDate < new Date();
-        const usersCount = firm.mo_users && firm.mo_users.length > 0 ? firm.mo_users[0].count : 0;
-        
-        tbody.innerHTML += `
-            <tr>
-                <td>
-                    <strong class="text-primary">${firm.firm_name}</strong><br>
-                    <span class="badge ${firm.is_active ? 'bg-success' : 'bg-danger'}">${firm.is_active ? 'نشط' : 'موقوف'}</span>
-                </td>
-                <td>
-                    <small class="${isExpired ? 'text-danger fw-bold' : 'text-success fw-bold'}">${endDate.toLocaleDateString('ar-EG')}</small>
-                </td>
-                <td>
-                    <span class="badge bg-secondary mb-1">${usersCount} مستخدم من أصل ${firm.max_users}</span><br>
-                    <button class="btn btn-sm btn-outline-primary mt-1" style="font-size: 0.75rem;" onclick="editQuota('${firm.id}', '${firm.firm_name}', ${firm.max_users})">
-                        <i class="fas fa-edit"></i> تعديل الكوتا
-                    </button>
-                </td>
-                <td>
-                    <div class="d-flex flex-column gap-1">
-                        <button class="btn btn-sm btn-primary" onclick="renewFirm('${firm.id}', '${firm.firm_name}')">
+        firms.forEach(firm => {
+            const endDate = new Date(firm.subscription_end_date);
+            const isExpired = endDate < new Date();
+            
+            const statusBadge = (firm.is_active && !isExpired)
+                ? `<span class="badge bg-success px-3 py-2 rounded-pill">نشط</span>`
+                : `<span class="badge bg-danger px-3 py-2 rounded-pill">منتهي / موقوف</span>`;
+
+            const usersCount = firm.mo_users && firm.mo_users[0] ? firm.mo_users[0].count : 0;
+
+            tbody.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-primary" style="font-size: 1.1rem;">
+                        <i class="fas fa-balance-scale me-2 text-muted"></i> ${firm.firm_name}
+                    </td>
+                    <td dir="ltr" class="text-end fw-bold text-secondary">${endDate.toLocaleDateString('en-GB')}</td>
+                    <td>
+                        <span class="badge bg-secondary px-2 py-1 fs-6">${usersCount} / ${firm.max_users}</span>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success fw-bold me-1 shadow-sm" onclick="openRenewModal('${firm.id}')">
                             <i class="fas fa-calendar-plus"></i> تجديد
                         </button>
-                        <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="toggleFirm('${firm.id}', ${!firm.is_active})">
-                            <i class="fas ${firm.is_active ? 'fa-ban' : 'fa-check'}"></i> ${firm.is_active ? 'إيقاف' : 'تفعيل'}
+                        <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-primary'} fw-bold shadow-sm" 
+                            onclick="toggleFirmStatus('${firm.id}', ${!firm.is_active}, ${firm.max_users}, '${firm.firm_name}')">
+                            <i class="fas ${firm.is_active ? 'fa-ban' : 'fa-check-circle'}"></i> ${firm.is_active ? 'إيقاف' : 'تفعيل'}
                         </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger fw-bold py-4">حدث خطأ أثناء الاتصال بقاعدة البيانات</td></tr>`;
+        Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل تحميل بيانات المكاتب، تأكد من الاتصال بالإنترنت.' });
+    }
 }
 
-// تسجيل مكتب جديد
-const registerForm = document.getElementById('registerFirmForm');
-if(registerForm) {
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const btn = e.submitter;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = 'جاري الإنشاء... <i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
+// 5. إضافة مكتب جديد (تسجيل)
+document.getElementById('addFirmForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitFirm');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التسجيل...';
 
-        const payload = {
-            firm_name: document.getElementById('firmName').value,
-            subscription_months: document.getElementById('subMonths').value,
-            max_users: document.getElementById('maxUsers').value,
-            admin_name: document.getElementById('adminName').value,
-            admin_phone: document.getElementById('adminPhone').value,
-            telegram_id: document.getElementById('adminTg').value
-        };
+    const payload = {
+        firm_name: document.getElementById('newFirmName').value.trim(),
+        subscription_months: document.getElementById('newFirmMonths').value,
+        max_users: document.getElementById('newFirmMaxUsers').value,
+        admin_name: document.getElementById('newAdminName').value.trim(),
+        admin_phone: document.getElementById('newAdminPhone').value.trim(),
+        telegram_id: document.getElementById('newAdminTelegram').value.trim() || null
+    };
 
-        const result = await superFetch('/api/super/register-firm', 'POST', payload);
+    try {
+        await SUPER_API.fetch('/api/super/register-firm', 'POST', payload);
         
-        btn.innerHTML = originalText;
+        // إغلاق المودال وتحديث البيانات
+        bootstrap.Modal.getInstance(document.getElementById('addFirmModal')).hide();
+        document.getElementById('addFirmForm').reset();
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'تم التسجيل!',
+            text: `تم تسجيل مكتب ${payload.firm_name} بنجاح.`,
+            confirmButtonColor: '#0f172a'
+        });
+
+        loadStats();
+        loadFirms();
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'فشل التسجيل', text: error.message });
+    } finally {
         btn.disabled = false;
+        btn.innerHTML = 'حفظ وتسجيل المكتب';
+    }
+});
 
-        if (result && result.success) {
-            Swal.fire({ icon: 'success', title: 'تمت العملية', text: 'تم إنشاء المكتب والمدير بنجاح.' });
-            registerForm.reset();
-            loadFirms();
-        }
-    });
+// 6. فتح مودال التجديد وإرسال البيانات
+function openRenewModal(firmId) {
+    document.getElementById('renewFirmId').value = firmId;
+    document.getElementById('renewMonths').value = 12; // القيمة الافتراضية
+    new bootstrap.Modal(document.getElementById('renewFirmModal')).show();
 }
 
-// تجديد اشتراك
-window.renewFirm = async function(firmId, firmName) {
-    const { value: months } = await Swal.fire({
-        title: 'تجديد الاشتراك',
-        text: `تجديد لمكتب: ${firmName}`,
-        input: 'number',
-        inputLabel: 'عدد الأشهر للتجديد',
-        inputValue: 12,
-        showCancelButton: true,
-        confirmButtonColor: '#0f172a',
-        confirmButtonText: '<i class="fas fa-check"></i> تجديد الآن',
-        cancelButtonText: 'إلغاء'
-    });
+document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitRenew');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التجديد...';
 
-    if (months) {
-        const result = await superFetch('/api/super/renew-firm', 'POST', { id: firmId, add_months: months });
-        if (result && result.success) {
-            Swal.fire({icon: 'success', title: 'نجاح', text: 'تم تجديد الاشتراك بنجاح.'});
-            loadFirms();
-        }
+    const firmId = document.getElementById('renewFirmId').value;
+    const months = document.getElementById('renewMonths').value;
+
+    try {
+        await SUPER_API.fetch('/api/super/renew-firm', 'POST', { id: firmId, add_months: months });
+        
+        bootstrap.Modal.getInstance(document.getElementById('renewFirmModal')).hide();
+        
+        Swal.fire({ icon: 'success', title: 'تم التجديد بنجاح!', timer: 2000, showConfirmButton: false });
+        loadFirms();
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'تأكيد التجديد الآن';
     }
-};
+});
 
-// تعديل كوتا المستخدمين (الوظيفة الجديدة)
-window.editQuota = async function(firmId, firmName, currentMax) {
-    const { value: newMax } = await Swal.fire({
-        title: 'تعديل كوتا المستخدمين',
-        text: `المكتب: ${firmName}`,
-        input: 'number',
-        inputLabel: 'الحد الأقصى الجديد للمستخدمين',
-        inputValue: currentMax,
-        showCancelButton: true,
-        confirmButtonColor: '#0f172a',
-        confirmButtonText: '<i class="fas fa-save"></i> حفظ التعديل',
-        cancelButtonText: 'إلغاء'
-    });
-
-    if (newMax && newMax != currentMax) {
-        const result = await superFetch('/api/super/firms', 'PATCH', { id: firmId, max_users: parseInt(newMax) });
-        if (result) {
-            Swal.fire({icon: 'success', title: 'نجاح', text: 'تم تحديث الكوتا بنجاح.'});
-            loadFirms();
-        }
-    }
-};
-
-// إيقاف أو تفعيل مكتب
-window.toggleFirm = async function(firmId, newStatus) {
-    const actionText = newStatus ? 'تفعيل' : 'إيقاف';
-    const confirmResult = await Swal.fire({
-        title: `تأكيد ال${actionText}`,
-        text: `هل أنت متأكد أنك تريد ${actionText} هذا المكتب؟`,
+// 7. تغيير حالة المكتب (إيقاف / تفعيل)
+async function toggleFirmStatus(firmId, newStatus, maxUsers, firmName) {
+    const actionName = newStatus ? 'تفعيل' : 'إيقاف';
+    
+    const confirm = await Swal.fire({
+        title: `هل أنت متأكد؟`,
+        text: `هل تريد حقاً ${actionName} مكتب (${firmName})؟`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: newStatus ? '#198754' : '#dc3545',
-        confirmButtonText: `نعم، ${actionText}`,
+        confirmButtonColor: newStatus ? '#198754' : '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: `نعم، ${actionName}`,
         cancelButtonText: 'إلغاء'
     });
 
-    if (confirmResult.isConfirmed) {
-        const result = await superFetch('/api/super/firms', 'PATCH', { id: firmId, is_active: newStatus });
-        if (result) {
-            Swal.fire({icon: 'success', title: 'نجاح', text: `تم ${actionText} المكتب بنجاح.`});
-            loadFirms();
-        }
+    if (!confirm.isConfirmed) return;
+
+    try {
+        await SUPER_API.fetch('/api/super/firms', 'PATCH', { 
+            id: firmId, 
+            is_active: newStatus,
+            max_users: maxUsers // نرسله لكي لا يتأثر
+        });
+        
+        Swal.fire({ icon: 'success', title: 'تم بنجاح', text: `تم ${actionName} المكتب.`, timer: 1500, showConfirmButton: false });
+        loadFirms();
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
     }
-};
+}
+
+// دالة مساعدة لتأثير الأرقام المتحركة للإحصائيات
+function animateValue(id, start, end, duration) {
+    if (start === end) {
+        document.getElementById(id).innerHTML = end;
+        return;
+    }
+    let range = end - start;
+    let current = start;
+    let increment = end > start ? 1 : -1;
+    let stepTime = Math.abs(Math.floor(duration / range));
+    let obj = document.getElementById(id);
+    let timer = setInterval(function() {
+        current += increment;
+        obj.innerHTML = current;
+        if (current == end) {
+            clearInterval(timer);
+        }
+    }, stepTime);
+}
