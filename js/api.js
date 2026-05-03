@@ -1,5 +1,6 @@
 // js/api.js - المحرك الموحد المحدث V3.0 (Enterprise Edition)
 // الدعم الكامل: JWT، سجل النشاطات المفلتر، استخلاص AI ديناميكي، البصمة، المزامنة السحابية مع نظام Retry، وضع عدم الاتصال (Offline Mode).
+// التحديث الأمني: حقن x-device-id في جميع الطلبات لتطبيق الجلسة الأحادية (Single Session).
 
 // =================================================================
 // 🔄 نظام المزامنة الذكي (Offline Queue System)
@@ -28,7 +29,12 @@ async function processOfflineQueue() {
     for (let req of queue) {
         try {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-            const headers = { 'Content-Type': 'application/json' };
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
+            
+            const headers = { 
+                'Content-Type': 'application/json',
+                'x-device-id': deviceId
+            };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
             const options = { method: req.method, headers };
@@ -79,7 +85,12 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false)
     }
 
     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-    const headers = { 'Content-Type': 'application/json' };
+    const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
+    
+    const headers = { 
+        'Content-Type': 'application/json',
+        'x-device-id': deviceId
+    };
     
     if (token && !isPublic) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -192,13 +203,15 @@ const API = {
     extractLegalData: async (text) => {
         try {
             const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
             const baseUrl = window.API_BASE_URL || CONFIG.API_URL || 'https://curly-pond-9975.hassan-alsakka.workers.dev';
             
             const res = await fetch(`${baseUrl}/api/ai/process`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
+                    'Authorization': `Bearer ${token}`,
+                    'x-device-id': deviceId
                 },
                 body: JSON.stringify({ type: 'data_extractor', content: text })
             });

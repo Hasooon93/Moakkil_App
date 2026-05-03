@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a192f">
+    <meta name="description" content="بوابة الدخول الآمنة لنظام موكل لإدارة المكاتب القانونية - Enterprise">
     <title>دخول نظام موكّل 4.0 | Enterprise</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -12,137 +13,174 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     
     <style>
+        /* المتغيرات الأساسية (Brand Variables) - يتم تحديثها ديناميكياً */
         :root { 
             --navy: #0a192f; 
-            --accent: #64ffda; 
+            --accent: #d69e2e; /* تم التعديل للون الذهبي ليناسب مكاتب المحاماة */
             --light-bg: #f8fafc; 
             --telegram: #0088cc;
+            --text-main: #1e293b;
+            --error: #e53e3e;
         }
         
         body { 
             font-family: 'Cairo', sans-serif; 
-            background: linear-gradient(135deg, var(--navy) 0%, #1e293b 100%);
+            background: linear-gradient(135deg, var(--navy) 0%, #0f172a 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            margin: 0;
+            overflow-x: hidden;
         }
 
         .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 40px 30px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(15px);
+            border-radius: 24px;
+            padding: 45px 35px;
             width: 100%;
-            max-width: 420px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 440px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease-in-out;
         }
 
         .logo-circle {
-            width: 90px;
-            height: 90px;
+            width: 95px;
+            height: 95px;
             background: var(--navy);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
-            box-shadow: 0 10px 25px rgba(10, 25, 47, 0.3);
+            margin: 0 auto 25px;
+            box-shadow: 0 10px 30px rgba(10, 25, 47, 0.4);
             border: 3px solid var(--accent);
+            transition: transform 0.3s ease;
+        }
+
+        .logo-circle:hover {
+            transform: scale(1.05);
+        }
+
+        .form-label {
+            color: var(--text-main);
+            font-size: 0.9rem;
+            margin-bottom: 8px;
         }
 
         .form-control {
             background: var(--light-bg);
             border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px 20px;
-            font-size: 1rem;
+            border-radius: 14px;
+            padding: 14px 20px;
+            font-size: 1.05rem;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--navy);
         }
 
         .form-control:focus {
             border-color: var(--navy);
             box-shadow: 0 0 0 4px rgba(10, 25, 47, 0.1);
-            background: #fff;
+            background: #ffffff;
+            outline: none;
         }
 
         .btn-primary-custom {
             background: var(--navy);
             color: white;
-            border-radius: 12px;
-            padding: 12px;
+            border-radius: 14px;
+            padding: 14px;
             font-weight: 700;
             font-size: 1.1rem;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
-        .btn-primary-custom:hover, .btn-primary-custom:active, .btn-primary-custom:focus {
+        .btn-primary-custom:hover:not(:disabled) {
             background: #1e3a8a;
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(10, 25, 47, 0.2);
+            box-shadow: 0 10px 25px rgba(10, 25, 47, 0.25);
             color: white;
-            outline: none;
         }
         
         .btn-primary-custom:disabled {
             background: #94a3b8;
-            transform: none;
             cursor: not-allowed;
-            box-shadow: none;
+            opacity: 0.8;
         }
 
         .otp-input {
-            letter-spacing: 12px;
-            font-size: 1.5rem;
+            letter-spacing: 15px;
+            font-size: 1.8rem;
             text-align: center;
             font-weight: 900;
+            padding: 15px !important;
+            text-transform: uppercase;
+        }
+
+        .otp-input::placeholder {
+            letter-spacing: normal;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            transform: translateY(-5px);
+            display: inline-block;
         }
 
         .btn-back-home {
             color: #64748b;
             text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: 0.3s;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: color 0.3s;
+            display: inline-block;
         }
 
         .btn-back-home:hover {
             color: var(--navy);
         }
 
-        /* تنسيق خاص لقسم تيليغرام */
+        /* تنسيق قسم تيليغرام */
         .telegram-box {
-            background: rgba(0, 136, 204, 0.05);
-            border-radius: 12px;
-            border: 1px dashed rgba(0, 136, 204, 0.3);
-            padding: 12px;
-            transition: 0.3s;
+            background: rgba(0, 136, 204, 0.04);
+            border-radius: 14px;
+            border: 1px dashed rgba(0, 136, 204, 0.4);
+            padding: 15px;
+            transition: all 0.3s;
         }
         
         .telegram-box:hover {
-            background: rgba(0, 136, 204, 0.1);
+            background: rgba(0, 136, 204, 0.08);
             border-color: var(--telegram);
         }
 
         .telegram-link {
             color: var(--telegram);
             font-weight: 800;
-            font-size: 0.95rem;
+            font-size: 1rem;
             text-decoration: none;
-            padding: 6px 15px;
-            border-radius: 20px;
+            padding: 8px 20px;
+            border-radius: 25px;
             background: rgba(0, 136, 204, 0.1);
-            transition: 0.3s;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .telegram-link:hover {
             background: var(--telegram);
             color: white;
-            box-shadow: 0 4px 10px rgba(0, 136, 204, 0.3);
+            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3);
+            transform: translateY(-1px);
         }
         
         /* زر البصمة الإضافي */
@@ -150,14 +188,34 @@
             background: transparent;
             color: var(--navy);
             border: 2px solid var(--navy);
-            border-radius: 12px;
-            padding: 10px;
+            border-radius: 14px;
+            padding: 12px;
             font-weight: 700;
-            transition: 0.3s;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
-        .btn-biometric-custom:hover {
+        .btn-biometric-custom:hover:not(:disabled) {
             background: var(--light-bg);
-            color: var(--navy);
+            box-shadow: 0 4px 12px rgba(10, 25, 47, 0.1);
+        }
+
+        /* حركات الظهور */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* تخصيص التحذيرات الدقيقة */
+        .input-error {
+            border-color: var(--error) !important;
+            box-shadow: 0 0 0 4px rgba(229, 62, 62, 0.1) !important;
         }
     </style>
 </head>
@@ -168,59 +226,63 @@
             <div class="logo-circle">
                 <i class="fas fa-balance-scale fa-3x" style="color: var(--accent);"></i>
             </div>
-            <h3 class="fw-bold text-navy mb-1" style="color: var(--navy);">نظام موكّل</h3>
-            <p class="text-muted small fw-bold">تسجيل الدخول الموحد (SSO)</p>
+            <h3 class="fw-bold mb-1" style="color: var(--navy);">نظام موكّل</h3>
+            <p class="text-muted small fw-bold">تسجيل الدخول الآمن والموحد (SSO)</p>
         </div>
 
         <form id="loginForm">
-            <div class="mb-3 position-relative">
-                <label for="phoneInput" class="form-label small fw-bold text-muted">رقم الهاتف <span class="text-danger">*</span></label>
-                <input type="tel" id="phoneInput" class="form-control text-center" placeholder="أدخل رقم الهاتف المسجل بالنظام..." required autocomplete="tel" dir="ltr">
+            <div class="mb-4 position-relative">
+                <label for="phoneInput" class="form-label fw-bold">رقم الهاتف المرتبط بالنقابة/النظام <span class="text-danger">*</span></label>
+                <input type="tel" id="phoneInput" class="form-control text-center" 
+                       placeholder="مثال: 07xxxxxx" required autocomplete="tel" dir="ltr"
+                       inputmode="numeric" pattern="[0-9]*">
             </div>
 
             <div class="telegram-box text-center mb-4">
-                <small class="text-muted fw-bold d-block mb-2" style="font-size: 0.75rem;">لتصلك رسالة الدخول، يجب بدء المحادثة مع البوت:</small>
-                <a href="https://t.me/Moakkil_bot" target="_blank" class="telegram-link d-inline-block">
-                    <i class="fab fa-telegram fa-lg me-1 align-middle"></i> @Moakkil_bot
+                <small class="text-muted fw-bold d-block mb-2">لتصلك رسالة الدخول، يجب بدء المحادثة مع البوت:</small>
+                <a href="https://t.me/Moakkil_bot" target="_blank" class="telegram-link">
+                    <i class="fab fa-telegram fa-lg"></i> @Moakkil_bot
                 </a>
             </div>
 
             <button type="submit" class="btn btn-primary-custom w-100 shadow-sm" id="btnRequestOtp">
-                <i class="fas fa-paper-plane me-2"></i> إرسال رمز التحقق
+                <i class="fas fa-paper-plane"></i> إرسال رمز التحقق
             </button>
             
             <button type="button" class="btn btn-biometric-custom w-100 mt-3 d-none" id="btnBiometric" onclick="handleBiometricLogin()">
-                <i class="fas fa-fingerprint me-2"></i> الدخول السريع بالبصمة
+                <i class="fas fa-fingerprint fa-lg"></i> الدخول السريع بالبصمة
             </button>
         </form>
 
         <form id="otpForm" class="d-none fade-in">
             <div class="mb-4">
-                <label for="otpInput" class="form-label small fw-bold text-muted text-center w-100">أدخل الرمز السري <span class="text-danger">*</span></label>
-                <input type="text" id="otpInput" class="form-control otp-input text-navy" placeholder="------" maxlength="6" required autocomplete="one-time-code" dir="ltr">
+                <label for="otpInput" class="form-label fw-bold text-center w-100">أدخل الرمز السري المرسل لتيليغرام <span class="text-danger">*</span></label>
+                <input type="text" id="otpInput" class="form-control otp-input text-navy" 
+                       placeholder="أدخل الرمز" maxlength="6" required autocomplete="one-time-code" dir="ltr"
+                       inputmode="numeric" pattern="[0-9]{4,6}">
             </div>
             <button type="submit" class="btn btn-primary-custom w-100 shadow-sm mb-3" id="btnVerifyOtp">
-                <i class="fas fa-shield-alt me-1"></i> تأكيد الدخول
+                <i class="fas fa-shield-alt"></i> تأكيد الدخول
             </button>
             <button type="button" onclick="location.reload()" class="btn btn-link btn-sm w-100 text-decoration-none fw-bold" style="color: #64748b;">
-                <i class="fas fa-arrow-right me-1"></i> تغيير رقم الهاتف
+                <i class="fas fa-redo-alt me-1"></i> تعديل رقم الهاتف
             </button>
         </form>
         
-        <div class="text-center mt-4 pt-3 border-top">
-            <a href="index.html" class="btn-back-home d-block mb-3"><i class="fas fa-home me-1"></i> العودة للصفحة الرئيسية</a>
+        <div class="text-center mt-4 pt-4 border-top">
+            <a href="index.html" class="btn-back-home"><i class="fas fa-home me-1"></i> العودة للصفحة الرئيسية</a>
         </div>
-
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
+    
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/auth.js"></script> 
     
     <script>
-        // متغيرات عامة
+        // المتغيرات العامة
         let currentPhone = '';
         const loginForm = document.getElementById('loginForm');
         const otpForm = document.getElementById('otpForm');
@@ -228,9 +290,26 @@
         const btnVerifyOtp = document.getElementById('btnVerifyOtp');
         const btnBiometric = document.getElementById('btnBiometric');
 
+        /**
+         * دالة لتوليد أو جلب معرّف الجهاز (Device ID)
+         * تطبيقاً لدستور "الجلسة الأحادية - Single Session"
+         */
+        function getOrCreateDeviceId() {
+            let deviceId = localStorage.getItem('moakkil_device_id');
+            if (!deviceId) {
+                // توليد معرّف عشوائي آمن (UUID V4 format)
+                deviceId = 'dev_' + crypto.randomUUID();
+                localStorage.setItem('moakkil_device_id', deviceId);
+            }
+            return deviceId;
+        }
+
         // 1. التهيئة الأولية عند التحميل
         window.addEventListener('DOMContentLoaded', () => {
-            // أ) ضبط الألوان الديناميكية
+            // أ) توليد معرّف الجهاز
+            const deviceId = getOrCreateDeviceId();
+
+            // ب) ضبط الألوان الديناميكية (White-Labeling)
             try {
                 const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
                 if (fwSettings) {
@@ -239,25 +318,26 @@
                 }
             } catch (e) { console.error("فشل في تحميل إعدادات الألوان:", e); }
 
-            // ب) التحقق من الجلسة النشطة (الطرد للداخل)
-            const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-            const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+            // ج) التحقق من الجلسة النشطة (الطرد للداخل إذا كان التوكن موجوداً)
+            // ملاحظة: التحقق الحقيقي من التوكن يتم في الباك إند، هذا مجرد توجيه سريع للفرونت إند
+            const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+            const userStr = localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user');
             if (token && userStr) {
                 const user = JSON.parse(userStr);
                 const userRole = user.role || user.user_type;
                 if (userRole === 'super_admin' || userRole === 'superadmin' || user.is_setup_required) {
-                    window.location.replace('register');
+                    window.location.replace('register.html');
                 } else {
-                    window.location.replace('app');
+                    window.location.replace('app.html');
                 }
             }
 
-            // ج) التحقق من وجود بصمة مسجلة لهذا الجهاز لإظهار الزر
-            if (localStorage.getItem(CONFIG.BIOMETRIC_ID_KEY || 'moakkil_biometric_id')) {
+            // د) التحقق من وجود بصمة مسجلة لهذا الجهاز لإظهار الزر
+            if (localStorage.getItem(CONFIG?.BIOMETRIC_ID_KEY || 'moakkil_biometric_id')) {
                 btnBiometric.classList.remove('d-none');
             }
 
-            // د) تفعيل Service Worker للإشعارات والـ Offline Mode
+            // هـ) تفعيل Service Worker للإشعارات والـ Offline Mode
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js').catch(console.error);
             }
@@ -266,32 +346,46 @@
         // 2. إرسال طلب الـ OTP
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const phone = document.getElementById('phoneInput').value.trim();
+            const phoneInput = document.getElementById('phoneInput');
+            const phone = phoneInput.value.trim();
+            
             if (!phone) return;
 
+            // إعادة تعيين الأخطاء البصرية إن وجدت
+            phoneInput.classList.remove('input-error');
             btnRequestOtp.disabled = true;
             const originalHtml = btnRequestOtp.innerHTML;
-            btnRequestOtp.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الإرسال...';
+            btnRequestOtp.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
 
             try {
+                // استدعاء دالة الـ API من auth.js
                 await AUTH.requestOTP(phone);
                 currentPhone = phone;
                 
-                // إخفاء فورم الهاتف وإظهار فورم الـ OTP
+                // إخفاء فورم الهاتف وإظهار فورم الـ OTP مع حركة بسيطة
                 loginForm.classList.add('d-none');
                 otpForm.classList.remove('d-none');
                 
-                // استخدام SweetAlert للإشعار الجميل
+                // إشعار نجاح
                 Swal.fire({
                     icon: 'success',
-                    title: 'تم الإرسال!',
-                    text: 'تفقد حسابك في تيليغرام للحصول على الرمز.',
-                    confirmButtonColor: 'var(--navy)'
+                    title: 'تم إرسال الرمز!',
+                    text: 'تفقد حسابك في تيليغرام للحصول على رمز الدخول.',
+                    confirmButtonColor: 'var(--navy)',
+                    timer: 3000,
+                    timerProgressBar: true
                 });
                 
-                setTimeout(() => document.getElementById('otpInput').focus(), 300);
+                // التركيز التلقائي على حقل الـ OTP
+                setTimeout(() => document.getElementById('otpInput').focus(), 400);
             } catch (err) {
-                Swal.fire({ icon: 'error', title: 'خطأ', text: err.message, confirmButtonColor: 'var(--navy)' });
+                phoneInput.classList.add('input-error');
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'خطأ في الدخول', 
+                    text: err.message || 'الرقم غير مسجل بالنظام أو حدث خطأ في الاتصال.', 
+                    confirmButtonColor: 'var(--navy)' 
+                });
             } finally {
                 btnRequestOtp.disabled = false;
                 btnRequestOtp.innerHTML = originalHtml;
@@ -301,50 +395,76 @@
         // 3. التحقق من الـ OTP
         otpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const otp = document.getElementById('otpInput').value.trim();
+            const otpInput = document.getElementById('otpInput');
+            const otp = otpInput.value.trim();
+            
             if (!otp) return;
 
+            otpInput.classList.remove('input-error');
             btnVerifyOtp.disabled = true;
             const originalHtml = btnVerifyOtp.innerHTML;
-            btnVerifyOtp.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحقق...';
+            btnVerifyOtp.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المصادقة...';
 
             try {
-                // الدالة verifyOTP داخل auth.js ستقوم بعملية التوجيه الصحيحة
-                await AUTH.verifyOTP(currentPhone, otp);
+                // جلب معرّف الجهاز لإرساله للباك إند (لتفعيل الجلسة الأحادية)
+                const deviceId = getOrCreateDeviceId();
+                
+                // الدالة verifyOTP داخل auth.js يجب أن تستقبل deviceId ضمن بياناتها
+                // وتقوم بحفظ الـ Token وتوجيه المستخدم للصفحة الصحيحة
+                await AUTH.verifyOTP(currentPhone, otp, deviceId);
                 
                 Swal.fire({
                     icon: 'success',
                     title: 'مرحباً بك!',
-                    text: 'تم التحقق بنجاح، جاري التوجيه...',
+                    text: 'تمت المصادقة بنجاح، جاري تجهيز مساحة العمل...',
                     showConfirmButton: false,
-                    timer: 1500
+                    allowOutsideClick: false,
+                    timer: 2000
                 });
+                
+                // التوجيه يتم عادة داخل auth.js عند نجاح العملية
             } catch (err) {
-                Swal.fire({ icon: 'error', title: 'الرمز غير صحيح', text: err.message, confirmButtonColor: 'var(--navy)' });
+                otpInput.classList.add('input-error');
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'فشل التحقق', 
+                    text: err.message || 'الرمز غير صحيح أو منتهي الصلاحية.', 
+                    confirmButtonColor: 'var(--navy)' 
+                });
+                otpInput.value = ''; // تفريغ الحقل لتسهيل إعادة الإدخال
+                otpInput.focus();
+            } finally {
                 btnVerifyOtp.disabled = false;
                 btnVerifyOtp.innerHTML = originalHtml;
             }
         });
 
-        // 4. معالجة الدخول بالبصمة
+        // 4. معالجة الدخول بالبصمة (إن وجدت)
         async function handleBiometricLogin() {
             btnBiometric.disabled = true;
             const originalHtml = btnBiometric.innerHTML;
-            btnBiometric.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري المطابقة...';
+            btnBiometric.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المطابقة...';
 
             try {
-                // الدالة loginBiometric داخل auth.js ستقوم بعملية التوجيه الصحيحة
-                await AUTH.loginBiometric();
+                const deviceId = getOrCreateDeviceId();
+                // الدالة loginBiometric داخل auth.js ستقوم بعملية التوجيه
+                await AUTH.loginBiometric(deviceId);
                 
                 Swal.fire({
                     icon: 'success',
-                    title: 'تم التحقق!',
-                    text: 'جاري التوجيه...',
+                    title: 'تم التحقق بالبصمة!',
+                    text: 'جاري تسجيل الدخول...',
                     showConfirmButton: false,
                     timer: 1500
                 });
             } catch (err) {
-                Swal.fire({ icon: 'error', title: 'فشل البصمة', text: err.message, confirmButtonColor: 'var(--navy)' });
+                Swal.fire({ 
+                    icon: 'error', 
+                    title: 'فشل البصمة', 
+                    text: err.message || 'لم نتمكن من التحقق من البصمة.', 
+                    confirmButtonColor: 'var(--navy)' 
+                });
+            } finally {
                 btnBiometric.disabled = false;
                 btnBiometric.innerHTML = originalHtml;
             }

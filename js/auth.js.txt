@@ -1,129 +1,254 @@
-// js/auth.js
+// js/auth.js - نظام المصادقة وإدارة الهوية (V3.0 Enterprise)
+// الدستور المطبق: Single Session (الجلسة الأحادية)، Security First، UX
+// التحديث الأخير: ربط معرّف الجهاز (Device ID) لضمان العزل والطرد الذكي للجلسات السابقة، وتوحيد مسميات الدوال.
 
-// 1. الإعدادات المدمجة (تأكد من أن هذا الرابط هو رابط الـ Worker الخاص بك)
-const CONFIG = {
-    API_URL: "https://curly-pond-9975.hassan-alsakka.workers.dev",
-    TOKEN_KEY: "moakkil_v2_token",
-    USER_KEY: "moakkil_v2_user",
-    FIRM_KEY: "moakkil_v2_firm_id"
-};
-
-// 2. نظام التنبيهات الشاشة
-function showAlert(message, type = 'danger') {
-    const alertBox = document.getElementById('alertBox');
-    if(!alertBox) return alert(message); // تنبيه بديل في حال غياب الـ div
+const AUTH = {
+    // =================================================================
+    // 1. إدارة الجلسات (Session Management)
+    // =================================================================
     
-    alertBox.innerHTML = `<div class="alert-custom alert-${type}-custom"><i class="fas fa-info-circle"></i> ${message}</div>`;
-    setTimeout(() => alertBox.innerHTML = '', 5000);
-}
-
-// 3. طلب الرمز (OTP) للمدير
-async function handleAdminLogin(event) {
-    event.preventDefault(); // منع الصفحة من عمل Refresh
-    
-    const phoneInput = document.getElementById('adminPhone').value.trim();
-    const btn = document.getElementById('btnRequestOtp');
-    
-    if(!phoneInput) {
-        showAlert('الرجاء إدخال رقم الهاتف', 'warning');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = 'جاري الاتصال بالخادم... <i class="fas fa-spinner fa-spin"></i>';
-    
-    console.log("📞 جاري طلب الدخول للرقم:", phoneInput);
-
-    try {
-        const res = await fetch(`${CONFIG.API_URL}/api/auth/admin/request-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: phoneInput })
-        });
+    // التحقق من الجلسة (يُستدعى في بداية كل صفحة محمية)
+    checkSession: () => {
+        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+        const user = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
         
-        const data = await res.json();
-        console.log("📡 استجابة الخادم:", data);
-
-        if (res.ok && data.success) {
-            // الانتقال لخطوة الرمز
-            document.getElementById('phoneStep').classList.add('d-none');
-            document.getElementById('otpStep').classList.remove('d-none');
-            showAlert('تم الإرسال! (استخدم 123456 مؤقتاً إذا لم يصلك)', 'success');
-        } else {
-            // الرقم غير موجود في الداتا بيز
-            showAlert(data.error || 'رقم الهاتف هذا غير مسجل كمدير في النظام');
+        if (!token || !user) {
+            console.warn("[Auth] جلسة غير صالحة. جاري التوجيه لصفحة الدخول...");
+            window.location.replace('login.html');
+            return null;
         }
-    } catch (e) {
-        console.error("❌ خطأ برمجي:", e);
-        showAlert('تعذر الاتصال بالخادم. تأكد من رابط الـ API_URL أو اتصال الإنترنت.');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'إرسال كود الدخول <i class="fas fa-paper-plane ms-2"></i>';
-    }
-}
 
-// 4. تأكيد الدخول (OTP)
-async function verifyAdminOtp() {
-    const phone = document.getElementById('adminPhone').value.trim();
-    const otp = document.getElementById('adminOtp').value.trim();
-    const btn = document.getElementById('btnVerifyOtp');
+        try {
+            return JSON.parse(user);
+        } catch (e) {
+            AUTH.logout();
+            return null;
+        }
+    },
 
-    if (!otp) return showAlert('الرجاء إدخال الرمز', 'warning');
+    // تسجيل الخروج الآمن
+    logout: () => {
+        localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+        localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
+        localStorage.removeItem(CONFIG.FIRM_KEY || 'moakkil_firm_id');
+        // ملاحظة أمنية وتجربة مستخدم: لا نحذف بيانات البصمة moakkil_biometric_id أو معرف الجهاز moakkil_device_id لكي يتمكن من الدخول بها لاحقاً
+        window.location.replace('login.html');
+    },
 
-    btn.disabled = true;
-    btn.innerHTML = 'جاري التحقق...';
+    // =================================================================
+    // 2. تسجيل الدخول عبر تيليغرام (OTP)
+    // =================================================================
+    
+    requestOTP: async (phone) => {
+        try {
+            const response = await fetch(`${CONFIG.API_URL}/api/auth/request-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'فشل إرسال كود التحقق');
+            return data;
+        } catch (error) {
+            console.error('[Auth OTP Error]:', error);
+            throw error;
+        }
+    },
 
-    try {
-        const res = await fetch(`${CONFIG.API_URL}/api/auth/admin/verify-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, otp })
-        });
-        const data = await res.json();
+    // تم التعديل: إضافة deviceId وتمريره في الـ Headers لتطبيق الجلسة الأحادية (Single Session)
+    verifyOTP: async (phone, otp, deviceId) => {
+        try {
+            // جلب المعرف في حال لم يتم تمريره لتجنب الأخطاء
+            const currentDeviceId = deviceId || localStorage.getItem('moakkil_device_id') || 'unknown-device';
 
-        if (res.ok && data.success) {
-            localStorage.setItem(CONFIG.TOKEN_KEY, data.token);
-            localStorage.setItem(CONFIG.USER_KEY, JSON.stringify(data.user));
-            localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
+            const response = await fetch(`${CONFIG.API_URL}/api/auth/verify-otp`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-device-id': currentDeviceId 
+                },
+                body: JSON.stringify({ phone, otp })
+            });
+            const data = await response.json();
             
-            showAlert('تم تسجيل الدخول بنجاح! جاري توجيهك...', 'success');
-            // التوجيه للوحة التحكم (قمنا بتعطيلها مؤقتاً لتتأكد من رسالة النجاح، سأعلقها)
-            setTimeout(() => { window.location.href = 'app.html'; }, 1500);
-        } else {
-            showAlert(data.error || 'الرمز غير صحيح');
+            if (!response.ok) throw new Error(data.error || 'الكود غير صحيح');
+            
+            // حفظ التوكن وبيانات المستخدم
+            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
+            localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+            
+            // نسخة احتياطية لضمان عمل البصمة بكفاءة لاحقاً
+            localStorage.setItem('moakkil_full_user_backup', JSON.stringify(data.user));
+
+            if (data.user.firm_id) {
+                localStorage.setItem(CONFIG.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
+            }
+
+            // التوجيه الذكي للمدير العام أو للمستخدمين العاديين
+            const userRole = data.user.role || data.user.user_type;
+            if (userRole === 'super_admin' || userRole === 'superadmin') {
+                window.location.href = 'super-admin.html'; 
+            } else {
+                window.location.href = 'app.html';
+            }
+
+            return data;
+        } catch (error) {
+            console.error('[Auth Verify Error]:', error);
+            throw error;
         }
-    } catch (e) {
-        showAlert('حدث خطأ في الاتصال بالخادم');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'تأكيد ودخول';
-    }
-}
+    },
 
-// 5. التبديل للعودة لرقم الهاتف
-function resetAdminLogin() {
-    document.getElementById('otpStep').classList.add('d-none');
-    document.getElementById('phoneStep').classList.remove('d-none');
-    document.getElementById('adminOtp').value = '';
-}
+    // =================================================================
+    // 3. نظام الدخول بالبصمة (Biometrics - WebAuthn API)
+    // =================================================================
+    
+    _bufferToBase64: (buffer) => {
+        const bytes = new Uint8Array(buffer);
+        let str = '';
+        for (let charCode of bytes) str += String.fromCharCode(charCode);
+        return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+    },
+    
+    _base64ToBuffer: (base64) => {
+        const str = atob(base64.replace(/-/g, "+").replace(/_/g, "/"));
+        const bytes = new Uint8Array(str.length);
+        for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+        return bytes.buffer;
+    },
 
-// 6. فريق العمل والتوجيه التلقائي
-function togglePassword() {
-    const pwd = document.getElementById('staffPassword');
-    const icon = document.getElementById('eyeIcon');
-    if (pwd.type === 'password') { pwd.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); } 
-    else { pwd.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
-}
+    _generateChallenge: () => {
+        const randomValues = new Uint8Array(32);
+        window.crypto.getRandomValues(randomValues);
+        return randomValues.buffer;
+    },
 
-async function handleStaffLogin(event) {
-    event.preventDefault();
-    showAlert('سيتم تفعيل دخول فريق العمل بعد إعداد لوحة تحكم المدير.', 'info');
-}
+    registerBiometric: async () => {
+        if (!window.PublicKeyCredential) {
+            throw new Error("متصفحك لا يدعم تقنية البصمة.");
+        }
 
-window.onload = () => {
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY);
-    // إذا كان مسجلاً للدخول مسبقاً، نمنعه من العودة لشاشة الدخول
-    if (token && window.location.pathname.endsWith('index.html')) {
-        window.location.href = 'app.html'; 
+        const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
+        if (!user) throw new Error("يجب تسجيل الدخول بـ OTP أولاً لتفعيل البصمة.");
+
+        try {
+            const publicKey = {
+                challenge: AUTH._generateChallenge(),
+                rp: { name: "نظام موكّل القانوني", id: window.location.hostname },
+                user: {
+                    id: AUTH._base64ToBuffer(btoa(user.id || "user_id").replace(/=/g, "")),
+                    name: user.phone || "user",
+                    displayName: user.full_name || "المحامي"
+                },
+                pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+                authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+                timeout: 60000,
+                attestation: "none"
+            };
+
+            const credential = await navigator.credentials.create({ publicKey });
+
+            const payload = {
+                credential_id: credential.id,
+                public_key: AUTH._bufferToBase64(credential.response.clientDataJSON), 
+                device_name: navigator.userAgent.includes('Mobi') ? 'هاتف ذكي' : 'جهاز كمبيوتر'
+            };
+
+            const res = await API.registerBiometric(payload); // يفترض أن هذه الدالة في api.js
+            if (res.error) throw new Error(res.error);
+            
+            localStorage.setItem('moakkil_biometric_id', credential.id);
+            localStorage.setItem('moakkil_saved_phone', user.phone);
+            localStorage.setItem('moakkil_full_user_backup', JSON.stringify(user));
+            
+            return { success: true, message: "تم تفعيل البصمة بنجاح!" };
+        } catch (error) {
+            console.error("[Biometric Register Error]:", error);
+            throw new Error(error.message || "فشل تسجيل البصمة.");
+        }
+    },
+
+    // تم التعديل: تغيير الاسم من loginWithBiometric إلى loginBiometric ليطابق login.html
+    // وإضافة deviceId لتمريره في الـ Headers
+    loginBiometric: async (deviceId) => {
+        if (!window.PublicKeyCredential) throw new Error("البصمة غير مدعومة.");
+
+        const savedCredId = localStorage.getItem('moakkil_biometric_id');
+        const savedPhone = localStorage.getItem('moakkil_saved_phone');
+
+        if (!savedCredId || !savedPhone) throw new Error("البصمة غير مفعلة.");
+
+        try {
+            const publicKey = {
+                challenge: AUTH._generateChallenge(),
+                rpId: window.location.hostname,
+                allowCredentials: [{
+                    type: "public-key",
+                    id: AUTH._base64ToBuffer(savedCredId),
+                    transports: ["internal"]
+                }],
+                userVerification: "required",
+                timeout: 60000
+            };
+
+            const assertion = await navigator.credentials.get({ publicKey });
+
+            const payload = {
+                credential_id: assertion.id,
+                phone: savedPhone
+            };
+
+            const currentDeviceId = deviceId || localStorage.getItem('moakkil_device_id') || 'unknown-device';
+
+            // استخدام fetch مباشرة لضمان حقن ترويسة x-device-id لتطبيق قاعدة الجلسة الأحادية
+            const response = await fetch(`${CONFIG.API_URL}/api/auth/biometric-login`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-device-id': currentDeviceId 
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'فشل تسجيل الدخول بالبصمة');
+
+            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
+            localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+            if (data.user.firm_id) localStorage.setItem(CONFIG.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
+
+            const userRole = data.user.role || data.user.user_type;
+            window.location.href = (userRole === 'super_admin' || userRole === 'superadmin') ? 'super-admin.html' : 'app.html';
+
+            return data;
+        } catch (error) {
+            console.error("[Biometric Login Error]:", error);
+            throw error;
+        }
     }
 };
+
+// =================================================================
+// 🚀 سكريبت التشغيل التلقائي (Auto-Initializer)
+// =================================================================
+
+window.addEventListener('DOMContentLoaded', async () => {
+    const isLoginPage = window.location.pathname.includes('login');
+    const hasBiometric = localStorage.getItem('moakkil_biometric_id');
+
+    // إذا كنا في صفحة الدخول ويوجد بصمة مسجلة، نطلبها فوراً
+    if (isLoginPage && hasBiometric) {
+        console.log("🤖 نظام موكّل: تم اكتشاف بصمة مسجلة. جاري طلب التحقق...");
+        
+        // تأخير بسيط لضمان راحة عين المستخدم وتجهيز المتصفح
+        setTimeout(async () => {
+            try {
+                const currentDeviceId = localStorage.getItem('moakkil_device_id');
+                // تم التعديل للاسم الجديد والممرر فيه معرّف الجهاز
+                await AUTH.loginBiometric(currentDeviceId);
+            } catch (err) {
+                console.log("فشل طلب البصمة التلقائي (ربما ألغاه المستخدم أو يحتاج OTP)");
+            }
+        }, 800);
+    }
+});
