@@ -1,5 +1,5 @@
-// js/client-details.js - محرك صفحة الموكل الشاملة (النسخة المتوافقة 100% مع api.js)
-// التحديثات: عرض حالة البوابة وآخر زيارة لها (Last Seen)، منع أخطاء الرفع السحابي، والمزامنة.
+// js/client-details.js - محرك صفحة الموكل الشاملة (النسخة السحابية R2 & Offline Edition)
+// التحديثات: دعم الرفع السحابي لـ R2، المزامنة الدفعية بدون اتصال، تحميل آمن ومشفر للمستندات.
 
 let currentClientId = localStorage.getItem('current_client_id') || new URLSearchParams(window.location.search).get('id');
 let clientObj = null;
@@ -152,6 +152,7 @@ function renderCasesList() {
     }).join('');
 }
 
+// 🛡️ الأرشيف المحمي لملفات R2 ضمن صفحة الموكل
 function renderFilesList() {
     const container = document.getElementById('client-files-list');
     if (clientFiles.length === 0) { 
@@ -164,6 +165,12 @@ function renderFilesList() {
         const iconHtml = isImage ? `<i class="fas fa-image fs-2 text-success mb-2"></i>` : `<i class="fas fa-file-pdf fs-2 text-danger mb-2"></i>`;
         const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
         
+        // فحص نوع الرابط (مباشر أم عبر R2)
+        const isR2 = f.file_url && !f.file_url.startsWith('http');
+        const viewBtn = isR2 
+            ? `<button class="btn btn-sm btn-outline-primary w-100 fw-bold rounded-pill shadow-sm" onclick="API.downloadR2File('${escapeHTML(f.file_url)}', '${escapeHTML(f.file_name)}')"><i class="fas fa-lock me-1"></i> تحميل آمن</button>`
+            : `<a href="${escapeHTML(f.file_url || f.drive_file_id || '#')}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-eye me-1"></i> عرض</a>`;
+
         return `
         <div class="col-6 mb-2">
             <div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative rounded-3">
@@ -173,7 +180,7 @@ function renderFilesList() {
                 <h6 class="small fw-bold text-truncate mt-1 mb-0 text-navy" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
                 ${expiryBadge}
                 <div class="mt-3">
-                    <a href="${escapeHTML(f.file_url || f.drive_file_id || '#')}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-eye me-1"></i> عرض</a>
+                    ${viewBtn}
                 </div>
             </div>
         </div>`;
@@ -256,6 +263,7 @@ window.updateClient = async function(event) {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التعديلات';
 };
 
+// 🚀 الرفع الآمن للمستندات عبر R2
 window.saveClientFile = async function(event) {
     event.preventDefault();
     const fileInput = document.getElementById('file_input');
@@ -265,21 +273,23 @@ window.saveClientFile = async function(event) {
     const btn = document.getElementById('btn_upload');
     
     if (!fileInput.files.length) return;
-    if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات بلا إنترنت.', 'warning'); return; }
+    if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات السحابية بلا إنترنت.', 'warning'); return; }
     
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة...';
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة سحابية...';
     
     try {
-        const driveRes = await API.uploadToDrive(fileInput.files[0], `موكل-${clientObj.full_name}`, "Client_Docs");
-        if(driveRes && driveRes.url) {
+        // الرفع المباشر إلى Cloudflare R2
+        const r2Res = await API.uploadFileToR2(fileInput.files[0], currentClientId, 'General');
+        
+        if(r2Res && r2Res.r2_key) {
             const payload = { 
                 client_id: currentClientId, 
                 file_name: titleInput || fileInput.files[0].name, 
                 file_type: fileInput.files[0].type, 
                 file_extension: fileInput.files[0].name.split('.').pop().toLowerCase(),
                 file_category: catInput, 
-                file_url: driveRes.url,
-                drive_file_id: driveRes.id || null, 
+                file_url: r2Res.r2_key, // حفظ المفتاح المشفر
+                drive_file_id: r2Res.r2_key, 
                 is_template: false, 
                 expiry_date: expiryInput || null 
             };
@@ -287,14 +297,14 @@ window.saveClientFile = async function(event) {
             if(res && !res.error) { 
                 closeModal('fileModal'); 
                 document.getElementById('fileForm').reset(); 
-                showAlert('تم حفظ المستند', 'success'); 
+                showAlert('تم حفظ المستند بأمان', 'success'); 
                 await loadClientData(); 
             } else {
                 throw new Error(res?.error || 'خطأ في الحفظ');
             }
         }
     } catch (err) { 
-        showAlert("فشل الرفع: " + err.message, 'error'); 
+        showAlert("فشل الرفع السحابي: " + err.message, 'error'); 
     } finally { 
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> حفظ في أرشيف الموكل'; 
     }

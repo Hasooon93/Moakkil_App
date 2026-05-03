@@ -1,5 +1,5 @@
-// js/staff.js - محرك إدارة الموارد البشرية والموظفين (HR)
-// التحديثات: إضافة دالة العرض المقروء فقط، ومحرك كشط الصور الدائم (Image Scraper)، وحماية بصرية للصور المكسورة.
+// js/staff.js - محرك إدارة الموارد البشرية والموظفين (HR) - R2 & Offline Edition
+// التحديثات: التوافق الكامل مع Cloudflare R2، عرض الصور المشفرة كـ Blob، ودعم المزامنة دون اتصال.
 
 let allStaff = [];
 let currentEditingStaff = null;
@@ -14,10 +14,10 @@ const escapeHTML = (str) => {
 window.onload = async () => {
     applyFirmSettings();
     
-    const userStr = localStorage.getItem(CONFIG.USER_KEY);
+    const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
     if (!userStr) { window.location.href = 'login.html'; return; }
     const user = JSON.parse(userStr);
-    if (user.role !== 'admin' && user.role !== 'مدير') {
+    if (user.role !== 'admin' && user.role !== 'مدير' && user.role !== 'super_admin') {
         Swal.fire({icon: 'error', title: 'مرفوض', text: 'صلاحية الدخول للموارد البشرية مقتصرة على مدراء المكتب.'})
             .then(() => window.location.href = 'app.html');
         return;
@@ -27,7 +27,7 @@ window.onload = async () => {
 };
 
 function applyFirmSettings() {
-    const settings = JSON.parse(localStorage.getItem('firm_settings'));
+    const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
     if (!settings) return;
     const root = document.documentElement;
     if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
@@ -41,7 +41,7 @@ window.registerDeviceBiometric = async () => {
     }
     try {
         Swal.fire({title: 'جاري إعداد البصمة...', text: 'يرجى تأكيد هويتك عبر جهازك', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-        const res = await AUTH.registerBiometric();
+        const res = await API.registerBiometric();
         Swal.fire('نجاح', res.message || 'تم تسجيل البصمة بنجاح', 'success');
     } catch (err) {
         Swal.fire('خطأ', err.message || 'فشل إعداد البصمة', 'error');
@@ -68,6 +68,33 @@ function getRoleNameAr(role) {
     return role || 'موظف';
 }
 
+// 🛡️ محرك جلب الصور المحمية من R2 وتحويلها إلى ObjectURL لتُعرض بأمان
+async function loadR2Images() {
+    const imgs = document.querySelectorAll('img[data-r2-key]');
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+    
+    for(let img of imgs) {
+        const key = img.getAttribute('data-r2-key');
+        if (!key) continue;
+        
+        try {
+            const res = await fetch(`${baseUrl}/api/r2/download?key=${encodeURIComponent(key)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                img.src = URL.createObjectURL(blob);
+                img.removeAttribute('data-r2-key');
+            } else {
+                img.outerHTML = `<div class='staff-avatar mt-3 shadow-sm'>?</div>`;
+            }
+        } catch(e) {
+            img.outerHTML = `<div class='staff-avatar mt-3 shadow-sm'>?</div>`;
+        }
+    }
+}
+
 function renderStaffCards() {
     const container = document.getElementById('staff-container');
     if (allStaff.length === 0) {
@@ -84,10 +111,18 @@ function renderStaffCards() {
         
         let roleName = getRoleNameAr(staff.role);
         
-        // 🛡️ الحماية البصرية (onerror) لإخفاء أي صورة فيسبوك مكسورة وعرض أول حرف من الاسم
-        let avatarHtml = staff.avatar_url ? 
-            `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">` : 
-            `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        // 🛡️ معالجة الصور السحابية (R2) مقابل الروابط الخارجية (External)
+        let avatarHtml = '';
+        if (staff.avatar_url) {
+            if (staff.avatar_url.startsWith('http')) {
+                avatarHtml = `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+            } else {
+                // صورة R2 محمية: نضع صورة شفافة مؤقتة ونعطيها السمة ليقوم المحرك بجلبها
+                avatarHtml = `<img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-r2-key="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+            }
+        } else {
+            avatarHtml = `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        }
 
         let salaryText = '--';
         if (staff.salary_details && typeof staff.salary_details === 'object') {
@@ -121,6 +156,9 @@ function renderStaffCards() {
         </div>
         `;
     }).join('');
+
+    // تفعيل جلب الصور المحمية بعد رسم البطاقات
+    setTimeout(loadR2Images, 100);
 }
 
 // =================================================================
@@ -131,10 +169,13 @@ window.viewStaffDetails = function(id) {
     const staff = allStaff.find(s => s.id === id);
     if (!staff) return;
 
-    // تهيئة الترويسة مع حماية الصور المكسورة
     const avatarEl = document.getElementById('v_avatar_container');
     if (staff.avatar_url) {
-        avatarEl.innerHTML = `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar shadow-sm" style="width:90px; height:90px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar shadow-sm\\' style=\\'width:90px; height:90px;\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+        if (staff.avatar_url.startsWith('http')) {
+            avatarEl.innerHTML = `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar shadow-sm" style="width:90px; height:90px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar shadow-sm\\' style=\\'width:90px; height:90px;\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+        } else {
+            avatarEl.innerHTML = `<img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-r2-key="${escapeHTML(staff.avatar_url)}" class="staff-avatar shadow-sm" style="width:90px; height:90px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar shadow-sm\\' style=\\'width:90px; height:90px;\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+        }
     } else {
         avatarEl.innerHTML = `<div class="staff-avatar shadow-sm" style="width:90px; height:90px;">${escapeHTML(staff.full_name).charAt(0)}</div>`;
     }
@@ -174,9 +215,9 @@ window.viewStaffDetails = function(id) {
     if (staff.permissions) {
         let p = staff.permissions;
         let pHtml = '';
-        if(p.can_delete) pHtml += '<span class="badge bg-danger shadow-sm"><i class="fas fa-trash"></i> حذف الملفات</span>';
-        if(p.can_finance) pHtml += '<span class="badge bg-success shadow-sm"><i class="fas fa-wallet"></i> الوصول للمالية</span>';
-        if(p.can_reports) pHtml += '<span class="badge bg-info text-dark shadow-sm"><i class="fas fa-chart-pie"></i> استخراج التقارير</span>';
+        if(p.can_delete) pHtml += '<span class="badge bg-danger shadow-sm"><i class="fas fa-trash"></i> حذف الملفات</span> ';
+        if(p.can_finance) pHtml += '<span class="badge bg-success shadow-sm"><i class="fas fa-wallet"></i> الوصول للمالية</span> ';
+        if(p.can_reports) pHtml += '<span class="badge bg-info text-dark shadow-sm"><i class="fas fa-chart-pie"></i> استخراج التقارير</span> ';
         if(!pHtml) pHtml = '<span class="text-muted small">صلاحيات موظف افتراضية فقط</span>';
         permContainer.innerHTML = pHtml;
     } else {
@@ -195,11 +236,17 @@ window.viewStaffDetails = function(id) {
         document.getElementById('v_bank_name').innerText = '--'; document.getElementById('v_bank_iban').innerText = '--';
     }
 
-    // 4. الوثائق
+    // 4. الوثائق السحابية
     const docContainer = document.getElementById('v_documents_list');
     if (staff.staff_documents && Array.isArray(staff.staff_documents) && staff.staff_documents.length > 0) {
-        docContainer.innerHTML = staff.staff_documents.map(doc => `
-            <div class="doc-item bg-white shadow-sm border-0">
+        docContainer.innerHTML = staff.staff_documents.map(doc => {
+            const isR2 = doc.url && !doc.url.startsWith('http');
+            const actionBtn = isR2 
+                ? `<button type="button" class="btn btn-sm btn-outline-navy fw-bold rounded-pill px-3" onclick="API.downloadR2File('${escapeHTML(doc.url)}', '${escapeHTML(doc.name)}')"><i class="fas fa-download"></i> تحميل مشفر</button>`
+                : `<a href="${escapeHTML(doc.url)}" target="_blank" class="btn btn-sm btn-outline-navy fw-bold rounded-pill px-3"><i class="fas fa-eye"></i> عرض الأصل</a>`;
+                
+            return `
+            <div class="doc-item bg-white shadow-sm border-0 mb-2 p-2 rounded d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
                     <i class="fas fa-file-alt text-primary fa-2x me-3"></i>
                     <div>
@@ -207,28 +254,30 @@ window.viewStaffDetails = function(id) {
                         <small class="text-muted">${new Date(doc.date).toLocaleDateString('ar-EG')}</small>
                     </div>
                 </div>
-                <a href="${escapeHTML(doc.url)}" target="_blank" class="btn btn-sm btn-outline-navy fw-bold rounded-pill px-3"><i class="fas fa-eye"></i> عرض الأصل</a>
+                ${actionBtn}
             </div>
-        `).join('');
+            `;
+        }).join('');
     } else {
         docContainer.innerHTML = '<div class="text-center p-4 text-muted border border-dashed rounded bg-light">لا توجد وثائق مؤرشفة لهذا الموظف.</div>';
     }
 
-    // تجهيز زر التعديل داخل نافذة العرض
     const btnEdit = document.getElementById('btn_open_edit');
     if (btnEdit) {
         btnEdit.onclick = function() {
             closeModal('viewStaffModal');
-            setTimeout(() => { openStaffModal(id); }, 400); // تأخير بسيط لضمان إغلاق النافذة الأولى
+            setTimeout(() => { openStaffModal(id); }, 400);
         };
     }
 
-    // إعادة التبويب الأول للنشاط
     const firstTab = new bootstrap.Tab(document.querySelector('#viewStaffTabs button[data-bs-target="#v-tab-personal"]'));
     firstTab.show();
 
     const modal = new bootstrap.Modal(document.getElementById('viewStaffModal'));
     modal.show();
+
+    // جلب الصورة المعروضة في النافذة إذا كانت R2
+    setTimeout(loadR2Images, 100);
 };
 
 // =================================================================
@@ -310,12 +359,10 @@ async function saveStaff(event) {
     let finalAvatarUrl = document.getElementById('s_avatar').value.trim() || null;
     let staffName = document.getElementById('s_full_name').value.trim();
 
-    // 🚀 كشط وحفظ الصورة (Image Proxy & Persistence)
-    // إذا كان الرابط جديداً ولا يتبع لسيرفرات جوجل درايف الدائمة، سنقوم بسحبه ورفعه تلقائياً
-    if (navigator.onLine && finalAvatarUrl && finalAvatarUrl.startsWith('http') && !finalAvatarUrl.includes('drive.google.com') && !finalAvatarUrl.includes('googleusercontent.com')) {
-        btn.innerHTML = '<i class="fas fa-cloud-upload-alt fa-fade me-1"></i> جاري أرشفة الصورة...';
+    // 🚀 كشط وحفظ الصورة سحابياً عبر Cloudflare R2
+    if (navigator.onLine && finalAvatarUrl && finalAvatarUrl.startsWith('http') && !finalAvatarUrl.includes('googleusercontent.com') && !finalAvatarUrl.includes('drive.google.com')) {
+        btn.innerHTML = '<i class="fas fa-cloud-upload-alt fa-fade me-1"></i> جاري أرشفة الصورة سحابياً...';
         try {
-            // محاولة الجلب المباشر، وفي حال حظر CORS نستخدم AllOrigins كـ Proxy بديل
             let imgRes;
             try {
                 imgRes = await fetch(finalAvatarUrl);
@@ -324,17 +371,15 @@ async function saveStaff(event) {
             }
             
             const blob = await imgRes.blob();
-            // تحويل الـ Blob إلى File ليتوافق مع دالة uploadToDrive
             const file = new File([blob], `avatar_${staffName.replace(/\s+/g, '_')}.jpg`, { type: blob.type || 'image/jpeg' });
             
-            // رفع الصورة إلى مجلد HR-Avatars في جوجل درايف
-            const uploadRes = await API.uploadToDrive(file, "موظف-" + staffName, "HR-Avatars");
-            
-            if (uploadRes && uploadRes.url) {
-                finalAvatarUrl = uploadRes.url; // استبدال الرابط الخارجي المؤقت بالرابط الدائم السحابي
+            // الرفع المباشر إلى R2
+            const uploadRes = await API.uploadFileToR2(file, "HR", "Avatars");
+            if (uploadRes && uploadRes.r2_key) {
+                finalAvatarUrl = uploadRes.r2_key; 
             }
         } catch (err) {
-            console.warn("فشل في كشط الصورة الدائمة، سيتم حفظ الرابط الأصلي", err);
+            console.warn("فشل في كشط الصورة إلى R2، سيتم حفظ الرابط الأصلي", err);
         }
     }
     
@@ -345,7 +390,7 @@ async function saveStaff(event) {
         national_id: document.getElementById('s_national_id').value || null,
         gender: document.getElementById('s_gender').value || null,
         date_of_birth: document.getElementById('s_dob').value || null,
-        avatar_url: finalAvatarUrl, // الرابط النهائي المحمي
+        avatar_url: finalAvatarUrl, 
         address: document.getElementById('s_address').value || null,
         role: document.getElementById('s_role').value,
         specialization: document.getElementById('s_specialization').value || null,
@@ -410,7 +455,7 @@ async function toggleStaffStatus(id, currentActiveStatus) {
 
     const confirm = await Swal.fire({
         title: `هل تريد ${actionName} هذا الموظف؟`,
-        text: currentActiveStatus ? "سيتم منعه من تسجيل الدخول للنظام نهائياً، مع الاحتفاظ ببياناته وقضاياه." : "سيتمكن من الدخول للنظام مجدداً.",
+        text: currentActiveStatus ? "سيتم منعه من تسجيل الدخول للنظام نهائياً، مع الاحتفاظ ببياناته." : "سيتمكن من الدخول للنظام مجدداً.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: currentActiveStatus ? '#d33' : '#10b981',
@@ -473,6 +518,7 @@ async function processIdAI() {
     }
 }
 
+// ----------------- إدارة الوثائق السحابية (R2 Documents) -----------------
 function renderStaffDocs(docs) {
     const list = document.getElementById('staff-docs-list');
     if (!docs || docs.length === 0) {
@@ -480,19 +526,26 @@ function renderStaffDocs(docs) {
         return;
     }
     
-    list.innerHTML = docs.map((doc, index) => `
-        <div class="doc-item">
+    list.innerHTML = docs.map((doc, index) => {
+        const isR2 = doc.url && !doc.url.startsWith('http');
+        const viewBtn = isR2 
+            ? `<button type="button" class="btn btn-sm btn-outline-primary px-2 py-0" onclick="API.downloadR2File('${escapeHTML(doc.url)}', '${escapeHTML(doc.name)}')"><i class="fas fa-eye"></i></button>`
+            : `<a href="${escapeHTML(doc.url)}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-0"><i class="fas fa-eye"></i></a>`;
+
+        return `
+        <div class="doc-item d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
             <div>
                 <i class="fas fa-file-alt text-navy me-2 fs-5"></i>
                 <span class="fw-bold text-dark small">${escapeHTML(doc.name)}</span>
                 <small class="d-block text-muted" style="font-size:0.7rem;">${new Date(doc.date).toLocaleDateString('ar-EG')}</small>
             </div>
             <div>
-                <a href="${escapeHTML(doc.url)}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-0"><i class="fas fa-eye"></i></a>
+                ${viewBtn}
                 <button type="button" class="btn btn-sm btn-outline-danger px-2 py-0 ms-1" onclick="deleteStaffDoc(${index})"><i class="fas fa-trash"></i></button>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function uploadStaffDoc() {
@@ -511,30 +564,31 @@ async function uploadStaffDoc() {
     
     try {
         const file = fileInput.files[0];
-        const driveRes = await API.uploadToDrive(file, "موظف-" + currentEditingStaff.full_name, "HR-Docs");
+        // 🚀 الرفع مباشرة إلى Cloudflare R2
+        const r2Res = await API.uploadFileToR2(file, "HR", "Docs");
         
-        if (driveRes && driveRes.url) {
+        if (r2Res && r2Res.r2_key) {
             let currentDocs = currentEditingStaff.staff_documents || [];
             currentDocs.push({
                 name: nameInput || file.name,
-                url: driveRes.url,
+                url: r2Res.r2_key, // حفظ المفتاح المشفر
                 date: new Date().toISOString()
             });
             
             const res = await API.updateStaff(currentEditingStaff.id, { staff_documents: currentDocs });
             if(res && !res.error) {
-                currentEditingStaff.staff_documents = currentDocs; // تحديث محلي
+                currentEditingStaff.staff_documents = currentDocs; 
                 
                 document.getElementById('doc_file').value = '';
                 document.getElementById('doc_name').value = '';
                 renderStaffDocs(currentDocs);
-                Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة', showConfirmButton: false, timer: 2000});
+                Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تمت الأرشفة السحابية بنجاح', showConfirmButton: false, timer: 2000});
             } else {
                 throw new Error(res?.error || 'خطأ في التحديث');
             }
         }
     } catch (err) {
-        Swal.fire('خطأ', 'فشل الرفع السحابي: ' + err.message, 'error');
+        Swal.fire('خطأ', 'فشل الرفع السحابي إلى R2: ' + err.message, 'error');
     } finally {
         btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload"></i> رفع';
     }
@@ -573,7 +627,6 @@ function filterStaffList() {
         (s.phone && s.phone.includes(q))
     );
     
-    // فلترة وعرض الكروت مع نفس الحماية البصرية للصور
     const container = document.getElementById('staff-container');
     if (filtered.length === 0) {
         container.innerHTML = '<div class="col-12 text-center p-4 text-muted bg-white rounded border">لا توجد نتائج تطابق البحث.</div>';
@@ -587,9 +640,16 @@ function filterStaffList() {
         let loginBadge = canLogin ? '<span class="badge bg-soft-primary text-primary border border-primary px-2"><i class="fas fa-key"></i> وصول</span>' : '<span class="badge bg-light text-muted border px-2"><i class="fas fa-lock"></i> مسحوب</span>';
         let roleName = getRoleNameAr(staff.role);
         
-        let avatarHtml = staff.avatar_url ? 
-            `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">` : 
-            `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        let avatarHtml = '';
+        if (staff.avatar_url) {
+            if (staff.avatar_url.startsWith('http')) {
+                avatarHtml = `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+            } else {
+                avatarHtml = `<img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-r2-key="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
+            }
+        } else {
+            avatarHtml = `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        }
             
         let salaryText = '--';
         if (staff.salary_details && typeof staff.salary_details === 'object') {
@@ -618,6 +678,8 @@ function filterStaffList() {
         </div>
         `;
     }).join('');
+
+    setTimeout(loadR2Images, 100);
 }
 
 function closeModal(id) { 

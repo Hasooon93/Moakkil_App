@@ -1,5 +1,5 @@
-// js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
-// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي، ودعم حقول الـ ERP.
+// js/library.js - محرك المكتبة القانونية الذكية (النسخة السحابية R2 & Auto-Heal Edition)
+// التحديثات: تكامل تام مع Cloudflare R2 للرفع المحمي، التحميل المشفر (Secure Download)، والمزامنة بدون اتصال.
 
 let currentUser = null;
 let allTemplates = [];
@@ -20,6 +20,7 @@ const escapeHTML = (str) => {
 };
 
 window.onload = async () => {
+    applyFirmSettings();
     const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
     const currentToken = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
     
@@ -41,10 +42,23 @@ window.onload = async () => {
     await loadTemplates();
 };
 
+function applyFirmSettings() {
+    const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
+    if (!settings) return;
+    const root = document.documentElement;
+    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
+    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
+}
+
+window.manualSync = async () => {
+    await loadTemplates();
+    showAlert('تمت المزامنة بنجاح', 'success');
+};
+
 async function loadTemplates() {
     try {
         // المحاولة الأولى: جلب النماذج عبر استعلام مباشر وسليم
-        let files = await API.getFiles('is_template=eq.true'); // استخدام دوال API.js
+        let files = await API.getFiles('is_template=eq.true'); 
         
         // خوارزمية العلاج الذاتي: إذا فشل الاستعلام، نجلب كل الملفات ونفلتر محلياً
         if (files && files.error) {
@@ -53,7 +67,7 @@ async function loadTemplates() {
             if (Array.isArray(allFiles)) {
                 files = allFiles.filter(f => f.is_template === true || f.case_id === null);
             } else {
-                throw new Error("فشل في جلب الملفات من الخادم");
+                throw new Error("فشل في جلب الملفات من الخادم السحابي");
             }
         }
 
@@ -102,7 +116,7 @@ function renderTemplates() {
 
     // السماح بالحذف للمدير وصاحب الملف
     const canDelete = (fileOwnerId) => {
-        return currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.id === fileOwnerId;
+        return currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.role === 'super_admin' || currentUser.id === fileOwnerId;
     };
 
     container.innerHTML = filtered.map(t => {
@@ -113,24 +127,25 @@ function renderTemplates() {
         const delBtn = canDelete(t.added_by) ? 
             `<button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm" onclick="deleteRecord('${t.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
 
-        // استخراج الرابط من أي حقل متوفر في قاعدة البيانات
-        const fileLink = escapeHTML(t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#');
+        // 🛡️ التحميل الآمن لملفات R2
+        const isR2 = t.file_url && !t.file_url.startsWith('http');
+        const actionBtn = isR2 
+            ? `<button class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill" onclick="API.downloadR2File('${escapeHTML(t.file_url)}', '${escapeHTML(t.file_name)}')"><i class="fas fa-lock me-1"></i> تحميل آمن</button>`
+            : `<a href="${escapeHTML(t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#')}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill"><i class="fas fa-external-link-alt me-1"></i> تحميل أو عرض</a>`;
 
         return `
         <div class="col-12 col-md-6">
-            <div class="template-card">
+            <div class="template-card position-relative bg-white p-3 rounded shadow-sm border mb-3 h-100 d-flex flex-column justify-content-between">
                 ${delBtn}
                 <div class="d-flex align-items-center">
                     <i class="fas ${icon} fa-3x me-3"></i>
-                    <div class="flex-grow-1 text-truncate">
+                    <div class="flex-grow-1 text-truncate pe-4">
                         <h6 class="fw-bold text-navy mb-1 text-truncate" title="${escapeHTML(t.file_name)}">${escapeHTML(t.file_name)}</h6>
                         <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> ${new Date(t.created_at).toLocaleDateString('ar-EG')}</small>
                     </div>
                 </div>
                 <div class="mt-3 text-end">
-                    <a href="${fileLink}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
-                        <i class="fas fa-download me-1"></i> تحميل أو عرض
-                    </a>
+                    ${actionBtn}
                 </div>
             </div>
         </div>
@@ -142,7 +157,7 @@ async function uploadTemplate(event) {
     event.preventDefault();
     
     if (!navigator.onLine) {
-        showAlert('عذراً، لا يمكن رفع نماذج جديدة للمكتبة أثناء انقطاع الإنترنت.', 'warning');
+        showAlert('عذراً، لا يمكن رفع نماذج جديدة للمكتبة السحابية أثناء انقطاع الإنترنت.', 'warning');
         return;
     }
 
@@ -160,25 +175,24 @@ async function uploadTemplate(event) {
     const fileExt = file.name.split('.').pop().toLowerCase();
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي (R2)...';
 
     try {
         let finalFileUrl = "";
         let finalFileId = null;
 
-        // محاولة الرفع لجوجل درايف عبر دالة API الموحدة
+        // 🚀 الرفع المباشر والآمن إلى Cloudflare R2
         try {
-            const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
-            if (driveRes && driveRes.url) {
-                finalFileUrl = driveRes.url;
-                finalFileId = driveRes.id || null;
+            const r2Res = await API.uploadFileToR2(file, 'Library', catInput);
+            if (r2Res && r2Res.r2_key) {
+                finalFileUrl = r2Res.r2_key;
+                finalFileId = r2Res.r2_key;
             } else {
-                throw new Error("لم يتم إرجاع رابط من جوجل درايف");
+                throw new Error("لم يتم إرجاع مفتاح التشفير من الخادم السحابي");
             }
-        } catch (gasError) {
-            console.warn("تعذر الرفع لجوجل درايف، سيتم وضع مسار وهمي لغايات العرض:", gasError);
-            finalFileUrl = "https://drive.google.com/file/d/placeholder";
-            showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ)', 'info');
+        } catch (r2Error) {
+            console.error("تعذر الرفع إلى التخزين السحابي:", r2Error);
+            throw new Error("تعذر الاتصال بخوادم R2 السحابية. يرجى المحاولة لاحقاً.");
         }
         
         // الحقن الجراحي: استخدام الحقول القياسية لجدول mo_files بدقة
@@ -215,7 +229,7 @@ async function uploadTemplate(event) {
         if (res && !res.error) {
             closeModal('uploadModal');
             document.getElementById('uploadForm').reset();
-            showAlert('تم حفظ النموذج في المكتبة بنجاح', 'success');
+            showAlert('تم حفظ النموذج وتشفيره في المكتبة بنجاح', 'success');
             await loadTemplates();
         } else {
             throw new Error(res.error || "خطأ أثناء تسجيل الملف في قاعدة البيانات");
@@ -248,7 +262,7 @@ async function deleteRecord(id) {
         const res = await API.deleteFile(id);
         
         if(res && !res.error) {
-            showAlert(res.offline ? 'أنت أوفلاين، سيتم الحذف فور عودة الإنترنت' : 'تم حذف النموذج بنجاح', res.offline ? 'warning' : 'success');
+            showAlert(res.offline ? 'أنت أوفلاين، تم حفظ العملية للحذف فور عودة الإنترنت' : 'تم حذف النموذج بنجاح', res.offline ? 'warning' : 'success');
             await loadTemplates();
         } else {
             showAlert(res.error || 'فشل الحذف', 'error');

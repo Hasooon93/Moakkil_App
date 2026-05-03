@@ -1,5 +1,5 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المكتملة 100%)
-// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، إصلاح VCard، معالجة الـ Null Dates والـ UUIDs، والـ ERP Injection (Tags, Audit Time Machine).
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة السحابية R2 & Offline Sync Edition)
+// التحديثات: تكامل الاستخراج الذكي مع R2، المزامنة الدفعية للمهام التلقائية، سجل الرقابة المتقدم، والـ Optimistic UI.
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -151,10 +151,27 @@ function applyFirmSettings(settings) {
 
 async function saveFirmSettings(event) {
     event.preventDefault();
-    const data = { firm_name: document.getElementById('firm_setting_name').value, logo_url: document.getElementById('firm_setting_logo').value, primary_color: document.getElementById('firm_setting_primary').value, accent_color: document.getElementById('firm_setting_accent').value, firm_phone: document.getElementById('firm_setting_phone').value, firm_address: document.getElementById('firm_setting_address').value };
+    const btn = event.target.querySelector('button[type="submit"]');
+    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...'; }
+
+    let finalLogoUrl = document.getElementById('firm_setting_logo').value;
+    
+    // دعم رفع الشعار إلى R2 إذا وجد حقل من نوع file في الواجهة
+    const fileInput = document.getElementById('firm_setting_logo_file');
+    if (fileInput && fileInput.files.length > 0) {
+        if (!navigator.onLine) { showAlert('لا يمكن رفع الشعار سحابياً بلا إنترنت', 'warning'); if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التغييرات'; } return; }
+        try {
+            const r2Res = await API.uploadFileToR2(fileInput.files[0], 'Settings', 'Logo');
+            if (r2Res && r2Res.r2_key) finalLogoUrl = r2Res.r2_key;
+        } catch (e) { console.error(e); }
+    }
+
+    const data = { firm_name: document.getElementById('firm_setting_name').value, logo_url: finalLogoUrl, primary_color: document.getElementById('firm_setting_primary').value, accent_color: document.getElementById('firm_setting_accent').value, firm_phone: document.getElementById('firm_setting_phone').value, firm_address: document.getElementById('firm_setting_address').value };
+    
     const res = await API.updateFirmSettings(data);
     if(res && !res.error) { localStorage.setItem('firm_settings', JSON.stringify(data)); applyFirmSettings(data); closeModal('settingsModal'); showAlert('تم حفظ إعدادات المكتب بنجاح', 'success'); } 
-    else { showAlert('فشل الحفظ: ' + (res.error || 'خطأ غير معروف'), 'danger'); }
+    else { showAlert('فشل الحفظ: ' + (res?.error || 'خطأ غير معروف'), 'danger'); }
+    if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ التغييرات'; }
 }
 
 function switchView(viewId) {
@@ -584,7 +601,7 @@ async function saveCase(event) {
 
     const res = await API.addCase(data);
     if (res && !res.error) { 
-        if (autoTasks && !res.offline) {
+        if (autoTasks) {
             const tmr = new Date(Date.now() + 86400000).toISOString(); const afterTmr = new Date(Date.now() + 172800000).toISOString();
             await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers });
             await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers });

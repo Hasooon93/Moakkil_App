@@ -1,10 +1,11 @@
-// js/case-details.js - محرك تفاصيل القضية (النسخة الكاملة والنهائية - تم حقن الـ ERP والـ AI ومعالجة التواريخ الفارغة)
+// js/case-details.js - محرك تفاصيل القضية (النسخة السحابية المحدثة R2 & AI Auto-Draft Edition)
+// التحديثات: تكامل تام مع Cloudflare R2، المزامنة دون اتصال، والتوليد الآلي للوائح القانونية.
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
 
 // =================================================================
-// 🛠️ الدوال الأساسية للواجهة والتنبيهات (في الأعلى لضمان عملها)
+// 🛠️ الدوال الأساسية للواجهة والتنبيهات
 // =================================================================
 
 const escapeHTML = (str) => {
@@ -61,7 +62,7 @@ window.onload = async () => {
 };
 
 function applyFirmSettings() {
-    const settings = JSON.parse(localStorage.getItem('firm_settings'));
+    const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
     if (!settings) return;
     const root = document.documentElement;
     if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
@@ -156,7 +157,6 @@ function renderHeaderAndSummary() {
     document.getElementById('det-poa-number').innerText = escapeHTML(caseObj.power_of_attorney_number || "--");
     document.getElementById('det-opp-lawyer').innerText = escapeHTML(caseObj.opponent_lawyer || "--");
     
-    // الحقن الجراحي (الـ ERP Features) في الملخص
     const execNumEl = document.getElementById('det-execution-num');
     if(execNumEl) {
         execNumEl.innerText = escapeHTML(caseObj.execution_file_number || "لا يوجد");
@@ -205,10 +205,8 @@ function renderHeaderAndSummary() {
     if(document.getElementById('det-archive')) document.getElementById('det-archive').innerText = escapeHTML(caseObj.physical_archive_location || "--");
     if(document.getElementById('det-clerk')) document.getElementById('det-clerk').innerText = escapeHTML(caseObj.court_clerk || "--");
     
-    // الملخص التراكمي
     if(document.getElementById('det-ai-summary')) document.getElementById('det-ai-summary').innerText = escapeHTML(caseObj.ai_cumulative_summary || "لا يوجد ملخص تراكمي بعد.");
     
-    // الوقائع والأسانيد المستخلصة ذكياً
     if(caseObj.ai_entities) {
         try {
             let ai = typeof caseObj.ai_entities === 'string' ? JSON.parse(caseObj.ai_entities) : caseObj.ai_entities;
@@ -271,7 +269,6 @@ function openEditModal() {
     document.getElementById('edit_police_station_ref').value = caseObj.police_station_ref || '';
     document.getElementById('edit_prosecution_ref').value = caseObj.prosecution_ref || '';
 
-    // الحقن الجراحي لحقول الـ ERP
     if(document.getElementById('edit_execution_file_number')) document.getElementById('edit_execution_file_number').value = caseObj.execution_file_number || '';
     if(document.getElementById('edit_case_tags')) document.getElementById('edit_case_tags').value = Array.isArray(caseObj.case_tags) ? caseObj.case_tags.join('، ') : '';
 
@@ -317,7 +314,6 @@ function openEditModal() {
     openModal('editCaseModal');
 }
 
-// 🔥 دالة الحفظ الجراحية (التي تمنع إرسال تواريخ فارغة كـ "")
 async function updateCaseDetails(event) {
     event.preventDefault();
     const btn = document.getElementById('btn_save_case_edit');
@@ -327,7 +323,6 @@ async function updateCaseDetails(event) {
     const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
     const parseLinesToArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(s => s) : [];
 
-    // دوال مساعدة لضمان إرسال null بدلاً من نص فارغ (إصلاح الـ Error 500)
     const getStr = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
     const getNull = (id) => { const el = document.getElementById(id); return (el && el.value.trim() !== '') ? el.value : null; };
     const getNumZero = (id) => { const el = document.getElementById(id); return (el && el.value.trim() !== '') ? Number(el.value) : 0; };
@@ -351,7 +346,6 @@ async function updateCaseDetails(event) {
         court_clerk: getStr('edit_court_clerk'), 
         parent_case_id: getNull('edit_parent_case_id'),
         
-        // التواريخ المحمية
         deadline_date: getNull('edit_deadline_date'), 
         statute_of_limitations_date: getNull('edit_statute_of_limitations_date'),
         judgment_date: getNull('edit_judgment_date'), 
@@ -398,7 +392,7 @@ async function updateCaseDetails(event) {
 }
 
 // =================================================================
-// 🤖 تحديث الإجراءات والاستخراج الذكي
+// 🤖 تحديث الإجراءات والاستخراج الذكي (ومرفقات R2)
 // =================================================================
 
 function openUpdateModal() { 
@@ -457,12 +451,15 @@ async function saveUpdate(event) {
     let finalAttachmentUrl = null;
 
     if (hasFile) {
-        if (!navigator.onLine) { showAlert('لا رفع بدون إنترنت.', 'warning'); return; }
-        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> رفع...';
+        if (!navigator.onLine) { showAlert('لا يمكن رفع المرفقات السحابية بلا إنترنت.', 'warning'); return; }
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> رفع آمن...';
         try {
-            const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
-            finalAttachmentUrl = driveRes.url;
-        } catch(e) { showAlert('فشل رفع المرفق', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; return; }
+            // 🚀 الرفع مباشرة عبر Cloudflare R2
+            const r2Res = await API.uploadFileToR2(fileInput.files[0], caseObj.client_id, caseObj.id);
+            if(r2Res && r2Res.r2_key) finalAttachmentUrl = r2Res.r2_key;
+        } catch(e) { 
+            showAlert('فشل الرفع السحابي', 'error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> إضافة التحديث'; return; 
+        }
     } else {
         closeModal('updateModal'); showAlert('تمت إضافة الواقعة', 'success');
     }
@@ -470,7 +467,6 @@ async function saveUpdate(event) {
     const extractedStr = document.getElementById('upd_extracted_json') ? document.getElementById('upd_extracted_json').value : '';
     const extractedData = extractedStr ? JSON.parse(extractedStr) : {};
     
-    // 🔥 حماية تواريخ الإجراء
     const hearingVal = document.getElementById('upd_hearing_date') ? document.getElementById('upd_hearing_date').value : '';
     const nextHearingVal = document.getElementById('upd_next_hearing') ? document.getElementById('upd_next_hearing').value : '';
     
@@ -509,7 +505,15 @@ function renderTimeline(updates) {
     const container = document.getElementById('timeline-container');
     if (!updates || updates.length === 0) { container.innerHTML = '<div class="text-center p-4 text-muted small bg-white rounded border shadow-sm">لا يوجد وقائع.</div>'; return; }
     container.innerHTML = updates.map(u => {
-        const attachHtml = u.attachment_url ? `<a href="${escapeHTML(u.attachment_url)}" target="_blank" class="badge bg-soft-primary text-primary mt-2 border border-primary text-decoration-none shadow-sm p-1 px-2"><i class="fas fa-paperclip"></i> المرفق</a>` : '';
+        let attachHtml = '';
+        if (u.attachment_url) {
+            const isR2 = !u.attachment_url.startsWith('http');
+            if (isR2) {
+                attachHtml = `<button class="btn badge bg-soft-primary text-primary mt-2 border border-primary text-decoration-none shadow-sm p-1 px-2" onclick="API.downloadR2File('${escapeHTML(u.attachment_url)}')"><i class="fas fa-lock"></i> تحميل المرفق المشفر</button>`;
+            } else {
+                attachHtml = `<a href="${escapeHTML(u.attachment_url)}" target="_blank" class="badge bg-soft-primary text-primary mt-2 border border-primary text-decoration-none shadow-sm p-1 px-2"><i class="fas fa-paperclip"></i> المرفق</a>`;
+            }
+        }
         return `<div class="timeline-item mb-3"><div class="card-custom p-3 shadow-sm bg-white border-end border-4 border-navy position-relative"><button class="btn btn-sm text-danger position-absolute top-0 end-0 mt-2 me-2" onclick="deleteRecord('update', '${u.id}')"><i class="fas fa-trash"></i></button><small class="text-primary fw-bold">${new Date(u.created_at).toLocaleDateString('ar-EG')}</small><h6 class="fw-bold text-navy mt-1">${escapeHTML(u.update_title)}</h6><p class="mb-0 small">${escapeHTML(u.update_details)}</p>${u.hearing_date ? `<small class="d-block mt-2 text-muted"><i class="fas fa-calendar-check text-success"></i> تاريخ الجلسة: ${escapeHTML(u.hearing_date)}</small>` : ''}${attachHtml}</div></div>`;
     }).join('');
 }
@@ -583,23 +587,28 @@ function renderExpenses(expenses) {
     }).join('');
 }
 
+// 🛡️ الأرشيف المحمي لملفات R2
 function renderFiles(files) {
     const container = document.getElementById('files-container');
     if (!files || files.length === 0) { container.innerHTML = '<div class="col-12 text-center p-4 text-muted small border bg-white rounded">الأرشيف فارغ.</div>'; return; }
     container.innerHTML = files.map(f => {
         const isImage = f.file_type && f.file_type.includes('image');
-        const iconHtml = (isImage && f.drive_file_id) ? `<i class="fas fa-image fs-1 text-primary mb-2"></i>` : `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
+        const iconHtml = isImage ? `<i class="fas fa-image fs-1 text-primary mb-2"></i>` : `<i class="fas fa-file-pdf fs-1 text-danger mb-2"></i>`;
         const expiryBadge = f.expiry_date ? `<small class="d-block mt-1 text-danger" style="font-size: 0.65rem;"><i class="fas fa-clock"></i> ينتهي: ${escapeHTML(f.expiry_date)}</small>` : '';
         
         const aiButton = `<button class="btn btn-sm ${f.is_analyzed ? 'btn-info text-white' : 'btn-outline-secondary'} mt-2 w-100 fw-bold shadow-sm" onclick="viewAiSummary('${f.id}')"><i class="fas fa-robot"></i> ${f.is_analyzed ? 'عرض التلخيص' : 'تحليل ذكي'}</button>`;
         
-        return `<div class="col-6"><div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative"><button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteRecord('file', '${f.id}')"><i class="fas fa-trash"></i></button><span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>${iconHtml} <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>${expiryBadge}<div class="d-flex flex-column gap-1 mt-2"><a href="${escapeHTML(f.drive_file_id || f.file_url)}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>${aiButton}</div></div></div>`;
+        const isR2 = f.file_url && !f.file_url.startsWith('http');
+        const viewBtn = isR2 
+            ? `<button class="btn btn-sm btn-outline-primary w-100 fw-bold" onclick="API.downloadR2File('${escapeHTML(f.file_url)}', '${escapeHTML(f.file_name)}')"><i class="fas fa-lock"></i> تحميل آمن</button>`
+            : `<a href="${escapeHTML(f.drive_file_id || f.file_url)}" target="_blank" class="btn btn-sm btn-outline-primary w-100 fw-bold">عرض</a>`;
+
+        return `<div class="col-6"><div class="card-custom p-3 text-center border shadow-sm h-100 bg-white position-relative"><button class="btn btn-sm text-danger position-absolute top-0 start-0 m-1" onclick="deleteRecord('file', '${f.id}')"><i class="fas fa-trash"></i></button><span class="badge bg-light text-dark border mb-2 d-block text-truncate">${escapeHTML(f.file_category || 'مستند')}</span>${iconHtml} <h6 class="small fw-bold text-truncate mt-1 mb-0" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>${expiryBadge}<div class="d-flex flex-column gap-1 mt-2">${viewBtn}${aiButton}</div></div></div>`;
     }).join('');
 }
 
 async function savePayment(event) { 
     event.preventDefault(); 
-    // 🔥 حماية تاريخ الدفعة
     const rawDate = document.getElementById('pay_due_date').value;
     const validDate = rawDate.trim() !== '' ? applyJordanTimeHackLocal(rawDate) : new Date().toISOString();
     
@@ -610,7 +619,6 @@ async function savePayment(event) {
 
 async function saveExpense(event) { 
     event.preventDefault(); 
-    // 🔥 حماية تاريخ المصروف
     const rawDate = document.getElementById('exp_date').value;
     const validDate = rawDate.trim() !== '' ? applyJordanTimeHackLocal(rawDate) : new Date().toISOString();
     const receipt = document.getElementById('exp_receipt_url') ? document.getElementById('exp_receipt_url').value : '';
@@ -620,13 +628,13 @@ async function saveExpense(event) {
     try { const res = await API.addExpense(data); if(res && !res.error) await loadCaseFullDetails(); else throw new Error(res?.error || 'خطأ'); } catch(e) { showAlert(e.message, 'error'); }
 }
 
+// 🚀 الرفع الآمن للمستندات عبر R2
 async function saveFile(event) {
     event.preventDefault();
     const fileInput = document.getElementById('file_input');
     const titleInput = document.getElementById('file_title_input').value;
     const catInput = document.getElementById('file_category_input').value;
     
-    // 🔥 حماية تاريخ انتهاء الملف
     const expiryInput = document.getElementById('file_expiry_date').value;
     const validExpiry = expiryInput.trim() !== '' ? expiryInput : null;
 
@@ -635,8 +643,9 @@ async function saveFile(event) {
     if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات السحابية بلا إنترنت.', 'warning'); return; }
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة وتحليل...';
     try {
-        const driveRes = await API.uploadToDrive(fileInput.files[0], caseObj.case_internal_id, caseObj.drive_folder_id);
-        if(driveRes && driveRes.url) {
+        // الرفع المباشر إلى Cloudflare R2
+        const r2Res = await API.uploadFileToR2(fileInput.files[0], caseObj.client_id, caseObj.id);
+        if(r2Res && r2Res.r2_key) {
             let aiSummaryText = null;
             let isAnalyzed = false;
             if (fileInput.files[0].type.startsWith('image/')) {
@@ -658,15 +667,15 @@ async function saveFile(event) {
             const payload = { 
                 case_id: currentCaseId, file_name: titleInput || fileInput.files[0].name, 
                 file_type: fileInput.files[0].type, file_category: catInput, 
-                file_url: driveRes.url, drive_file_id: driveRes.id || driveRes.url, 
+                file_url: r2Res.r2_key, drive_file_id: r2Res.r2_key, 
                 is_template: false, expiry_date: validExpiry,
                 ai_summary: aiSummaryText, is_analyzed: isAnalyzed 
             };
             
             const res = await API.addFileRecord ? await API.addFileRecord(payload) : await API.post('/api/files', payload);
-            if(res && !res.error) { closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ والتحليل', 'success'); await loadCaseFullDetails(); }
+            if(res && !res.error) { closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ والتحليل سحابياً', 'success'); await loadCaseFullDetails(); }
         }
-    } catch (err) { showAlert("فشل: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> رفع للأرشيف'; }
+    } catch (err) { showAlert("فشل الرفع السحابي: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> رفع للأرشيف'; }
 }
 
 window.viewAiSummary = function(fileId) {
@@ -681,13 +690,17 @@ window.viewAiSummary = function(fileId) {
     if (file.is_analyzed && file.ai_summary) {
         if(summaryEl) summaryEl.innerHTML = `<div class="alert alert-success border-0 shadow-sm small fw-bold"><i class="fas fa-check-circle me-1"></i> تم تحليل هذا المستند آلياً.</div><div dir="ltr" class="text-start"><code>${escapeHTML(file.ai_summary)}</code></div>`;
     } else {
-        const fileUrl = file.file_url || file.drive_file_id || '#';
+        const isR2 = file.file_url && !file.file_url.startsWith('http');
+        const downloadAction = isR2 
+            ? `API.downloadR2File('${escapeHTML(file.file_url)}', '${escapeHTML(file.file_name)}')`
+            : `window.open('${escapeHTML(file.drive_file_id || file.file_url)}', '_blank')`;
+            
         if(summaryEl) summaryEl.innerHTML = `
             <div class="text-center py-4">
                 <i class="fas fa-info-circle fa-3x text-warning mb-3"></i>
                 <h6 class="fw-bold">لم يتم استخراج النص آلياً من هذا المستند.</h6>
-                <p class="text-muted small">نظراً لكونه ملفاً من نوع PDF، يمكنك فتح الملف ونسخ محتواه إلى (المساعد الذكي - Chat AI) لتلخيصه واستخراج أطرافه فوراً.</p>
-                <a href="${escapeHTML(fileUrl)}" target="_blank" class="btn btn-primary fw-bold px-4 mt-2 shadow-sm"><i class="fas fa-external-link-alt me-1"></i> فتح المستند الآن</a>
+                <p class="text-muted small">نظراً لكونه ملفاً من نوع PDF، يمكنك تحميل الملف ونسخ محتواه إلى (المساعد الذكي - Chat AI) لتلخيصه.</p>
+                <button class="btn btn-primary fw-bold px-4 mt-2 shadow-sm" onclick="${downloadAction}"><i class="fas fa-download me-1"></i> تحميل المستند الآن</button>
             </div>
         `;
     }
@@ -707,7 +720,7 @@ async function deleteRecord(type, id) {
 }
 
 // =================================================================
-// 🎤 الإملاء الصوتي وتوليد المسودات
+// 🎤 الإملاء الصوتي وتوليد المسودات (التكامل مع محرك RAG)
 // =================================================================
 
 function startDictation(elementId) {
@@ -726,21 +739,33 @@ function startDictation(elementId) {
 
 function openAiDraftModal() { document.getElementById('ai_draft_notes').value = ''; document.getElementById('ai_draft_result_container').classList.add('d-none'); document.getElementById('ai_draft_result').value = ''; openModal('aiDraftModal'); }
 
+// 🚀 توليد اللوائح بناءً على المحرك الجديد المحدث في الوركر (RAG Auto-Drafting)
 async function generateAiDraft() {
     const btn = document.getElementById('btn_generate_draft');
     const draftType = document.getElementById('ai_draft_type').value;
     const extraNotes = document.getElementById('ai_draft_notes').value;
     const client = window.firmClients.find(cl => cl.id === caseObj.client_id);
     const clientName = client ? client.full_name : 'الموكل';
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> صياغة...'; btn.disabled = true; document.getElementById('ai_draft_result_container').classList.add('d-none');
-    const promptText = `بصفتك محامياً أردنياً متمرساً، قم بصياغة مستند قانوني رسمي جاهز للطباعة. نوع المستند: ${draftType}\nالمدعي: ${clientName} | المدعى عليه: ${caseObj.opponent_name || 'غير محدد'}\nالمحكمة: ${caseObj.current_court || 'المختصة'} | المطالبة: ${caseObj.claim_amount ? caseObj.claim_amount + ' دينار' : '--'}\nالوقائع: ${caseObj.lawsuit_facts || 'صغ وقائع قانونية تناسب الدعوى.'}\nالأسانيد: ${caseObj.legal_basis || 'القانون الأردني.'}\nالطلبات: ${Array.isArray(caseObj.final_requests) && caseObj.final_requests.length > 0 ? caseObj.final_requests.join('، ') : 'الرسوم والمصاريف والأتعاب.'}\nملاحظات: ${extraNotes}\nتعليمات: أجب بالعربية الفصحى فقط وبشكل رسمي، ابدأ المستند فوراً ببسم الله واسم المحكمة بدون مقدمات حوارية.`;
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> صياغة قانونية...'; btn.disabled = true; document.getElementById('ai_draft_result_container').classList.add('d-none');
+    
+    const caseFacts = caseObj.lawsuit_facts || 'يرجى كتابة وقائع الدعوى ليتمكن الذكاء الاصطناعي من صياغة مذكرة أدق.';
+    const similarCasesContext = extraNotes ? `ملاحظات إضافية من المحامي: ${extraNotes}` : 'لا توجد ملاحظات إضافية.';
+    const promptText = `نوع المستند المطلوب: ${draftType}\nالمدعي: ${clientName} | المدعى عليه: ${caseObj.opponent_name || 'غير محدد'}\nالمحكمة: ${caseObj.current_court || 'المختصة'} | المطالبة: ${caseObj.claim_amount ? caseObj.claim_amount + ' دينار' : '--'}\nالأسانيد القانونية: ${caseObj.legal_basis || 'القانون الأردني.'}\nالطلبات: ${Array.isArray(caseObj.final_requests) && caseObj.final_requests.length > 0 ? caseObj.final_requests.join('، ') : 'الرسوم والمصاريف والأتعاب.'}\n${similarCasesContext}`;
+    
     try {
-        const res = await API.askAI(promptText);
-        if (res && res.reply) {
-            let finalReply = res.reply.replace(/Here is the.*?:/ig, '').replace(/```/g, '').trim();
-            document.getElementById('ai_draft_result').value = finalReply; document.getElementById('ai_draft_result_container').classList.remove('d-none'); showAlert('تم توليد المسودة!', 'success');
-        } else throw new Error('لا رد');
-    } catch (e) { showAlert('فشل الاتصال بالذكاء الاصطناعي.', 'error'); } finally { btn.innerHTML = '<i class="fas fa-robot me-1"></i> توليد المسودة'; btn.disabled = false; }
+        // نستخدم الدالة الجديدة المخصصة لصياغة المذكرات
+        const res = await API.generateLegalDraft(caseFacts, promptText);
+        if (res && res.draft) {
+            document.getElementById('ai_draft_result').value = res.draft; 
+            document.getElementById('ai_draft_result_container').classList.remove('d-none'); 
+            showAlert('تم توليد اللائحة القانونية!', 'success');
+        } else throw new Error('لا رد من المحرك');
+    } catch (e) { 
+        showAlert('فشل الاتصال بمحرك الصياغة الذكي.', 'error'); 
+    } finally { 
+        btn.innerHTML = '<i class="fas fa-robot me-1"></i> توليد اللائحة'; btn.disabled = false; 
+    }
 }
 
 function copyToClipboard(elementId) { const el = document.getElementById(elementId); el.select(); el.setSelectionRange(0, 99999); document.execCommand("copy"); showAlert("تم نسخ النص!", "success"); }
