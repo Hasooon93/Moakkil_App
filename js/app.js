@@ -1,869 +1,664 @@
-// moakkil-worker-2026-ultimate.js
-// الدستور المطبق: العزل التام، الرقابة، الذكاء الاصطناعي المزدوج، البصمة، الكوتا، السرية، التخزين السحابي R2.
-// التحديثات الحصرية: النسخ الاحتياطي الفولاذي لكل مكتب يومياً، رادار المواعيد، الوسوم الذكية، والإشعارات الذكية.
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة المستقرة)
+// يتضمن: تأمين العرض (Zero Trust)، البحث الدلالي، وإسكات الإدارة العليا.
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-device-id',
-  'Access-Control-Max-Age': '86400',
+let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
+let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
+let backgroundSyncTimer = null;
+let notifiedIds = new Set(); 
+let isKanbanView = false; 
+let currentCaseFilter = ''; 
+
+// =================================================================
+// 🛠️ الدوال الأساسية للواجهة والتنبيهات 
+// =================================================================
+const escapeHTML = (str) => {
+    if (!str) return '';
+    return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
 };
 
-// =========================================================
-// دوال مساعدة عامة (توقيت، تشفير، وتنسيق)
-// =========================================================
-const getLocalTime = (dateObj = new Date()) => {
-    return new Date(dateObj.getTime() + (3 * 60 * 60 * 1000));
+function showAlert(message, type = 'info') { 
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({ toast: true, position: 'top-end', icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type), title: escapeHTML(message), showConfirmButton: false, timer: 3000, timerProgressBar: true }); 
+    } else { alert(message); }
+}
+
+window.showToast = function(msg, type) { showAlert(msg, type === 'error' ? 'danger' : type); };
+
+function openModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { 
+        const m = new bootstrap.Modal(el); m.show(); 
+        if (id === 'caseModal') { const pinInput = document.getElementById('case_access_pin'); if (pinInput && !pinInput.value) generateStrongPIN(); }
+    } 
+}
+
+function closeModal(id) { 
+    const el = document.getElementById(id); 
+    if(el) { const m = bootstrap.Modal.getInstance(el); if(m) m.hide(); } 
+}
+
+// =================================================================
+// 🔔 نظام المصافحة وتفعيل الإشعارات
+// =================================================================
+const VAPID_PUBLIC_KEY = 'BFhEWsEEpWXrLBrY1U_hrLjwVwpWbRFd-ii5zc8-qb6L0ZgxTRWZqoZNzMl-vuu7zUaAyyEaNJHWqp_oUSPgO_Q'; 
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+    return outputArray;
+}
+
+async function requestPushPermission() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showAlert('متصفحك لا يدعم الإشعارات.', 'warning'); return; }
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') { showAlert('تم رفض الصلاحية للإشعارات.', 'danger'); return; }
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+        await window.API.post('/api/notifications/subscribe', subscription.toJSON());
+        showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
+        const btn = document.getElementById('install-pwa-btn'); if(btn) btn.classList.add('d-none');
+    } catch (error) { console.error('[Push Error]:', error); showAlert('حدث خطأ أثناء تفعيل الإشعارات.', 'danger'); }
+}
+
+// =================================================================
+// ⚙️ الإعدادات وتحميل الصفحة
+// =================================================================
+window.onload = async () => {
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
+    if (!window.API || !window.API.getToken() || !currentUser) { window.location.href = 'login.html'; return; }
+    
+    setupUserInfo(); applyRoleBasedUI(); loadFirmSettings(); 
+    await loadAllData(); await loadNotifications(); startSmartBackgroundSync();
+    
+    if ('Notification' in window && Notification.permission === 'default') setTimeout(() => requestPushPermission(), 3000);
+    const lastView = localStorage.getItem('last_active_view') || 'dashboard'; switchView(lastView);
 };
 
-const safeTG = (str) => (str || '').toString().replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-const base64UrlEncode = (buffer) => {
-    return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-};
-
-const formatVal = (val) => {
-    if (!val) return 'غير محدد';
-    if (typeof val === 'string' && val.includes('T')) return val.split('T')[0];
-    return val;
-};
-
-export default {
-  // =========================================================
-  // [1] المحرك الأوتوماتيكي اليومي (Cron Triggers & Backups)
-  // =========================================================
-  async scheduled(event, env, ctx) {
-      const db = async (endpoint, options = {}) => {
-          const r = await fetch(`${env.SUPABASE_URL}/rest/v1/${endpoint}`, {
-              ...options,
-              headers: {
-                  'apikey': env.SUPABASE_SERVICE_KEY,
-                  'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`,
-                  'Content-Type': 'application/json',
-                  'Prefer': 'return=representation'
-              }
-          });
-          return await r.json();
-      };
-
-      const sendTG = async (chatId, msg) => {
-          if (!env.TG_BOT_TOKEN || !chatId) return;
-          await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' })
-          }).catch((err)=> console.error("TG Send Error:", err));
-      };
-
-      const sendNotification = async (notifBody) => {
-          const r = await fetch(`${env.SUPABASE_URL}/rest/v1/mo_notifications`, {
-              method: 'POST',
-              headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-              body: JSON.stringify(notifBody)
-          });
-          if (!r.ok) {
-              const errText = await r.text();
-              console.error(`🚨 [CRON DB_INSERT_ERROR] mo_notifications:`, errText);
-          }
-      };
-
-      try {
-          const now = getLocalTime();
-          const todayStr = now.toISOString().split('T')[0];
-          
-          // --- فحص المكاتب والنسخ الاحتياطي اليومي ---
-          const firms = await db('mo_firms?select=*,mo_users(telegram_id,role)', { method: 'GET' }).catch(()=>[]);
-          for (const firm of firms) {
-              if (!firm.is_active) continue;
-
-              // 1. [ميزة جديدة - الحفظ الفولاذي]: أخذ نسخة احتياطية يومية لداتا كل مكتب ورفعها لـ R2
-              try {
-                  const firmCases = await db(`mo_cases?firm_id=eq.${firm.id}&select=*`).catch(()=>[]);
-                  const firmClients = await db(`mo_clients?firm_id=eq.${firm.id}&select=*`).catch(()=>[]);
-                  
-                  const backupData = JSON.stringify({
-                      timestamp: now.toISOString(),
-                      firm_info: { id: firm.id, name: firm.firm_name },
-                      cases_count: firmCases.length,
-                      clients_count: firmClients.length,
-                      cases: firmCases,
-                      clients: firmClients
-                  });
-
-                  // مسار آمن ومعزول لكل مكتب: firms/{firm_id}/backups/backup_2026-05-03.json
-                  const backupPath = `firms/${firm.id}/backups/backup_${todayStr}.json`;
-                  
-                  await env.R2_BUCKET.put(backupPath, backupData, {
-                      httpMetadata: { contentType: 'application/json' }
-                  });
-              } catch(backupErr) {
-                  console.error(`[Backup Error] Firm: ${firm.id}`, backupErr);
-              }
-
-              // 2. التنبيه باشتراكات المكتب
-              if (!firm.subscription_end_date) continue;
-              const adminUser = firm.mo_users?.find(u => u.role === 'admin' && u.telegram_id);
-              const adminTgId = adminUser ? adminUser.telegram_id : null;
-              
-              const endDate = new Date(firm.subscription_end_date);
-              const createdAt = new Date(firm.created_at);
-              const diffTime = endDate - now;
-              const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              const ageDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
-
-              if (daysLeft === 2 && adminTgId) {
-                  await sendTG(adminTgId, `⚠️ <b>تنبيه من نظام موكّل</b>\n\nنود إعلامكم بأن اشتراك مكتبكم سينتهي بعد <b>يومين</b>.\nيرجى التجديد لضمان عدم توقف الخدمة.`);
-              }
-              if (daysLeft === 0 && adminTgId) {
-                  await sendTG(adminTgId, `🔴 <b>إشعار انتهاء الاشتراك</b>\n\nلقد انتهى اشتراككم اليوم. تم منحكم <b>فترة سماح 3 أيام</b> لتسيير أعمالكم العاجلة.`);
-              }
-              if (ageDays > 0 && ageDays % 365 === 0) {
-                  const newEndDate = new Date(endDate);
-                  newEndDate.setMonth(newEndDate.getMonth() + 1);
-                  await db(`mo_firms?id=eq.${firm.id}`, { method: 'PATCH', body: JSON.stringify({ subscription_end_date: newEndDate.toISOString() }) });
-                  await db('mo_billing_history', { method: 'POST', body: JSON.stringify({ firm_id: firm.id, action_type: 'هدية سنوية', months_added: 1 }) });
-                  if (adminTgId) await sendTG(adminTgId, `🎉 <b>ذكرى سنوية سعيدة!</b>\n\nمضى عام كامل على انضمامكم. 🎁 <b>هديتنا لكم:</b> تمديد الاشتراك شهر مجاناً!`);
-              }
-          }
-
-          // --- فحص أعياد الميلاد وهويات النقابة ---
-          const users = await db('mo_users?is_active=eq.true&select=*,mo_firms(firm_name)', { method: 'GET' }).catch(()=>[]);
-          for (const user of users) {
-              if (user.date_of_birth && user.telegram_id) {
-                  const dob = new Date(user.date_of_birth);
-                  if (dob.getDate() === now.getDate() && dob.getMonth() === now.getMonth()) {
-                      await sendTG(user.telegram_id, `🎂 <b>عيد ميلاد سعيد!</b>\n\nعائلة موكّل ومكتب (${safeTG(user.mo_firms?.firm_name)}) يتمنون لك عاماً مليئاً بالنجاح! 🎉`);
-                  }
-              }
-              if (user.syndicate_expiry_date && user.telegram_id) {
-                  const synEndDate = new Date(user.syndicate_expiry_date);
-                  const synDaysLeft = Math.ceil((synEndDate - now) / (1000 * 60 * 60 * 24));
-                  if (synDaysLeft === 7) await sendTG(user.telegram_id, `⚖️ <b>تذكير نقابي مهني</b>\n\nهويتك النقابية ستنتهي بعد <b>أسبوع واحد</b>.`);
-                  else if (synDaysLeft === 0) await sendTG(user.telegram_id, `🚨 <b>تنبيه هام جداً</b>\n\nانتهت صلاحية هويتك النقابية اليوم!`);
-              }
-          }
-
-          // --- فحص المواعيد لليوم التالي ---
-          const tomorrow = getLocalTime();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const tomorrowStr = tomorrow.toISOString().split('T')[0];
-          const upcomingAppts = await db(`mo_appointments?status=eq.مجدول&appt_date=gte.${tomorrowStr}T00:00:00&appt_date=lte.${tomorrowStr}T23:59:59&select=*`, { method: 'GET' }).catch(()=>[]);
-
-          for (const appt of upcomingAppts) {
-              if (!appt.assigned_to || !Array.isArray(appt.assigned_to) || appt.assigned_to.length === 0) continue;
-              const assignedIds = appt.assigned_to.join(',');
-              const staffList = await db(`mo_users?id=in.(${assignedIds})&select=id,telegram_id,full_name`).catch(()=>[]);
-
-              for (const staff of staffList) {
-                  await sendNotification({ user_id: staff.id, firm_id: appt.firm_id, title: 'تذكير بموعد غداً 📅', message: `لديك (${appt.type || 'موعد'}) غداً: ${appt.title}`, action_url: `/app.html#appointments`, is_read: false, created_at: getLocalTime().toISOString(), created_by: staff.id });
-                  if (staff.telegram_id) await sendTG(staff.telegram_id, `📅 <b>تذكير بموعد غداً</b>\n\nعزيزي ${safeTG(staff.full_name)}، لديك (${safeTG(appt.type)}) غداً:\n📌 ${safeTG(appt.title)}`);
-              }
-          }
-
-          // --- [رادار المواعيد القانونية والتقادم] ---
-          const casesRadar = await db(`mo_cases?deadline_date=gte.${todayStr}&select=id,case_internal_id,deadline_date,assigned_lawyer_id,firm_id,mo_clients(full_name)`).catch(()=>[]);
-          for (const c of casesRadar) {
-              if (!c.deadline_date || !c.assigned_lawyer_id || c.assigned_lawyer_id.length === 0) continue;
-              const dDate = new Date(c.deadline_date);
-              const daysLeft = Math.ceil((dDate - now) / (1000 * 60 * 60 * 24));
-              
-              if ([10, 3, 0].includes(daysLeft)) {
-                  const lawyers = await db(`mo_users?id=in.(${c.assigned_lawyer_id.join(',')})&select=id,telegram_id`).catch(()=>[]);
-                  for (const l of lawyers) {
-                      const alertMsg = daysLeft === 0 ? "⚠️ انقضى الموعد القانوني اليوم!" : `تنبيه: تبقى ${daysLeft} أيام فقط.`;
-                      await sendNotification({ user_id: l.id, firm_id: c.firm_id, title: '🚨 رادار المواعيد القانونية', message: `القضية ${c.case_internal_id} تقترب من الموعد النهائي: ${c.deadline_date}`, action_url: `/case-details.html?id=${c.id}`, is_read: false, created_at: getLocalTime().toISOString(), created_by: l.id });
-                      if (l.telegram_id) await sendTG(l.telegram_id, `🚨 <b>رادار المواعيد القانونية</b>\n\nملف رقم: <b>${safeTG(c.case_internal_id)}</b>\n👤 الموكل: ${safeTG(c.mo_clients?.full_name)}\n\n📆 <b>${alertMsg}</b>\nتاريخ السقوط/التقادم: ${c.deadline_date}`);
-                  }
-              }
-          }
-
-      } catch (err) { console.error("Cron Job Error:", err); }
-  },
-
-  // =========================================================
-  // [2] المحرك الأساسي (API Engine)
-  // =========================================================
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const method = request.method;
-    const path = url.pathname;
-
-    if (method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
-
-    const jwtSecret = env.JWT_SECRET || "moakkil_secure_secret_2026_enterprise_production_key";
-    const SUPER_ADMIN_PHONE = "0777738380";
-    const SUPER_ADMIN_TG = "877384498";
-
-    const createRes = (data, status = 200) => new Response(JSON.stringify(data), {
-      status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-
-    const generateToken = async (payload) => {
-      const enc = new TextEncoder();
-      const encodeB64 = (obj) => btoa(String.fromCodePoint(...enc.encode(JSON.stringify(obj)))).replace(/[+/=]/g, m => ({'+':'-','/':'_','=':''}[m]));
-      const data = `${encodeB64({ alg: "HS256", typ: "JWT" })}.${encodeB64(payload)}`;
-      const key = await crypto.subtle.importKey("raw", enc.encode(jwtSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-      const signature = await crypto.subtle.sign("HMAC", key, enc.encode(data));
-      const sigB64 = btoa(String.fromCharCode(...new Uint8Array(signature))).replace(/[+/=]/g, m => ({'+':'-','/':'_','=':''}[m]));
-      return `${data}.${sigB64}`;
-    };
-
-    const verifyToken = async (token) => {
-      try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        const payloadBinStr = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-        const payloadBytes = Uint8Array.from(payloadBinStr, c => c.charCodeAt(0));
-        const payload = JSON.parse(new TextDecoder().decode(payloadBytes));
-
-        if (env.MOAKKIL_KV && payload.phone) {
-          const savedToken = await env.MOAKKIL_KV.get(`session:${payload.phone}`);
-          if (savedToken !== token) return null;
+function setupUserInfo() {
+    const roleAr = getRoleNameInArabic(currentUser.role || currentUser.user_type);
+    const userName = escapeHTML(currentUser.full_name || 'مستخدم');
+    
+    if (document.getElementById('welcome-name')) document.getElementById('welcome-name').innerText = userName;
+    if (document.getElementById('welcome-role')) document.getElementById('welcome-role').innerText = `المنصب: ${roleAr}`;
+    if (document.getElementById('top-user-name')) document.getElementById('top-user-name').innerText = userName;
+    
+    const avatarContainer = document.getElementById('top-user-avatar');
+    if (avatarContainer) {
+        if (currentUser.avatar_url) {
+            avatarContainer.innerHTML = `<img src="${window.API.getSecureUrl(currentUser.avatar_url)}" style="width:100%; height:100%; object-fit:cover;">`;
+        } else {
+            avatarContainer.innerText = userName.charAt(0).toUpperCase();
         }
-        return payload;
-      } catch (e) { return null; }
-    };
+    }
+}
 
-    const db = async (endpoint, options = {}) => {
-      const r = await fetch(`${env.SUPABASE_URL}/rest/v1/${endpoint}`, {
-        ...options, headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation', ...options.headers }
-      });
-      if (options.method === 'DELETE' && r.status === 204) return { success: true };
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.message || JSON.stringify(data));
-      return data;
-    };
+function getRoleNameInArabic(role) {
+    if (role === 'admin' || role === 'super_admin') return 'مدير النظام';
+    if (role === 'secretary') return 'سكرتاريا';
+    if (role === 'lawyer') return 'محامي';
+    return role || 'موظف';
+}
 
-    const sendTG = async (chatId, msg) => {
-      if (!env.TG_BOT_TOKEN || !chatId) return;
-      await fetch(`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }) }).catch(()=>{});
-    };
+function applyRoleBasedUI() {
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'super_admin');
+    if (isAdmin) {
+        if (document.getElementById('staff-management-section')) document.getElementById('staff-management-section').classList.remove('d-none');
+        if (document.getElementById('stat-staff-card')) document.getElementById('stat-staff-card').style.display = 'block';
+        if (document.getElementById('firm-settings-btn')) document.getElementById('firm-settings-btn').style.display = 'block';
+        if (document.getElementById('admin-reports-btn')) document.getElementById('admin-reports-btn').classList.remove('d-none');
+        if (document.getElementById('audit-trail-btn')) document.getElementById('audit-trail-btn').style.display = 'block';
+    }
+    const hasBiometric = localStorage.getItem('moakkil_biometric_id');
+    const biometricBtn = document.querySelector('a[onclick="registerBiometricBtn()"]');
+    if (hasBiometric && biometricBtn) { const liElement = biometricBtn.closest('li'); if(liElement) liElement.style.display = 'none'; }
+}
 
-    const sendNotification = async (notifBody) => {
-        const r = await fetch(`${env.SUPABASE_URL}/rest/v1/mo_notifications`, {
-            method: 'POST', headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-            body: JSON.stringify(notifBody)
-        });
-        if (!r.ok) return;
+window.manualSync = async () => {
+    const btn = document.getElementById('btn_sync_dashboard');
+    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-sync fa-spin"></i>'; }
+    await loadAllData(); await loadNotifications(); showAlert('تمت مزامنة البيانات بنجاح', 'success');
+    if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i>'; }
+};
 
-        try {
-            if(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
-                const devices = await db(`mo_user_devices?user_id=eq.${notifBody.user_id}&select=*`).catch(()=>[]);
-                for (const device of devices) {
-                    if (!device.endpoint) continue;
-                    const pushUrl = new URL(device.endpoint);
-                    const aud = `${pushUrl.protocol}//${pushUrl.host}`;
-                    const exp = Math.floor(Date.now() / 1000) + 12 * 60 * 60;
-                    const sub = env.VAPID_SUBJECT || 'mailto:admin@moakkil.com';
+function startSmartBackgroundSync() { backgroundSyncTimer = setInterval(async () => { try { await loadNotifications(true); } catch(e) {} }, 15000); }
 
-                    const header = { typ: 'JWT', alg: 'ES256' };
-                    const payload = { aud, exp, sub };
-                    const enc = new TextEncoder();
-                    const dataToSign = `${base64UrlEncode(enc.encode(JSON.stringify(header)))}.${base64UrlEncode(enc.encode(JSON.stringify(payload)))}`;
-                    
-                    await fetch(device.endpoint, {
-                        method: 'POST', headers: { 'TTL': '60', 'Urgency': 'high', 'Topic': 'moakkil_alert' }
-                    }).catch(()=>{});
-                }
-            }
-        } catch(e) {}
-    };
+async function loadFirmSettings() {
+    if (currentUser.role === 'super_admin') return;
 
-    const updateCaseFinancials = async (caseId, firmId) => {
-        try {
-            const installments = await db(`mo_installments?case_id=eq.${caseId}&firm_id=eq.${firmId}&status=eq.مدفوعة&select=amount`);
-            const totalPaid = installments.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0);
-            await db(`mo_cases?id=eq.${caseId}&firm_id=eq.${firmId}`, { method: 'PATCH', body: JSON.stringify({ total_paid: totalPaid }) });
-        } catch (err) {}
-    };
+    const localSettings = JSON.parse(localStorage.getItem('firm_settings'));
+    if (localSettings) applyFirmSettings(localSettings);
+    try {
+        const res = await window.API.get('/api/firms?select=*');
+        if (res && res.length > 0) {
+            const settings = { firm_name: res[0].firm_name, logo_url: res[0].logo_url, primary_color: res[0].primary_color, accent_color: res[0].accent_color, firm_phone: res[0].firm_phone || '', firm_address: res[0].firm_address || '' };
+            localStorage.setItem('firm_settings', JSON.stringify(settings)); applyFirmSettings(settings);
+            
+            if(document.getElementById('firm_setting_name')) document.getElementById('firm_setting_name').value = settings.firm_name || '';
+            if(document.getElementById('firm_setting_logo')) document.getElementById('firm_setting_logo').value = settings.logo_url || '';
+            if(document.getElementById('firm_setting_phone')) document.getElementById('firm_setting_phone').value = settings.firm_phone || '';
+            if(document.getElementById('firm_setting_address')) document.getElementById('firm_setting_address').value = settings.firm_address || '';
+            if(document.getElementById('firm_setting_primary')) document.getElementById('firm_setting_primary').value = settings.primary_color || '#0a192f';
+            if(document.getElementById('firm_setting_accent')) document.getElementById('firm_setting_accent').value = settings.accent_color || '#64ffda';
+        }
+    } catch(e) {}
+}
+
+function applyFirmSettings(settings) {
+    if (!settings) return;
+    const root = document.documentElement;
+    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
+    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
+    
+    const topName = document.getElementById('top-firm-name');
+    if (topName) {
+        const secureLogo = settings.logo_url ? window.API.getSecureUrl(settings.logo_url) : null;
+        const logoHtml = secureLogo ? `<img src="${escapeHTML(secureLogo)}" width="20" height="20" class="me-1 rounded" style="object-fit:cover;">` : `<i class="fas fa-balance-scale text-accent me-1"></i>`;
+        topName.innerHTML = `${logoHtml} ${escapeHTML(settings.firm_name || 'موكّل')}`;
+    }
+}
+
+async function saveFirmSettings(event) {
+    event.preventDefault();
+    const data = { firm_name: document.getElementById('firm_setting_name').value, logo_url: document.getElementById('firm_setting_logo').value, primary_color: document.getElementById('firm_setting_primary').value, accent_color: document.getElementById('firm_setting_accent').value, firm_phone: document.getElementById('firm_setting_phone').value, firm_address: document.getElementById('firm_setting_address').value };
+    
+    const firmId = currentUser.firm_id;
+    if(!firmId) return showAlert('تعذر العثور على معرف المكتب', 'danger');
+
+    const res = await window.API.patch(`/api/firms?id=eq.${firmId}`, data);
+    if(res && !res.error) { 
+        localStorage.setItem('firm_settings', JSON.stringify(data)); 
+        applyFirmSettings(data); 
+        closeModal('settingsModal'); 
+        showAlert('تم حفظ إعدادات المكتب بنجاح', 'success'); 
+    } else { showAlert('فشل الحفظ: ' + (res.error || 'خطأ غير معروف'), 'danger'); }
+}
+
+// الدالة المسؤولة عن تبديل النوافذ والتي كانت تسبب الخطأ
+window.switchView = function(viewId) {
+    if(viewId === 'ai') { window.location.href = 'ai-chat.html'; return; }
+    if(viewId === 'library') { window.location.href = 'library.html'; return; }
+    if(viewId === 'calculators') { window.location.href = 'calculators.html'; return; }
+    localStorage.setItem('last_active_view', viewId);
+    document.querySelectorAll('.view').forEach(v => v.classList.add('d-none'));
+    const target = document.getElementById(viewId + '-view'); if(target) target.classList.remove('d-none');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const activeNav = document.getElementById(`nav-icon-${viewId}`); if(activeNav) activeNav.classList.add('active');
+    window.scrollTo(0, 0);
+};
+
+function showVCard() {
+    const qrContainer = document.getElementById('vcard-qrcode'); qrContainer.innerHTML = ''; 
+    const pathArray = window.location.pathname.split('/'); pathArray.pop(); const basePath = pathArray.join('/');
+    const userId = currentUser.id || currentUser.uid; 
+    const cvLink = `${window.location.origin + basePath}/verify.html?type=cv&id=${userId}`;
+    try {
+        new QRCode(qrContainer, { text: cvLink, width: 200, height: 200, colorDark: "#0a192f", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.L });
+        const linkDiv = document.getElementById('vcard-link-container');
+        if(!linkDiv) qrContainer.insertAdjacentHTML('afterend', `<div id="vcard-link-container" class="mt-3 text-center" style="word-break: break-all;"><a href="${cvLink}" target="_blank" class="small text-primary text-decoration-none">${cvLink}</a></div>`);
+        else linkDiv.innerHTML = `<a href="${cvLink}" target="_blank" class="small text-primary text-decoration-none">${cvLink}</a>`;
+        openModal('vCardModal');
+    } catch(e) { qrContainer.innerHTML = '<div class="text-danger small">تعذر توليد البطاقة. تأكد من تحميل مكتبة QR.</div>'; openModal('vCardModal'); }
+}
+
+// =================================================================
+// 📊 جلب البيانات واللوحات
+// =================================================================
+async function loadAllData() {
+    if (currentUser.role === 'super_admin' || currentUser.role === 'superadmin') {
+        const dashboard = document.getElementById('dashboard-view');
+        if(dashboard) {
+            dashboard.innerHTML = '<div class="alert alert-info text-center mt-5 p-5 shadow-sm border-0"><i class="fas fa-shield-alt fa-4x text-accent mb-3"></i><h4 class="fw-bold text-navy">أهلاً بك في نظام الإدارة العليا</h4><p>هذه الواجهة مخصصة للمكاتب. يرجى التوجه إلى لوحة تحكم السوبر أدمن.</p></div>';
+        }
+        return; 
+    }
 
     try {
-      // عرض الملفات الآمن (Zero Trust) عبر R2
-      if (path === '/api/files/download' && method === 'GET') {
-          const filePath = url.searchParams.get('path');
-          const token = url.searchParams.get('token');
-          if (!filePath || !token) return createRes({ error: "مسار الملف أو التوكن مفقود" }, 400);
-
-          const session = await verifyToken(token);
-          if (!session) return createRes({ error: "غير مصرح لك بعرض هذا الملف" }, 401);
-
-          const object = await env.R2_BUCKET.get(filePath);
-          if (!object) return createRes({ error: "الملف غير موجود" }, 404);
-
-          const headers = new Headers();
-          object.writeHttpMetadata(headers);
-          headers.set('etag', object.httpEtag);
-          headers.set('Cache-Control', 'public, max-age=31536000'); 
-          for (const [key, value] of Object.entries(corsHeaders)) headers.set(key, value);
-
-          return new Response(object.body, { headers });
-      }
-
-      // Webhooks
-      if (path === '/api/webhook/telegram' && method === 'POST') {
-          const body = await request.json();
-          if (body.message && body.message.text) {
-              const chatId = body.message.chat.id;
-              const text = body.message.text.trim();
-              if (text === '/id' || text === '/start') {
-                  const replyMsg = `أهلاً بك في نظام موكّل ⚖️\n\nالرقم التعريفي (ID) الخاص بك هو:\n<code>${chatId}</code>\n\nيرجى نسخ هذا الرقم وإعطائه لمدير النظام لتفعيل حسابك.`;
-                  await sendTG(chatId, replyMsg);
-              }
-          }
-          return new Response("OK", { status: 200 });
-      }
-
-      if (path === '/api/ai/agree' && method === 'GET' && env.AI) {
-          try {
-              const aiRes = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', { prompt: "agree" });
-              return createRes({ success: true, message: "تم تفعيل محرك الرؤية.", response: aiRes });
-          } catch(e) { return createRes({ error: e.message }, 500); }
-      }
-
-      // =========================================================
-      // المصادقة (Auth & Biometrics)
-      // =========================================================
-      if (path === '/api/auth/request-otp' && method === 'POST') {
-        const { phone } = await request.json();
-        
-        if (phone === SUPER_ADMIN_PHONE) {
-            const otp = Math.floor(100000 + Math.random() * 900000).toString();
-            if (env.MOAKKIL_KV) await env.MOAKKIL_KV.put(`otp:${phone}`, otp, { expirationTtl: 300 });
-            await sendTG(SUPER_ADMIN_TG, `👨‍💻 <b>دخول الإدارة العليا - نظام موكّل</b>\n\nكود التحقق:\n<code>${otp}</code>`);
-            return createRes({success: true, message: "تم إرسال الكود"});
-        }
-
-        const users = await db(`mo_users?phone=eq.${encodeURIComponent(phone)}&select=*,mo_firms(firm_name,is_active,subscription_end_date)`);
-        if (!users.length) return createRes({error: 'الرقم غير مسجل بالنظام'}, 403);
-        
-        const user = users[0];
-        const firm = user.mo_firms;
-
-        if (!user.is_active || !user.can_login) return createRes({error: 'تم إيقاف حسابك من قبل الإدارة.'}, 403);
-        if (!firm?.is_active) return createRes({error: 'تم إيقاف حساب المكتب من قبل الإدارة.'}, 403);
-        
-        if (firm?.subscription_end_date) {
-            const gracePeriodEnd = new Date(firm.subscription_end_date);
-            gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 3);
-            if (getLocalTime() > gracePeriodEnd) return createRes({error: 'انتهت صلاحية اشتراك المكتب. يرجى التجديد.'}, 402);
-        }
-        
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        if (env.MOAKKIL_KV) await env.MOAKKIL_KV.put(`otp:${phone}`, otp, { expirationTtl: 300 });
-        
-        let targetTgId = user.telegram_id;
-        if (!targetTgId) {
-            const hubUsers = await db(`hub_users?phone_number=eq.${encodeURIComponent(phone)}&select=telegram_id`).catch(()=>[]);
-            if (hubUsers.length) targetTgId = hubUsers[0].telegram_id;
-        }
-
-        if (targetTgId) await sendTG(targetTgId, `🔐 كود الدخول لنظام موكّل:\n\n<code>${otp}</code>\n\nصالح لمدة 5 دقائق.`);
-        return createRes({success: true, message: "تم إرسال الكود لتيليغرام"});
-      }
-
-      if (path === '/api/auth/verify-otp' && method === 'POST') {
-        const { phone, otp } = await request.json();
-        let savedOtpVal = null;
-        if (env.MOAKKIL_KV) {
-            const fetched = await env.MOAKKIL_KV.get(`otp:${phone}`);
-            if (fetched) savedOtpVal = fetched;
-        }
-        if (!savedOtpVal || savedOtpVal !== otp) return createRes({error: 'الكود غير صحيح أو منتهي الصلاحية'}, 401);
-        
-        if (phone === SUPER_ADMIN_PHONE) {
-            const token = await generateToken({ uid: 'super_admin_id', role: 'super_admin', phone: SUPER_ADMIN_PHONE, name: 'الإدارة العليا' });
-            if (env.MOAKKIL_KV) {
-              await env.MOAKKIL_KV.put(`session:${phone}`, token, { expirationTtl: 604800 });
-              await env.MOAKKIL_KV.delete(`otp:${phone}`);
-            }
-            return createRes({ success: true, token, user: { id: 'super_admin_id', role: 'super_admin', full_name: 'الإدارة العليا', phone: SUPER_ADMIN_PHONE } });
-        }
-
-        const u = (await db(`mo_users?phone=eq.${encodeURIComponent(phone)}&select=*`))[0];
-        const token = await generateToken({ uid: u.id, firm_id: u.firm_id, role: u.role, name: u.full_name, phone: u.phone, permissions: u.permissions });
-        if (env.MOAKKIL_KV) {
-          await env.MOAKKIL_KV.put(`session:${phone}`, token, { expirationTtl: 604800 });
-          await env.MOAKKIL_KV.delete(`otp:${phone}`);
-        }
-        return createRes({ success: true, token, user: u });
-      }
-
-      if (path === '/api/auth/biometric-register' && method === 'POST') {
-        const authHeader = request.headers.get('Authorization');
-        const session = authHeader ? await verifyToken(authHeader.split(' ')[1]) : null;
-        if (!session) return createRes({error: 'جلسة غير صالحة'}, 401);
-        const { credential_id, public_key, device_name } = await request.json();
-        await db('mo_user_credentials', { method: 'POST', body: JSON.stringify({ user_id: session.uid, credential_id, public_key, device_name }) }).catch(e=>console.error(e));
-        return createRes({success: true, message: "تم تسجيل جهازك"});
-      }
-
-      if (path === '/api/auth/biometric-login' && method === 'POST') {
-          const { credential_id, phone } = await request.json();
-          if (!credential_id || !phone) return createRes({error: 'بيانات غير مكتملة'}, 400);
-
-          const creds = await db(`mo_user_credentials?credential_id=eq.${encodeURIComponent(credential_id)}&select=user_id,mo_users(role,full_name,firm_id,permissions)`);
-          if(!creds.length) return createRes({error: 'البصمة غير مسجلة في النظام.'}, 401);
-
-          const user = creds[0].mo_users;
-          const token = await generateToken({ uid: creds[0].user_id, firm_id: user.firm_id, role: user.role, name: user.full_name, phone: phone, permissions: user.permissions });
-          if (env.MOAKKIL_KV) await env.MOAKKIL_KV.put(`session:${phone}`, token, { expirationTtl: 604800 });
-          return createRes({ success: true, token, user });
-      }
-
-      // =========================================================
-      // بوابة الموكل والتحقق المفتوح
-      // =========================================================
-      if (path === '/api/public/client/login' && method === 'POST') {
-        const { case_number, access_pin } = await request.json();
-        if (env.MOAKKIL_KV) {
-            let attempts = parseInt(await env.MOAKKIL_KV.get(`brute:${case_number}`) || "0");
-            attempts += 1;
-            if (attempts > 5) return createRes({error: 'تم تجاوز الحد الأقصى للمحاولات.'}, 429);
-            await env.MOAKKIL_KV.put(`brute:${case_number}`, attempts.toString(), { expirationTtl: 900 });
-        }
-        const cases = await db(`mo_cases?case_internal_id=eq.${encodeURIComponent(case_number)}&access_pin=eq.${encodeURIComponent(access_pin)}&select=public_token`);
-        if (!cases.length) return createRes({error: 'رقم القضية أو رمز الدخول غير صحيح'}, 401);
-        if (env.MOAKKIL_KV) await env.MOAKKIL_KV.delete(`brute:${case_number}`);
-        return createRes({ success: true, token: cases[0].public_token });
-      }
-
-      if (path === '/api/public/client' && method === 'GET') {
-        const token = url.searchParams.get('token');
-        if (!token) return createRes({error: 'توكن مفقود'}, 400);
-        const cases = await db(`mo_cases?public_token=eq.${token}&select=*`);
-        if (!cases.length) return createRes({error: 'الملف غير موجود'}, 404);
-        const c = cases[0];
-        
-        const [cl, upd, firm, fl, inst, exp] = await Promise.all([
-          db(`mo_clients?id=eq.${c.client_id}&select=full_name,phone,national_id,address,mother_name,date_of_birth,place_of_birth,nationality,marital_status,profession,client_portal_active`),
-          db(`mo_case_updates?case_id=eq.${c.id}&is_visible_to_client=eq.true&order=created_at.desc`),
-          db(`mo_firms?id=eq.${c.firm_id}&select=firm_name,logo_url,primary_color,accent_color`),
-          db(`mo_files?case_id=eq.${c.id}`), db(`mo_installments?case_id=eq.${c.id}`), db(`mo_expenses?case_id=eq.${c.id}`)
+        const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([ 
+            window.API.get('/api/clients'), 
+            window.API.get('/api/cases'), 
+            window.API.get('/api/users'), 
+            window.API.get('/api/appointments') 
         ]);
         
-        await db(`mo_cases?id=eq.${c.id}`, { method: 'PATCH', body: JSON.stringify({ client_last_seen: getLocalTime().toISOString() }) });
-        delete c.secret_notes; delete c.success_probability; delete c.access_pin; delete c.confidentiality_level; delete c.custom_metadata;
-        return createRes({ client: cl[0], case: c, updates: upd, firm: firm[0], files: fl, installments: inst, expenses: exp });
-      }
-
-      if (path === '/api/public/verify-receipt' && method === 'GET') {
-          const id = url.searchParams.get('id');
-          if (!id) return createRes({error: 'معرف الإيصال مفقود'}, 400);
-          try {
-              const inst = await db(`mo_installments?id=eq.${id}&select=*,mo_cases(case_internal_id,mo_clients(full_name)),mo_firms(firm_name)`);
-              if (!inst || !inst.length) return createRes({error: 'الإيصال غير موجود أو غير صالح'}, 404);
-              return createRes({ success: true, data: inst[0] });
-          } catch(e) { return createRes({error: 'صيغة المعرف غير صالحة'}, 400); }
-      }
-
-      if (path === '/api/public/verify-cv' && method === 'GET') {
-          const id = url.searchParams.get('id');
-          if (!id) return createRes({error: 'معرف الموظف مفقود'}, 400);
-          try {
-              const user = await db(`mo_users?id=eq.${id}&select=full_name,role,phone,syndicate_number,avatar_url,mo_firms(firm_name)`);
-              if (!user || !user.length) return createRes({error: 'ملف الموظف غير موجود'}, 404);
-              return createRes({ success: true, data: user[0] });
-          } catch(e) { return createRes({error: 'صيغة المعرف غير صالحة'}, 400); }
-      }
-
-      // =========================================================
-      // الإدارة العليا (Super Admin)
-      // =========================================================
-      if (path.startsWith('/api/super')) {
-        const authHeader = request.headers.get('Authorization');
-        const session = authHeader ? await verifyToken(authHeader.split(' ')[1]) : null;
-        if (!session || session.role !== 'super_admin') return createRes({error: 'Access Denied'}, 403);
-
-        let bodyParsed = null;
-        if (method === 'POST' || method === 'PATCH') bodyParsed = await request.clone().json().catch(()=>({}));
-
-        if (path === '/api/super/stats' && method === 'GET') {
-            const [firms, users, cases] = await Promise.all([ db('mo_firms?select=id', { method: 'GET' }).catch(()=>[]), db('mo_users?select=id', { method: 'GET' }).catch(()=>[]), db('mo_cases?select=id', { method: 'GET' }).catch(()=>[]) ]);
-            return createRes({ firms_count: firms.length || 0, users_count: users.length || 0, cases_count: cases.length || 0 });
-        }
-        if (path === '/api/super/firms' && method === 'GET') return createRes(await db('mo_firms?select=*,mo_users(count)', { method: 'GET' }).catch(()=>[]));
-        if (path === '/api/super/firms' && method === 'PATCH') return createRes(await db(`mo_firms?id=eq.${bodyParsed.id}`, { method: 'PATCH', body: JSON.stringify({ max_users: bodyParsed.max_users, is_active: bodyParsed.is_active }) }));
-        if (path === '/api/super/register-firm' && method === 'POST') {
-            const { firm_name, subscription_months, max_users, admin_name, admin_phone, telegram_id } = bodyParsed;
-            const endDate = getLocalTime(); endDate.setMonth(endDate.getMonth() + (parseInt(subscription_months) || 1));
-            const newFirm = await db('mo_firms', { method: 'POST', body: JSON.stringify({ firm_name: firm_name, max_users: parseInt(max_users) || 5, is_active: true, subscription_end_date: endDate.toISOString() }) });
-            await db('mo_billing_history', { method: 'POST', body: JSON.stringify({ firm_id: newFirm[0].id, action_type: 'اشتراك جديد', months_added: parseInt(subscription_months) || 1 }) });
-            await db('mo_users', { method: 'POST', body: JSON.stringify({ firm_id: newFirm[0].id, full_name: admin_name, phone: admin_phone, telegram_id: telegram_id || null, role: 'admin', is_active: true, can_login: true }) });
-            if (telegram_id) await sendTG(telegram_id, `🎊 <b>أهلاً بك في نظام موكّل</b>\n\nتم تسجيل مكتبكم (${safeTG(firm_name)}) بنجاح.\nمدة الاشتراك: <b>${subscription_months} شهر</b>.`);
-            return createRes({ success: true, firm: newFirm[0] });
-        }
-        if (path === '/api/super/renew-firm' && method === 'POST') {
-            const { id, add_months } = bodyParsed;
-            const firmReq = await db(`mo_firms?id=eq.${id}&select=*`);
-            if (!firmReq.length) return createRes({error: "المكتب غير موجود"}, 404);
-            let newEndDate = firmReq[0].subscription_end_date ? new Date(firmReq[0].subscription_end_date) : getLocalTime();
-            if (newEndDate < getLocalTime()) newEndDate = getLocalTime();
-            newEndDate.setMonth(newEndDate.getMonth() + parseInt(add_months));
-            await db(`mo_firms?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ subscription_end_date: newEndDate.toISOString() }) });
-            await db('mo_billing_history', { method: 'POST', body: JSON.stringify({ firm_id: id, action_type: 'تجديد اشتراك', months_added: parseInt(add_months) }) });
-            return createRes({ success: true, new_end_date: newEndDate.toISOString() });
-        }
-        return createRes({error: 'المسار غير موجود'}, 404);
-      }
-
-      // =========================================================
-      // >>> جدار الحماية للعمليات الداخلية للمكاتب (التوكن) <<<
-      // =========================================================
-      const authHeader = request.headers.get('Authorization');
-      const session = authHeader ? await verifyToken(authHeader.split(' ')[1]) : null;
-      if (!session) return createRes({error: 'الجلسة منتهية أو تم تسجيل الدخول من جهاز آخر'}, 401);
-      if (session.role === 'super_admin') return createRes({error: 'السوبر أدمن يملك صلاحية لمسارات الإدارة العليا فقط'}, 403);
-
-      if (path === '/api/files/upload' && method === 'POST') {
-          const formData = await request.formData();
-          const file = formData.get('file');
-          let folderPath = formData.get('folderPath') || 'uncategorized';
-          if (!file) return createRes({ error: "لم يتم إرسال أي ملف" }, 400);
-
-          const safeFirmId = session.firm_id;
-          const fileExtension = file.name.split('.').pop();
-          const uniqueFileName = `${crypto.randomUUID()}.${fileExtension}`;
-          const finalR2Path = `firms/${safeFirmId}/${folderPath}/${uniqueFileName}`;
-
-          await env.R2_BUCKET.put(finalR2Path, file.stream(), { httpMetadata: { contentType: file.type } });
-          return createRes({ success: true, file_path: finalR2Path, file_name: file.name, file_type: file.type });
-      }
-
-      if (path === '/api/notifications/subscribe' && method === 'POST') {
-          const body = await request.json();
-          if (!body.endpoint) return createRes({error: 'Endpoint is required'}, 400);
-          const existing = await db(`mo_user_devices?endpoint=eq.${encodeURIComponent(body.endpoint)}&select=id`).catch(()=>[]);
-          if (existing && existing.length > 0) {
-              await db(`mo_user_devices?id=eq.${existing[0].id}`, { method: 'PATCH', body: JSON.stringify({ user_id: session.uid, last_active: getLocalTime().toISOString() }) });
-          } else {
-              await db('mo_user_devices', { method: 'POST', body: JSON.stringify({ user_id: session.uid, endpoint: body.endpoint, p256dh: body.keys?.p256dh || "", auth: body.keys?.auth || "", device_type: "web", last_active: getLocalTime().toISOString() }) });
-          }
-          return createRes({ success: true });
-      }
-
-      if (path === '/api/drive/generate-upload-url' && method === 'GET') {
-          return createRes({ success: true, upload_url: `https://www.googleapis.com/upload/drive/v3/files`, gdrive_file_id: crypto.randomUUID() });
-      }
-
-      // =========================================================
-      // [الذكاء الاصطناعي والبحث الدلالي]
-      // =========================================================
-      if (path === '/api/ai/ocr' && method === 'POST' && env.AI) {
-          try {
-              const { image_base_64 } = await request.json();
-              if (!image_base_64) return createRes({ error: 'لم يتم استلام أي صورة.' }, 400);
-              const binaryString = atob(image_base_64);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-
-              const aiRes = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
-                  prompt: `أنت خبير قراءة هويات. استخرج "full_name" و "national_id". أعد JSON فقط. لا تكتب أي نص آخر.`,
-                  image: [...bytes]
-              });
-              const match = aiRes.response.match(/\{[\s\S]*\}/);
-              return createRes(JSON.parse(match ? match[0] : "{}"));
-          } catch (e) { return createRes({ error: 'حدث خطأ في محرك الرؤية.' }, 500); }
-      }
-
-      if (path === '/api/ai/process' && method === 'POST' && env.AI) {
-        const { type, content } = await request.json();
+        globalData.staff = Array.isArray(staff) ? staff : [];
+        filterAndSetClients(Array.isArray(rawClients) ? rawClients : []); 
+        filterAndSetCases(Array.isArray(rawCases) ? rawCases : []); 
+        filterAndSetAppointments(Array.isArray(rawAppointments) ? rawAppointments : []);
         
-        if (type === 'legal_advisor') {
-            const aiRes = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-                messages: [
-                    { role: "system", content: "أنت مستشار قانوني أردني. اطبع النص القانوني مباشرة دون مقدمات." },
-                    { role: "user", content }
-                ]
-            });
-            return createRes({ reply: aiRes.response });
-        }
-        
-        if (type === 'data_extractor') {
-            // [تحديث] أمر استخراج الوسوم الذكية (Tags) موجود هنا
-            const aiRes = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
-                messages: [
-                    {
-                        role: "system",
-                        content: `أنت خبير قانوني أردني. قم باستخراج البيانات من النص الذي يزودك به المستخدم إلى JSON.
-تعليمات صارمة: القيم باللغة العربية الفصحى حصراً. لا تكتب أي نص خارج الـ JSON.
-استخدم المفاتيح التالية:
-- "lawsuit_facts": سرد الوقائع.
-- "legal_basis": السند القانوني.
-- "final_requests": مصفوفة الطلبات.
-- "opponent_name": اسم الخصم.
-- "claim_amount": قيمة المطالبة.
-- "next_hearing_date": الجلسة القادمة.
-- "case_tags": مصفوفة (Array) تحتوي على 3 إلى 5 كلمات مفتاحية (Tags) تصف نوع وتصنيف القضية.`
-                    },
-                    { role: "user", content }
-                ]
-            });
+        if (currentUser.role === 'admin') {
             try {
-                const match = aiRes.response.match(/\{[\s\S]*\}/);
-                return createRes({ extracted_json: JSON.parse(match ? match[0] : "{}") });
-            } catch (e) { return createRes({ extracted_json: aiRes.response }); }
-        }
-      }
-
-      if (path === '/api/search' && method === 'GET') {
-          const q = url.searchParams.get('q');
-          if (!q) return createRes({cases: [], clients: [], brain: []});
-          const safeQ = decodeURIComponent(q);
-
-          let brainResults = [];
-          if (env.AI) {
-              try {
-                  const embeddingRes = await env.AI.run('@cf/baai/bge-m3', { text: [safeQ] });
-                  brainResults = await db('rpc/search_legal_brain', {
-                      method: 'POST', body: JSON.stringify({ query_embedding: embeddingRes.data[0], match_threshold: 0.7, match_count: 5 })
-                  }).catch(()=>[]);
-              } catch(e) {}
-          }
-
-          let caseQuery = `mo_cases?firm_id=eq.${session.firm_id}&or=(case_internal_id.ilike.*${safeQ}*,opponent_name.ilike.*${safeQ}*)&limit=5`;
-          if (session.role !== 'admin') caseQuery += `&or=(confidentiality_level.eq.عادي,confidentiality_level.is.null,assigned_lawyer_id.cs.{${session.uid}})`;
-          const cases = await db(caseQuery).catch(()=>[]);
-          
-          let clientQuery = `mo_clients?firm_id=eq.${session.firm_id}&or=(full_name.ilike.*${safeQ}*,national_id.ilike.*${safeQ}*,phone.ilike.*${safeQ}*)&limit=5`;
-          if (session.role !== 'admin') {
-              const myCases = await db(`mo_cases?firm_id=eq.${session.firm_id}&assigned_lawyer_id=cs.{${session.uid}}&select=client_id`).catch(()=>[]);
-              const myClientIds = [...new Set(myCases.map(c => c.client_id))];
-              clientQuery += myClientIds.length > 0 ? `&or=(confidentiality_level.eq.عادي,confidentiality_level.is.null,id.in.(${myClientIds.join(',')}))` : `&or=(confidentiality_level.eq.عادي,confidentiality_level.is.null)`;
-          }
-          const clients = await db(clientQuery).catch(()=>[]);
-          
-          return createRes({cases, clients, brain: brainResults});
-      }
-
-      if (path === '/api/check-conflict' && method === 'GET') {
-          const name = url.searchParams.get('name');
-          if (!name) return createRes({clientConflicts: [], opponentConflicts: []});
-          const safeName = decodeURIComponent(name);
-          const clientConflicts = await db(`mo_clients?firm_id=eq.${session.firm_id}&or=(full_name.ilike.*${safeName}*,national_id.eq.${safeName})&select=id,full_name,national_id`).catch(()=>[]);
-          const opponentConflicts = await db(`mo_cases?firm_id=eq.${session.firm_id}&opponent_name=ilike.*${safeName}*&select=id,opponent_name,case_internal_id`).catch(()=>[]);
-          return createRes({clientConflicts, opponentConflicts});
-      }
-
-      // =========================================================
-      // الإشعارات الذكية (Smart Diff) والمزامنة
-      // =========================================================
-      const triggerSmartNotifications = async (httpMethod, tableName, reqBody, entityId, oldData) => {
-          try {
-              let notifyIds = [];
-              let entityName = "سجل";
-              let itemDesc = reqBody.title || reqBody.case_internal_id || reqBody.full_name || reqBody.update_title || "";
-              let link = '/app.html';
-              let tgMsg = null;
-              let actionDetails = "";
-
-              if (httpMethod === 'PATCH' && oldData) {
-                  let changes = [];
-                  for (let key in reqBody) {
-                      if (reqBody[key] !== oldData[key] && key !== 'updated_at') {
-                          let oldV = oldData[key] ? formatVal(oldData[key]) : 'غير محدد';
-                          let newV = reqBody[key] ? formatVal(reqBody[key]) : 'غير محدد';
-                          if (key === 'status') changes.push(`الحالة من [${oldV}] إلى [${newV}]`);
-                          else if (key === 'appt_date') changes.push(`الموعد من [${oldV}] إلى [${newV}]`);
-                          else if (key === 'amount') changes.push(`المبلغ من [${oldV}] إلى [${newV}]`);
-                          else if (key === 'next_hearing_date') changes.push(`الجلسة القادمة من [${oldV}] إلى [${newV}]`);
-                          else if (key === 'current_stage') changes.push(`المرحلة من [${oldV}] إلى [${newV}]`);
-                      }
-                  }
-                  if (changes.length > 0) actionDetails = `\n\n🔄 التعديلات:\n- ` + changes.join('\n- ');
-                  else actionDetails = `\n\n🔄 تم تحديث بعض البيانات العامة.`;
-              } else if (httpMethod === 'POST') {
-                  actionDetails = `\n\n✨ تم تسجيل بيانات جديدة.`;
-              }
-
-              if (['mo_appointments', 'mo_tasks', 'mo_hearings'].includes(tableName)) {
-                  entityName = "مهمة/موعد";
-                  link = '/app.html#appointments';
-                  if (reqBody.assigned_to && Array.isArray(reqBody.assigned_to)) notifyIds.push(...reqBody.assigned_to);
-                  else if (oldData?.assigned_to && Array.isArray(oldData.assigned_to)) notifyIds.push(...oldData.assigned_to);
-                  tgMsg = `📋 <b>إشعار ${entityName}</b>\n\n📌 العنوان: ${safeTG(itemDesc || oldData?.title)}${safeTG(actionDetails)}\n\n👤 بواسطة: ${safeTG(session.name)}`;
-              }
-              else if (tableName === 'mo_cases') {
-                  entityName = "قضية";
-                  link = `/case-details.html?id=${entityId}`;
-                  if (reqBody.assigned_lawyer_id && Array.isArray(reqBody.assigned_lawyer_id)) notifyIds.push(...reqBody.assigned_lawyer_id);
-                  else if (oldData?.assigned_lawyer_id && Array.isArray(oldData.assigned_lawyer_id)) notifyIds.push(...oldData.assigned_lawyer_id);
-                  tgMsg = `⚖️ <b>إشعار ${entityName}</b>\n\nملف رقم: (${safeTG(itemDesc || oldData?.case_internal_id || '--')})${safeTG(actionDetails)}\n\n👤 بواسطة: ${safeTG(session.name)}`;
-              }
-              else if (tableName === 'mo_clients' && httpMethod === 'POST') {
-                  entityName = "موكل";
-                  link = '/app.html#clients';
-              }
-              else if (['mo_case_updates', 'mo_files', 'mo_expenses', 'mo_installments'].includes(tableName)) {
-                  const mapNames = { 'mo_case_updates': 'إجراء قضائي', 'mo_files': 'مستند أرشيف', 'mo_expenses': 'مصروف مالي', 'mo_installments': 'دفعة مالية' };
-                  entityName = mapNames[tableName];
-                  const cId = reqBody.case_id || oldData?.case_id;
-                  link = `/case-details.html?id=${cId}`;
-                  
-                  if (cId) {
-                      const cData = await db(`mo_cases?id=eq.${cId}&select=assigned_lawyer_id,case_internal_id,mo_clients(full_name)`).catch(()=>[]);
-                      if (cData && cData[0]) {
-                          if (cData[0].assigned_lawyer_id && Array.isArray(cData[0].assigned_lawyer_id)) notifyIds.push(...cData[0].assigned_lawyer_id);
-                          const caseNum = cData[0].case_internal_id;
-                          const clientName = cData[0].mo_clients?.full_name || 'غير محدد';
-                          
-                          let valStr = "";
-                          if(tableName === 'mo_installments' && reqBody.amount) valStr = `\n💰 المبلغ: ${reqBody.amount} دينار`;
-                          else if(tableName === 'mo_expenses' && reqBody.amount) valStr = `\n💸 المبلغ: ${reqBody.amount} دينار`;
-                          else if(tableName === 'mo_files' && reqBody.file_name) valStr = `\n📄 الملف: ${reqBody.file_name}`;
-                          else if(tableName === 'mo_case_updates' && reqBody.update_title) valStr = `\n📝 الإجراء: ${reqBody.update_title}`;
-                          
-                          tgMsg = `🔔 <b>إشعار ${entityName}</b>\n\nملف رقم (${safeTG(caseNum)})\n👤 الموكل: ${safeTG(clientName)}${safeTG(valStr)}${safeTG(actionDetails)}\n\n👤 بواسطة: ${safeTG(session.name)}`;
-                      }
-                  }
-              }
-
-              const admins = await db(`mo_users?firm_id=eq.${session.firm_id}&role=in.(admin,super_admin)&select=id,telegram_id`).catch(()=>[]);
-              admins.forEach(a => {
-                  notifyIds.push(a.id);
-                  if(a.telegram_id && tableName === 'mo_clients' && httpMethod === 'POST') {
-                      sendTG(a.telegram_id, `👤 <b>موكل جديد تم تسجيله</b>\n\nالاسم: ${safeTG(reqBody.full_name)}\nرقم الهاتف: ${safeTG(reqBody.phone) || '--'}\n\n👤 بواسطة: ${safeTG(session.name)}`);
-                  }
-              });
-
-              notifyIds = [...new Set(notifyIds)].filter(id => id !== session.uid);
-
-              if (notifyIds.length > 0) {
-                  const actionTitle = httpMethod === 'POST' ? `إضافة ${entityName} جديد` : `تحديث ${entityName}`;
-                  let actionBody = httpMethod === 'POST' ? `قام ${session.name} بإضافة ${entityName} (${itemDesc})` : `قام ${session.name} بتعديل ${entityName} (${itemDesc}).`;
-                  const targetUsers = await db(`mo_users?id=in.(${notifyIds.join(',')})&select=id,telegram_id`).catch(()=>[]);
-
-                  for (const tUser of targetUsers) {
-                      await sendNotification({ user_id: tUser.id, firm_id: session.firm_id, title: actionTitle, message: actionBody, action_url: link, is_read: false, created_by: session.uid, created_at: getLocalTime().toISOString() });
-                      if (tgMsg && tUser.telegram_id && tableName !== 'mo_clients') await sendTG(tUser.telegram_id, tgMsg);
-                  }
-              }
-          } catch (err) {}
-      };
-
-      // =========================================================
-      // العمليات الديناميكية (CRUD Engine) مع التحققات الأمنية
-      // =========================================================
-      const routeMap = {
-        '/api/clients': 'mo_clients', '/api/cases': 'mo_cases', '/api/users': 'mo_users',
-        '/api/installments': 'mo_installments', '/api/updates': 'mo_case_updates',
-        '/api/appointments': 'mo_appointments', '/api/files': 'mo_files',
-        '/api/notifications': 'mo_notifications', '/api/expenses': 'mo_expenses',
-        '/api/firms': 'mo_firms', '/api/history': 'mo_activity_logs',
-        '/api/subscriptions': 'mo_subscriptions', '/api/legal_brain': 'legal_brain'
-      };
-      
-      let table = null;
-      for (const r in routeMap) { if (path.startsWith(r)) { table = routeMap[r]; break; } }
-
-      if (table) {
-        if (method === 'GET') {
-          let query = `${table}?firm_id=eq.${session.firm_id}`;
-          if (table === 'mo_notifications') query = `${table}?user_id=eq.${session.uid}`;
-          
-          if (table === 'mo_cases' && session.role !== 'admin') query += `&or=(confidentiality_level.eq.عادي,confidentiality_level.is.null,assigned_lawyer_id.cs.{${session.uid}})`;
-
-          if (table === 'mo_clients' && session.role !== 'admin') {
-              const myCases = await db(`mo_cases?firm_id=eq.${session.firm_id}&assigned_lawyer_id=cs.{${session.uid}}&select=client_id`).catch(()=>[]);
-              const myClientIds = [...new Set(myCases.map(c => c.client_id))];
-              query += myClientIds.length > 0 ? `&or=(confidentiality_level.eq.عادي,confidentiality_level.is.null,id.in.(${myClientIds.join(',')}))` : `&or=(confidentiality_level.eq.عادي,confidentiality_level.is.null)`;
-          }
-
-          url.searchParams.forEach((v, k) => {
-              if (k !== 'firm_id' && k !== 'user_id' && k !== 'select' && k !== 'order' && k !== 'limit') query += `&${k}=${/^[a-z]{2,5}\./.test(v) ? v : 'eq.' + v}`;
-              else if (k === 'select' || k === 'order' || k === 'limit') query += `&${k}=${v}`;
-          });
-          
-          if(!url.searchParams.has('order')) query += `&order=created_at.desc`;
-          return createRes(await db(query));
+                const historyRes = await window.API.get('/api/history');
+                globalData.activityLogs = Array.isArray(historyRes) ? historyRes : [];
+            } catch(e) {}
         }
         
-        if (method === 'POST') {
-          const body = await request.json();
-          body.firm_id = session.firm_id;
-          
-          if (table === 'mo_cases') {
-              const subList = await db(`mo_subscriptions?firm_id=eq.${session.firm_id}&select=max_cases`).catch(()=>[]);
-              const currentCases = await db(`mo_cases?firm_id=eq.${session.firm_id}&select=id`);
-              if (currentCases.length >= (subList.length ? subList[0].max_cases : 50)) return createRes({error: 'تجاوزت الحد الأقصى للقضايا'}, 402);
-              if (!body.public_token) body.public_token = crypto.randomUUID();
-          }
+        renderDashboard(); renderCasesList(); renderClientsList();
+        if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+        renderStaffList(); populateSelects(); renderActivityLogs();
+    } catch(e) { console.error("Load Data Error:", e); showAlert('خطأ في الاتصال ببعض البيانات', 'danger'); }
+}
 
-          if (table === 'mo_users' && body.can_login === true) {
-              const firmData = await db(`mo_firms?id=eq.${session.firm_id}&select=max_users`).catch(()=>[]);
-              const currentUsers = await db(`mo_users?firm_id=eq.${session.firm_id}&can_login=eq.true&select=id`);
-              const maxAllowed = firmData.length ? firmData[0].max_users : 5;
-              if (currentUsers.length >= maxAllowed) return createRes({error: 'تجاوزت الحد الأقصى للحسابات المصرح لها بالدخول'}, 402);
-          }
+function filterAndSetCases(raw) { 
+    const isLawyer = (currentUser.role === 'lawyer'); const cases = Array.isArray(raw) ? raw : [];
+    globalData.cases = isLawyer ? cases.filter(c => (c.assigned_lawyer_id && c.assigned_lawyer_id.includes(currentUser.id)) || c.created_by === currentUser.id) : cases;
+}
+function filterAndSetAppointments(raw) {
+    const isLawyer = (currentUser.role === 'lawyer'); const appts = Array.isArray(raw) ? raw : [];
+    globalData.appointments = isLawyer ? appts.filter(a => (a.assigned_to && a.assigned_to.includes(currentUser.id)) || a.created_by === currentUser.id) : appts;
+}
+function filterAndSetClients(raw) { globalData.clients = Array.isArray(raw) ? raw : []; }
 
-          const result = await db(table, { method: 'POST', body: JSON.stringify(body) });
-          await db('mo_activity_logs', { method: 'POST', body: JSON.stringify({ firm_id: session.firm_id, user_id: session.uid, action_type: 'CREATE', entity_type: table, entity_id: result[0]?.id || crypto.randomUUID(), new_data: body, created_at: getLocalTime().toISOString() }) }).catch(e => console.error("Audit Error:", e));
-          
-          if (table === 'mo_installments' && body.case_id) await updateCaseFinancials(body.case_id, session.firm_id);
-          await triggerSmartNotifications('POST', table, body, result[0]?.id, null);
-          return createRes(result);
+function renderDashboard() {
+    document.getElementById('stat-cases').innerText = globalData.cases.filter(c => c.status !== 'مكتملة').length;
+    document.getElementById('stat-clients').innerText = globalData.clients.length;
+    document.getElementById('stat-appointments').innerText = globalData.appointments.filter(a => a.status === 'مجدول' || a.status === 'مؤجل').length;
+    document.getElementById('stat-staff').innerText = globalData.staff.length;
+    let totalAgreed = 0, totalPaid = 0;
+    globalData.cases.forEach(c => { totalAgreed += Number(c.total_agreed_fees) || 0; totalPaid += Number(c.total_paid) || 0; });
+    document.getElementById('fin-agreed').innerText = totalAgreed.toLocaleString();
+    document.getElementById('fin-paid').innerText = totalPaid.toLocaleString();
+    document.getElementById('fin-rem').innerText = (totalAgreed - totalPaid).toLocaleString();
+}
+
+window.filterCasesByBtn = function(btn, status) {
+    document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('btn-navy'); b.classList.add('btn-outline-navy'); });
+    btn.classList.remove('btn-outline-navy'); btn.classList.add('btn-navy'); currentCaseFilter = status; renderCasesList();
+};
+
+function renderCasesList() {
+    const list = document.getElementById('cases-list'); if(!list) return;
+    const searchVal = document.getElementById('search-cases')?.value.toLowerCase() || '';
+    const filteredCases = globalData.cases.filter(c => {
+        const matchesStatus = currentCaseFilter === '' || c.status === currentCaseFilter || c.litigation_degree === currentCaseFilter;
+        const matchesSearch = (c.case_internal_id && c.case_internal_id.toLowerCase().includes(searchVal)) || (c.opponent_name && c.opponent_name.toLowerCase().includes(searchVal));
+        return matchesStatus && matchesSearch;
+    });
+    if (filteredCases.length === 0) { list.innerHTML = '<div class="text-center p-3 text-muted border bg-white rounded mt-2 small">لا توجد قضايا تطابق البحث</div>'; return; }
+    list.innerHTML = filteredCases.map(c => {
+        let deadlineBadge = '';
+        if (c.deadline_date) {
+            const dLeft = Math.ceil((new Date(c.deadline_date) - new Date()) / 86400000);
+            if (dLeft <= 7 && dLeft >= 0) deadlineBadge = `<span class="badge bg-danger ms-1 shadow-sm"><i class="fas fa-clock"></i> باقي ${dLeft} يوم</span>`;
+            else if (dLeft < 0) deadlineBadge = `<span class="badge bg-dark ms-1 shadow-sm"><i class="fas fa-exclamation-triangle"></i> متأخر</span>`;
         }
-
-        if (method === 'PATCH') {
-          const body = await request.json();
-          let entityId = url.searchParams.get('id');
-          if (!entityId || !entityId.startsWith('eq.')) return createRes({error: 'يجب تحديد المُعرف (ID)'}, 400);
-          const cleanId = entityId.replace('eq.', '');
-
-          if (cleanId.includes('temp_')) return createRes({error: 'هذا سجل مؤقت، جاري المزامنة، يرجى الانتظار.'}, 400);
-
-          const oldDataArr = await db(`${table}?id=eq.${cleanId}&firm_id=eq.${session.firm_id}&select=*`);
-          if (!oldDataArr.length) return createRes({error: 'السجل غير موجود أو لا تملك صلاحية'}, 404);
-          const oldData = oldDataArr[0];
-          
-          if (table === 'mo_cases' && session.role !== 'admin') {
-              if (!(oldData.assigned_lawyer_id || []).includes(session.uid)) return createRes({error: 'لا تملك صلاحية تعديل هذه القضية.'}, 403);
-          }
-
-          if (table === 'mo_users' && body.can_login === true && oldData.can_login !== true) {
-              const firmData = await db(`mo_firms?id=eq.${session.firm_id}&select=max_users`).catch(()=>[]);
-              const currentUsers = await db(`mo_users?firm_id=eq.${session.firm_id}&can_login=eq.true&select=id`);
-              const maxAllowed = firmData.length ? firmData[0].max_users : 5;
-              if (currentUsers.length >= maxAllowed) return createRes({error: 'تجاوزت الحد الأقصى للحسابات'}, 402);
-          }
-
-          const result = await db(`${table}?id=eq.${cleanId}&firm_id=eq.${session.firm_id}`, { method: 'PATCH', body: JSON.stringify(body) });
-          await db('mo_activity_logs', { method: 'POST', body: JSON.stringify({ firm_id: session.firm_id, user_id: session.uid, action_type: 'UPDATE', entity_type: table, entity_id: cleanId, old_data: oldData, new_data: body, created_at: getLocalTime().toISOString() }) }).catch(e=>console.log(e));
-          if (table === 'mo_installments') await updateCaseFinancials(body.case_id || oldData.case_id, session.firm_id);
-          
-          await triggerSmartNotifications('PATCH', table, body, cleanId, oldData);
-          return createRes(result);
+        let litBadge = c.litigation_degree ? `<span class="badge bg-light text-dark border ms-1"><i class="fas fa-balance-scale"></i> ${escapeHTML(c.litigation_degree)}</span>` : '';
+        let lawyersHtml = '';
+        if (c.assigned_lawyer_id && Array.isArray(c.assigned_lawyer_id)) {
+            lawyersHtml = c.assigned_lawyer_id.map(id => { const staff = globalData.staff.find(s => s.id === id); return staff ? `<span class="badge bg-soft-primary text-primary border me-1 mb-1"><i class="fas fa-user-tie"></i> ${escapeHTML(staff.full_name.split(' ')[0])}</span>` : ''; }).join('');
         }
+        let statusBadgeColor = c.status === 'نشطة' ? 'success' : (c.status === 'مكتملة' ? 'secondary' : 'warning');
+        return `<div class="card-custom case-card p-3 mb-3 shadow-sm border-start border-4 border-${statusBadgeColor} bg-white position-relative" style="border-radius:12px;">
+            <div class="d-flex justify-content-between align-items-start mb-2" onclick="viewCaseDetails('${c.id}')" style="cursor:pointer;">
+                <div><h6 class="fw-bold mb-1 text-navy">${escapeHTML(c.case_internal_id || 'ملف بلا رقم')} ${deadlineBadge}</h6>${litBadge}</div><span class="badge bg-${statusBadgeColor} shadow-sm">${escapeHTML(c.status || 'نشطة')}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2 bg-light p-2 rounded" onclick="viewCaseDetails('${c.id}')" style="cursor:pointer;">
+                <small class="text-muted fw-bold"><i class="fas fa-user text-success me-1"></i> ${escapeHTML(globalData.clients.find(cl => cl.id === c.client_id)?.full_name || 'موكل غير محدد')}</small><small class="text-danger fw-bold"><i class="fas fa-user-shield me-1"></i> الخصم: ${escapeHTML(c.opponent_name || '--')}</small>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                <div class="d-flex flex-wrap gap-1">${lawyersHtml}</div><button class="btn btn-sm btn-outline-primary py-1 px-3 rounded-pill shadow-sm fw-bold" onclick="openShareModal('${c.id}', '${escapeHTML(c.access_pin)}', '${c.public_token}')"><i class="fas fa-share-alt me-1"></i> مشاركة</button>
+            </div></div>`;
+    }).join('');
+}
 
-        if (method === 'DELETE') {
-          let entityId = url.searchParams.get('id');
-          if (!entityId || !entityId.startsWith('eq.')) return createRes({error: 'يجب تحديد المُعرف'}, 400);
-          const cleanId = entityId.replace('eq.', '');
+window.filterCases = function() { renderCasesList(); };
+window.filterClients = function() { renderClientsList(); };
 
-          if (table === 'mo_users') return createRes({error: 'لا يمكن حذف الموظف نهائياً. يرجى إيقاف حسابه.'}, 403);
-          if (table === 'mo_clients') {
-              const checkCases = await db(`mo_cases?client_id=eq.${cleanId}&select=id`).catch(()=>[]);
-              if (checkCases.length > 0) return createRes({error: 'لا يمكن الحذف لوجود قضايا مرتبطة.'}, 403);
-          }
+function renderClientsList() {
+    const list = document.getElementById('clients-list'); if(!list) return;
+    let searchVal = document.getElementById('search-clients')?.value.toLowerCase() || ''; let sortVal = document.getElementById('sort-clients')?.value || 'newest';
+    let filtered = globalData.clients.filter(c => c.full_name.toLowerCase().includes(searchVal) || (c.phone && c.phone.includes(searchVal)));
+    if (sortVal === 'alpha') filtered.sort((a, b) => a.full_name.localeCompare(b.full_name, 'ar')); else filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    if (filtered.length === 0) { list.innerHTML = '<div class="text-center p-3 text-muted border bg-white rounded mt-2 small">لا يوجد موكلين</div>'; return; }
+    list.innerHTML = filtered.map(c => `<div class="card-custom client-card p-3 mb-2 shadow-sm d-flex justify-content-between align-items-center bg-white" onclick="viewClientProfile('${c.id}')" style="cursor:pointer; border-radius:12px;"><div class="d-flex align-items-center"><div class="bg-soft-success text-success rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width:45px; height:45px; font-size:1.2rem;"><i class="fas fa-user-tie"></i></div><div><b class="text-navy fs-6">${escapeHTML(c.full_name)}</b><br><small class="text-muted"><i class="fas fa-phone-alt me-1"></i>${escapeHTML(c.phone || 'لا يوجد رقم')}</small></div></div><i class="fas fa-chevron-left text-muted"></i></div>`).join('');
+}
 
-          const oldDataArr = await db(`${table}?id=eq.${cleanId}&firm_id=eq.${session.firm_id}&select=*`);
-          if (!oldDataArr.length) return createRes({error: 'السجل غير موجود'}, 404);
-          
-          if (session.role !== 'admin' && !session.permissions?.can_delete) {
-              if (['mo_case_updates', 'mo_files', 'mo_expenses'].includes(table)) {
-                  const parentCase = await db(`mo_cases?id=eq.${oldDataArr[0].case_id}&select=assigned_lawyer_id`);
-                  if (!parentCase[0]?.assigned_lawyer_id?.includes(session.uid)) return createRes({error: 'صلاحية الحذف للمحامي المسند فقط'}, 403);
-              } else return createRes({error: 'صلاحية الحذف للمدير العام فقط'}, 403);
-          }
-          
-          await db(`${table}?id=eq.${cleanId}&firm_id=eq.${session.firm_id}`, { method: 'DELETE' });
-          await db('mo_activity_logs', { method: 'POST', body: JSON.stringify({ firm_id: session.firm_id, user_id: session.uid, action_type: 'DELETE', entity_type: table, entity_id: cleanId, old_data: oldDataArr[0], created_at: getLocalTime().toISOString() }) }).catch(e=>console.log(e));
-          
-          if (table === 'mo_installments' && oldDataArr[0].case_id) await updateCaseFinancials(oldDataArr[0].case_id, session.firm_id);
-          return createRes({success: true, message: "تم الحذف بنجاح"});
+function renderStaffList() {
+    const list = document.getElementById('staff-list'); if(!list) return;
+    list.innerHTML = globalData.staff.map(s => `<li class="list-group-item d-flex justify-content-between align-items-center"><div><b class="text-navy">${escapeHTML(s.full_name)}</b><br><small class="text-muted">${getRoleNameInArabic(s.role)} - ${escapeHTML(s.phone)}</small></div></li>`).join('');
+}
+
+window.toggleAgendaView = function() {
+    isKanbanView = !isKanbanView; const list = document.getElementById('agenda-list'); const kanban = document.getElementById('kanban-board');
+    if (isKanbanView) { list.classList.add('d-none'); kanban.classList.remove('d-none'); renderKanbanBoard(); } else { kanban.classList.add('d-none'); list.classList.remove('d-none'); renderAgendaList(); }
+};
+
+window.filterAgenda = function() { renderAgendaList(); };
+
+function renderAgendaList() {
+    const list = document.getElementById('agenda-list'); if (!list) return;
+    const searchVal = document.getElementById('search-agenda')?.value.toLowerCase() || ''; const dateVal = document.getElementById('filter-date-agenda')?.value;
+    let filteredAppts = globalData.appointments;
+    if (searchVal) filteredAppts = filteredAppts.filter(a => a.title.toLowerCase().includes(searchVal));
+    if (dateVal) { const targetDate = new Date(dateVal).toLocaleDateString('en-CA'); filteredAppts = filteredAppts.filter(a => new Date(a.appt_date).toLocaleDateString('en-CA') === targetDate); } else if (!searchVal) { filteredAppts = filteredAppts.filter(a => a.status === 'مجدول' || a.status === 'مؤجل'); }
+    filteredAppts.sort((a, b) => new Date(a.appt_date) - new Date(b.appt_date));
+    if (filteredAppts.length === 0) { list.innerHTML = '<div class="text-center p-4 text-muted bg-white rounded shadow-sm">لا توجد مهام تطابق البحث</div>'; return; }
+    list.innerHTML = filteredAppts.map(a => {
+        let assignedHtml = '';
+        if (a.assigned_to && Array.isArray(a.assigned_to)) { assignedHtml = a.assigned_to.map(id => { const s = globalData.staff.find(st => st.id === id); return s ? `<span class="badge bg-soft-primary text-primary border me-1 mb-1"><i class="fas fa-user-tie"></i> ${escapeHTML(s.full_name.split(' ')[0])}</span>` : ''; }).join(''); }
+        const startTime = new Date(a.appt_date).toISOString().replace(/-|:|\.\d+/g, ''); const endTime = new Date(new Date(a.appt_date).getTime() + 60*60*1000).toISOString().replace(/-|:|\.\d+/g, ''); const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(a.title)}&dates=${startTime}/${endTime}`;
+        let statusBadgeColor = a.status === 'تم' ? 'success' : (a.status === 'ملغي' ? 'danger' : (a.status === 'مؤجل' ? 'warning' : 'primary'));
+        let actionButtons = '';
+        if (a.status === 'مجدول' || a.status === 'مؤجل') actionButtons = `<div class="d-flex gap-2 mt-3 pt-2 border-top border-light"><button class="btn btn-sm btn-success flex-grow-1 fw-bold shadow-sm" onclick="openApptOutcomeModal('${a.id}')"><i class="fas fa-check"></i> إنجاز</button><button class="btn btn-sm btn-warning flex-grow-1 text-dark fw-bold shadow-sm" onclick="openApptPostponeModal('${a.id}')"><i class="fas fa-clock"></i> تأجيل</button><button class="btn btn-sm btn-danger flex-grow-1 fw-bold shadow-sm" onclick="cancelAppt('${a.id}')"><i class="fas fa-times"></i> إلغاء</button></div>`;
+        let notesHtml = ''; if (a.notes && a.notes.trim() !== '') notesHtml = `<div class="mt-2 p-2 bg-light border rounded small text-muted"><i class="fas fa-info-circle text-info me-1"></i> <b>ملاحظات الإنجاز:</b> <span style="white-space: pre-wrap;">${escapeHTML(a.notes)}</span></div>`;
+        return `<div class="card-custom appt-card p-3 mb-3 shadow-sm border-start border-4 border-${statusBadgeColor} bg-white" style="border-radius:12px;"><div class="d-flex justify-content-between align-items-start"><h6 class="fw-bold text-navy mb-1 lh-base" style="max-width:75%;">${escapeHTML(a.title)}</h6><span class="badge bg-${statusBadgeColor} shadow-sm">${escapeHTML(a.status)}</span></div><div class="d-flex justify-content-between align-items-center mb-2 mt-2 bg-light p-2 rounded"><small class="text-muted fw-bold"><i class="fas fa-calendar-alt text-warning me-1"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small><a href="${calendarUrl}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 rounded-pill shadow-sm" title="إضافة للتقويم"><i class="fas fa-calendar-plus"></i></a></div><div class="mb-1">${assignedHtml}</div>${notesHtml}${actionButtons}</div>`;
+    }).join('');
+}
+
+function renderKanbanBoard() {
+    const board = document.getElementById('kanban-board'); if(!board) return;
+    const cols = [{ l: 'القادمة', f: a => a.status === 'مجدول', color: 'primary' }, { l: 'مؤجلة', f: a => a.status === 'مؤجل', color: 'warning' }, { l: 'منجزة', f: a => a.status === 'تم', color: 'success' }, { l: 'ملغاة', f: a => a.status === 'ملغي', color: 'danger' }];
+    board.innerHTML = cols.map(col => `<div class="kanban-col border-top border-4 border-${col.color} shadow-sm bg-white mx-2" style="width: 280px; flex-shrink: 0;"><div class="kanban-header text-${col.color} mb-3 pb-2 border-bottom border-light"><i class="fas fa-circle me-1 small"></i> ${col.l} (${globalData.appointments.filter(col.f).length})</div><div class="d-flex flex-column gap-2" style="max-height: 55vh; overflow-y: auto;">${globalData.appointments.filter(col.f).sort((a,b) => new Date(b.appt_date) - new Date(a.appt_date)).map(a => { let notesSnippet = (a.notes && a.notes.trim() !== '') ? `<div class="mt-2 pt-2 border-top border-light text-muted small"><i class="fas fa-info-circle text-info me-1"></i> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${escapeHTML(a.notes)}</span></div>` : ''; return `<div class="card-custom appt-card p-2 shadow-sm border border-light bg-light" style="font-size:13px; border-radius:10px;"><b class="text-navy d-block text-truncate mb-1" title="${escapeHTML(a.title)}">${escapeHTML(a.title)}</b><small class="text-muted"><i class="fas fa-calendar-alt me-1 text-secondary"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</small>${notesSnippet}</div>`; }).join('')}</div></div>`).join('');
+}
+
+// ----------------- سجل الرقابة (آلة الزمن / Time Machine) -----------------
+function renderActivityLogs() {
+    const list = document.getElementById('audit-list'); if(!list) return;
+    if(globalData.activityLogs.length === 0) { list.innerHTML = '<div class="text-center p-3 text-muted">لا يوجد حركات مسجلة حالياً</div>'; return; }
+    
+    const actionTypes = { 'CREATE': 'إضافة', 'UPDATE': 'تعديل', 'DELETE': 'حذف' }; 
+    const entityNames = { 'mo_cases': 'قضية', 'mo_clients': 'موكل', 'mo_appointments': 'موعد', 'mo_users': 'موظف', 'mo_installments': 'دفعة', 'mo_expenses': 'مصروف', 'mo_files': 'مستند', 'mo_firms': 'مكتب' };
+    
+    list.innerHTML = globalData.activityLogs.slice(0, 100).map(log => {
+        const staffName = globalData.staff.find(s => s.id === log.user_id)?.full_name || 'مجهول'; 
+        const action = actionTypes[log.action_type] || log.action_type; 
+        const entity = entityNames[log.entity_type] || log.entity_type; 
+        const badgeColor = log.action_type === 'CREATE' ? 'success' : (log.action_type === 'DELETE' ? 'danger' : 'warning');
+        
+        return `
+        <div class="card-custom p-3 mb-2 shadow-sm border-start border-4 border-${badgeColor} bg-white" style="border-radius:12px;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong class="text-navy"><i class="fas fa-user-tie me-1 text-secondary"></i> ${escapeHTML(staffName)}</strong>
+                <span class="badge bg-${badgeColor} shadow-sm">${action} ${entity}</span>
+            </div>
+            <small class="text-muted d-block mb-2"><i class="fas fa-clock me-1"></i> ${new Date(log.created_at).toLocaleString('ar-EG')}</small>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted" style="font-size: 11px; overflow-wrap: anywhere; user-select: all;">المعرف: ${log.entity_id}</div>
+                <button class="btn btn-sm btn-outline-navy py-0 px-2 fw-bold shadow-sm" onclick="showAuditDiff('${log.id}')"><i class="fas fa-code-branch me-1"></i> التفاصيل</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.showAuditDiff = function(logId) {
+    const log = globalData.activityLogs.find(l => l.id === logId);
+    if (!log) return;
+    const modalBody = document.getElementById('auditDiffModalBody');
+    if (!modalBody) return;
+    let diffHTML = '';
+
+    if (log.action_type === 'CREATE') {
+        diffHTML = `<div class="alert alert-success border-0 shadow-sm fw-bold"><i class="fas fa-plus-circle me-1"></i> تم إنشاء السجل بالبيانات التالية:</div><div dir="ltr" class="text-start bg-white p-3 rounded border shadow-sm" style="font-family:monospace; font-size:0.85rem; overflow-x:auto;">${syntaxHighlight(log.new_data)}</div>`;
+    } else if (log.action_type === 'DELETE') {
+        diffHTML = `<div class="alert alert-danger border-0 shadow-sm fw-bold"><i class="fas fa-trash me-1"></i> تم حذف السجل نهائياً. البيانات قبل الحذف:</div><div dir="ltr" class="text-start bg-white p-3 rounded border shadow-sm" style="font-family:monospace; font-size:0.85rem; overflow-x:auto;">${syntaxHighlight(log.old_data)}</div>`;
+    } else if (log.action_type === 'UPDATE') {
+        diffHTML = `<div class="alert alert-info border-0 shadow-sm fw-bold"><i class="fas fa-exchange-alt me-1"></i> مقارنة التعديلات (الأحمر مُلغى، الأخضر مُضاف):</div><div dir="ltr" class="text-start bg-white p-3 rounded border shadow-sm" style="font-family:monospace; font-size:0.85rem; overflow-x:auto;">`;
+        const oldData = log.old_data || {};
+        const newData = log.new_data || {};
+        const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+        diffHTML += `{\n`;
+        let hasChanges = false;
+        allKeys.forEach(key => {
+            if (key === 'updated_at') return;
+            const oldVal = oldData[key];
+            const newVal = newData[key];
+            if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+                hasChanges = true;
+                diffHTML += `  <strong class="text-primary">"${key}"</strong>: \n`;
+                if (oldVal !== undefined) diffHTML += `    <span style="background:#ffe6e6; color:#cc0000; text-decoration:line-through; padding:2px 4px; border-radius:4px; display:inline-block; margin-bottom:2px;">- ${JSON.stringify(oldVal)}</span>\n`;
+                if (newVal !== undefined) diffHTML += `    <span style="background:#e6ffe6; color:#008000; font-weight:bold; padding:2px 4px; border-radius:4px; display:inline-block; margin-bottom:2px;">+ ${JSON.stringify(newVal)}</span>\n`;
+            }
+        });
+        if (!hasChanges) diffHTML += `  <span class="text-muted">// لم يتم رصد تغييرات جوهرية في القيم</span>\n`;
+        diffHTML += `}</div>`;
+    }
+    modalBody.innerHTML = diffHTML;
+    openModal('auditDiffModal');
+};
+
+function syntaxHighlight(json) {
+    if (typeof json != 'string') json = JSON.stringify(json, undefined, 2);
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'text-info fw-bold';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) cls = 'text-primary fw-bold';
+            else cls = 'text-success';
+        } else if (/true|false/.test(match)) cls = 'text-warning fw-bold';
+        else if (/null/.test(match)) cls = 'text-danger fw-bold';
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+// =================================================================
+// 📅 دوال المواعيد (الحفظ، التأجيل، الإلغاء)
+// =================================================================
+
+window.saveApptOutcome = async function(e, id) { 
+    if(e) e.preventDefault(); 
+    const apptId = id || document.getElementById('outcome_appt_id').value; 
+    if (apptId.toString().startsWith('temp_')) return showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
+    const notes = document.getElementById('outcome_text') ? document.getElementById('outcome_text').value : '';
+    const idx = globalData.appointments.findIndex(a => a.id === apptId);
+    if(idx !== -1) { globalData.appointments[idx].status = 'تم'; globalData.appointments[idx].notes = notes; }
+    if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+    closeModal('apptOutcomeModal'); showAlert('تم تسجيل الإنجاز', 'success');
+    await window.API.patch(`/api/appointments?id=eq.${apptId}`, {status:'تم', notes: notes});
+};
+
+window.saveApptPostpone = async function(e) { 
+    if(e) e.preventDefault(); 
+    const id = document.getElementById('postpone_appt_id').value; 
+    if (id.toString().startsWith('temp_')) return showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
+    const dInput = document.getElementById('postpone_date').value; if(!dInput) return showAlert('الرجاء اختيار تاريخ', 'warning');
+    const d = new Date(dInput).toISOString();
+    const idx = globalData.appointments.findIndex(a => a.id === id);
+    if(idx !== -1) { globalData.appointments[idx].status = 'مؤجل'; globalData.appointments[idx].appt_date = d; }
+    if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
+    closeModal('apptPostponeModal'); showAlert('تم تأجيل الموعد بنجاح', 'success');
+    await window.API.patch(`/api/appointments?id=eq.${id}`, {status:'مؤجل', appt_date: d});
+};
+
+window.cancelAppt = async function(id) {
+    if (id.toString().startsWith('temp_')) return showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
+    const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
+    if(confirm.isConfirmed) { 
+        const idx = globalData.appointments.findIndex(a => a.id === id); if(idx !== -1) globalData.appointments[idx].status = 'ملغي';
+        if (isKanbanView) renderKanbanBoard(); else renderAgendaList(); showAlert('تم إلغاء الموعد', 'success');
+        await window.API.patch(`/api/appointments?id=eq.${id}`, {status:'ملغي'});
+    }
+};
+
+window.openApptOutcomeModal = function(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); };
+window.openApptPostponeModal = function(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); };
+
+// =================================================================
+// 🤖 دوال الذكاء الاصطناعي والبحث الدلالي
+// =================================================================
+
+window.handleSmartSearch = async function(q) {
+    const drop = document.getElementById('search-results-dropdown'); 
+    if (q.length < 2) return drop.classList.add('d-none');
+    
+    const res = await window.API.get(`/api/search?q=${encodeURIComponent(q)}`); 
+    let html = '';
+    
+    if (res.brain?.length) html += '<h6 class="dropdown-header text-accent fw-bold"><i class="fas fa-brain"></i> الذاكرة القانونية (بحث دلالي AI)</h6>' + res.brain.map(b => `<button class="dropdown-item" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title)}'"><small class="text-navy fw-bold">${escapeHTML(b.title)}</small><br><span style="font-size:10px;" class="text-muted text-wrap">${escapeHTML(b.ai_summary || b.original_text).substring(0, 70)}...</span></button>`).join('');
+    if (res.cases?.length) html += '<h6 class="dropdown-header">القضايا</h6>' + res.cases.map(c => `<button class="dropdown-item" onclick="window.viewCaseDetails('${c.id}')"><i class="fas fa-gavel text-secondary"></i> ${escapeHTML(c.case_internal_id)} - ${escapeHTML(c.opponent_name)}</button>`).join('');
+    if (res.clients?.length) html += '<h6 class="dropdown-header">الموكلين</h6>' + res.clients.map(c => `<button class="dropdown-item" onclick="window.viewClientProfile('${c.id}')"><i class="fas fa-user text-success"></i> ${escapeHTML(c.full_name)}</button>`).join('');
+    
+    drop.innerHTML = html || '<div class="p-3 text-center small text-muted">لا يوجد نتائج</div>'; drop.classList.remove('d-none');
+};
+
+// =================================================================
+// 🔗 المشاركة وتوليد الروابط
+// =================================================================
+
+let currentShareLink = '';
+window.openShareModal = function(caseId, pin, publicToken) {
+    const token = publicToken || caseId; const pathArray = window.location.pathname.split('/'); pathArray.pop(); currentShareLink = `${window.location.origin + pathArray.join('/')}/client.html?token=${token}`;
+    document.getElementById('share_link_input').value = currentShareLink; document.getElementById('share_pin_input').value = pin || 'لا يوجد';
+    const qrContainer = document.getElementById('share-qrcode'); qrContainer.innerHTML = '';
+    new QRCode(qrContainer, { text: currentShareLink, width: 160, height: 160, colorDark: "#0a192f", correctLevel: QRCode.CorrectLevel.L });
+    openModal('shareModal');
+};
+window.copyShareLinkApp = function() { navigator.clipboard.writeText(`أهلاً بك، رابط متابعة قضيتك: ${currentShareLink}\nالرمز السري (PIN): ${document.getElementById('share_pin_input').value}`).then(() => showAlert('تم نسخ الرابط', 'success')); };
+window.sendShareViaWhatsApp = function() { window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`أهلاً بك، رابط متابعة ملفك: ${currentShareLink}\nالرمز (PIN): ${document.getElementById('share_pin_input').value}`)}`, '_blank'); };
+
+window.generateStrongPIN = function() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let pin = '';
+    for (let i = 0; i < 6; i++) pin += chars.charAt(Math.floor(Math.random() * chars.length));
+    const pinInput = document.getElementById('case_access_pin'); if (pinInput) pinInput.value = pin;
+};
+
+// =================================================================
+// 💾 دوال حفظ البيانات الرئيسية
+// =================================================================
+
+window.saveClient = async function(event) {
+    event.preventDefault();
+    const dobValue = document.getElementById('client_dob') ? document.getElementById('client_dob').value : '';
+    const validDob = dobValue === '' ? null : dobValue;
+    const data = { 
+        full_name: document.getElementById('client_full_name').value, phone: document.getElementById('client_phone').value, national_id: document.getElementById('client_national_id').value, 
+        email: document.getElementById('client_email') ? document.getElementById('client_email').value : '', client_type: document.getElementById('client_type').value, 
+        address: document.getElementById('client_address').value, mother_name: document.getElementById('client_mother') ? document.getElementById('client_mother').value : null,
+        date_of_birth: validDob, place_of_birth: document.getElementById('client_pob') ? document.getElementById('client_pob').value : null,
+        nationality: document.getElementById('client_nationality') ? document.getElementById('client_nationality').value : null, marital_status: document.getElementById('client_marital') ? document.getElementById('client_marital').value : null,
+        profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null, confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي',
+        client_portal_active: document.getElementById('client_portal_active') ? document.getElementById('client_portal_active').checked : true
+    };
+    const res = await window.API.post('/api/clients', data);
+    if (res && !res.error) { closeModal('clientModal'); await loadAllData(); await loadNotifications(); showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم إضافة الموكل بنجاح', res.offline ? 'warning' : 'success'); event.target.reset(); } 
+    else { showAlert(res?.error || 'حدث خطأ في الحفظ', 'danger'); }
+};
+
+window.saveCase = async function(event) {
+    event.preventDefault(); 
+    const lawyerSelect = document.getElementById('case_assigned_lawyers'); let lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
+    if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id);
+    const autoTasks = document.getElementById('case_auto_tasks') ? document.getElementById('case_auto_tasks').checked : false;
+    const parseToArray = (str) => str ? str.split('،').map(s => s.trim()).filter(s => s) : [];
+    const parseLinesToArray = (str) => str ? str.split('\n').map(s => s.trim()).filter(s => s) : [];
+
+    const deadlineValue = document.getElementById('case_deadline_date') ? document.getElementById('case_deadline_date').value : ''; const validDeadline = deadlineValue === '' ? null : deadlineValue;
+    const statuteValue = document.getElementById('case_statute_of_limitations_date') ? document.getElementById('case_statute_of_limitations_date').value : ''; const validStatute = statuteValue === '' ? null : statuteValue;
+    const parentIdValue = document.getElementById('case_parent_id') ? document.getElementById('case_parent_id').value : ''; const validParentId = parentIdValue === '' ? null : parentIdValue;
+
+    const tagsInput = document.getElementById('case_tags');
+    const tagsArray = tagsInput && tagsInput.value ? tagsInput.value.split('،').map(t=>t.trim()).filter(t=>t) : [];
+
+    const data = { 
+        client_id: document.getElementById('case_client_id').value, case_internal_id: document.getElementById('case_internal_id').value, access_pin: document.getElementById('case_access_pin').value, case_type: document.getElementById('case_type').value, 
+        priority_level: document.getElementById('case_priority_level') ? document.getElementById('case_priority_level').value : 'عادي', confidentiality_level: document.getElementById('case_confidentiality') ? document.getElementById('case_confidentiality').value : 'عادي', current_stage: document.getElementById('case_current_stage') ? document.getElementById('case_current_stage').value : '',
+        current_court: document.getElementById('case_court') ? document.getElementById('case_court').value : '', court_room: document.getElementById('case_court_room') ? document.getElementById('case_court_room').value : '', court_case_number: document.getElementById('case_court_case_number') ? document.getElementById('case_court_case_number').value : '', case_year: document.getElementById('case_case_year') && document.getElementById('case_case_year').value ? Number(document.getElementById('case_case_year').value) : null, litigation_degree: document.getElementById('case_litigation_degree') ? document.getElementById('case_litigation_degree').value : null, current_judge: document.getElementById('case_current_judge') ? document.getElementById('case_current_judge').value : '', court_clerk: document.getElementById('case_court_clerk') ? document.getElementById('case_court_clerk').value : '',
+        parent_case_id: validParentId, deadline_date: validDeadline, statute_of_limitations_date: validStatute, police_station_ref: document.getElementById('case_police_station_ref') ? document.getElementById('case_police_station_ref').value : '', prosecution_ref: document.getElementById('case_prosecution_ref') ? document.getElementById('case_prosecution_ref').value : '',
+        opponent_name: document.getElementById('case_opponent_name').value, opponent_lawyer: document.getElementById('case_opponent_lawyer') ? document.getElementById('case_opponent_lawyer').value : '', power_of_attorney_number: document.getElementById('case_poa_number') ? document.getElementById('case_poa_number').value : '', poa_details: document.getElementById('case_poa_details') ? document.getElementById('case_poa_details').value : '',
+        co_plaintiffs: document.getElementById('case_co_plaintiffs') ? parseToArray(document.getElementById('case_co_plaintiffs').value) : [], co_defendants: document.getElementById('case_co_defendants') ? parseToArray(document.getElementById('case_co_defendants').value) : [], experts_and_witnesses: document.getElementById('case_experts_and_witnesses') ? parseToArray(document.getElementById('case_experts_and_witnesses').value) : [],
+        lawsuit_facts: document.getElementById('case_lawsuit_text') ? document.getElementById('case_lawsuit_text').value : '', legal_basis: document.getElementById('case_legal_basis') ? document.getElementById('case_legal_basis').value : '', final_requests: document.getElementById('case_final_requests') ? parseLinesToArray(document.getElementById('case_final_requests').value) : [],
+        claim_amount: Number(document.getElementById('case_claim_amount').value), total_agreed_fees: Number(document.getElementById('case_agreed_fees').value), success_probability: document.getElementById('case_success_prob') && document.getElementById('case_success_prob').value ? Number(document.getElementById('case_success_prob').value) : null,
+        assigned_lawyer_id: lawyers, status: 'نشطة', public_token: crypto.randomUUID(),
+        execution_file_number: document.getElementById('case_execution_file_number') ? document.getElementById('case_execution_file_number').value : null,
+        case_tags: tagsArray
+    };
+    
+    const btn = event.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
+
+    const res = await window.API.post('/api/cases', data);
+    if (res && !res.error) { 
+        if (autoTasks && !res.offline) {
+            const tmr = new Date(Date.now() + 86400000).toISOString(); const afterTmr = new Date(Date.now() + 172800000).toISOString();
+            await window.API.post('/api/appointments', { title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers });
+            await window.API.post('/api/appointments', { title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers });
         }
-      }
-      return createRes({error: 'المسار البرمجي غير موجود'}, 404);
-    } catch (e) { return createRes({error: "حدث خطأ داخلي: " + e.message}, 500); }
-  }
+        closeModal('caseModal'); await loadAllData(); await loadNotifications(); showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم فتح ملف القضية بنجاح', res.offline ? 'warning' : 'success'); event.target.reset(); 
+    } else { showAlert(res?.error || 'فشل في إضافة القضية', 'error'); }
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي';
+};
+
+window.saveAppointment = async function(event) {
+    event.preventDefault(); 
+    const apptSelect = document.getElementById('appt_assigned_to'); let assignedTo = apptSelect ? Array.from(apptSelect.selectedOptions).map(opt => opt.value) : [];
+    if (assignedTo.length === 0 && currentUser && currentUser.id) assignedTo.push(currentUser.id);
+
+    const rawDate = document.getElementById('appt_date').value;
+    const data = { title: document.getElementById('appt_title').value, appt_date: rawDate, type: document.getElementById('appt_type').value, status: 'مجدول', assigned_to: assignedTo };
+    closeModal('apptModal'); event.target.reset();
+
+    const tempId = 'temp_' + Date.now(); const tempAppt = { ...data, id: tempId, created_at: new Date().toISOString() }; globalData.appointments.push(tempAppt);
+    if (isKanbanView) renderKanbanBoard(); else renderAgendaList(); showAlert('تمت الجدولة بنجاح', 'success');
+
+    try {
+        const res = await window.API.post('/api/appointments', { ...data, appt_date: new Date(rawDate).toISOString() });
+        if (res && !res.error) { const idx = globalData.appointments.findIndex(a => a.id === tempId); if (idx !== -1) globalData.appointments[idx] = res; } else throw new Error(res?.error || 'خطأ أثناء الجدولة');
+    } catch(err) { globalData.appointments = globalData.appointments.filter(a => a.id !== tempId); if (isKanbanView) renderKanbanBoard(); else renderAgendaList(); showAlert(err.message, 'danger'); }
+};
+
+function populateSelects() {
+    const clSel = document.getElementById('case_client_id'); if(clSel) clSel.innerHTML = '<option value="">اختر الموكل...</option>' + globalData.clients.map(c => `<option value="${c.id}">${escapeHTML(c.full_name)}</option>`).join('');
+    const pCaseSel = document.getElementById('case_parent_id'); if(pCaseSel) pCaseSel.innerHTML = '<option value="">لا يوجد (قضية مستقلة)</option>' + globalData.cases.map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id || 'بدون رقم')}</option>`).join('');
+    const cLSelect = document.getElementById('case_assigned_lawyers');
+    if (cLSelect) { cLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join(''); if (typeof Choices !== 'undefined') { if (window.caseLawyerChoices) window.caseLawyerChoices.destroy(); window.caseLawyerChoices = new Choices(cLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر المحامين...' }); } }
+    const aLSelect = document.getElementById('appt_assigned_to');
+    if (aLSelect) { aLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join(''); if (typeof Choices !== 'undefined') { if (window.apptLawyerChoices) window.apptLawyerChoices.destroy(); window.apptLawyerChoices = new Choices(aLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر الموظفين...' }); } }
+}
+
+// =================================================================
+// 🚨 الإشعارات (رادار المواعيد)
+// =================================================================
+async function loadNotifications(silent = false) {
+    try {
+        const res = await window.API.get('/api/notifications?order=created_at.desc'); if (!res || res.error) return;
+        globalData.notifications = Array.isArray(res) ? res : [];
+        const unread = globalData.notifications.filter(n => n.is_read === false);
+        const badge = document.getElementById('notification-badge'); const list = document.getElementById('notifications-list');
+
+        if (unread.length > 0) {
+            if(badge) { badge.innerText = unread.length > 9 ? '+9' : unread.length; badge.classList.remove('d-none'); }
+            if (silent) { unread.forEach(n => { if(!notifiedIds.has(n.id)) { notifiedIds.add(n.id); triggerPushNotification(n.title, n.message); } }); }
+        } else { if(badge) badge.classList.add('d-none'); }
+
+        if(list) {
+            if (globalData.notifications.length === 0) list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
+            else list.innerHTML = globalData.notifications.slice(0, 10).map(n => {
+                const isRadar = n.title.includes('رادار') || n.title.includes('🚨');
+                const bgClass = n.is_read ? 'opacity-75' : (isRadar ? 'bg-soft-danger border-start border-danger border-4' : 'bg-light border-start border-info border-4');
+                const icon = isRadar ? '<i class="fas fa-exclamation-triangle text-danger me-1"></i>' : '<i class="fas fa-bell text-warning me-1"></i>';
+                
+                return `<li class="dropdown-item border-bottom py-2 text-wrap ${bgClass}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
+                    <strong class="d-block text-navy small mb-1">${icon} ${escapeHTML(n.title)}</strong>
+                    <span class="small text-muted d-block fw-bold" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
+                    <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
+                </li>`;
+            }).join('');
+        }
+    } catch (e) { console.error("خطأ الإشعارات:", e); }
+}
+
+window.handleNotificationClick = async function(id, url) { await window.API.patch(`/api/notifications?id=eq.${id}`, { is_read: true }); if (url && url !== 'undefined' && url !== 'null') window.location.href = url; else loadNotifications(); };
+
+window.markNotificationsRead = async function() {
+    const unread = globalData.notifications.filter(n => !n.is_read); if(unread.length === 0) return;
+    const badge = document.getElementById('notification-badge'); if(badge) badge.classList.add('d-none');
+    for (let n of unread) await window.API.patch(`/api/notifications?id=eq.${n.id}`, { is_read: true });
+    await loadNotifications(true); 
+};
+
+function triggerPushNotification(title, body) { if (Notification.permission === "granted") navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body: body, icon: './icons/icon-192.png', badge: './icons/icon-192.png', dir:'rtl' })); }
+
+window.viewCaseDetails = function(id) { localStorage.setItem('current_case_id', id); window.location.href = `case-details.html?id=${id}`; };
+window.viewClientProfile = function(id) { localStorage.setItem('current_client_id', id); window.location.href = `client-details.html?id=${id}`; };
+
+window.runConflictCheck = async function() {
+    const input = document.getElementById('conflict_search_input').value; const resDiv = document.getElementById('conflict_results');
+    if (input.length < 2) return showAlert('أدخل حرفين أو رقمين للبحث', 'warning');
+    resDiv.innerHTML = '<div class="text-center p-3 small"><i class="fas fa-spinner fa-spin"></i> جاري الفحص الدقيق...</div>';
+    const res = await window.API.get(`/api/check-conflict?name=${encodeURIComponent(input)}`); let html = '';
+    if (res.clientConflicts && res.clientConflicts.length > 0) { html += `<h6 class="text-success fw-bold small"><i class="fas fa-user-check"></i> موكل سابق (آمن):</h6><ul class="list-group mb-2 shadow-sm">`; html += res.clientConflicts.map(c => `<li class="list-group-item small px-2 py-2 border-0 d-flex justify-content-between align-items-center bg-light mb-1 rounded"><span class="fw-bold text-navy">${escapeHTML(c.full_name)}</span> <span class="badge bg-white text-dark border shadow-sm"><i class="fas fa-id-card text-muted"></i> ${escapeHTML(c.national_id || 'لا يوجد رقم')}</span></li>`).join(''); html += `</ul>`; }
+    if (res.opponentConflicts && res.opponentConflicts.length > 0) { html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`; html += res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-2 border-0 bg-soft-danger mb-1 rounded"><span class="fw-bold text-danger">${escapeHTML(c.opponent_name)}</span><span class="d-block text-muted mt-1" style="font-size:10px;"><i class="fas fa-folder"></i> ملف: ${escapeHTML(c.case_internal_id || 'غير محدد')}</span></li>`).join(''); html += `</ul>`; }
+    resDiv.innerHTML = html || '<div class="text-center text-success py-3 small fw-bold"><i class="fas fa-check-circle fa-2x mb-2 d-block"></i>الاسم والرقم الوطني نظيف تماماً</div>';
 };
