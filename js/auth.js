@@ -1,5 +1,5 @@
 // js/auth.js - نظام المصادقة وإدارة الهوية (V3.0 Enterprise)
-// التحديث الأخير: إضافة ميزة طلب البصمة تلقائياً عند فتح صفحة الدخول (Auto-Biometric Prompt)
+// التحديث الأخير: التوجيه الصحيح لصفحة register.html، تفعيل الجلسة الأحادية، وإصلاح تسجيل الخروج.
 
 const AUTH = {
     // =================================================================
@@ -8,8 +8,8 @@ const AUTH = {
     
     // التحقق من الجلسة (يُستدعى في بداية كل صفحة محمية)
     checkSession: () => {
-        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-        const user = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+        const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+        const user = localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user');
         
         if (!token || !user) {
             console.warn("[Auth] جلسة غير صالحة. جاري التوجيه لصفحة الدخول...");
@@ -27,9 +27,9 @@ const AUTH = {
 
     // تسجيل الخروج الآمن
     logout: () => {
-        localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-        localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
-        localStorage.removeItem(CONFIG.FIRM_KEY);
+        localStorage.removeItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+        localStorage.removeItem(CONFIG?.USER_KEY || 'moakkil_user');
+        localStorage.removeItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id');
         // ملاحظة: لا نحذف بيانات البصمة moakkil_biometric_id لكي يتمكن من الدخول بها لاحقاً
         window.location.replace('login.html');
     },
@@ -40,9 +40,13 @@ const AUTH = {
     
     requestOTP: async (phone) => {
         try {
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown';
             const response = await fetch(`${CONFIG.API_URL}/api/auth/request-otp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-device-id': deviceId
+                },
                 body: JSON.stringify({ phone })
             });
             const data = await response.json();
@@ -56,9 +60,13 @@ const AUTH = {
 
     verifyOTP: async (phone, otp) => {
         try {
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown';
             const response = await fetch(`${CONFIG.API_URL}/api/auth/verify-otp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-device-id': deviceId
+                },
                 body: JSON.stringify({ phone, otp })
             });
             const data = await response.json();
@@ -66,23 +74,26 @@ const AUTH = {
             if (!response.ok) throw new Error(data.error || 'الكود غير صحيح');
             
             // حفظ التوكن وبيانات المستخدم
-            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
-            localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+            localStorage.setItem(CONFIG?.TOKEN_KEY || 'moakkil_token', data.token);
+            localStorage.setItem(CONFIG?.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
             
             // نسخة احتياطية لضمان عمل البصمة بكفاءة لاحقاً
             localStorage.setItem('moakkil_full_user_backup', JSON.stringify(data.user));
 
             if (data.user.firm_id) {
-                localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
+                localStorage.setItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
             }
 
-            // التوجيه الذكي
+            // التوجيه الذكي والصحيح (إلى register.html للإدارة العليا)
             const userRole = data.user.role || data.user.user_type;
-            if (userRole === 'super_admin' || userRole === 'superadmin') {
-                window.location.href = 'super-admin.html'; 
-            } else {
-                window.location.href = 'app.html';
-            }
+            
+            setTimeout(() => {
+                if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
+                    window.location.replace('register.html'); 
+                } else {
+                    window.location.replace('app.html');
+                }
+            }, 800); // تأخير ليظهر إشعار النجاح في الفرونت إند
 
             return data;
         } catch (error) {
@@ -120,7 +131,7 @@ const AUTH = {
             throw new Error("متصفحك لا يدعم تقنية البصمة.");
         }
 
-        const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
+        const user = JSON.parse(localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user'));
         if (!user) throw new Error("يجب تسجيل الدخول بـ OTP أولاً لتفعيل البصمة.");
 
         try {
@@ -185,18 +196,27 @@ const AUTH = {
 
             const payload = {
                 credential_id: assertion.id,
-                phone: savedPhone
+                phone: savedPhone,
+                deviceId: localStorage.getItem('moakkil_device_id') || 'unknown'
             };
 
+            // نفترض وجود الدالة في api.js
             const data = await API.biometricLogin(payload);
             if (data.error) throw new Error(data.error);
 
-            localStorage.setItem(CONFIG.TOKEN_KEY || 'moakkil_token', data.token);
-            localStorage.setItem(CONFIG.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
-            if (data.user.firm_id) localStorage.setItem(CONFIG.FIRM_KEY, data.user.firm_id);
+            localStorage.setItem(CONFIG?.TOKEN_KEY || 'moakkil_token', data.token);
+            localStorage.setItem(CONFIG?.USER_KEY || 'moakkil_user', JSON.stringify(data.user));
+            if (data.user.firm_id) localStorage.setItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id', data.user.firm_id);
 
             const userRole = data.user.role || data.user.user_type;
-            window.location.href = (userRole === 'super_admin' || userRole === 'superadmin') ? 'super-admin.html' : 'app.html';
+            
+            setTimeout(() => {
+                if (userRole === 'super_admin' || userRole === 'superadmin' || data.user.is_setup_required) {
+                    window.location.replace('register.html'); 
+                } else {
+                    window.location.replace('app.html');
+                }
+            }, 800);
 
             return data;
         } catch (error) {
