@@ -1,8 +1,13 @@
 /**
  * js/case-details.js
  * وحدة الإدارة الشاملة لتفاصيل القضية (Case Dashboard)
- * الدستور المطبق: استغلال 100% من هيكلية البيانات، الربط السحابي R2، النزاهة المالية، الرقابة وآلة الزمن.
+ * الدستور المطبق: تحصين الواجهات (Null-Safe)، استغلال 100% من البيانات، الربط السحابي R2، والرقابة.
  */
+
+// [إصلاح خطأ ReferenceError: goBack is not defined]
+window.goBack = function() {
+    window.history.back();
+};
 
 document.addEventListener('DOMContentLoaded', async () => {
     if (!API.getToken()) {
@@ -20,11 +25,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 1. المتغيرات ومؤشرات واجهة المستخدم (UI Elements)
+    // 1. المتغيرات ومؤشرات واجهة المستخدم (UI Elements) مع ربط آمن
     // ==========================================
     const elements = {
-        loader: document.getElementById('case-loader'),
-        content: document.getElementById('case-content'),
+        // دعم لأسماء متعددة لتجنب خطأ Null
+        loader: document.getElementById('case-loader') || document.getElementById('main-loader'),
+        content: document.getElementById('case-content') || document.getElementById('main-content'),
         
         // البيانات الأساسية
         internalId: document.getElementById('case-internal-id'),
@@ -42,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         coDefendants: document.getElementById('case-co-defendants'),
         expertsWitnesses: document.getElementById('case-experts-witnesses'),
         aiSummary: document.getElementById('case-ai-summary'),
-        caseTags: document.getElementById('case-tags'), // حاوية الوسوم الذكية
+        caseTags: document.getElementById('case-tags'), 
         
         // القوائم والجداول
         updatesList: document.getElementById('case-updates-list'),
@@ -56,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         fileInput: document.getElementById('case-file-input'),
         addExpenseForm: document.getElementById('add-expense-form'),
         addInstallmentForm: document.getElementById('add-installment-form'),
-        timeMachineBtn: document.getElementById('btn-time-machine') // زر آلة الزمن
+        timeMachineBtn: document.getElementById('btn-time-machine')
     };
 
     let currentCaseData = null;
@@ -66,8 +72,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     const loadCaseDetails = async () => {
         try {
-            elements.content.style.display = 'none';
-            elements.loader.style.display = 'block';
+            // [إصلاح خطأ TypeError: Cannot read properties of null (reading 'style')]
+            if (elements.content) elements.content.style.display = 'none';
+            if (elements.loader) elements.loader.style.display = 'block';
 
             // جلب القضية مع بيانات الموكل
             const caseReq = await API.get(`/api/cases?id=eq.${caseId}&select=*,mo_clients(full_name,phone)`);
@@ -87,11 +94,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderFiles(files);
             renderFinancials(installments, expenses, currentCaseData);
 
-            elements.loader.style.display = 'none';
-            elements.content.style.display = 'block';
+            if (elements.loader) elements.loader.style.display = 'none';
+            if (elements.content) elements.content.style.display = 'block';
         } catch (error) {
             console.error('[Case Details Error]:', error);
-            elements.loader.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            // [إصلاح خطأ TypeError: Cannot set properties of null (setting 'innerHTML')]
+            if (elements.loader) {
+                elements.loader.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            } else if (typeof showAlert !== 'undefined') {
+                showAlert(`خطأ: ${error.message}`, 'danger');
+            } else {
+                alert(`خطأ: ${error.message}`);
+            }
         }
     };
 
@@ -107,7 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             catch { return val; }
         };
 
-        // البيانات الأساسية
+        // البيانات الأساسية (محصنة ضد الـ Null)
         if(elements.internalId) elements.internalId.textContent = safe(data.case_internal_id);
         if(elements.clientName) elements.clientName.textContent = safe(data.mo_clients?.full_name);
         if(elements.opponentName) elements.opponentName.textContent = safe(data.opponent_name);
@@ -128,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ملخص الذكاء الاصطناعي
         if(elements.aiSummary) elements.aiSummary.textContent = safe(data.ai_cumulative_summary || data.ai_summary);
 
-        // [ميزة جديدة] عرض الوسوم الذكية (Smart Tags)
+        // عرض الوسوم الذكية (Smart Tags)
         if(elements.caseTags) {
             let tags = [];
             try {
@@ -171,7 +185,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         elements.filesList.innerHTML = files.map(f => {
-            // [التدخل الجراحي الأمني]: استخدام دالة التأمين لروابط R2
             const secureUrl = API.getSecureUrl(f.file_url || f.attachment_url);
             const ext = (f.file_extension || '').toLowerCase();
             let icon = '📄';
@@ -193,18 +206,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const renderFinancials = (installments, expenses, caseData) => {
-        // حساب الملخص المالي للنزاهة المالية
         const totalFees = parseFloat(caseData.total_agreed_fees) || 0;
         const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         const totalExpenses = expenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
-        // تحديث الملخص في الواجهة
         if(document.getElementById('fin-total-fees')) document.getElementById('fin-total-fees').textContent = `${totalFees} د.أ`;
         if(document.getElementById('fin-total-paid')) document.getElementById('fin-total-paid').textContent = `${totalPaid} د.أ`;
         if(document.getElementById('fin-total-expenses')) document.getElementById('fin-total-expenses').textContent = `${totalExpenses} د.أ`;
         if(document.getElementById('fin-remaining')) document.getElementById('fin-remaining').textContent = `${totalFees - totalPaid} د.أ`;
 
-        // عرض الدفعات
         if (elements.installmentsList) {
             elements.installmentsList.innerHTML = installments.length ? installments.map(inst => `
                 <tr>
@@ -216,7 +226,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             `).join('') : '<tr><td colspan="4" class="text-center">لا توجد دفعات</td></tr>';
         }
 
-        // عرض المصاريف
         if (elements.expensesList) {
             elements.expensesList.innerHTML = expenses.length ? expenses.map(exp => {
                 const receiptLink = exp.receipt_url ? `<a href="${API.getSecureUrl(exp.receipt_url)}" target="_blank" class="text-decoration-none">📄 فاتورة</a>` : '-';
@@ -236,11 +245,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     const viewTimeMachine = async () => {
         try {
+            if (!elements.timeMachineBtn) return;
             const btnOriginalText = elements.timeMachineBtn.innerHTML;
             elements.timeMachineBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري التحميل...';
             elements.timeMachineBtn.disabled = true;
 
-            // جلب سجلات القضية من الباك إند
             const history = await API.get(`/api/history?entity_type=eq.mo_cases&entity_id=eq.${caseId}&order=created_at.desc`);
             
             if (!history || history.length === 0) {
@@ -256,7 +265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const actionText = log.action_type === 'CREATE' ? 'إنشاء' : (log.action_type === 'UPDATE' ? 'تعديل' : 'حذف');
                 const date = new Date(log.created_at).toLocaleString('ar-EG');
                 
-                // حساب الفروقات إذا كان الإجراء تعديلاً
                 let diffHtml = '';
                 if (log.action_type === 'UPDATE' && log.old_data && log.new_data) {
                     diffHtml += '<ul class="mt-2 text-muted" style="font-size: 0.85rem; list-style-type: square; padding-right: 20px;">';
@@ -281,11 +289,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             htmlContent += '</div>';
 
-            // العرض في Modal أو نافذة منبثقة
             const modalBody = document.getElementById('history-modal-body');
             if (modalBody) {
                 modalBody.innerHTML = htmlContent;
-                new bootstrap.Modal(document.getElementById('historyModal')).show();
+                if (typeof bootstrap !== 'undefined') {
+                    new bootstrap.Modal(document.getElementById('historyModal')).show();
+                }
             } else {
                 const win = window.open("", "آلة الزمن - سجل القضية", "width=650,height=750");
                 win.document.write(`
@@ -313,7 +322,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // ربط الزر التفاعلي لآلة الزمن
     if (elements.timeMachineBtn) {
         elements.timeMachineBtn.addEventListener('click', viewTimeMachine);
     }
@@ -321,23 +329,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // 5. العمليات والإدخال (Forms Handling)
     // ==========================================
-
-    // أ. رفع الملفات السحابية (R2 Integration)
     if (elements.uploadFileForm) {
         elements.uploadFileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if(!elements.fileInput) return;
             const file = elements.fileInput.files[0];
             if (!file) return alert('يرجى اختيار ملف.');
 
             const btn = elements.uploadFileForm.querySelector('button[type="submit"]');
-            btn.innerHTML = 'جاري الرفع للسحابة... <div class="spinner-border spinner-border-sm"></div>';
-            btn.disabled = true;
+            if(btn) {
+                btn.innerHTML = 'جاري الرفع للسحابة... <div class="spinner-border spinner-border-sm"></div>';
+                btn.disabled = true;
+            }
 
             try {
-                // رفع الملف إلى مسار ديناميكي معزول خاص بالقضية
                 const uploadResult = await API.uploadToCloudR2(file, `cases/${caseId}/attachments`);
-
-                // حفظ بيانات الملف في قاعدة البيانات
                 await API.post('/api/files', {
                     case_id: caseId,
                     client_id: currentCaseData.client_id,
@@ -345,52 +351,54 @@ document.addEventListener('DOMContentLoaded', async () => {
                     file_extension: file.name.split('.').pop(),
                     file_type: file.type,
                     file_category: document.getElementById('file-category-select')?.value || 'مرفقات عامة',
-                    file_url: uploadResult.file_path, // حفظ مسار R2 فقط
+                    file_url: uploadResult.file_path, 
                     is_template: false
                 });
 
                 alert('تم رفع المستند بنجاح.');
                 elements.uploadFileForm.reset();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFileModal'));
-                if(modal) modal.hide();
-                loadCaseDetails(); // تحديث الواجهة
+                if (typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('uploadFileModal'));
+                    if(modal) modal.hide();
+                }
+                loadCaseDetails(); 
             } catch (error) {
                 alert(`خطأ في الرفع: ${error.message}`);
             } finally {
-                btn.innerHTML = 'رفع المستند';
-                btn.disabled = false;
+                if(btn) {
+                    btn.innerHTML = 'رفع المستند';
+                    btn.disabled = false;
+                }
             }
         });
     }
 
-    // ب. إضافة إجراء (Update)
     if (elements.addUpdateForm) {
         elements.addUpdateForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = {
                 case_id: caseId,
-                update_title: document.getElementById('update-title').value,
-                update_details: document.getElementById('update-details').value,
-                hearing_date: document.getElementById('hearing-date').value || null,
-                next_hearing_date: document.getElementById('next-hearing-date').value || null,
-                is_visible_to_client: document.getElementById('is-visible-client').checked
+                update_title: document.getElementById('update-title')?.value || '',
+                update_details: document.getElementById('update-details')?.value || '',
+                hearing_date: document.getElementById('hearing-date')?.value || null,
+                next_hearing_date: document.getElementById('next-hearing-date')?.value || null,
+                is_visible_to_client: document.getElementById('is-visible-client')?.checked || false
             };
 
             try {
                 await API.post('/api/updates', payload);
-                
-                // تحديث حالة ومرحلة القضية إذا تم إدخال تاريخ جلسة قادمة
                 if (payload.next_hearing_date) {
                     await API.put(`/api/cases?id=eq.${caseId}`, { 
                         status: 'متداولة', 
                         current_stage: 'مرحلة الجلسات' 
                     });
                 }
-
                 alert('تم إضافة الإجراء وإرسال الإشعارات بنجاح.');
                 elements.addUpdateForm.reset();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addUpdateModal'));
-                if(modal) modal.hide();
+                if (typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addUpdateModal'));
+                    if(modal) modal.hide();
+                }
                 loadCaseDetails();
             } catch (error) {
                 alert(`خطأ: ${error.message}`);
@@ -398,19 +406,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ج. إضافة مصروف مالي (Expense)
     if (elements.addExpenseForm) {
         elements.addExpenseForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = {
                 case_id: caseId,
-                amount: parseFloat(document.getElementById('expense-amount').value),
-                description: document.getElementById('expense-description').value,
-                expense_date: document.getElementById('expense-date').value || new Date().toISOString().split('T')[0]
+                amount: parseFloat(document.getElementById('expense-amount')?.value || 0),
+                description: document.getElementById('expense-description')?.value || '',
+                expense_date: document.getElementById('expense-date')?.value || new Date().toISOString().split('T')[0]
             };
 
-            // التعامل مع رفع الفاتورة إن وجدت
-            const receiptFile = document.getElementById('expense-receipt').files[0];
+            const receiptInput = document.getElementById('expense-receipt');
+            const receiptFile = receiptInput ? receiptInput.files[0] : null;
+            
             try {
                 if (receiptFile) {
                     const uploadRes = await API.uploadToCloudR2(receiptFile, `cases/${caseId}/financials`);
@@ -419,8 +427,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await API.post('/api/expenses', payload);
                 alert('تم تسجيل المصروف بنجاح.');
                 elements.addExpenseForm.reset();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addExpenseModal'));
-                if(modal) modal.hide();
+                if (typeof bootstrap !== 'undefined') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addExpenseModal'));
+                    if(modal) modal.hide();
+                }
                 loadCaseDetails();
             } catch (error) {
                 alert(`خطأ: ${error.message}`);
