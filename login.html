@@ -192,9 +192,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> 
-    <script src="./js/config.js"></script>
-    <script src="./js/api.js"></script>
-    <script src="./js/auth.js"></script> 
+    
+    <script src="./js/config.js?v=4.0"></script>
+    <script src="./js/api.js?v=4.0"></script>
+    <script src="./js/auth.js?v=4.0"></script> 
     
     <script>
         let currentPhone = '';
@@ -203,7 +204,6 @@
         const btnRequestOtp = document.getElementById('btnRequestOtp');
         const btnVerifyOtp = document.getElementById('btnVerifyOtp');
 
-        // دالة توليد معرف الجهاز (دستور الجلسة الأحادية)
         function initDeviceId() {
             if (!localStorage.getItem('moakkil_device_id')) {
                 localStorage.setItem('moakkil_device_id', 'dev_' + crypto.randomUUID());
@@ -213,19 +213,16 @@
         window.addEventListener('DOMContentLoaded', () => {
             initDeviceId();
             
-            // تطبيق الألوان الديناميكية
             try {
                 const settings = JSON.parse(localStorage.getItem('firm_settings'));
                 if (settings?.primary_color) document.documentElement.style.setProperty('--navy', settings.primary_color);
             } catch (e) {}
 
-            // فحص وجود بصمة
             if (localStorage.getItem('moakkil_biometric_id')) {
                 document.getElementById('btnBiometric').classList.remove('d-none');
             }
         });
 
-        // تنفيذ طلب الـ OTP
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const phone = document.getElementById('phoneInput').value.trim();
@@ -235,11 +232,9 @@
             btnRequestOtp.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جاري الإرسال...';
 
             try {
-                console.log("🚀 جاري طلب الكود للرقم:", phone);
                 await AUTH.requestOTP(phone);
                 currentPhone = phone;
                 
-                // الانتقال للخطوة التالية (هنا يكمن الحل)
                 loginForm.classList.add('d-none');
                 otpForm.classList.remove('d-none');
                 
@@ -254,20 +249,13 @@
                 setTimeout(() => document.getElementById('otpInput').focus(), 400);
 
             } catch (err) {
-                console.error("❌ خطأ في طلب OTP:", err);
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'فشل الإرسال', 
-                    text: err.message || 'تأكد من اتصالك بالإنترنت أو أن الرقم مسجل بالنظام.', 
-                    confirmButtonColor: 'var(--navy)' 
-                });
+                Swal.fire({ icon: 'error', title: 'فشل الإرسال', text: err.message, confirmButtonColor: 'var(--navy)' });
             } finally {
                 btnRequestOtp.disabled = false;
                 btnRequestOtp.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال رمز التحقق';
             }
         });
 
-        // تنفيذ التحقق
         otpForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const otp = document.getElementById('otpInput').value.trim();
@@ -281,13 +269,12 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'تم بنجاح',
-                    text: 'جاري تجهيز مساحة العمل...',
+                    text: 'جاري التوجيه...',
                     showConfirmButton: false,
                     timer: 1500
                 });
             } catch (err) {
-                Swal.fire({ icon: 'error', title: 'رمز غير صحيح', text: err.message, confirmButtonColor: 'var(--navy)' });
-            } finally {
+                Swal.fire({ icon: 'error', title: 'خطأ', text: err.message, confirmButtonColor: 'var(--navy)' });
                 btnVerifyOtp.disabled = false;
                 btnVerifyOtp.innerHTML = '<i class="fas fa-shield-alt"></i> تأكيد الدخول';
             }
