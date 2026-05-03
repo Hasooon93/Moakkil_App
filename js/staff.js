@@ -1,5 +1,5 @@
 // js/staff.js - محرك إدارة الموارد البشرية والموظفين (HR)
-// التحديثات: إضافة دالة العرض المقروء فقط (View Profile) وفصلها عن دالة التعديل (Edit Profile).
+// التحديثات: إضافة دالة العرض المقروء فقط، ومحرك كشط الصور الدائم (Image Scraper)، وحماية بصرية للصور المكسورة.
 
 let allStaff = [];
 let currentEditingStaff = null;
@@ -83,7 +83,11 @@ function renderStaffCards() {
         let loginBadge = canLogin ? '<span class="badge bg-soft-primary text-primary border border-primary px-2"><i class="fas fa-key"></i> وصول</span>' : '<span class="badge bg-light text-muted border px-2"><i class="fas fa-lock"></i> مسحوب</span>';
         
         let roleName = getRoleNameAr(staff.role);
-        let avatarHtml = staff.avatar_url ? `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm">` : `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        
+        // 🛡️ الحماية البصرية (onerror) لإخفاء أي صورة فيسبوك مكسورة وعرض أول حرف من الاسم
+        let avatarHtml = staff.avatar_url ? 
+            `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">` : 
+            `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
 
         let salaryText = '--';
         if (staff.salary_details && typeof staff.salary_details === 'object') {
@@ -127,10 +131,10 @@ window.viewStaffDetails = function(id) {
     const staff = allStaff.find(s => s.id === id);
     if (!staff) return;
 
-    // تهيئة الترويسة
+    // تهيئة الترويسة مع حماية الصور المكسورة
     const avatarEl = document.getElementById('v_avatar_container');
     if (staff.avatar_url) {
-        avatarEl.innerHTML = `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar shadow-sm" style="width:90px; height:90px;">`;
+        avatarEl.innerHTML = `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar shadow-sm" style="width:90px; height:90px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar shadow-sm\\' style=\\'width:90px; height:90px;\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">`;
     } else {
         avatarEl.innerHTML = `<div class="staff-avatar shadow-sm" style="width:90px; height:90px;">${escapeHTML(staff.full_name).charAt(0)}</div>`;
     }
@@ -299,18 +303,49 @@ function openStaffModal(id = null) {
 async function saveStaff(event) {
     event.preventDefault();
     const btn = document.getElementById('btn_save_staff');
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
+    btn.disabled = true; 
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري المعالجة...';
 
     const id = document.getElementById('staff_id').value;
+    let finalAvatarUrl = document.getElementById('s_avatar').value.trim() || null;
+    let staffName = document.getElementById('s_full_name').value.trim();
+
+    // 🚀 كشط وحفظ الصورة (Image Proxy & Persistence)
+    // إذا كان الرابط جديداً ولا يتبع لسيرفرات جوجل درايف الدائمة، سنقوم بسحبه ورفعه تلقائياً
+    if (navigator.onLine && finalAvatarUrl && finalAvatarUrl.startsWith('http') && !finalAvatarUrl.includes('drive.google.com') && !finalAvatarUrl.includes('googleusercontent.com')) {
+        btn.innerHTML = '<i class="fas fa-cloud-upload-alt fa-fade me-1"></i> جاري أرشفة الصورة...';
+        try {
+            // محاولة الجلب المباشر، وفي حال حظر CORS نستخدم AllOrigins كـ Proxy بديل
+            let imgRes;
+            try {
+                imgRes = await fetch(finalAvatarUrl);
+            } catch(e) {
+                imgRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(finalAvatarUrl)}`);
+            }
+            
+            const blob = await imgRes.blob();
+            // تحويل الـ Blob إلى File ليتوافق مع دالة uploadToDrive
+            const file = new File([blob], `avatar_${staffName.replace(/\s+/g, '_')}.jpg`, { type: blob.type || 'image/jpeg' });
+            
+            // رفع الصورة إلى مجلد HR-Avatars في جوجل درايف
+            const uploadRes = await API.uploadToDrive(file, "موظف-" + staffName, "HR-Avatars");
+            
+            if (uploadRes && uploadRes.url) {
+                finalAvatarUrl = uploadRes.url; // استبدال الرابط الخارجي المؤقت بالرابط الدائم السحابي
+            }
+        } catch (err) {
+            console.warn("فشل في كشط الصورة الدائمة، سيتم حفظ الرابط الأصلي", err);
+        }
+    }
     
     const data = {
-        full_name: document.getElementById('s_full_name').value.trim(),
+        full_name: staffName,
         phone: document.getElementById('s_phone').value.trim(),
         telegram_id: document.getElementById('s_telegram_id').value || null,
         national_id: document.getElementById('s_national_id').value || null,
         gender: document.getElementById('s_gender').value || null,
         date_of_birth: document.getElementById('s_dob').value || null,
-        avatar_url: document.getElementById('s_avatar').value || null,
+        avatar_url: finalAvatarUrl, // الرابط النهائي المحمي
         address: document.getElementById('s_address').value || null,
         role: document.getElementById('s_role').value,
         specialization: document.getElementById('s_specialization').value || null,
@@ -339,6 +374,8 @@ async function saveStaff(event) {
             relation: document.getElementById('s_em_relation').value || ''
         }
     };
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
 
     try {
         let res;
@@ -536,7 +573,7 @@ function filterStaffList() {
         (s.phone && s.phone.includes(q))
     );
     
-    // فلترة وعرض الكروت
+    // فلترة وعرض الكروت مع نفس الحماية البصرية للصور
     const container = document.getElementById('staff-container');
     if (filtered.length === 0) {
         container.innerHTML = '<div class="col-12 text-center p-4 text-muted bg-white rounded border">لا توجد نتائج تطابق البحث.</div>';
@@ -549,7 +586,11 @@ function filterStaffList() {
         let statusBadge = isActive ? '<span class="badge bg-success shadow-sm px-2"><i class="fas fa-check-circle"></i> نشط</span>' : '<span class="badge bg-danger shadow-sm px-2"><i class="fas fa-ban"></i> موقوف</span>';
         let loginBadge = canLogin ? '<span class="badge bg-soft-primary text-primary border border-primary px-2"><i class="fas fa-key"></i> وصول</span>' : '<span class="badge bg-light text-muted border px-2"><i class="fas fa-lock"></i> مسحوب</span>';
         let roleName = getRoleNameAr(staff.role);
-        let avatarHtml = staff.avatar_url ? `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm">` : `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+        
+        let avatarHtml = staff.avatar_url ? 
+            `<img src="${escapeHTML(staff.avatar_url)}" class="staff-avatar mt-3 shadow-sm" onerror="this.onerror=null; this.outerHTML='<div class=\\'staff-avatar mt-3 shadow-sm\\'>${escapeHTML(staff.full_name).charAt(0)}</div>';">` : 
+            `<div class="staff-avatar mt-3 shadow-sm">${escapeHTML(staff.full_name).charAt(0)}</div>`;
+            
         let salaryText = '--';
         if (staff.salary_details && typeof staff.salary_details === 'object') {
             salaryText = `${Number(staff.salary_details.basic || staff.salary_details.base_salary || 0).toLocaleString()} د.أ`;
