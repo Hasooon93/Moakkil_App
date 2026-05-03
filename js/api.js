@@ -1,5 +1,5 @@
-// js/api.js - المحرك الموحد المحدث V4.0 (Cloudflare R2 & AI Batch Sync Edition)
-// الدعم الكامل: JWT، البصمة، المزامنة السحابية الدفعية (Batch Sync)، Cloudflare R2 للرفع، والذكاء الاصطناعي الشامل.
+// js/api.js - المحرك الموحد المحدث V4.1 (Cloudflare R2 & AI Batch Sync Edition)
+// التحديثات: إصلاح توافقية الحروف العربية (ISO-8859-1) في HTTP Headers للرفع السحابي الآمن.
 
 // =================================================================
 // 🔄 نظام المزامنة الذكي الدفعي (Offline Batch Queue System)
@@ -290,12 +290,13 @@ const API = {
         const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
         const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
 
+        // تشفير الحروف العربية لتتوافق مع معايير الـ HTTP Headers
         const headers = {
             'Authorization': `Bearer ${token}`,
             'x-device-id': deviceId,
             'x-file-name': encodeURIComponent(file.name),
-            'x-client-id': clientId,
-            'x-case-id': caseId
+            'x-client-id': encodeURIComponent(clientId),
+            'x-case-id': encodeURIComponent(caseId)
         };
 
         try {

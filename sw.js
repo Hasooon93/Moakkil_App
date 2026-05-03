@@ -1,7 +1,7 @@
-// sw.js - Service Worker V4.0 (Enterprise Offline & R2 Sync Edition)
-// التحديثات: خوارزمية Stale-While-Revalidate، التوافق التام مع عدم الاتصال، دعم كل شاشات التطبيق، وحماية الـ API.
+// sw.js - Service Worker V4.1 (Enterprise Offline & R2 Sync Edition)
+// التحديثات: إصلاح خطأ Clone Response في المتصفحات السريعة (Safari/Chrome)، خوارزمية Stale-While-Revalidate، ودعم الأوفلاين الشامل.
 
-const CACHE_NAME = 'moakkil-cache-v4.0-enterprise';
+const CACHE_NAME = 'moakkil-cache-v4.1-enterprise';
 
 // 🚀 تغطية شاملة لجميع واجهات وملفات النظام ليعمل كـ Native App
 const STATIC_ASSETS = [
@@ -76,7 +76,7 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(event.request)
                 .then(networkResponse => {
-                    // تحديث الكاش بالنسخة الأحدث
+                    // تحديث الكاش بالنسخة الأحدث (يجب عمل Clone فوراً)
                     const clone = networkResponse.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                     return networkResponse;
@@ -98,8 +98,12 @@ self.addEventListener('fetch', (event) => {
                     if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' || networkResponse.redirected) {
                         return networkResponse;
                     }
+                    
+                    // الحل الجذري: استنساخ الرد (Clone) فوراً وبشكل متزامن قبل استهلاكه
+                    const responseToCache = networkResponse.clone();
+                    
                     // تحديث الكاش في الخلفية
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
                     return networkResponse;
                 }).catch(() => {
                     // إصلاح خطأ الصور المكسورة في وضع الأوفلاين
