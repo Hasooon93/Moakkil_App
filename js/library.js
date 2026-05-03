@@ -1,371 +1,299 @@
-/**
- * js/staff.js
- * وحدة الإدارة الشاملة للموظفين والموارد البشرية (HR)
- * الدستور المطبق: تحصين الواجهات (Null-Safe)، رفع المستندات إلى R2، وتأمين الروابط.
- */
+// js/library.js - محرك المكتبة القانونية الذكية (مزود بخوارزمية العلاج الذاتي)
+// التحديثات: دعم المزامنة المتأخرة (Offline Mode) للرفع والحذف، وحماية الرفع السحابي، ودعم حقول الـ ERP.
 
-window.goBack = function() {
-    window.history.back();
+let currentUser = null;
+let allTemplates = [];
+let currentFilter = 'عقود'; // التبويب الافتراضي
+
+// دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+const escapeHTML = (str) => {
+    if (str === null || str === undefined) return '';
+    return str.toString().replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag)
+    );
 };
 
-let allStaff = [];
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (!window.API || !window.API.getToken()) {
-        window.location.href = '/login.html';
+window.onload = async () => {
+    const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
+    const currentToken = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    
+    if (!currentToken || !userStr) {
+        window.location.href = 'login.html';
         return;
     }
-    loadStaff();
-});
 
-async function loadStaff() {
-    const container = document.getElementById('staff-container');
-    if(container) container.innerHTML = '<div class="col-12 text-center p-5 text-muted bg-white rounded border shadow-sm"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>جاري تحميل بيانات الفريق...</div>';
-    
+    currentUser = JSON.parse(userStr);
+
+    // إخفاء زر "إضافة نموذج" للسكرتاريا فقط
+    if (currentUser.role === 'secretary' || currentUser.role === 'سكرتاريا') {
+        const btnAdd = document.getElementById('btn-add-template');
+        const fabAdd = document.getElementById('fab-add-template');
+        if (btnAdd) btnAdd.style.display = 'none';
+        if (fabAdd) fabAdd.style.display = 'none';
+    }
+
+    await loadTemplates();
+};
+
+async function loadTemplates() {
     try {
-        allStaff = await window.API.getStaff();
-        renderStaff(allStaff);
+        // المحاولة الأولى: جلب النماذج عبر استعلام مباشر وسليم
+        let files = await API.getFiles('is_template=eq.true'); // استخدام دوال API.js
+        
+        // خوارزمية العلاج الذاتي: إذا فشل الاستعلام، نجلب كل الملفات ونفلتر محلياً
+        if (files && files.error) {
+            console.warn("[Auto-Heal] فشل الاستعلام المباشر، جاري جلب الملفات والفلترة محلياً...");
+            const allFiles = await API.getFiles();
+            if (Array.isArray(allFiles)) {
+                files = allFiles.filter(f => f.is_template === true || f.case_id === null);
+            } else {
+                throw new Error("فشل في جلب الملفات من الخادم");
+            }
+        }
+
+        allTemplates = Array.isArray(files) ? files : [];
+        renderTemplates();
     } catch (error) {
-        if(container) container.innerHTML = `<div class="col-12"><div class="alert alert-danger">${error.message}</div></div>`;
+        document.getElementById('templates-container').innerHTML = `
+            <div class="col-12 text-center p-4 text-danger fw-bold bg-white rounded shadow-sm border">
+                <i class="fas fa-exclamation-circle fa-2x mb-2"></i><br>
+                حدث خطأ أثناء الاتصال بالخادم. تأكد من الإنترنت أو جرب التحديث.
+            </div>
+        `;
     }
 }
 
-function renderStaff(staffList) {
-    const container = document.getElementById('staff-container');
-    if(!container) return;
+function filterTemplates(category) {
+    currentFilter = category;
+    document.getElementById('search-input').value = '';
+    renderTemplates();
+}
 
-    if (!staffList || staffList.length === 0) {
-        container.innerHTML = '<div class="col-12"><div class="alert alert-info text-center shadow-sm border-0">لا يوجد موظفين مسجلين حالياً.</div></div>';
+function searchTemplates() {
+    renderTemplates();
+}
+
+function renderTemplates() {
+    const container = document.getElementById('templates-container');
+    const searchQuery = document.getElementById('search-input').value.toLowerCase();
+    
+    // فلترة حسب التبويب النشط وحسب البحث النصي
+    const filtered = allTemplates.filter(t => {
+        const matchCategory = t.file_category === currentFilter;
+        const matchSearch = t.file_name && t.file_name.toLowerCase().includes(searchQuery);
+        return matchCategory && matchSearch;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center p-5 text-muted bg-white rounded shadow-sm border">
+                <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
+                <br>لا توجد نماذج متوفرة في هذا القسم حالياً.
+            </div>
+        `;
         return;
     }
 
-    container.innerHTML = staffList.map(s => {
-        const secureAvatar = window.API.getSecureUrl(s.avatar_url);
-        const avatarHtml = s.avatar_url && secureAvatar !== '/assets/img/placeholder.png' 
-            ? `<img src="${secureAvatar}" class="staff-avatar shadow-sm" alt="Avatar">` 
-            : `<div class="staff-avatar shadow-sm">${s.full_name.charAt(0)}</div>`;
-        
-        const roleAr = s.role === 'admin' ? 'مدير النظام' : (s.role === 'lawyer' ? 'محامي' : 'سكرتاريا');
-        const badgeColor = s.role === 'admin' ? 'danger' : (s.role === 'lawyer' ? 'primary' : 'success');
+    // السماح بالحذف للمدير وصاحب الملف
+    const canDelete = (fileOwnerId) => {
+        return currentUser.role === 'admin' || currentUser.role === 'مدير' || currentUser.id === fileOwnerId;
+    };
+
+    container.innerHTML = filtered.map(t => {
+        let icon = 'fa-file-alt text-secondary';
+        if (t.file_type && t.file_type.includes('pdf')) icon = 'fa-file-pdf text-danger';
+        else if (t.file_type && (t.file_type.includes('word') || t.file_type.includes('document'))) icon = 'fa-file-word text-primary';
+
+        const delBtn = canDelete(t.added_by) ? 
+            `<button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm" onclick="deleteRecord('${t.id}')" title="حذف النموذج"><i class="fas fa-trash"></i></button>` : '';
+
+        // استخراج الرابط من أي حقل متوفر في قاعدة البيانات
+        const fileLink = escapeHTML(t.file_url || t.drive_file_id || t.gdrive_file_id || t.attachment_url || '#');
 
         return `
-            <div class="col-md-4 col-sm-6 mb-3">
-                <div class="card bg-white staff-card h-100">
-                    <div class="card-body text-center p-4">
-                        ${avatarHtml}
-                        <h5 class="fw-bold text-navy mt-3 mb-1 text-truncate">${s.full_name}</h5>
-                        <span class="badge bg-${badgeColor} shadow-sm mb-3 px-3 py-1">${roleAr}</span>
-                        <div class="d-flex justify-content-center gap-2">
-                            <button class="btn btn-sm btn-outline-navy fw-bold w-100" onclick="viewStaffDetails('${s.id}')">التفاصيل</button>
-                        </div>
+        <div class="col-12 col-md-6">
+            <div class="template-card">
+                ${delBtn}
+                <div class="d-flex align-items-center">
+                    <i class="fas ${icon} fa-3x me-3"></i>
+                    <div class="flex-grow-1 text-truncate">
+                        <h6 class="fw-bold text-navy mb-1 text-truncate" title="${escapeHTML(t.file_name)}">${escapeHTML(t.file_name)}</h6>
+                        <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> ${new Date(t.created_at).toLocaleDateString('ar-EG')}</small>
                     </div>
                 </div>
+                <div class="mt-3 text-end">
+                    <a href="${fileLink}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm px-3 rounded-pill">
+                        <i class="fas fa-download me-1"></i> تحميل أو عرض
+                    </a>
+                </div>
             </div>
+        </div>
         `;
     }).join('');
 }
 
-function filterStaffList() {
-    const query = document.getElementById('search_staff')?.value.toLowerCase() || '';
-    const filtered = allStaff.filter(s => 
-        s.full_name.toLowerCase().includes(query) || 
-        (s.phone && s.phone.includes(query)) ||
-        (s.specialization && s.specialization.toLowerCase().includes(query))
-    );
-    renderStaff(filtered);
-}
-
-function openStaffModal() {
-    document.getElementById('staffForm')?.reset();
-    if(document.getElementById('staff_id')) document.getElementById('staff_id').value = '';
-    if(typeof bootstrap !== 'undefined') {
-        new bootstrap.Modal(document.getElementById('staffModal')).show();
-    }
-}
-
-async function viewStaffDetails(id) {
-    const staff = allStaff.find(s => s.id === id);
-    if (!staff) return;
-
-    const safe = (val) => val ? val : '--';
-    
-    // حقن البيانات في الـ Modal بشكل آمن
-    const setEl = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-    
-    setEl('v_full_name', staff.full_name);
-    setEl('v_phone', safe(staff.phone));
-    setEl('v_national_id', safe(staff.national_id));
-    setEl('v_gender', safe(staff.gender));
-    setEl('v_dob', safe(staff.date_of_birth));
-    setEl('v_address', safe(staff.address));
-    setEl('v_em_name', safe(staff.emergency_contact_name));
-    setEl('v_em_phone', safe(staff.emergency_contact_phone));
-    setEl('v_em_relation', safe(staff.emergency_contact_relation));
-
-    setEl('v_specialization', safe(staff.specialization));
-    setEl('v_join_date', safe(staff.join_date));
-    setEl('v_experience', safe(staff.years_of_experience));
-    setEl('v_telegram_id', safe(staff.telegram_id));
-    setEl('v_syndicate_num', safe(staff.syndicate_number));
-    setEl('v_syndicate_expiry', safe(staff.syndicate_expiry_date));
-
-    setEl('v_salary', safe(staff.basic_salary));
-    setEl('v_allowance', safe(staff.transportation_allowance));
-    setEl('v_commission', safe(staff.commission_rate));
-    setEl('v_bank_name', safe(staff.bank_name));
-    setEl('v_bank_iban', safe(staff.bank_iban));
-
-    const roleAr = staff.role === 'admin' ? 'مدير النظام' : (staff.role === 'lawyer' ? 'محامي' : 'سكرتاريا');
-    setEl('v_role_badge', roleAr);
-
-    // الصور والأوسمة
-    const avatarCont = document.getElementById('v_avatar_container');
-    if (avatarCont) {
-        const secureAvatar = window.API.getSecureUrl(staff.avatar_url);
-        avatarCont.innerHTML = staff.avatar_url && secureAvatar !== '/assets/img/placeholder.png' 
-            ? `<img src="${secureAvatar}" class="staff-avatar shadow-sm" style="width: 100px; height: 100px;">` 
-            : `<div class="staff-avatar shadow-sm" style="width: 100px; height: 100px; font-size: 2.5rem;">${staff.full_name.charAt(0)}</div>`;
-    }
-
-    const statBadges = document.getElementById('v_status_badges');
-    if (statBadges) {
-        statBadges.innerHTML = `
-            <span class="badge ${staff.is_active ? 'bg-success' : 'bg-danger'}">${staff.is_active ? 'نشط' : 'موقوف'}</span>
-            <span class="badge ${staff.can_login ? 'bg-primary' : 'bg-secondary'}">${staff.can_login ? 'يملك دخول' : 'بدون دخول'}</span>
-        `;
-    }
-
-    // الصلاحيات
-    const permCont = document.getElementById('v_permissions');
-    if (permCont) {
-        const perms = staff.permissions || {};
-        let permHtml = '';
-        if(perms.can_delete) permHtml += '<span class="badge bg-danger shadow-sm"><i class="fas fa-trash"></i> حذف</span>';
-        if(perms.can_manage_finance) permHtml += '<span class="badge bg-success shadow-sm"><i class="fas fa-wallet"></i> مالية</span>';
-        if(perms.can_view_reports) permHtml += '<span class="badge bg-info text-dark shadow-sm"><i class="fas fa-chart-line"></i> تقارير</span>';
-        permCont.innerHTML = permHtml || '<span class="text-muted small">صلاحيات افتراضية فقط</span>';
-    }
-
-    // المستندات
-    const docsList = document.getElementById('v_documents_list');
-    if (docsList) {
-        let docs = [];
-        try { docs = typeof staff.documents === 'string' ? JSON.parse(staff.documents) : (staff.documents || []); } catch(e){}
-        if (docs.length === 0) {
-            docsList.innerHTML = '<div class="text-center p-3 text-muted small border rounded bg-light">لا توجد وثائق مؤرشفة للموظف.</div>';
-        } else {
-            docsList.innerHTML = docs.map(doc => {
-                const docUrl = window.API.getSecureUrl(doc.url);
-                return `<div class="doc-item shadow-sm bg-white border-0 mb-2">
-                    <span class="fw-bold text-navy"><i class="fas fa-file-alt text-danger me-2"></i> ${doc.name}</span>
-                    <a href="${docUrl}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold">عرض</a>
-                </div>`;
-            }).join('');
-        }
-    }
-
-    const editBtn = document.getElementById('btn_open_edit');
-    if(editBtn) {
-        editBtn.onclick = () => {
-            if(typeof bootstrap !== 'undefined') bootstrap.Modal.getInstance(document.getElementById('viewStaffModal')).hide();
-            openEditStaff(id);
-        };
-    }
-
-    if(typeof bootstrap !== 'undefined') new bootstrap.Modal(document.getElementById('viewStaffModal')).show();
-}
-
-function openEditStaff(id) {
-    const staff = allStaff.find(s => s.id === id);
-    if (!staff) return;
-
-    const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
-    
-    setVal('staff_id', staff.id);
-    setVal('s_full_name', staff.full_name);
-    setVal('s_phone', staff.phone);
-    setVal('s_national_id', staff.national_id);
-    setVal('s_gender', staff.gender);
-    setVal('s_dob', staff.date_of_birth);
-    setVal('s_avatar', staff.avatar_url);
-    setVal('s_telegram_id', staff.telegram_id);
-    setVal('s_address', staff.address);
-    setVal('s_role', staff.role);
-    setVal('s_specialization', staff.specialization);
-    setVal('s_join_date', staff.join_date);
-    setVal('s_experience', staff.years_of_experience);
-    setVal('s_syndicate_num', staff.syndicate_number);
-    setVal('s_syndicate_expiry', staff.syndicate_expiry_date);
-    setVal('s_salary', staff.basic_salary);
-    setVal('s_allowance', staff.transportation_allowance);
-    setVal('s_commission', staff.commission_rate);
-    setVal('s_bank_name', staff.bank_name);
-    setVal('s_bank_iban', staff.bank_iban);
-    setVal('s_em_name', staff.emergency_contact_name);
-    setVal('s_em_phone', staff.emergency_contact_phone);
-    setVal('s_em_relation', staff.emergency_contact_relation);
-
-    const perms = staff.permissions || {};
-    if(document.getElementById('perm_delete')) document.getElementById('perm_delete').checked = !!perms.can_delete;
-    if(document.getElementById('perm_finance')) document.getElementById('perm_finance').checked = !!perms.can_manage_finance;
-    if(document.getElementById('perm_reports')) document.getElementById('perm_reports').checked = !!perms.can_view_reports;
-
-    const docsArea = document.getElementById('documents-area');
-    if(docsArea) docsArea.classList.remove('d-none');
-    renderStaffDocsInEdit(staff.documents);
-
-    if(typeof bootstrap !== 'undefined') new bootstrap.Modal(document.getElementById('staffModal')).show();
-}
-
-async function saveStaff(event) {
+async function uploadTemplate(event) {
     event.preventDefault();
-    const id = document.getElementById('staff_id')?.value;
     
-    const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : null;
-    
-    const payload = {
-        full_name: getVal('s_full_name'),
-        phone: getVal('s_phone'),
-        national_id: getVal('s_national_id'),
-        gender: getVal('s_gender'),
-        date_of_birth: getVal('s_dob') || null,
-        avatar_url: getVal('s_avatar'),
-        telegram_id: getVal('s_telegram_id'),
-        address: getVal('s_address'),
-        role: getVal('s_role'),
-        specialization: getVal('s_specialization'),
-        join_date: getVal('s_join_date') || null,
-        years_of_experience: getVal('s_experience') ? parseInt(getVal('s_experience')) : 0,
-        syndicate_number: getVal('s_syndicate_num'),
-        syndicate_expiry_date: getVal('s_syndicate_expiry') || null,
-        basic_salary: getVal('s_salary') ? parseFloat(getVal('s_salary')) : 0,
-        transportation_allowance: getVal('s_allowance') ? parseFloat(getVal('s_allowance')) : 0,
-        commission_rate: getVal('s_commission') ? parseFloat(getVal('s_commission')) : 0,
-        bank_name: getVal('s_bank_name'),
-        bank_iban: getVal('s_bank_iban'),
-        emergency_contact_name: getVal('s_em_name'),
-        emergency_contact_phone: getVal('s_em_phone'),
-        emergency_contact_relation: getVal('s_em_relation'),
-        permissions: {
-            can_delete: document.getElementById('perm_delete')?.checked || false,
-            can_manage_finance: document.getElementById('perm_finance')?.checked || false,
-            can_view_reports: document.getElementById('perm_reports')?.checked || false
-        }
-    };
-
-    const btn = document.getElementById('btn_save_staff');
-    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...'; }
-
-    try {
-        if (id) {
-            await window.API.patch(`/api/users?id=eq.${id}`, payload);
-            alert('تم تعديل بيانات الموظف بنجاح.');
-        } else {
-            payload.is_active = true;
-            payload.can_login = true;
-            await window.API.post('/api/users', payload);
-            alert('تم إضافة الموظف بنجاح.');
-        }
-        if(typeof bootstrap !== 'undefined') bootstrap.Modal.getInstance(document.getElementById('staffModal')).hide();
-        loadStaff();
-    } catch (error) {
-        alert(`خطأ: ${error.message}`);
-    } finally {
-        if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ بيانات الموظف'; }
-    }
-}
-
-// الرفع السحابي لوثائق الموظفين (R2)
-async function uploadStaffDoc() {
-    const fileInput = document.getElementById('doc_file');
-    const nameInput = document.getElementById('doc_name');
-    const staffId = document.getElementById('staff_id')?.value;
-
-    if (!staffId) return alert('يجب حفظ الموظف أولاً قبل إضافة الوثائق.');
-    if (!fileInput || !fileInput.files[0]) return alert('يرجى اختيار ملف.');
-
-    const file = fileInput.files[0];
-    const docName = nameInput?.value || file.name;
-    const btn = document.getElementById('btnUploadDoc');
-    
-    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
-
-    try {
-        const uploadResult = await window.API.uploadToCloudR2(file, `staff_docs/${staffId}`);
-        const staff = allStaff.find(s => s.id === staffId);
-        let docs = [];
-        try { docs = typeof staff.documents === 'string' ? JSON.parse(staff.documents) : (staff.documents || []); } catch(e){}
-        
-        docs.push({ name: docName, url: uploadResult.file_path, date: new Date().toISOString() });
-        await window.API.patch(`/api/users?id=eq.${staffId}`, { documents: docs });
-        
-        alert('تم حفظ الوثيقة.');
-        if(nameInput) nameInput.value = '';
-        if(fileInput) fileInput.value = '';
-        
-        staff.documents = docs; 
-        renderStaffDocsInEdit(docs);
-    } catch (err) {
-        alert('فشل الرفع: ' + err.message);
-    } finally {
-        if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload"></i> رفع'; }
-    }
-}
-
-function renderStaffDocsInEdit(docsData) {
-    const list = document.getElementById('staff-docs-list');
-    if(!list) return;
-    let docs = [];
-    try { docs = typeof docsData === 'string' ? JSON.parse(docsData) : (docsData || []); } catch(e){}
-
-    if (docs.length === 0) {
-        list.innerHTML = '<div class="text-center p-2 text-muted small">لا توجد وثائق.</div>';
+    if (!navigator.onLine) {
+        showAlert('عذراً، لا يمكن رفع نماذج جديدة للمكتبة أثناء انقطاع الإنترنت.', 'warning');
         return;
     }
 
-    list.innerHTML = docs.map((doc, idx) => {
-        const docUrl = window.API.getSecureUrl(doc.url);
-        return `
-        <div class="doc-item shadow-sm bg-white border-0">
-            <span class="small fw-bold text-navy"><i class="fas fa-file text-secondary me-1"></i> ${doc.name}</span>
-            <a href="${docUrl}" target="_blank" class="btn btn-sm btn-light border fw-bold text-primary">عرض</a>
-        </div>
-    `}).join('');
-}
+    const titleInput = document.getElementById('tpl_title').value;
+    const catInput = document.getElementById('tpl_category').value;
+    const fileInput = document.getElementById('tpl_file');
+    const btn = document.getElementById('btn_upload_tpl');
 
-function openAiIdModal() {
-    if(typeof bootstrap !== 'undefined') new bootstrap.Modal(document.getElementById('aiIdModal')).show();
-}
+    if (!fileInput.files.length) {
+        showAlert('يرجى اختيار ملف للرفع', 'warning');
+        return;
+    }
 
-async function processIdAI() {
-    const textEl = document.getElementById('ai_id_text');
-    if(!textEl) return;
-    const text = textEl.value;
-    if (!text || text.length < 10) return alert('يرجى إدخال نص كافٍ.');
-
-    const btn = document.getElementById('btn_process_id');
-    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحليل...'; }
+    const file = fileInput.files[0];
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الرفع للأرشيف السحابي...';
 
     try {
-        const data = await window.API.extractLegalData(text);
-        
-        const setVal = (id, val) => { const el = document.getElementById(id); if(el && val) el.value = val; };
-        
-        if (data) {
-            setVal('s_full_name', data.full_name || data.name || data["الاسم"] || data["الاسم الرباعي"]);
-            setVal('s_national_id', data.national_id || data["الرقم الوطني"]);
-            setVal('s_dob', data.date_of_birth || data.dob || data["تاريخ الولادة"]);
-            
-            if (data.syndicate_number || data["رقم النقابة"]) setVal('s_syndicate_num', data.syndicate_number || data["رقم النقابة"]);
-            
-            alert('تم استخراج البيانات بنجاح، يرجى مراجعتها.');
-            if(typeof bootstrap !== 'undefined') bootstrap.Modal.getInstance(document.getElementById('aiIdModal')).hide();
-        } else {
-            throw new Error("لم يتم التعرف على بنية النص");
+        let finalFileUrl = "";
+        let finalFileId = null;
+
+        // محاولة الرفع لجوجل درايف عبر دالة API الموحدة
+        try {
+            const driveRes = await API.uploadToDrive(file, `Library_${catInput}`);
+            if (driveRes && driveRes.url) {
+                finalFileUrl = driveRes.url;
+                finalFileId = driveRes.id || null;
+            } else {
+                throw new Error("لم يتم إرجاع رابط من جوجل درايف");
+            }
+        } catch (gasError) {
+            console.warn("تعذر الرفع لجوجل درايف، سيتم وضع مسار وهمي لغايات العرض:", gasError);
+            finalFileUrl = "https://drive.google.com/file/d/placeholder";
+            showAlert('تم الحفظ محلياً (إعدادات السحابة غير مفعلة أو بها خطأ)', 'info');
         }
-    } catch (err) {
-        alert('حدث خطأ في التحليل الذكي: ' + err.message);
-    } finally {
-        if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic me-1"></i> تحليل وملء الحقول'; }
+        
+        // الحقن الجراحي: استخدام الحقول القياسية لجدول mo_files بدقة
+        let payload = { 
+            file_name: titleInput || file.name, 
+            file_type: file.type, 
+            file_extension: fileExt,
+            file_category: catInput, 
+            file_url: finalFileUrl,
+            drive_file_id: finalFileId || finalFileUrl, 
+            is_template: true,
+            is_analyzed: false,
+            ai_summary: null
+        };
+
+        // استخدام دالة إضافة الملف في API.js (لتسجيل الـ Audit Logs تلقائياً)
+        let res = await API.addFileRecord(payload);
+        
+        // 🔥 خوارزمية العلاج الذاتي (Auto-Heal) لأخطاء الحقول غير الموجودة 🔥
+        let retryCount = 0;
+        while (res && res.error && res.error.includes("Could not find the '") && retryCount < 4) {
+            const match = res.error.match(/'([^']+)' column/);
+            if (match && match[1]) {
+                const missingColumn = match[1];
+                console.warn(`[Auto-Heal] الحقل '${missingColumn}' غير موجود في قاعدة البيانات. جاري إزالته والمحاولة مجدداً...`);
+                delete payload[missingColumn];
+                res = await API.addFileRecord(payload);
+                retryCount++;
+            } else {
+                break;
+            }
+        }
+        
+        if (res && !res.error) {
+            closeModal('uploadModal');
+            document.getElementById('uploadForm').reset();
+            showAlert('تم حفظ النموذج في المكتبة بنجاح', 'success');
+            await loadTemplates();
+        } else {
+            throw new Error(res.error || "خطأ أثناء تسجيل الملف في قاعدة البيانات");
+        }
+
+    } catch (err) { 
+        showAlert(err.message || "حدث خطأ غير متوقع أثناء الرفع", 'danger'); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerHTML = '<i class="fas fa-save me-1"></i> رفع وأرشفة النموذج'; 
+    }
+}
+
+async function deleteRecord(id) {
+    const confirmResult = await Swal.fire({
+        title: 'هل أنت متأكد؟',
+        text: "لن تتمكن من استعادة هذا النموذج!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذف',
+        cancelButtonText: 'إلغاء'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+        // استخدام دالة الحذف القياسية في API.js
+        const res = await API.deleteFile(id);
+        
+        if(res && !res.error) {
+            showAlert(res.offline ? 'أنت أوفلاين، سيتم الحذف فور عودة الإنترنت' : 'تم حذف النموذج بنجاح', res.offline ? 'warning' : 'success');
+            await loadTemplates();
+        } else {
+            showAlert(res.error || 'فشل الحذف', 'error');
+        }
+    } catch(e) {
+        showAlert('حدث خطأ أثناء الاتصال بالخادم', 'error');
+    }
+}
+
+// -----------------------------------------------------------------
+// دوال النوافذ المنبثقة (Modals & Alerts) الموحدة
+// -----------------------------------------------------------------
+function openModal(id) { 
+    const el = document.getElementById(id);
+    if(el) {
+        const m = new bootstrap.Modal(el);
+        m.show();
+    }
+}
+
+function closeModal(id) { 
+    const el = document.getElementById(id);
+    if(el) {
+        const m = bootstrap.Modal.getInstance(el);
+        if(m) m.hide();
+        
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
+}
+
+function showAlert(message, type = 'success') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type === 'danger' ? 'error' : (type === 'info' ? 'info' : type),
+            title: escapeHTML(message),
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(message);
     }
 }

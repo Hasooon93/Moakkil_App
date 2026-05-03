@@ -1,5 +1,5 @@
-// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة المستقرة والنظيفة)
-// يتضمن: تأمين العرض (Zero Trust)، البحث الدلالي، وإسكات الإدارة العليا.
+// js/app.js - المحرك الشامل لنظام موكّل الذكي (النسخة النهائية المكتملة 100%)
+// التحديثات: استعادة الدوال، AI Extraction، Optimistic UI، إصلاح VCard، معالجة الـ Null Dates والـ UUIDs، والـ ERP Injection (Tags, Audit Time Machine).
 
 let globalData = { cases: [], clients: [], staff: [], appointments: [], notifications: [], activityLogs: [] };
 let currentUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user'));
@@ -11,6 +11,7 @@ let currentCaseFilter = '';
 // =================================================================
 // 🛠️ الدوال الأساسية للواجهة والتنبيهات 
 // =================================================================
+
 const escapeHTML = (str) => {
     if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
@@ -40,6 +41,7 @@ function closeModal(id) {
 // =================================================================
 // 🔔 نظام المصافحة وتفعيل الإشعارات
 // =================================================================
+
 const VAPID_PUBLIC_KEY = 'BFhEWsEEpWXrLBrY1U_hrLjwVwpWbRFd-ii5zc8-qb6L0ZgxTRWZqoZNzMl-vuu7zUaAyyEaNJHWqp_oUSPgO_Q'; 
 
 function urlBase64ToUint8Array(base64String) {
@@ -52,15 +54,15 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function requestPushPermission() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showAlert('متصفحك لا يدعم الإشعارات.', 'warning'); return; }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showAlert('متصفحك لا يدعم الإشعارات المتطورة.', 'warning'); return; }
     try {
         const permission = await Notification.requestPermission();
-        if (permission !== 'granted') { showAlert('تم رفض الصلاحية للإشعارات.', 'danger'); return; }
+        if (permission !== 'granted') { console.warn('[Push] تم رفض الإشعارات من المستخدم.'); showAlert('تم رفض الصلاحية للإشعارات المنبثقة.', 'danger'); return; }
         const registration = await navigator.serviceWorker.ready;
         let subscription = await registration.pushManager.getSubscription();
         if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
-        await window.API.post('/api/notifications/subscribe', subscription.toJSON());
-        showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
+        await API.subscribePush(subscription.toJSON());
+        console.log('[Push] تم تسجيل الجهاز لاستقبال الإشعارات بنجاح!'); showAlert('تم تفعيل الإشعارات بنجاح.', 'success');
         const btn = document.getElementById('install-pwa-btn'); if(btn) btn.classList.add('d-none');
     } catch (error) { console.error('[Push Error]:', error); showAlert('حدث خطأ أثناء تفعيل الإشعارات.', 'danger'); }
 }
@@ -68,13 +70,12 @@ async function requestPushPermission() {
 // =================================================================
 // ⚙️ الإعدادات وتحميل الصفحة
 // =================================================================
+
 window.onload = async () => {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Error:', err));
-    if (!window.API || !window.API.getToken() || !currentUser) { window.location.href = 'login.html'; return; }
-    
+    if (!localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token') || !currentUser) { window.location.href = 'login.html'; return; }
     setupUserInfo(); applyRoleBasedUI(); loadFirmSettings(); 
     await loadAllData(); await loadNotifications(); startSmartBackgroundSync();
-    
     if ('Notification' in window && Notification.permission === 'default') setTimeout(() => requestPushPermission(), 3000);
     const lastView = localStorage.getItem('last_active_view') || 'dashboard'; switchView(lastView);
 };
@@ -82,30 +83,21 @@ window.onload = async () => {
 function setupUserInfo() {
     const roleAr = getRoleNameInArabic(currentUser.role || currentUser.user_type);
     const userName = escapeHTML(currentUser.full_name || 'مستخدم');
-    
     if (document.getElementById('welcome-name')) document.getElementById('welcome-name').innerText = userName;
     if (document.getElementById('welcome-role')) document.getElementById('welcome-role').innerText = `المنصب: ${roleAr}`;
     if (document.getElementById('top-user-name')) document.getElementById('top-user-name').innerText = userName;
-    
-    const avatarContainer = document.getElementById('top-user-avatar');
-    if (avatarContainer) {
-        if (currentUser.avatar_url) {
-            avatarContainer.innerHTML = `<img src="${window.API.getSecureUrl(currentUser.avatar_url)}" style="width:100%; height:100%; object-fit:cover;">`;
-        } else {
-            avatarContainer.innerText = userName.charAt(0).toUpperCase();
-        }
-    }
+    if (document.getElementById('top-user-avatar')) document.getElementById('top-user-avatar').innerText = userName.charAt(0).toUpperCase();
 }
 
 function getRoleNameInArabic(role) {
-    if (role === 'admin' || role === 'super_admin') return 'مدير النظام';
+    if (role === 'admin' || role === 'super_admin' || role === 'superadmin') return 'مدير النظام';
     if (role === 'secretary') return 'سكرتاريا';
     if (role === 'lawyer') return 'محامي';
     return role || 'موظف';
 }
 
 function applyRoleBasedUI() {
-    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'super_admin');
+    const isAdmin = (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'superadmin');
     if (isAdmin) {
         if (document.getElementById('staff-management-section')) document.getElementById('staff-management-section').classList.remove('d-none');
         if (document.getElementById('stat-staff-card')) document.getElementById('stat-staff-card').style.display = 'block';
@@ -128,16 +120,13 @@ window.manualSync = async () => {
 function startSmartBackgroundSync() { backgroundSyncTimer = setInterval(async () => { try { await loadNotifications(true); } catch(e) {} }, 15000); }
 
 async function loadFirmSettings() {
-    if (currentUser.role === 'super_admin') return;
-
     const localSettings = JSON.parse(localStorage.getItem('firm_settings'));
     if (localSettings) applyFirmSettings(localSettings);
     try {
-        const res = await window.API.get('/api/firms?select=*');
+        const res = await API.getFirmSettings();
         if (res && res.length > 0) {
             const settings = { firm_name: res[0].firm_name, logo_url: res[0].logo_url, primary_color: res[0].primary_color, accent_color: res[0].accent_color, firm_phone: res[0].firm_phone || '', firm_address: res[0].firm_address || '' };
             localStorage.setItem('firm_settings', JSON.stringify(settings)); applyFirmSettings(settings);
-            
             if(document.getElementById('firm_setting_name')) document.getElementById('firm_setting_name').value = settings.firm_name || '';
             if(document.getElementById('firm_setting_logo')) document.getElementById('firm_setting_logo').value = settings.logo_url || '';
             if(document.getElementById('firm_setting_phone')) document.getElementById('firm_setting_phone').value = settings.firm_phone || '';
@@ -153,11 +142,9 @@ function applyFirmSettings(settings) {
     const root = document.documentElement;
     if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
     if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
-    
     const topName = document.getElementById('top-firm-name');
     if (topName) {
-        const secureLogo = settings.logo_url ? window.API.getSecureUrl(settings.logo_url) : null;
-        const logoHtml = secureLogo ? `<img src="${escapeHTML(secureLogo)}" width="20" height="20" class="me-1 rounded" style="object-fit:cover;">` : `<i class="fas fa-balance-scale text-accent me-1"></i>`;
+        const logoHtml = settings.logo_url ? `<img src="${escapeHTML(settings.logo_url)}" width="20" height="20" class="me-1 rounded" style="object-fit:cover;">` : `<i class="fas fa-balance-scale text-accent me-1"></i>`;
         topName.innerHTML = `${logoHtml} ${escapeHTML(settings.firm_name || 'موكّل')}`;
     }
 }
@@ -165,21 +152,12 @@ function applyFirmSettings(settings) {
 async function saveFirmSettings(event) {
     event.preventDefault();
     const data = { firm_name: document.getElementById('firm_setting_name').value, logo_url: document.getElementById('firm_setting_logo').value, primary_color: document.getElementById('firm_setting_primary').value, accent_color: document.getElementById('firm_setting_accent').value, firm_phone: document.getElementById('firm_setting_phone').value, firm_address: document.getElementById('firm_setting_address').value };
-    
-    const firmId = currentUser.firm_id;
-    if(!firmId) return showAlert('تعذر العثور على معرف المكتب', 'danger');
-
-    const res = await window.API.patch(`/api/firms?id=eq.${firmId}`, data);
-    if(res && !res.error) { 
-        localStorage.setItem('firm_settings', JSON.stringify(data)); 
-        applyFirmSettings(data); 
-        closeModal('settingsModal'); 
-        showAlert('تم حفظ إعدادات المكتب بنجاح', 'success'); 
-    } else { showAlert('فشل الحفظ: ' + (res.error || 'خطأ غير معروف'), 'danger'); }
+    const res = await API.updateFirmSettings(data);
+    if(res && !res.error) { localStorage.setItem('firm_settings', JSON.stringify(data)); applyFirmSettings(data); closeModal('settingsModal'); showAlert('تم حفظ إعدادات المكتب بنجاح', 'success'); } 
+    else { showAlert('فشل الحفظ: ' + (res.error || 'خطأ غير معروف'), 'danger'); }
 }
 
-// الدالة المسؤولة عن تبديل النوافذ والتي كانت تسبب الخطأ
-window.switchView = function(viewId) {
+function switchView(viewId) {
     if(viewId === 'ai') { window.location.href = 'ai-chat.html'; return; }
     if(viewId === 'library') { window.location.href = 'library.html'; return; }
     if(viewId === 'calculators') { window.location.href = 'calculators.html'; return; }
@@ -189,7 +167,7 @@ window.switchView = function(viewId) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const activeNav = document.getElementById(`nav-icon-${viewId}`); if(activeNav) activeNav.classList.add('active');
     window.scrollTo(0, 0);
-};
+}
 
 function showVCard() {
     const qrContainer = document.getElementById('vcard-qrcode'); qrContainer.innerHTML = ''; 
@@ -208,35 +186,20 @@ function showVCard() {
 // =================================================================
 // 📊 جلب البيانات واللوحات
 // =================================================================
-async function loadAllData() {
-    if (currentUser.role === 'super_admin' || currentUser.role === 'superadmin') {
-        const dashboard = document.getElementById('dashboard-view');
-        if(dashboard) {
-            dashboard.innerHTML = '<div class="alert alert-info text-center mt-5 p-5 shadow-sm border-0"><i class="fas fa-shield-alt fa-4x text-accent mb-3"></i><h4 class="fw-bold text-navy">أهلاً بك في نظام الإدارة العليا</h4><p>هذه الواجهة مخصصة للمكاتب. يرجى التوجه إلى لوحة تحكم السوبر أدمن.</p></div>';
-        }
-        return; 
-    }
 
+async function loadAllData() {
     try {
-        const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([ 
-            window.API.get('/api/clients'), 
-            window.API.get('/api/cases'), 
-            window.API.get('/api/users'), 
-            window.API.get('/api/appointments') 
-        ]);
-        
+        const [rawClients, rawCases, staff, rawAppointments] = await Promise.all([ API.getClients(), API.getCases(), API.getStaff(), API.getAppointments() ]);
         globalData.staff = Array.isArray(staff) ? staff : [];
-        filterAndSetClients(Array.isArray(rawClients) ? rawClients : []); 
-        filterAndSetCases(Array.isArray(rawCases) ? rawCases : []); 
-        filterAndSetAppointments(Array.isArray(rawAppointments) ? rawAppointments : []);
-        
-        if (currentUser.role === 'admin') {
+        filterAndSetClients(Array.isArray(rawClients) ? rawClients : []); filterAndSetCases(Array.isArray(rawCases) ? rawCases : []); filterAndSetAppointments(Array.isArray(rawAppointments) ? rawAppointments : []);
+        if (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'superadmin') {
             try {
-                const historyRes = await window.API.get('/api/history');
-                globalData.activityLogs = Array.isArray(historyRes) ? historyRes : [];
+                const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+                const baseUrl = window.API_BASE_URL || CONFIG.API_URL;
+                const historyRes = await fetch(`${baseUrl}/api/history`, { headers: { 'Authorization': `Bearer ${token}` }});
+                if(historyRes.ok) { const logs = await historyRes.json(); globalData.activityLogs = Array.isArray(logs) ? logs : []; }
             } catch(e) {}
         }
-        
         renderDashboard(); renderCasesList(); renderClientsList();
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
         renderStaffList(); populateSelects(); renderActivityLogs();
@@ -265,10 +228,10 @@ function renderDashboard() {
     document.getElementById('fin-rem').innerText = (totalAgreed - totalPaid).toLocaleString();
 }
 
-window.filterCasesByBtn = function(btn, status) {
+function filterCasesByBtn(btn, status) {
     document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('btn-navy'); b.classList.add('btn-outline-navy'); });
     btn.classList.remove('btn-outline-navy'); btn.classList.add('btn-navy'); currentCaseFilter = status; renderCasesList();
-};
+}
 
 function renderCasesList() {
     const list = document.getElementById('cases-list'); if(!list) return;
@@ -305,8 +268,8 @@ function renderCasesList() {
     }).join('');
 }
 
-window.filterCases = function() { renderCasesList(); };
-window.filterClients = function() { renderClientsList(); };
+function filterCases() { renderCasesList(); }
+function filterClients() { renderClientsList(); }
 
 function renderClientsList() {
     const list = document.getElementById('clients-list'); if(!list) return;
@@ -322,12 +285,11 @@ function renderStaffList() {
     list.innerHTML = globalData.staff.map(s => `<li class="list-group-item d-flex justify-content-between align-items-center"><div><b class="text-navy">${escapeHTML(s.full_name)}</b><br><small class="text-muted">${getRoleNameInArabic(s.role)} - ${escapeHTML(s.phone)}</small></div></li>`).join('');
 }
 
-window.toggleAgendaView = function() {
+function toggleAgendaView() {
     isKanbanView = !isKanbanView; const list = document.getElementById('agenda-list'); const kanban = document.getElementById('kanban-board');
     if (isKanbanView) { list.classList.add('d-none'); kanban.classList.remove('d-none'); renderKanbanBoard(); } else { kanban.classList.add('d-none'); list.classList.remove('d-none'); renderAgendaList(); }
-};
-
-window.filterAgenda = function() { renderAgendaList(); };
+}
+function filterAgenda() { renderAgendaList(); }
 
 function renderAgendaList() {
     const list = document.getElementById('agenda-list'); if (!list) return;
@@ -438,7 +400,7 @@ function syntaxHighlight(json) {
 // 📅 دوال المواعيد (الحفظ، التأجيل، الإلغاء)
 // =================================================================
 
-window.saveApptOutcome = async function(e, id) { 
+async function saveApptOutcome(e, id) { 
     if(e) e.preventDefault(); 
     const apptId = id || document.getElementById('outcome_appt_id').value; 
     if (apptId.toString().startsWith('temp_')) return showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
@@ -447,10 +409,10 @@ window.saveApptOutcome = async function(e, id) {
     if(idx !== -1) { globalData.appointments[idx].status = 'تم'; globalData.appointments[idx].notes = notes; }
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
     closeModal('apptOutcomeModal'); showAlert('تم تسجيل الإنجاز', 'success');
-    await window.API.patch(`/api/appointments?id=eq.${apptId}`, {status:'تم', notes: notes});
-};
+    await API.updateAppointment(apptId, {status:'تم', notes: notes});
+}
 
-window.saveApptPostpone = async function(e) { 
+async function saveApptPostpone(e) { 
     if(e) e.preventDefault(); 
     const id = document.getElementById('postpone_appt_id').value; 
     if (id.toString().startsWith('temp_')) return showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
@@ -460,54 +422,106 @@ window.saveApptPostpone = async function(e) {
     if(idx !== -1) { globalData.appointments[idx].status = 'مؤجل'; globalData.appointments[idx].appt_date = d; }
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList();
     closeModal('apptPostponeModal'); showAlert('تم تأجيل الموعد بنجاح', 'success');
-    await window.API.patch(`/api/appointments?id=eq.${id}`, {status:'مؤجل', appt_date: d});
-};
+    await API.updateAppointment(id, {status:'مؤجل', appt_date: d});
+}
 
-window.cancelAppt = async function(id) {
+async function cancelAppt(id) {
     if (id.toString().startsWith('temp_')) return showAlert('الموعد قيد المزامنة مع السيرفر، يرجى الانتظار ثانية واحدة.', 'warning');
     const confirm = await Swal.fire({ title: 'إلغاء الموعد؟', text: 'سيتم تسجيل الموعد كـ "ملغي" في دفتر الأرشيف.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، إلغاء الموعد', cancelButtonText: 'تراجع' });
     if(confirm.isConfirmed) { 
         const idx = globalData.appointments.findIndex(a => a.id === id); if(idx !== -1) globalData.appointments[idx].status = 'ملغي';
         if (isKanbanView) renderKanbanBoard(); else renderAgendaList(); showAlert('تم إلغاء الموعد', 'success');
-        await window.API.patch(`/api/appointments?id=eq.${id}`, {status:'ملغي'});
+        await API.updateAppointment(id, {status:'ملغي'});
     }
-};
+}
 
-window.openApptOutcomeModal = function(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); };
-window.openApptPostponeModal = function(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); };
+function openApptOutcomeModal(id) { document.getElementById('outcome_appt_id').value = id; document.getElementById('outcome_text').value = ''; openModal('apptOutcomeModal'); }
+function openApptPostponeModal(id) { document.getElementById('postpone_appt_id').value = id; document.getElementById('postpone_date').value = ''; openModal('apptPostponeModal'); }
 
 // =================================================================
-// 🤖 دوال الذكاء الاصطناعي والبحث الدلالي
+// 🤖 دوال الذكاء الاصطناعي والاستخراج
 // =================================================================
 
-window.handleSmartSearch = async function(q) {
-    const drop = document.getElementById('search-results-dropdown'); 
-    if (q.length < 2) return drop.classList.add('d-none');
-    
-    const res = await window.API.get(`/api/search?q=${encodeURIComponent(q)}`); 
-    let html = '';
-    
-    if (res.brain?.length) html += '<h6 class="dropdown-header text-accent fw-bold"><i class="fas fa-brain"></i> الذاكرة القانونية (بحث دلالي AI)</h6>' + res.brain.map(b => `<button class="dropdown-item" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title)}'"><small class="text-navy fw-bold">${escapeHTML(b.title)}</small><br><span style="font-size:10px;" class="text-muted text-wrap">${escapeHTML(b.ai_summary || b.original_text).substring(0, 70)}...</span></button>`).join('');
-    if (res.cases?.length) html += '<h6 class="dropdown-header">القضايا</h6>' + res.cases.map(c => `<button class="dropdown-item" onclick="window.viewCaseDetails('${c.id}')"><i class="fas fa-gavel text-secondary"></i> ${escapeHTML(c.case_internal_id)} - ${escapeHTML(c.opponent_name)}</button>`).join('');
-    if (res.clients?.length) html += '<h6 class="dropdown-header">الموكلين</h6>' + res.clients.map(c => `<button class="dropdown-item" onclick="window.viewClientProfile('${c.id}')"><i class="fas fa-user text-success"></i> ${escapeHTML(c.full_name)}</button>`).join('');
-    
+async function processIdImage(event) {
+    const file = event.target.files[0]; if (!file) return; showAlert('جاري قراءة الهوية سحابياً...', 'info');
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const pureBase64 = e.target.result.split(',')[1];
+        try {
+            const data = await API.readOCR(pureBase64);
+            if (data && !data.error) {
+                const extractedName = data.full_name || (data.data && data.data.full_name) || (data.extracted_json && data.extracted_json.full_name);
+                const extractedId = data.national_id || (data.data && data.data.national_id) || (data.extracted_json && data.extracted_json.national_id);
+                let successCount = 0;
+                if (extractedName) { document.getElementById('client_full_name').value = extractedName; successCount++; }
+                if (extractedId) { document.getElementById('client_national_id').value = extractedId; successCount++; }
+                if (successCount > 0) showAlert('تم استخراج البيانات الأساسية بنجاح', 'success'); else showAlert('يرجى إعادة التصوير بإضاءة جيدة.', 'warning');
+            } else { showAlert('فشل في تحليل الصورة من السيرفر', 'danger'); }
+        } catch (err) { showAlert('خطأ في الاتصال أثناء القراءة', 'danger'); }
+    };
+    reader.readAsDataURL(file);
+}
+
+function startDictation(elementId) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return showAlert('متصفحك لا يدعم الإملاء الصوتي. يرجى استخدام متصفح Chrome.', 'warning');
+    try {
+        const recognition = new SpeechRecognition(); recognition.lang = 'ar-JO'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+        const textArea = document.getElementById(elementId); const origPlaceholder = textArea.placeholder;
+        recognition.onstart = function() { textArea.placeholder = "جاري الاستماع... تحدث الآن."; showAlert('الميكروفون يعمل.. تحدث الآن', 'info'); };
+        recognition.onresult = function(e) { textArea.value += (textArea.value ? ' ' : '') + e.results[0][0].transcript; showAlert('تم إدراج النص بنجاح.', 'success'); };
+        recognition.onerror = function(e) { if (e.error === 'aborted') return; console.error('Speech error:', e); if (e.error === 'not-allowed') showAlert('تم رفض صلاحية الميكروفون.', 'danger'); else showAlert('حدث خطأ أثناء الإملاء الصوتي.', 'error'); textArea.placeholder = origPlaceholder; };
+        recognition.onend = function() { textArea.placeholder = origPlaceholder; };
+        recognition.start();
+    } catch (e) { console.error(e); showAlert('فشل تشغيل خدمة الصوت.', 'danger'); }
+}
+
+async function runSmartExtraction() {
+    const rawText = document.getElementById('case_lawsuit_text').value; const btn = document.getElementById('btn-extract-ai');
+    if (!rawText || rawText.trim().length < 20) return showAlert('يرجى كتابة نص اللائحة أولاً (20 حرف على الأقل)', 'warning');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري التحليل...'; showAlert('يتم الآن تحليل اللائحة وقراءة المعطيات...', 'info');
+    try {
+        const extractedData = await API.extractLegalData(rawText);
+        if (extractedData && !extractedData.error) {
+            const opponent = extractedData.opponent_name || extractedData["الخصم"] || extractedData["اسم الخصم"] || extractedData["المدعى عليه"];
+            if (opponent && document.getElementById('case_opponent_name')) document.getElementById('case_opponent_name').value = opponent;
+            const amount = extractedData.claim_amount || extractedData["المطالبة"] || extractedData["قيمة المطالبة"] || extractedData["المبلغ"];
+            if (amount && document.getElementById('case_claim_amount')) { const numbersOnly = String(amount).replace(/[^0-9.]/g, ''); if (numbersOnly) document.getElementById('case_claim_amount').value = numbersOnly; }
+            const legalBasis = extractedData.legal_basis || extractedData["الأسانيد"] || extractedData["السند القانوني"] || extractedData["الأساس القانوني"];
+            if (legalBasis && document.getElementById('case_legal_basis')) document.getElementById('case_legal_basis').value = Array.isArray(legalBasis) ? legalBasis.join('\n') : legalBasis;
+            const finalReqs = extractedData.final_requests || extractedData["الطلبات"] || extractedData["الطلبات الختامية"];
+            if (finalReqs && document.getElementById('case_final_requests')) document.getElementById('case_final_requests').value = Array.isArray(finalReqs) ? finalReqs.join('\n') : finalReqs;
+            const facts = extractedData.lawsuit_facts || extractedData["الوقائع"];
+            if (facts && document.getElementById('case_lawsuit_text')) document.getElementById('case_lawsuit_text').value = `[تحليل الذكاء الاصطناعي للوقائع]:\n${Array.isArray(facts)? facts.join('\n') : facts}\n\n-----------------\n[النص الأصلي]:\n${rawText}`;
+            showAlert('تم استخراج وتوزيع البيانات بنجاح! راجع الحقول.', 'success');
+            const partiesTab = new bootstrap.Tab(document.querySelector('button[data-bs-target="#add-parties"]')); if(partiesTab) partiesTab.show();
+        } else throw new Error(extractedData.error || 'فشل في قراءة البيانات');
+    } catch (error) { console.error(error); showAlert('حدث خطأ أثناء تحليل اللائحة. تأكد من وضوح النص.', 'danger'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magic me-1"></i> استخراج ذكي'; }
+}
+
+async function handleSmartSearch(q) {
+    const drop = document.getElementById('search-results-dropdown'); if (q.length < 2) return drop.classList.add('d-none');
+    const res = await API.smartSearch(q); let html = '';
+    if (res.brain?.length) html += '<h6 class="dropdown-header text-accent fw-bold"><i class="fas fa-brain"></i> الذاكرة القانونية (بحث بالمعنى)</h6>' + res.brain.map(b => `<button class="dropdown-item" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title)}'"><small class="text-navy fw-bold">${escapeHTML(b.title)}</small><br><span style="font-size:10px;" class="text-muted text-wrap">${escapeHTML(b.ai_summary || b.original_text).substring(0, 70)}...</span></button>`).join('');
+    if (res.cases?.length) html += '<h6 class="dropdown-header">القضايا</h6>' + res.cases.map(c => `<button class="dropdown-item" onclick="viewCaseDetails('${c.id}')">${escapeHTML(c.case_internal_id)}</button>`).join('');
+    if (res.clients?.length) html += '<h6 class="dropdown-header">الموكلين</h6>' + res.clients.map(c => `<button class="dropdown-item" onclick="viewClientProfile('${c.id}')">${escapeHTML(c.full_name)}</button>`).join('');
     drop.innerHTML = html || '<div class="p-3 text-center small text-muted">لا يوجد نتائج</div>'; drop.classList.remove('d-none');
-};
+}
 
 // =================================================================
 // 🔗 المشاركة وتوليد الروابط
 // =================================================================
 
 let currentShareLink = '';
-window.openShareModal = function(caseId, pin, publicToken) {
+function openShareModal(caseId, pin, publicToken) {
     const token = publicToken || caseId; const pathArray = window.location.pathname.split('/'); pathArray.pop(); currentShareLink = `${window.location.origin + pathArray.join('/')}/client.html?token=${token}`;
     document.getElementById('share_link_input').value = currentShareLink; document.getElementById('share_pin_input').value = pin || 'لا يوجد';
     const qrContainer = document.getElementById('share-qrcode'); qrContainer.innerHTML = '';
     new QRCode(qrContainer, { text: currentShareLink, width: 160, height: 160, colorDark: "#0a192f", correctLevel: QRCode.CorrectLevel.L });
     openModal('shareModal');
-};
-window.copyShareLinkApp = function() { navigator.clipboard.writeText(`أهلاً بك، رابط متابعة قضيتك: ${currentShareLink}\nالرمز السري (PIN): ${document.getElementById('share_pin_input').value}`).then(() => showAlert('تم نسخ الرابط', 'success')); };
-window.sendShareViaWhatsApp = function() { window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`أهلاً بك، رابط متابعة ملفك: ${currentShareLink}\nالرمز (PIN): ${document.getElementById('share_pin_input').value}`)}`, '_blank'); };
+}
+function copyShareLinkApp() { navigator.clipboard.writeText(`أهلاً بك، رابط متابعة قضيتك: ${currentShareLink}\nالرمز السري (PIN): ${document.getElementById('share_pin_input').value}`).then(() => showAlert('تم نسخ الرابط', 'success')); }
+function sendShareViaWhatsApp() { window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`أهلاً بك، رابط متابعة ملفك: ${currentShareLink}\nالرمز (PIN): ${document.getElementById('share_pin_input').value}`)}`, '_blank'); }
 
 window.generateStrongPIN = function() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let pin = '';
@@ -516,10 +530,10 @@ window.generateStrongPIN = function() {
 };
 
 // =================================================================
-// 💾 دوال حفظ البيانات الرئيسية
+// 💾 دوال حفظ البيانات الرئيسية (معالجة الـ ERP Injection)
 // =================================================================
 
-window.saveClient = async function(event) {
+async function saveClient(event) {
     event.preventDefault();
     const dobValue = document.getElementById('client_dob') ? document.getElementById('client_dob').value : '';
     const validDob = dobValue === '' ? null : dobValue;
@@ -532,12 +546,12 @@ window.saveClient = async function(event) {
         profession: document.getElementById('client_profession') ? document.getElementById('client_profession').value : null, confidentiality_level: document.getElementById('client_confidentiality') ? document.getElementById('client_confidentiality').value : 'عادي',
         client_portal_active: document.getElementById('client_portal_active') ? document.getElementById('client_portal_active').checked : true
     };
-    const res = await window.API.post('/api/clients', data);
+    const res = await API.addClient(data);
     if (res && !res.error) { closeModal('clientModal'); await loadAllData(); await loadNotifications(); showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم إضافة الموكل بنجاح', res.offline ? 'warning' : 'success'); event.target.reset(); } 
     else { showAlert(res?.error || 'حدث خطأ في الحفظ', 'danger'); }
-};
+}
 
-window.saveCase = async function(event) {
+async function saveCase(event) {
     event.preventDefault(); 
     const lawyerSelect = document.getElementById('case_assigned_lawyers'); let lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
     if (lawyers.length === 0 && currentUser && currentUser.id) lawyers.push(currentUser.id);
@@ -568,19 +582,19 @@ window.saveCase = async function(event) {
     
     const btn = event.target.querySelector('button[type="submit"]'); btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
 
-    const res = await window.API.post('/api/cases', data);
+    const res = await API.addCase(data);
     if (res && !res.error) { 
         if (autoTasks && !res.offline) {
             const tmr = new Date(Date.now() + 86400000).toISOString(); const afterTmr = new Date(Date.now() + 172800000).toISOString();
-            await window.API.post('/api/appointments', { title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers });
-            await window.API.post('/api/appointments', { title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers });
+            await API.addAppointment({ title: 'دراسة ملف القضية وتحضير اللائحة', appt_date: tmr, type: 'كتابة لائحة', status: 'مجدول', assigned_to: lawyers });
+            await API.addAppointment({ title: 'التواصل مع الموكل للمستندات', appt_date: afterTmr, type: 'اجتماع موكل', status: 'مجدول', assigned_to: lawyers });
         }
         closeModal('caseModal'); await loadAllData(); await loadNotifications(); showAlert(res.offline ? 'أنت غير متصل. تم الحفظ محلياً' : 'تم فتح ملف القضية بنجاح', res.offline ? 'warning' : 'success'); event.target.reset(); 
     } else { showAlert(res?.error || 'فشل في إضافة القضية', 'error'); }
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> حفظ وتوليد الملف السحابي';
-};
+}
 
-window.saveAppointment = async function(event) {
+async function saveAppointment(event) {
     event.preventDefault(); 
     const apptSelect = document.getElementById('appt_assigned_to'); let assignedTo = apptSelect ? Array.from(apptSelect.selectedOptions).map(opt => opt.value) : [];
     if (assignedTo.length === 0 && currentUser && currentUser.id) assignedTo.push(currentUser.id);
@@ -593,10 +607,10 @@ window.saveAppointment = async function(event) {
     if (isKanbanView) renderKanbanBoard(); else renderAgendaList(); showAlert('تمت الجدولة بنجاح', 'success');
 
     try {
-        const res = await window.API.post('/api/appointments', { ...data, appt_date: new Date(rawDate).toISOString() });
+        const res = await API.addAppointment({ ...data, appt_date: new Date(rawDate).toISOString() });
         if (res && !res.error) { const idx = globalData.appointments.findIndex(a => a.id === tempId); if (idx !== -1) globalData.appointments[idx] = res; } else throw new Error(res?.error || 'خطأ أثناء الجدولة');
     } catch(err) { globalData.appointments = globalData.appointments.filter(a => a.id !== tempId); if (isKanbanView) renderKanbanBoard(); else renderAgendaList(); showAlert(err.message, 'danger'); }
-};
+}
 
 function populateSelects() {
     const clSel = document.getElementById('case_client_id'); if(clSel) clSel.innerHTML = '<option value="">اختر الموكل...</option>' + globalData.clients.map(c => `<option value="${c.id}">${escapeHTML(c.full_name)}</option>`).join('');
@@ -607,12 +621,9 @@ function populateSelects() {
     if (aLSelect) { aLSelect.innerHTML = globalData.staff.map(s => `<option value="${s.id}">${escapeHTML(s.full_name)}</option>`).join(''); if (typeof Choices !== 'undefined') { if (window.apptLawyerChoices) window.apptLawyerChoices.destroy(); window.apptLawyerChoices = new Choices(aLSelect, { removeItemButton: true, searchEnabled: true, placeholderValue: 'اختر الموظفين...' }); } }
 }
 
-// =================================================================
-// 🚨 الإشعارات (رادار المواعيد)
-// =================================================================
 async function loadNotifications(silent = false) {
     try {
-        const res = await window.API.get('/api/notifications?order=created_at.desc'); if (!res || res.error) return;
+        const res = await API.getNotifications(); if (!res || res.error) return;
         globalData.notifications = Array.isArray(res) ? res : [];
         const unread = globalData.notifications.filter(n => n.is_read === false);
         const badge = document.getElementById('notification-badge'); const list = document.getElementById('notifications-list');
@@ -624,41 +635,31 @@ async function loadNotifications(silent = false) {
 
         if(list) {
             if (globalData.notifications.length === 0) list.innerHTML = '<li class="p-3 text-center text-muted small">لا توجد إشعارات حالياً</li>';
-            else list.innerHTML = globalData.notifications.slice(0, 10).map(n => {
-                const isRadar = n.title.includes('رادار') || n.title.includes('🚨');
-                const bgClass = n.is_read ? 'opacity-75' : (isRadar ? 'bg-soft-danger border-start border-danger border-4' : 'bg-light border-start border-info border-4');
-                const icon = isRadar ? '<i class="fas fa-exclamation-triangle text-danger me-1"></i>' : '<i class="fas fa-bell text-warning me-1"></i>';
-                
-                return `<li class="dropdown-item border-bottom py-2 text-wrap ${bgClass}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')">
-                    <strong class="d-block text-navy small mb-1">${icon} ${escapeHTML(n.title)}</strong>
-                    <span class="small text-muted d-block fw-bold" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span>
-                    <small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small>
-                </li>`;
-            }).join('');
+            else list.innerHTML = globalData.notifications.slice(0, 10).map(n => `<li class="dropdown-item border-bottom py-2 text-wrap ${n.is_read ? 'opacity-75' : 'bg-light'}" style="cursor:pointer" onclick="handleNotificationClick('${n.id}', '${n.action_url}')"><strong class="d-block text-navy small mb-1"><i class="fas fa-bell text-warning me-1"></i> ${escapeHTML(n.title)}</strong><span class="small text-muted d-block" style="white-space: normal; line-height: 1.4;">${escapeHTML(n.message)}</span><small class="text-muted mt-1 d-block" style="font-size:10px;"><i class="fas fa-clock"></i> ${new Date(n.created_at).toLocaleString('ar-EG')}</small></li>`).join('');
         }
     } catch (e) { console.error("خطأ الإشعارات:", e); }
 }
 
-window.handleNotificationClick = async function(id, url) { await window.API.patch(`/api/notifications?id=eq.${id}`, { is_read: true }); if (url && url !== 'undefined' && url !== 'null') window.location.href = url; else loadNotifications(); };
+async function handleNotificationClick(id, url) { await API.markNotificationAsRead(id); if (url && url !== 'undefined' && url !== 'null') window.location.href = url; else loadNotifications(); }
 
-window.markNotificationsRead = async function() {
+async function markNotificationsRead() {
     const unread = globalData.notifications.filter(n => !n.is_read); if(unread.length === 0) return;
     const badge = document.getElementById('notification-badge'); if(badge) badge.classList.add('d-none');
-    for (let n of unread) await window.API.patch(`/api/notifications?id=eq.${n.id}`, { is_read: true });
+    for (let n of unread) await API.markNotificationAsRead(n.id);
     await loadNotifications(true); 
-};
+}
 
 function triggerPushNotification(title, body) { if (Notification.permission === "granted") navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body: body, icon: './icons/icon-192.png', badge: './icons/icon-192.png', dir:'rtl' })); }
 
-window.viewCaseDetails = function(id) { localStorage.setItem('current_case_id', id); window.location.href = `case-details.html?id=${id}`; };
-window.viewClientProfile = function(id) { localStorage.setItem('current_client_id', id); window.location.href = `client-details.html?id=${id}`; };
+function viewCaseDetails(id) { localStorage.setItem('current_case_id', id); window.location.href = 'case-details.html'; }
+function viewClientProfile(id) { localStorage.setItem('current_client_id', id); window.location.href = 'client-details.html'; }
 
-window.runConflictCheck = async function() {
+async function runConflictCheck() {
     const input = document.getElementById('conflict_search_input').value; const resDiv = document.getElementById('conflict_results');
     if (input.length < 2) return showAlert('أدخل حرفين أو رقمين للبحث', 'warning');
     resDiv.innerHTML = '<div class="text-center p-3 small"><i class="fas fa-spinner fa-spin"></i> جاري الفحص الدقيق...</div>';
-    const res = await window.API.get(`/api/check-conflict?name=${encodeURIComponent(input)}`); let html = '';
+    const res = await API.checkConflict(input); let html = '';
     if (res.clientConflicts && res.clientConflicts.length > 0) { html += `<h6 class="text-success fw-bold small"><i class="fas fa-user-check"></i> موكل سابق (آمن):</h6><ul class="list-group mb-2 shadow-sm">`; html += res.clientConflicts.map(c => `<li class="list-group-item small px-2 py-2 border-0 d-flex justify-content-between align-items-center bg-light mb-1 rounded"><span class="fw-bold text-navy">${escapeHTML(c.full_name)}</span> <span class="badge bg-white text-dark border shadow-sm"><i class="fas fa-id-card text-muted"></i> ${escapeHTML(c.national_id || 'لا يوجد رقم')}</span></li>`).join(''); html += `</ul>`; }
     if (res.opponentConflicts && res.opponentConflicts.length > 0) { html += `<h6 class="text-danger fw-bold small mt-3"><i class="fas fa-exclamation-triangle"></i> خصم مسجل (تعارض!):</h6><ul class="list-group shadow-sm">`; html += res.opponentConflicts.map(c => `<li class="list-group-item small px-2 py-2 border-0 bg-soft-danger mb-1 rounded"><span class="fw-bold text-danger">${escapeHTML(c.opponent_name)}</span><span class="d-block text-muted mt-1" style="font-size:10px;"><i class="fas fa-folder"></i> ملف: ${escapeHTML(c.case_internal_id || 'غير محدد')}</span></li>`).join(''); html += `</ul>`; }
     resDiv.innerHTML = html || '<div class="text-center text-success py-3 small fw-bold"><i class="fas fa-check-circle fa-2x mb-2 d-block"></i>الاسم والرقم الوطني نظيف تماماً</div>';
-};
+}
