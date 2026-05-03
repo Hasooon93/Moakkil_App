@@ -8,7 +8,7 @@
 if (typeof window.API === 'undefined') {
     
     // تعريف الثوابت داخل النطاق الآمن
-    const API_BASE_URL = 'https://your-worker-url.workers.dev'; // تنبيه: ضع رابط الوركر الخاص بك هنا
+    const API_BASE_URL = 'curly-pond-9975.hassan-alsakka.workers.dev'; // تنبيه: ضع رابط الوركر الخاص بك هنا
 
     // دالة مساعدة للحصول على اسم المفتاح الصحيح من الإعدادات لمنع حلقة التوجيه اللانهائية
     const getTokenKey = () => (typeof CONFIG !== 'undefined' && CONFIG.TOKEN_KEY) ? CONFIG.TOKEN_KEY : 'moakkil_token';
