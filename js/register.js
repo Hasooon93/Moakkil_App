@@ -1,10 +1,10 @@
 /**
  * js/register.js
- * المحرك البرمجي للوحة الإدارة العليا (Super Admin V4.0)
- * التحديثات: البحث اللحظي، تعديل معلومات المكتب، الكوتا، التاريخ، والتجاوب الكامل.
+ * المحرك البرمجي للوحة الإدارة العليا (Super Admin V5.0)
+ * التحديثات: البحث اللحظي، التعديل الشامل للكوتا، والتسجيل بالبصمة (WebAuthn).
  */
 
-let globalFirms = []; // لتخزين بيانات المكاتب وتسهيل الفلترة السريعة محلياً
+let globalFirms = []; // لتخزين بيانات المكاتب محلياً
 
 // 1. محرك الاتصال المخصص للإدارة العليا
 const SUPER_API = {
@@ -31,7 +31,6 @@ const SUPER_API = {
 
 // 2. التهيئة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    // التحقق من الصلاحيات كطبقة حماية
     const user = typeof AUTH !== 'undefined' ? AUTH.checkSession() : null;
     if (!user || (user.role !== 'super_admin' && user.role !== 'superadmin')) {
         console.warn("Unauthorized access attempt blocked.");
@@ -61,11 +60,8 @@ async function loadFirms() {
     
     try {
         const firms = await SUPER_API.fetch('/api/super/firms');
-        globalFirms = firms; // حفظ النسخة الأصلية
-        
-        // مسح حقل البحث عند تحديث البيانات
+        globalFirms = firms; 
         document.getElementById('searchFirmInput').value = '';
-        
         renderFirmsTable(globalFirms);
     } catch (error) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger fw-bold py-4">حدث خطأ أثناء الاتصال بقاعدة البيانات</td></tr>`;
@@ -73,7 +69,7 @@ async function loadFirms() {
     }
 }
 
-// 5. دالة رسم الجدول (Refactored Logic)
+// 5. دالة رسم الجدول 
 function renderFirmsTable(firmsArray) {
     const tbody = document.getElementById('firmsTableBody');
     tbody.innerHTML = '';
@@ -91,7 +87,6 @@ function renderFirmsTable(firmsArray) {
             ? `<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm"><i class="fas fa-check-circle me-1"></i> نشط</span>`
             : `<span class="badge bg-danger px-3 py-2 rounded-pill shadow-sm"><i class="fas fa-exclamation-triangle me-1"></i> ${isExpired ? 'منتهي' : 'موقوف'}</span>`;
 
-        // حساب عدد المستخدمين الحاليين لتوضيح استهلاك الكوتا
         const usersCount = firm.mo_users && firm.mo_users[0] ? firm.mo_users[0].count : 0;
 
         tbody.innerHTML += `
@@ -110,10 +105,10 @@ function renderFirmsTable(firmsArray) {
                 <td>${statusBadge}</td>
                 <td>
                     <div class="action-btns">
-                        <button class="btn btn-sm btn-warning fw-bold text-dark shadow-sm" onclick="openEditFirmModal('${firm.id}')" title="تعديل الشامل (الاسم، الكوتا، التاريخ)">
+                        <button class="btn btn-sm btn-warning fw-bold text-dark shadow-sm" onclick="openEditFirmModal('${firm.id}')" title="تعديل الشامل">
                             <i class="fas fa-edit"></i> <span class="d-md-none">تعديل</span>
                         </button>
-                        <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="openRenewModal('${firm.id}')" title="تجديد سريع للأشهر">
+                        <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="openRenewModal('${firm.id}')" title="تجديد الأشهر">
                             <i class="fas fa-calendar-plus"></i> <span class="d-md-none">تجديد</span>
                         </button>
                         <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-primary'} fw-bold shadow-sm" 
@@ -127,21 +122,16 @@ function renderFirmsTable(firmsArray) {
     });
 }
 
-// 6. الفلترة والبحث اللحظي (Client-Side Search)
+// 6. الفلترة والبحث اللحظي
 window.filterFirms = function() {
     const searchTerm = document.getElementById('searchFirmInput').value.toLowerCase().trim();
-    
-    if (searchTerm === '') {
-        renderFirmsTable(globalFirms);
-        return;
-    }
+    if (searchTerm === '') { renderFirmsTable(globalFirms); return; }
 
     const filtered = globalFirms.filter(firm => {
         const nameMatch = firm.firm_name.toLowerCase().includes(searchTerm);
         const statusMatch = firm.is_active ? 'نشط'.includes(searchTerm) : ('موقوف'.includes(searchTerm) || 'منتهي'.includes(searchTerm));
         return nameMatch || statusMatch;
     });
-
     renderFirmsTable(filtered);
 };
 
@@ -163,28 +153,18 @@ document.getElementById('addFirmForm')?.addEventListener('submit', async (e) => 
 
     try {
         await SUPER_API.fetch('/api/super/register-firm', 'POST', payload);
-        
         bootstrap.Modal.getInstance(document.getElementById('addFirmModal')).hide();
         document.getElementById('addFirmForm').reset();
-        
-        Swal.fire({
-            icon: 'success',
-            title: 'تم التسجيل!',
-            text: `تم تسجيل مكتب ${payload.firm_name} بنجاح.`,
-            confirmButtonColor: '#0f172a'
-        });
-
-        loadStats();
-        loadFirms();
+        Swal.fire({ icon: 'success', title: 'تم التسجيل!', text: `تم تسجيل مكتب ${payload.firm_name} بنجاح.`, confirmButtonColor: '#0f172a' });
+        loadStats(); loadFirms();
     } catch (error) {
         Swal.fire({ icon: 'error', title: 'فشل التسجيل', text: error.message });
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'حفظ وتسجيل المكتب';
+        btn.disabled = false; btn.innerHTML = 'حفظ وتسجيل المكتب';
     }
 });
 
-// 8. نافذة التعديل الشامل (الاسم، الكوتا، تاريخ الانتهاء)
+// 8. نافذة التعديل الشامل
 window.openEditFirmModal = function(firmId) {
     const firm = globalFirms.find(f => f.id === firmId);
     if (!firm) return;
@@ -199,9 +179,7 @@ window.openEditFirmModal = function(firmId) {
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         document.getElementById('editFirmEndDate').value = `${yyyy}-${mm}-${dd}`;
-    } else {
-        document.getElementById('editFirmEndDate').value = '';
-    }
+    } else { document.getElementById('editFirmEndDate').value = ''; }
 
     new bootstrap.Modal(document.getElementById('editFirmModal')).show();
 };
@@ -209,8 +187,7 @@ window.openEditFirmModal = function(firmId) {
 document.getElementById('editFirmForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnSubmitEditFirm');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
 
     const payload = {
         id: document.getElementById('editFirmId').value,
@@ -223,13 +200,9 @@ document.getElementById('editFirmForm')?.addEventListener('submit', async (e) =>
         await SUPER_API.fetch('/api/super/firms', 'PATCH', payload);
         bootstrap.Modal.getInstance(document.getElementById('editFirmModal')).hide();
         Swal.fire({ icon: 'success', title: 'تم التعديل!', text: 'تم تحديث بيانات المكتب بنجاح.', timer: 2000, showConfirmButton: false });
-        loadFirms(); // تحديث القائمة
-    } catch (error) {
-        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'حفظ التعديلات الشاملة';
-    }
+        loadFirms(); 
+    } catch (error) { Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
+    } finally { btn.disabled = false; btn.innerHTML = 'حفظ التعديلات الشاملة'; }
 });
 
 // 9. التجديد السريع
@@ -242,79 +215,130 @@ window.openRenewModal = function(firmId) {
 document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnSubmitRenew');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التجديد...';
-
-    const firmId = document.getElementById('renewFirmId').value;
-    const months = document.getElementById('renewMonths').value;
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التجديد...';
 
     try {
-        await SUPER_API.fetch('/api/super/renew-firm', 'POST', { id: firmId, add_months: parseInt(months) });
+        await SUPER_API.fetch('/api/super/renew-firm', 'POST', { 
+            id: document.getElementById('renewFirmId').value, 
+            add_months: parseInt(document.getElementById('renewMonths').value) 
+        });
         bootstrap.Modal.getInstance(document.getElementById('renewFirmModal')).hide();
         Swal.fire({ icon: 'success', title: 'تم التجديد بنجاح!', timer: 2000, showConfirmButton: false });
         loadFirms();
-    } catch (error) {
-        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'تأكيد التجديد الآن';
-    }
+    } catch (error) { Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
+    } finally { btn.disabled = false; btn.innerHTML = 'تأكيد التجديد الآن'; }
 });
 
-// 10. تغيير حالة المكتب (إيقاف / تفعيل)
+// 10. تغيير حالة المكتب
 window.toggleFirmStatus = async function(firmId, newStatus, maxUsers, firmName) {
     const actionName = newStatus ? 'تفعيل' : 'إيقاف';
-    
     const confirm = await Swal.fire({
-        title: `هل أنت متأكد؟`,
-        text: `هل تريد حقاً ${actionName} مكتب (${firmName})؟`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: newStatus ? '#198754' : '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: `نعم، ${actionName}`,
-        cancelButtonText: 'إلغاء'
+        title: `هل أنت متأكد؟`, text: `هل تريد حقاً ${actionName} مكتب (${firmName})؟`,
+        icon: 'warning', showCancelButton: true,
+        confirmButtonColor: newStatus ? '#198754' : '#d33', cancelButtonColor: '#6c757d',
+        confirmButtonText: `نعم، ${actionName}`, cancelButtonText: 'إلغاء'
     });
 
     if (!confirm.isConfirmed) return;
 
     try {
-        await SUPER_API.fetch('/api/super/firms', 'PATCH', { 
-            id: firmId, 
-            is_active: newStatus,
-            max_users: maxUsers 
-        });
-        
+        await SUPER_API.fetch('/api/super/firms', 'PATCH', { id: firmId, is_active: newStatus, max_users: maxUsers });
         Swal.fire({ icon: 'success', title: 'تم بنجاح', text: `تم ${actionName} المكتب.`, timer: 1500, showConfirmButton: false });
         loadFirms();
-    } catch (error) {
-        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
-    }
+    } catch (error) { Swal.fire({ icon: 'error', title: 'خطأ', text: error.message }); }
 };
 
 // 11. دوال مساعدة
 function animateValue(id, start, end, duration) {
-    if (start === end) {
-        document.getElementById(id).innerHTML = end;
-        return;
-    }
-    let range = end - start;
-    let current = start;
-    let increment = end > start ? 1 : -1;
-    let stepTime = Math.abs(Math.floor(duration / range));
-    let obj = document.getElementById(id);
+    if (start === end) { document.getElementById(id).innerHTML = end; return; }
+    let range = end - start, current = start, increment = end > start ? 1 : -1;
+    let stepTime = Math.abs(Math.floor(duration / range)), obj = document.getElementById(id);
     let timer = setInterval(function() {
-        current += increment;
-        obj.innerHTML = current;
-        if (current == end) {
-            clearInterval(timer);
-        }
+        current += increment; obj.innerHTML = current;
+        if (current == end) clearInterval(timer);
     }, stepTime);
 }
 
 function escapeHTML(str) {
     if (!str) return '';
-    return str.toString().replace(/[&<>'"]/g, tag => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-    }[tag] || tag));
+    return str.toString().replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
 }
+
+// =========================================================================
+// 12. نظام البصمة (WebAuthn) للإدارة العليا
+// =========================================================================
+
+// دالة تحويل البيانات لمعيار WebAuthn
+function bufferToBase64(buf) {
+    const binstr = Array.prototype.map.call(new Uint8Array(buf), ch => String.fromCharCode(ch)).join('');
+    return btoa(binstr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// دالة تسجيل البصمة وربطها بالحساب
+window.registerBiometricDevice = async function() {
+    if (!window.PublicKeyCredential) {
+        Swal.fire({ icon: 'error', title: 'غير مدعوم', text: 'جهازك أو متصفحك لا يدعم تقنية البصمة أو FaceID.' });
+        return;
+    }
+
+    try {
+        const user = typeof AUTH !== 'undefined' ? AUTH.checkSession() : null;
+        if (!user) {
+            Swal.fire({ icon: 'error', title: 'خطأ', text: 'يجب تسجيل الدخول أولاً لربط البصمة.' });
+            return;
+        }
+
+        Swal.fire({ title: 'جاري استدعاء نظام الحماية...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        // إعدادات طلب البصمة من نظام التشغيل
+        const publicKeyCredentialCreationOptions = {
+            challenge: window.crypto.getRandomValues(new Uint8Array(32)),
+            rp: { name: "نظام موكّل", id: window.location.hostname },
+            user: {
+                id: window.crypto.getRandomValues(new Uint8Array(16)),
+                name: user.phone || "super_admin",
+                displayName: user.name || user.full_name || "الإدارة العليا"
+            },
+            pubKeyCredParams: [
+                { alg: -7, type: "public-key" }, // ES256
+                { alg: -257, type: "public-key" } // RS256
+            ],
+            authenticatorSelection: {
+                authenticatorAttachment: "platform", // إجبار استخدام بصمة الجهاز نفسه (FaceID/TouchID/Windows Hello)
+                userVerification: "required"
+            },
+            timeout: 60000,
+            attestation: "none"
+        };
+
+        // استدعاء نافذة البصمة من نظام التشغيل
+        const credential = await navigator.credentials.create({
+            publicKey: publicKeyCredentialCreationOptions
+        });
+
+        // استخراج معرف البصمة المشفّر
+        const credential_id = bufferToBase64(credential.rawId);
+
+        // إرسال المعرف للباك إند لحفظه
+        await SUPER_API.fetch('/api/auth/biometric-register', 'POST', {
+            credential_id: credential_id,
+            public_key: "webauthn_client_key", 
+            device_name: navigator.userAgent.substring(0, 50) // حفظ اسم الجهاز للتعرف عليه لاحقاً
+        });
+
+        Swal.fire({
+            icon: 'success',
+            title: 'تم التفعيل بنجاح!',
+            text: 'تم ربط بصمة جهازك الحالي بحساب الإدارة، يمكنك الآن استخدام زر الدخول السريع في صفحة تسجيل الدخول.',
+            confirmButtonColor: '#0f172a'
+        });
+
+    } catch (err) {
+        console.error("Biometric Registration Error:", err);
+        Swal.fire({ 
+            icon: 'error', 
+            title: 'فشل التفعيل', 
+            text: 'تم إلغاء العملية، أو أن متصفحك يمنع قراءة البصمة (تأكد أنك تستخدم HTTPS).' 
+        });
+    }
+};
