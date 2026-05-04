@@ -1,9 +1,12 @@
-// js/register.js - المحرك البرمجي للوحة الإدارة العليا (Super Admin V4.0)
-// التحديثات: تعديل معلومات المكتب، الكوتا، التاريخ مباشرة، توافق الموبايل، والـ API المستقل.
+/**
+ * js/register.js
+ * المحرك البرمجي للوحة الإدارة العليا (Super Admin V4.0)
+ * التحديثات: البحث اللحظي، تعديل معلومات المكتب، الكوتا، التاريخ، والتجاوب الكامل.
+ */
 
-let globalFirms = []; // لتخزين بيانات المكاتب وتسهيل التعديل السريع
+let globalFirms = []; // لتخزين بيانات المكاتب وتسهيل الفلترة السريعة محلياً
 
-// 1. إنشاء محرك اتصال مخصص للإدارة العليا (لضمان إرسال توكن الإدارة)
+// 1. محرك الاتصال المخصص للإدارة العليا
 const SUPER_API = {
     fetch: async (endpoint, method = 'GET', body = null) => {
         const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
@@ -28,9 +31,10 @@ const SUPER_API = {
 
 // 2. التهيئة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    const user = AUTH.checkSession();
+    // التحقق من الصلاحيات كطبقة حماية
+    const user = typeof AUTH !== 'undefined' ? AUTH.checkSession() : null;
     if (!user || (user.role !== 'super_admin' && user.role !== 'superadmin')) {
-        window.location.replace('app.html');
+        console.warn("Unauthorized access attempt blocked.");
         return;
     }
 
@@ -38,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFirms();
 });
 
-// 3. دالة جلب الإحصائيات العلوية
+// 3. جلب الإحصائيات العلوية
 async function loadStats() {
     try {
         const data = await SUPER_API.fetch('/api/super/stats');
@@ -50,66 +54,98 @@ async function loadStats() {
     }
 }
 
-// 4. دالة جلب المكاتب وعرضها في الجدول
+// 4. جلب المكاتب من الخادم
 async function loadFirms() {
     const tbody = document.getElementById('firmsTableBody');
     tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary fa-2x"></i><br>جاري تحميل المكاتب...</td></tr>`;
     
     try {
         const firms = await SUPER_API.fetch('/api/super/firms');
-        globalFirms = firms; // تحديث المصفوفة العالمية
-        tbody.innerHTML = '';
-
-        if (!firms || firms.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted fw-bold py-4">لا توجد مكاتب مسجلة حتى الآن</td></tr>`;
-            return;
-        }
-
-        firms.forEach(firm => {
-            const endDate = new Date(firm.subscription_end_date);
-            const isExpired = endDate < new Date();
-            
-            const statusBadge = (firm.is_active && !isExpired)
-                ? `<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm">نشط</span>`
-                : `<span class="badge bg-danger px-3 py-2 rounded-pill shadow-sm">منتهي / موقوف</span>`;
-
-            const usersCount = firm.mo_users && firm.mo_users[0] ? firm.mo_users[0].count : 0;
-
-            // أزرار التحكم مجمعة بتصميم متجاوب للموبايل
-            tbody.innerHTML += `
-                <tr>
-                    <td class="fw-bold text-primary" style="font-size: 1rem; white-space: normal;">
-                        <i class="fas fa-balance-scale me-2 text-muted"></i> ${escapeHTML(firm.firm_name)}
-                    </td>
-                    <td dir="ltr" class="text-end fw-bold text-secondary">${endDate.toLocaleDateString('en-GB')}</td>
-                    <td>
-                        <span class="badge bg-secondary px-2 py-1 fs-6">${usersCount} / ${firm.max_users}</span>
-                    </td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn btn-sm btn-warning fw-bold text-dark shadow-sm" onclick="openEditFirmModal('${firm.id}')" title="تعديل الشامل">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="openRenewModal('${firm.id}')" title="تجديد سريع">
-                                <i class="fas fa-calendar-plus"></i>
-                            </button>
-                            <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-primary'} fw-bold shadow-sm" 
-                                onclick="toggleFirmStatus('${firm.id}', ${!firm.is_active}, ${firm.max_users}, '${escapeHTML(firm.firm_name)}')">
-                                <i class="fas ${firm.is_active ? 'fa-ban' : 'fa-check-circle'}"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
+        globalFirms = firms; // حفظ النسخة الأصلية
+        
+        // مسح حقل البحث عند تحديث البيانات
+        document.getElementById('searchFirmInput').value = '';
+        
+        renderFirmsTable(globalFirms);
     } catch (error) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger fw-bold py-4">حدث خطأ أثناء الاتصال بقاعدة البيانات</td></tr>`;
         Swal.fire({ icon: 'error', title: 'خطأ', text: 'فشل تحميل بيانات المكاتب، تأكد من الاتصال بالإنترنت.' });
     }
 }
 
-// 5. إضافة مكتب جديد (تسجيل)
+// 5. دالة رسم الجدول (Refactored Logic)
+function renderFirmsTable(firmsArray) {
+    const tbody = document.getElementById('firmsTableBody');
+    tbody.innerHTML = '';
+
+    if (!firmsArray || firmsArray.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted fw-bold py-4">لا توجد مكاتب تطابق بحثك أو مسجلة حالياً</td></tr>`;
+        return;
+    }
+
+    firmsArray.forEach(firm => {
+        const endDate = new Date(firm.subscription_end_date);
+        const isExpired = endDate < new Date();
+        
+        const statusBadge = (firm.is_active && !isExpired)
+            ? `<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm"><i class="fas fa-check-circle me-1"></i> نشط</span>`
+            : `<span class="badge bg-danger px-3 py-2 rounded-pill shadow-sm"><i class="fas fa-exclamation-triangle me-1"></i> ${isExpired ? 'منتهي' : 'موقوف'}</span>`;
+
+        // حساب عدد المستخدمين الحاليين لتوضيح استهلاك الكوتا
+        const usersCount = firm.mo_users && firm.mo_users[0] ? firm.mo_users[0].count : 0;
+
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold text-navy" style="font-size: 1rem; white-space: normal;">
+                    <i class="fas fa-balance-scale me-2 text-primary"></i> ${escapeHTML(firm.firm_name)}
+                </td>
+                <td dir="ltr" class="text-end fw-bold ${isExpired ? 'text-danger' : 'text-secondary'}">
+                    ${endDate.toLocaleDateString('en-GB')}
+                </td>
+                <td>
+                    <span class="badge ${usersCount >= firm.max_users ? 'bg-danger' : 'bg-secondary'} px-2 py-1 fs-6">
+                        ${usersCount} / ${firm.max_users}
+                    </span>
+                </td>
+                <td>${statusBadge}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn btn-sm btn-warning fw-bold text-dark shadow-sm" onclick="openEditFirmModal('${firm.id}')" title="تعديل الشامل (الاسم، الكوتا، التاريخ)">
+                            <i class="fas fa-edit"></i> <span class="d-md-none">تعديل</span>
+                        </button>
+                        <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="openRenewModal('${firm.id}')" title="تجديد سريع للأشهر">
+                            <i class="fas fa-calendar-plus"></i> <span class="d-md-none">تجديد</span>
+                        </button>
+                        <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-primary'} fw-bold shadow-sm" 
+                            onclick="toggleFirmStatus('${firm.id}', ${!firm.is_active}, ${firm.max_users}, '${escapeHTML(firm.firm_name)}')">
+                            <i class="fas ${firm.is_active ? 'fa-ban' : 'fa-power-off'}"></i> <span class="d-md-none">${firm.is_active ? 'إيقاف' : 'تفعيل'}</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+// 6. الفلترة والبحث اللحظي (Client-Side Search)
+window.filterFirms = function() {
+    const searchTerm = document.getElementById('searchFirmInput').value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        renderFirmsTable(globalFirms);
+        return;
+    }
+
+    const filtered = globalFirms.filter(firm => {
+        const nameMatch = firm.firm_name.toLowerCase().includes(searchTerm);
+        const statusMatch = firm.is_active ? 'نشط'.includes(searchTerm) : ('موقوف'.includes(searchTerm) || 'منتهي'.includes(searchTerm));
+        return nameMatch || statusMatch;
+    });
+
+    renderFirmsTable(filtered);
+};
+
+// 7. إضافة مكتب جديد
 document.getElementById('addFirmForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnSubmitFirm');
@@ -148,7 +184,7 @@ document.getElementById('addFirmForm')?.addEventListener('submit', async (e) => 
     }
 });
 
-// 6. نافذة التعديل الشامل (الاسم، الكوتا، تاريخ الانتهاء)
+// 8. نافذة التعديل الشامل (الاسم، الكوتا، تاريخ الانتهاء)
 window.openEditFirmModal = function(firmId) {
     const firm = globalFirms.find(f => f.id === firmId);
     if (!firm) return;
@@ -157,7 +193,6 @@ window.openEditFirmModal = function(firmId) {
     document.getElementById('editFirmName').value = firm.firm_name;
     document.getElementById('editFirmMaxUsers').value = firm.max_users;
 
-    // تنسيق التاريخ ليتناسب مع حقل input type="date"
     if (firm.subscription_end_date) {
         const dateObj = new Date(firm.subscription_end_date);
         const yyyy = dateObj.getFullYear();
@@ -186,11 +221,9 @@ document.getElementById('editFirmForm')?.addEventListener('submit', async (e) =>
 
     try {
         await SUPER_API.fetch('/api/super/firms', 'PATCH', payload);
-        
         bootstrap.Modal.getInstance(document.getElementById('editFirmModal')).hide();
-        
         Swal.fire({ icon: 'success', title: 'تم التعديل!', text: 'تم تحديث بيانات المكتب بنجاح.', timer: 2000, showConfirmButton: false });
-        loadFirms(); // إعادة تحميل الجدول بعد التعديل
+        loadFirms(); // تحديث القائمة
     } catch (error) {
         Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
     } finally {
@@ -199,10 +232,10 @@ document.getElementById('editFirmForm')?.addEventListener('submit', async (e) =>
     }
 });
 
-// 7. فتح مودال التجديد وإرسال البيانات (إضافة أشهر للتاريخ الحالي أو المستقبلي)
+// 9. التجديد السريع
 window.openRenewModal = function(firmId) {
     document.getElementById('renewFirmId').value = firmId;
-    document.getElementById('renewMonths').value = 12; // القيمة الافتراضية
+    document.getElementById('renewMonths').value = 12;
     new bootstrap.Modal(document.getElementById('renewFirmModal')).show();
 };
 
@@ -216,7 +249,7 @@ document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) =
     const months = document.getElementById('renewMonths').value;
 
     try {
-        await SUPER_API.fetch('/api/super/renew-firm', 'POST', { id: firmId, add_months: months });
+        await SUPER_API.fetch('/api/super/renew-firm', 'POST', { id: firmId, add_months: parseInt(months) });
         bootstrap.Modal.getInstance(document.getElementById('renewFirmModal')).hide();
         Swal.fire({ icon: 'success', title: 'تم التجديد بنجاح!', timer: 2000, showConfirmButton: false });
         loadFirms();
@@ -228,7 +261,7 @@ document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) =
     }
 });
 
-// 8. تغيير حالة المكتب (إيقاف / تفعيل)
+// 10. تغيير حالة المكتب (إيقاف / تفعيل)
 window.toggleFirmStatus = async function(firmId, newStatus, maxUsers, firmName) {
     const actionName = newStatus ? 'تفعيل' : 'إيقاف';
     
@@ -249,7 +282,7 @@ window.toggleFirmStatus = async function(firmId, newStatus, maxUsers, firmName) 
         await SUPER_API.fetch('/api/super/firms', 'PATCH', { 
             id: firmId, 
             is_active: newStatus,
-            max_users: maxUsers // نرسله لكي لا يتأثر في حال لم يتم تحديث الوركر
+            max_users: maxUsers 
         });
         
         Swal.fire({ icon: 'success', title: 'تم بنجاح', text: `تم ${actionName} المكتب.`, timer: 1500, showConfirmButton: false });
@@ -259,7 +292,7 @@ window.toggleFirmStatus = async function(firmId, newStatus, maxUsers, firmName) 
     }
 };
 
-// دالة مساعدة لتأثير الأرقام المتحركة للإحصائيات
+// 11. دوال مساعدة
 function animateValue(id, start, end, duration) {
     if (start === end) {
         document.getElementById(id).innerHTML = end;
@@ -279,7 +312,6 @@ function animateValue(id, start, end, duration) {
     }, stepTime);
 }
 
-// دالة الحماية من ثغرات الحقن (XSS)
 function escapeHTML(str) {
     if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, tag => ({

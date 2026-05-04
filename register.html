@@ -15,10 +15,12 @@
             --primary: #0f172a; 
             --accent: #38bdf8; 
             --bg: #f1f5f9; 
+            --navy: #1e293b;
         }
         body { 
             font-family: 'Cairo', sans-serif; 
             background-color: var(--bg); 
+            -webkit-font-smoothing: antialiased;
         }
         .admin-header { 
             background: var(--primary); 
@@ -55,6 +57,7 @@
         }
         .table-responsive { 
             border-radius: 8px; 
+            -webkit-overflow-scrolling: touch;
         }
         .table thead th { 
             background-color: #f8fafc; 
@@ -62,6 +65,9 @@
             font-weight: 700; 
             border-bottom: 2px solid #e2e8f0; 
             white-space: nowrap;
+        }
+        .table tbody td {
+            vertical-align: middle;
         }
         .btn-logout {
             background-color: #e53e3e;
@@ -75,14 +81,28 @@
             transform: translateY(-2px);
         }
         
-        /* تظبيط الجدول للموبايل */
+        /* استجابة الموبايل (Mobile-First Responsiveness) */
         @media (max-width: 768px) {
-            .table-responsive { border: 0; }
-            .action-btns { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; }
-            .btn-sm { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+            .table-responsive { border: 0; margin-bottom: 0; }
+            .action-btns { 
+                display: flex; 
+                flex-wrap: wrap; 
+                gap: 5px; 
+                justify-content: flex-start; 
+            }
+            .btn-sm { 
+                font-size: 0.8rem; 
+                padding: 0.4rem 0.6rem; 
+                flex-grow: 1; 
+                text-align: center;
+            }
+            .admin-header h4 { font-size: 1.1rem !important; }
+            .modal-dialog { margin: 10px; }
+            .search-container { width: 100% !important; margin-top: 10px; margin-bottom: 10px;}
         }
         @media (min-width: 769px) {
-            .action-btns { display: flex; gap: 5px; flex-wrap: nowrap; }
+            .action-btns { display: flex; gap: 8px; flex-wrap: nowrap; }
+            .search-container { max-width: 350px; }
         }
     </style>
 </head>
@@ -146,13 +166,19 @@
             <div class="col-12">
                 <div class="card shadow-sm">
                     <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
-                        <span class="fs-5 fw-bold text-navy"><i class="fas fa-list text-primary me-2"></i> المكاتب المسجلة</span>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-success fw-bold w-100 w-md-auto" onclick="loadFirms()">
+                        <span class="fs-5 fw-bold text-navy text-nowrap"><i class="fas fa-list text-primary me-2"></i> المكاتب المسجلة</span>
+                        
+                        <div class="input-group search-container">
+                            <span class="input-group-text bg-light border-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="searchFirmInput" class="form-control border-0 bg-light" placeholder="ابحث باسم المكتب أو الحالة..." oninput="filterFirms()">
+                        </div>
+
+                        <div class="d-flex gap-2 flex-wrap flex-md-nowrap w-100 w-md-auto mt-2 mt-md-0">
+                            <button class="btn btn-sm btn-outline-success fw-bold flex-grow-1 flex-md-grow-0" onclick="loadFirms()">
                                 <i class="fas fa-sync-alt"></i> تحديث
                             </button>
-                            <button class="btn btn-sm btn-primary fw-bold w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#addFirmModal">
-                                <i class="fas fa-plus"></i> تسجيل مكتب جديد
+                            <button class="btn btn-sm btn-primary fw-bold flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#addFirmModal">
+                                <i class="fas fa-plus"></i> تسجيل مكتب
                             </button>
                         </div>
                     </div>
@@ -169,7 +195,8 @@
                                     </tr>
                                 </thead>
                                 <tbody id="firmsTableBody">
-                                    </tbody>
+                                    <tr><td colspan="5" class="text-center py-4">جاري التحميل...</td></tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -245,8 +272,9 @@
                             <input type="number" class="form-control border-0 shadow-sm" id="editFirmMaxUsers" min="1" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold small text-muted text-danger">تاريخ الانتهاء المباشر</label>
+                            <label class="form-label fw-bold small text-muted text-danger">تاريخ الانتهاء (مباشر)</label>
                             <input type="date" class="form-control border-0 shadow-sm text-start" id="editFirmEndDate" dir="ltr" required>
+                            <div class="form-text mt-1 text-muted" style="font-size: 0.75rem;">تعديل هذا الحقل يغير تاريخ انتهاء الاشتراك فوراً.</div>
                         </div>
                         <button type="submit" class="btn btn-warning text-dark w-100 fw-bold py-2 mt-2 shadow-sm" id="btnSubmitEditFirm">حفظ التعديلات الشاملة</button>
                     </form>
@@ -278,15 +306,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <script src="./js/config.js"></script>
     <script src="./js/auth.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/register.js"></script>
 
     <script>
-        // حماية فورية
+        // حماية فورية للجلسة (Single Session Validation)
         document.addEventListener('DOMContentLoaded', () => {
-            const user = AUTH.checkSession();
+            const user = typeof AUTH !== 'undefined' ? AUTH.checkSession() : null;
             if (user && user.role !== 'super_admin' && user.role !== 'superadmin') {
                 window.location.replace('app.html');
             }
