@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>الإدارة العليا | نظام موكّل</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -61,6 +61,7 @@
             color: #475569; 
             font-weight: 700; 
             border-bottom: 2px solid #e2e8f0; 
+            white-space: nowrap;
         }
         .btn-logout {
             background-color: #e53e3e;
@@ -73,25 +74,35 @@
             color: white;
             transform: translateY(-2px);
         }
+        
+        /* تظبيط الجدول للموبايل */
+        @media (max-width: 768px) {
+            .table-responsive { border: 0; }
+            .action-btns { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; }
+            .btn-sm { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+        }
+        @media (min-width: 769px) {
+            .action-btns { display: flex; gap: 5px; flex-wrap: nowrap; }
+        }
     </style>
 </head>
 <body>
 
     <div class="admin-header mb-4">
         <div class="container d-flex justify-content-between align-items-center">
-            <h4 class="m-0 fw-bold"><i class="fas fa-crown text-warning me-2"></i> الإدارة العليا | نظام موكّل</h4>
+            <h4 class="m-0 fw-bold fs-5 fs-md-4"><i class="fas fa-crown text-warning me-2"></i> الإدارة العليا | موكّل</h4>
             <div>
                 <button class="btn btn-logout btn-sm px-3 fw-bold rounded-pill shadow-sm" onclick="AUTH.logout()">
-                    <i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج
+                    <i class="fas fa-sign-out-alt me-1"></i> خروج
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="container">
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card stat-card border-start border-primary border-4">
+    <div class="container pb-5">
+        <div class="row mb-4 g-3">
+            <div class="col-12 col-md-4">
+                <div class="card stat-card border-start border-primary border-4 h-100 mb-0">
                     <div class="card-body d-flex align-items-center">
                         <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3 ms-3">
                             <i class="fas fa-building"></i>
@@ -103,8 +114,8 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card stat-card border-start border-success border-4">
+            <div class="col-12 col-md-4">
+                <div class="card stat-card border-start border-success border-4 h-100 mb-0">
                     <div class="card-body d-flex align-items-center">
                         <div class="stat-icon bg-success bg-opacity-10 text-success me-3 ms-3">
                             <i class="fas fa-users"></i>
@@ -116,8 +127,8 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card stat-card border-start border-warning border-4">
+            <div class="col-12 col-md-4">
+                <div class="card stat-card border-start border-warning border-4 h-100 mb-0">
                     <div class="card-body d-flex align-items-center">
                         <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3 ms-3">
                             <i class="fas fa-balance-scale"></i>
@@ -133,20 +144,20 @@
 
         <div class="row">
             <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center py-3">
-                        <span class="fs-5"><i class="fas fa-list text-primary me-2"></i> المكاتب المسجلة</span>
-                        <div>
-                            <button class="btn btn-sm btn-outline-success me-2 fw-bold" onclick="loadFirms()">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center py-3 gap-2">
+                        <span class="fs-5 fw-bold text-navy"><i class="fas fa-list text-primary me-2"></i> المكاتب المسجلة</span>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-success fw-bold w-100 w-md-auto" onclick="loadFirms()">
                                 <i class="fas fa-sync-alt"></i> تحديث
                             </button>
-                            <button class="btn btn-sm btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#addFirmModal">
+                            <button class="btn btn-sm btn-primary fw-bold w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#addFirmModal">
                                 <i class="fas fa-plus"></i> تسجيل مكتب جديد
                             </button>
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <div class="table-responsive text-nowrap" style="max-height: 60vh; overflow-y: auto;">
                             <table class="table table-hover align-middle m-0" id="firmsTable">
                                 <thead class="table-light sticky-top">
                                     <tr>
@@ -174,21 +185,21 @@
                     <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle me-2"></i> تسجيل مكتب جديد</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body bg-light">
+                <div class="modal-body bg-light p-4">
                     <form id="addFirmForm">
                         <div class="card p-3 mb-3 border-0 shadow-sm">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">اسم المكتب / الشركة</label>
-                                <input type="text" class="form-control" id="newFirmName" required>
+                                <label class="form-label fw-bold small text-muted">اسم المكتب / الشركة</label>
+                                <input type="text" class="form-control border-0 bg-light" id="newFirmName" required>
                             </div>
-                            <div class="row mb-2">
+                            <div class="row g-2 mb-2">
                                 <div class="col-6">
-                                    <label class="form-label fw-bold">مدة الاشتراك (أشهر)</label>
-                                    <input type="number" class="form-control" id="newFirmMonths" value="12" min="1" required>
+                                    <label class="form-label fw-bold small text-muted">مدة الاشتراك (أشهر)</label>
+                                    <input type="number" class="form-control border-0 bg-light" id="newFirmMonths" value="12" min="1" required>
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label fw-bold">الحد الأقصى للمستخدمين</label>
-                                    <input type="number" class="form-control" id="newFirmMaxUsers" value="5" min="1" required>
+                                    <label class="form-label fw-bold small text-muted">أقصى عدد مستخدمين</label>
+                                    <input type="number" class="form-control border-0 bg-light" id="newFirmMaxUsers" value="5" min="1" required>
                                 </div>
                             </div>
                         </div>
@@ -196,19 +207,48 @@
                         <div class="card p-3 border-0 shadow-sm mb-2">
                             <h6 class="fw-bold text-primary mb-3 border-bottom pb-2">بيانات مدير المكتب (Admin)</h6>
                             <div class="mb-3">
-                                <label class="form-label fw-bold">الاسم الكامل للمدير</label>
-                                <input type="text" class="form-control" id="newAdminName" required>
+                                <label class="form-label fw-bold small text-muted">الاسم الكامل للمدير</label>
+                                <input type="text" class="form-control border-0 bg-light" id="newAdminName" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-bold">رقم الهاتف (يُستخدم للدخول)</label>
-                                <input type="tel" class="form-control text-start" id="newAdminPhone" placeholder="07xxxxxxxx" dir="ltr" required>
+                                <label class="form-label fw-bold small text-muted">رقم الهاتف (يُستخدم للدخول)</label>
+                                <input type="tel" class="form-control text-start border-0 bg-light" id="newAdminPhone" placeholder="07xxxxxxxx" dir="ltr" required>
                             </div>
                             <div class="mb-2">
-                                <label class="form-label fw-bold">معرف تيليغرام (اختياري)</label>
-                                <input type="text" class="form-control text-start" id="newAdminTelegram" dir="ltr" placeholder="لمراسلات البوت">
+                                <label class="form-label fw-bold small text-muted">معرف تيليغرام (اختياري)</label>
+                                <input type="text" class="form-control text-start border-0 bg-light" id="newAdminTelegram" dir="ltr" placeholder="لمراسلات البوت">
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-2 shadow-sm" id="btnSubmitFirm">حفظ وتسجيل المكتب</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editFirmModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i> تعديل بيانات المكتب</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light p-4">
+                    <form id="editFirmForm">
+                        <input type="hidden" id="editFirmId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">اسم المكتب / الشركة</label>
+                            <input type="text" class="form-control border-0 shadow-sm" id="editFirmName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">الحد الأقصى للمستخدمين (الكوتا)</label>
+                            <input type="number" class="form-control border-0 shadow-sm" id="editFirmMaxUsers" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted text-danger">تاريخ الانتهاء المباشر</label>
+                            <input type="date" class="form-control border-0 shadow-sm text-start" id="editFirmEndDate" dir="ltr" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning text-dark w-100 fw-bold py-2 mt-2 shadow-sm" id="btnSubmitEditFirm">حفظ التعديلات الشاملة</button>
                     </form>
                 </div>
             </div>
@@ -226,8 +266,8 @@
                     <form id="renewFirmForm">
                         <input type="hidden" id="renewFirmId">
                         <div class="mb-4">
-                            <label class="form-label fw-bold text-muted">تجديد لمدة (أشهر)</label>
-                            <input type="number" class="form-control text-center fs-4 fw-bold" id="renewMonths" value="12" min="1" required>
+                            <label class="form-label fw-bold text-muted">تجديد لمدة (أشهر إضافية)</label>
+                            <input type="number" class="form-control text-center fs-4 fw-bold shadow-sm border-0 bg-light" id="renewMonths" value="12" min="1" required>
                         </div>
                         <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm" id="btnSubmitRenew">تأكيد التجديد الآن</button>
                     </form>
@@ -244,7 +284,7 @@
     <script src="./js/register.js"></script>
 
     <script>
-        // حماية فورية: بمجرد فتح الصفحة، يتم التحقق من الصلاحيات وطرد أي مستخدم عادي
+        // حماية فورية
         document.addEventListener('DOMContentLoaded', () => {
             const user = AUTH.checkSession();
             if (user && user.role !== 'super_admin' && user.role !== 'superadmin') {

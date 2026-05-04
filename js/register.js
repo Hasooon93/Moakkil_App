@@ -1,5 +1,7 @@
-// js/register.js - المحرك البرمجي للوحة الإدارة العليا (Super Admin V3.0)
-// الدستور المطبق: حماية المسارات، الاتصال المباشر مع API السوبر أدمن، إدارة الكوتا.
+// js/register.js - المحرك البرمجي للوحة الإدارة العليا (Super Admin V4.0)
+// التحديثات: تعديل معلومات المكتب، الكوتا، التاريخ مباشرة، توافق الموبايل، والـ API المستقل.
+
+let globalFirms = []; // لتخزين بيانات المكاتب وتسهيل التعديل السريع
 
 // 1. إنشاء محرك اتصال مخصص للإدارة العليا (لضمان إرسال توكن الإدارة)
 const SUPER_API = {
@@ -26,14 +28,12 @@ const SUPER_API = {
 
 // 2. التهيئة عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-    // التحقق الأمني القطعي (لمنع أي طرد خاطئ للسوبر أدمن)
     const user = AUTH.checkSession();
     if (!user || (user.role !== 'super_admin' && user.role !== 'superadmin')) {
         window.location.replace('app.html');
         return;
     }
 
-    // تحميل البيانات بمجرد التأكد من الهوية
     loadStats();
     loadFirms();
 });
@@ -42,8 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadStats() {
     try {
         const data = await SUPER_API.fetch('/api/super/stats');
-        
-        // تأثير حركي (Animation) لعداد الأرقام
         animateValue('stat-firms', 0, data.firms_count || 0, 1000);
         animateValue('stat-users', 0, data.users_count || 0, 1000);
         animateValue('stat-cases', 0, data.cases_count || 0, 1000);
@@ -59,6 +57,7 @@ async function loadFirms() {
     
     try {
         const firms = await SUPER_API.fetch('/api/super/firms');
+        globalFirms = firms; // تحديث المصفوفة العالمية
         tbody.innerHTML = '';
 
         if (!firms || firms.length === 0) {
@@ -71,15 +70,16 @@ async function loadFirms() {
             const isExpired = endDate < new Date();
             
             const statusBadge = (firm.is_active && !isExpired)
-                ? `<span class="badge bg-success px-3 py-2 rounded-pill">نشط</span>`
-                : `<span class="badge bg-danger px-3 py-2 rounded-pill">منتهي / موقوف</span>`;
+                ? `<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm">نشط</span>`
+                : `<span class="badge bg-danger px-3 py-2 rounded-pill shadow-sm">منتهي / موقوف</span>`;
 
             const usersCount = firm.mo_users && firm.mo_users[0] ? firm.mo_users[0].count : 0;
 
+            // أزرار التحكم مجمعة بتصميم متجاوب للموبايل
             tbody.innerHTML += `
                 <tr>
-                    <td class="fw-bold text-primary" style="font-size: 1.1rem;">
-                        <i class="fas fa-balance-scale me-2 text-muted"></i> ${firm.firm_name}
+                    <td class="fw-bold text-primary" style="font-size: 1rem; white-space: normal;">
+                        <i class="fas fa-balance-scale me-2 text-muted"></i> ${escapeHTML(firm.firm_name)}
                     </td>
                     <td dir="ltr" class="text-end fw-bold text-secondary">${endDate.toLocaleDateString('en-GB')}</td>
                     <td>
@@ -87,13 +87,18 @@ async function loadFirms() {
                     </td>
                     <td>${statusBadge}</td>
                     <td>
-                        <button class="btn btn-sm btn-success fw-bold me-1 shadow-sm" onclick="openRenewModal('${firm.id}')">
-                            <i class="fas fa-calendar-plus"></i> تجديد
-                        </button>
-                        <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-primary'} fw-bold shadow-sm" 
-                            onclick="toggleFirmStatus('${firm.id}', ${!firm.is_active}, ${firm.max_users}, '${firm.firm_name}')">
-                            <i class="fas ${firm.is_active ? 'fa-ban' : 'fa-check-circle'}"></i> ${firm.is_active ? 'إيقاف' : 'تفعيل'}
-                        </button>
+                        <div class="action-btns">
+                            <button class="btn btn-sm btn-warning fw-bold text-dark shadow-sm" onclick="openEditFirmModal('${firm.id}')" title="تعديل الشامل">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="openRenewModal('${firm.id}')" title="تجديد سريع">
+                                <i class="fas fa-calendar-plus"></i>
+                            </button>
+                            <button class="btn btn-sm ${firm.is_active ? 'btn-outline-danger' : 'btn-outline-primary'} fw-bold shadow-sm" 
+                                onclick="toggleFirmStatus('${firm.id}', ${!firm.is_active}, ${firm.max_users}, '${escapeHTML(firm.firm_name)}')">
+                                <i class="fas ${firm.is_active ? 'fa-ban' : 'fa-check-circle'}"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -123,7 +128,6 @@ document.getElementById('addFirmForm')?.addEventListener('submit', async (e) => 
     try {
         await SUPER_API.fetch('/api/super/register-firm', 'POST', payload);
         
-        // إغلاق المودال وتحديث البيانات
         bootstrap.Modal.getInstance(document.getElementById('addFirmModal')).hide();
         document.getElementById('addFirmForm').reset();
         
@@ -144,12 +148,63 @@ document.getElementById('addFirmForm')?.addEventListener('submit', async (e) => 
     }
 });
 
-// 6. فتح مودال التجديد وإرسال البيانات
-function openRenewModal(firmId) {
+// 6. نافذة التعديل الشامل (الاسم، الكوتا، تاريخ الانتهاء)
+window.openEditFirmModal = function(firmId) {
+    const firm = globalFirms.find(f => f.id === firmId);
+    if (!firm) return;
+
+    document.getElementById('editFirmId').value = firm.id;
+    document.getElementById('editFirmName').value = firm.firm_name;
+    document.getElementById('editFirmMaxUsers').value = firm.max_users;
+
+    // تنسيق التاريخ ليتناسب مع حقل input type="date"
+    if (firm.subscription_end_date) {
+        const dateObj = new Date(firm.subscription_end_date);
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        document.getElementById('editFirmEndDate').value = `${yyyy}-${mm}-${dd}`;
+    } else {
+        document.getElementById('editFirmEndDate').value = '';
+    }
+
+    new bootstrap.Modal(document.getElementById('editFirmModal')).show();
+};
+
+document.getElementById('editFirmForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitEditFirm');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+
+    const payload = {
+        id: document.getElementById('editFirmId').value,
+        firm_name: document.getElementById('editFirmName').value.trim(),
+        max_users: parseInt(document.getElementById('editFirmMaxUsers').value),
+        subscription_end_date: new Date(document.getElementById('editFirmEndDate').value).toISOString()
+    };
+
+    try {
+        await SUPER_API.fetch('/api/super/firms', 'PATCH', payload);
+        
+        bootstrap.Modal.getInstance(document.getElementById('editFirmModal')).hide();
+        
+        Swal.fire({ icon: 'success', title: 'تم التعديل!', text: 'تم تحديث بيانات المكتب بنجاح.', timer: 2000, showConfirmButton: false });
+        loadFirms(); // إعادة تحميل الجدول بعد التعديل
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'حفظ التعديلات الشاملة';
+    }
+});
+
+// 7. فتح مودال التجديد وإرسال البيانات (إضافة أشهر للتاريخ الحالي أو المستقبلي)
+window.openRenewModal = function(firmId) {
     document.getElementById('renewFirmId').value = firmId;
     document.getElementById('renewMonths').value = 12; // القيمة الافتراضية
     new bootstrap.Modal(document.getElementById('renewFirmModal')).show();
-}
+};
 
 document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -162,9 +217,7 @@ document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) =
 
     try {
         await SUPER_API.fetch('/api/super/renew-firm', 'POST', { id: firmId, add_months: months });
-        
         bootstrap.Modal.getInstance(document.getElementById('renewFirmModal')).hide();
-        
         Swal.fire({ icon: 'success', title: 'تم التجديد بنجاح!', timer: 2000, showConfirmButton: false });
         loadFirms();
     } catch (error) {
@@ -175,8 +228,8 @@ document.getElementById('renewFirmForm')?.addEventListener('submit', async (e) =
     }
 });
 
-// 7. تغيير حالة المكتب (إيقاف / تفعيل)
-async function toggleFirmStatus(firmId, newStatus, maxUsers, firmName) {
+// 8. تغيير حالة المكتب (إيقاف / تفعيل)
+window.toggleFirmStatus = async function(firmId, newStatus, maxUsers, firmName) {
     const actionName = newStatus ? 'تفعيل' : 'إيقاف';
     
     const confirm = await Swal.fire({
@@ -196,7 +249,7 @@ async function toggleFirmStatus(firmId, newStatus, maxUsers, firmName) {
         await SUPER_API.fetch('/api/super/firms', 'PATCH', { 
             id: firmId, 
             is_active: newStatus,
-            max_users: maxUsers // نرسله لكي لا يتأثر
+            max_users: maxUsers // نرسله لكي لا يتأثر في حال لم يتم تحديث الوركر
         });
         
         Swal.fire({ icon: 'success', title: 'تم بنجاح', text: `تم ${actionName} المكتب.`, timer: 1500, showConfirmButton: false });
@@ -204,7 +257,7 @@ async function toggleFirmStatus(firmId, newStatus, maxUsers, firmName) {
     } catch (error) {
         Swal.fire({ icon: 'error', title: 'خطأ', text: error.message });
     }
-}
+};
 
 // دالة مساعدة لتأثير الأرقام المتحركة للإحصائيات
 function animateValue(id, start, end, duration) {
@@ -224,4 +277,12 @@ function animateValue(id, start, end, duration) {
             clearInterval(timer);
         }
     }, stepTime);
+}
+
+// دالة الحماية من ثغرات الحقن (XSS)
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.toString().replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
 }
