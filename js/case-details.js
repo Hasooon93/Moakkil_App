@@ -1,5 +1,5 @@
 // js/case-details.js - محرك تفاصيل القضية (النسخة السحابية المحدثة R2 & AI Auto-Draft Edition)
-// التحديثات: تكامل تام مع Cloudflare R2، المزامنة دون اتصال، والتوليد الآلي للوائح القانونية.
+// التحديثات: تكامل تام مع Cloudflare R2، المزامنة دون اتصال، والتوليد الآلي للوائح، ومعالجة PDF/الصور محلياً (AIHandler).
 
 let currentCaseId = localStorage.getItem('current_case_id') || new URLSearchParams(window.location.search).get('id');
 let caseObj = null;
@@ -628,7 +628,9 @@ async function saveExpense(event) {
     try { const res = await API.addExpense(data); if(res && !res.error) await loadCaseFullDetails(); else throw new Error(res?.error || 'خطأ'); } catch(e) { showAlert(e.message, 'error'); }
 }
 
-// 🚀 الرفع الآمن للمستندات عبر R2
+// =================================================================
+// 🧠 الرفع الآمن مع تفعيل العقل المدبر للفرونت إند (AIHandler)
+// =================================================================
 async function saveFile(event) {
     event.preventDefault();
     const fileInput = document.getElementById('file_input');
@@ -641,41 +643,86 @@ async function saveFile(event) {
     const btn = document.getElementById('btn_upload');
     if (!fileInput.files.length) return;
     if (!navigator.onLine) { showAlert('لا يمكن رفع الملفات السحابية بلا إنترنت.', 'warning'); return; }
-    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة وتحليل...';
+    
+    btn.disabled = true; 
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> أرشفة وتحليل ذكي...';
+    
     try {
-        // الرفع المباشر إلى Cloudflare R2
-        const r2Res = await API.uploadFileToR2(fileInput.files[0], caseObj.client_id, caseObj.id);
+        const file = fileInput.files[0];
+
+        // 1. الرفع المباشر إلى Cloudflare R2 للأرشفة (تخزين الملف الأصلي كما هو دون تلاعب لضمان سلامته القانونية)
+        const r2Res = await API.uploadFileToR2(file, caseObj.client_id, caseObj.id);
+        
         if(r2Res && r2Res.r2_key) {
             let aiSummaryText = null;
             let isAnalyzed = false;
-            if (fileInput.files[0].type.startsWith('image/')) {
-                try {
-                    const reader = new FileReader();
-                    const base64Promise = new Promise((resolve) => { reader.onload = (e) => resolve(e.target.result.split(',')[1]); reader.readAsDataURL(fileInput.files[0]); });
-                    const base64Data = await base64Promise;
+            
+            // 2. تمرير الملف لـ AIHandler (ضغط الصورة لتخفيف الـ Payload، أو قراءة الـ PDF محلياً بمتصفح المستخدم!)
+            try {
+                if (window.AIHandler) {
+                    const aiProcessedData = await window.AIHandler.processFile(file);
+                    
                     const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
                     const baseUrl = window.API_BASE_URL || CONFIG.API_URL;
-                    const aiReq = await fetch(`${baseUrl}/api/ai/ocr`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ image_base_64: base64Data }) });
+                    
+                    // إرسال النتيجة المعالجة للوركر بدلاً من إرهاق السيرفر بالملف الثقيل
+                    const aiReq = await fetch(`${baseUrl}/api/ai/ocr`, { 
+                        method: 'POST', 
+                        headers: { 
+                            'Content-Type': 'application/json', 
+                            'Authorization': `Bearer ${token}` 
+                        }, 
+                        body: JSON.stringify({ 
+                            file_type: aiProcessedData.type,
+                            is_text_extracted: aiProcessedData.isTextExtracted,
+                            payload: aiProcessedData.payload
+                        }) 
+                    });
+                    
                     if(aiReq.ok) {
                         const aiData = await aiReq.json();
-                        aiSummaryText = JSON.stringify(aiData, null, 2);
+                        aiSummaryText = typeof aiData === 'string' ? aiData : JSON.stringify(aiData, null, 2);
                         isAnalyzed = true;
                     }
-                } catch (aiErr) {}
+                }
+            } catch (aiErr) {
+                console.error("AI Handler Error:", aiErr);
+                // لا نوقف عملية الحفظ النهائي في حال وجود أي خطأ بالذكاء الاصطناعي
+                showAlert('تم حفظ الملف للأرشيف، لكن واجهنا صعوبة في تحليله ذكياً.', 'warning');
             }
 
+            // 3. حفظ سجل الملف في قاعدة البيانات مع نتائج الذكاء الاصطناعي إن وجدت
             const payload = { 
-                case_id: currentCaseId, file_name: titleInput || fileInput.files[0].name, 
-                file_type: fileInput.files[0].type, file_category: catInput, 
-                file_url: r2Res.r2_key, drive_file_id: r2Res.r2_key, 
-                is_template: false, expiry_date: validExpiry,
-                ai_summary: aiSummaryText, is_analyzed: isAnalyzed 
+                case_id: currentCaseId, 
+                file_name: titleInput || file.name, 
+                file_type: file.type, 
+                file_category: catInput, 
+                file_url: r2Res.r2_key, 
+                drive_file_id: r2Res.r2_key, 
+                is_template: false, 
+                expiry_date: validExpiry,
+                ai_summary: aiSummaryText, 
+                is_analyzed: isAnalyzed 
             };
             
-            const res = await API.addFileRecord ? await API.addFileRecord(payload) : await API.post('/api/files', payload);
-            if(res && !res.error) { closeModal('fileModal'); document.getElementById('fileForm').reset(); showAlert('تم الحفظ والتحليل سحابياً', 'success'); await loadCaseFullDetails(); }
+            const res = await (API.addFileRecord ? API.addFileRecord(payload) : API.post('/api/files', payload));
+            if(res && !res.error) { 
+                closeModal('fileModal'); 
+                document.getElementById('fileForm').reset(); 
+                showAlert('تم الحفظ والتحليل سحابياً', 'success'); 
+                await loadCaseFullDetails(); 
+            } else {
+                throw new Error(res?.error || 'خطأ أثناء تسجيل الملف');
+            }
+        } else {
+            throw new Error('لم يتم استلام معرف التخزين من الأرشيف السحابي R2');
         }
-    } catch (err) { showAlert("فشل الرفع السحابي: " + err.message, 'error'); } finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-upload me-1"></i> رفع للأرشيف'; }
+    } catch (err) { 
+        showAlert("فشل الرفع السحابي: " + err.message, 'error'); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerHTML = '<i class="fas fa-upload me-1"></i> بدء الرفع السحابي'; 
+    }
 }
 
 window.viewAiSummary = function(fileId) {
