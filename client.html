@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>بوابة الموكل الآمنة | نظام موكّل ERP</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        try {
+            const settings = JSON.parse(localStorage.getItem('firm_settings'));
+            if (settings) {
+                if (settings.primary_color) {
+                    document.documentElement.style.setProperty('--firm-primary', settings.primary_color);
+                    document.documentElement.style.setProperty('--firm-light', settings.primary_color);
+                }
+                if (settings.accent_color) document.documentElement.style.setProperty('--firm-accent', settings.accent_color);
+            }
+        } catch (e) {}
+    </script>
+
+    <style>
+        :root {
+            --firm-primary: #0B132B;
+            --firm-light: #1C2541;
+            --firm-accent: #D4AF37;
+            --bg-light: #F4F6F9;
+            --text-dark: #1A1A1A;
+            --text-muted: #6C757D;
+        }
+
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-light); color: var(--text-dark); padding-bottom: 40px; }
+
+        .loader-overlay, #security-layer, #suspended-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .loader-overlay { background: rgba(255,255,255,0.98); }
+        #security-layer, #suspended-layer { background: linear-gradient(135deg, var(--firm-primary) 0%, var(--firm-light) 100%); }
+
+        .spinner { width: 65px; height: 65px; border: 5px solid #E2E8F0; border-top-color: var(--firm-accent); border-radius: 50%; animation: spin 1s infinite; }
+        
+        .security-card {
+            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(15px); border-radius: 28px; padding: 3rem 2rem; width: 90%; max-width: 420px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5); text-align: center; border: 1px solid rgba(212, 175, 55, 0.4); animation: slideUpFade 0.5s ease-out;
+        }
+
+        .pin-input {
+            font-size: 2.2rem; letter-spacing: 25px; text-align: center; border: 2px solid #E2E8F0; border-radius: 16px; font-weight: 900;
+            padding: 18px; color: var(--firm-primary); background: #F8F9FA; transition: all 0.3s ease; font-family: monospace;
+        }
+        .pin-input:focus { border-color: var(--firm-accent); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); background: white; outline: none; }
+
+        .client-header {
+            background: linear-gradient(135deg, var(--firm-primary) 0%, var(--firm-light) 100%); color: white; padding: 40px 25px 50px 25px;
+            border-radius: 0 0 40px 40px; box-shadow: 0 15px 40px rgba(11, 19, 43, 0.2); position: relative; overflow: hidden; border-bottom: 5px solid var(--firm-accent);
+        }
+        
+        .avatar-container {
+            width: 70px; height: 70px; border-radius: 50%; border: 3px solid var(--firm-accent); overflow: hidden; background: white;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .info-card {
+            background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 25px;
+            border-top: 4px solid var(--firm-accent); transition: transform 0.3s;
+        }
+
+        .telegram-banner {
+            background: linear-gradient(135deg, #0088cc, #005580); color: white; border-radius: 16px; padding: 20px;
+            display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(0, 136, 204, 0.3); margin-bottom: 25px;
+        }
+
+        /* تنسيق لافتة النواقص الجديدة */
+        .missing-docs-banner {
+            background: linear-gradient(135deg, #fff3cd, #ffe69c); color: #664d03; border-radius: 16px; padding: 20px;
+            box-shadow: 0 10px 25px rgba(255, 193, 7, 0.2); margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;
+        }
+        
+        /* تنسيق لافتة التوقيع الرقمي */
+        .signature-banner {
+            background: linear-gradient(135deg, #e0f2fe, #bfdbfe); color: #1e3a8a; border-radius: 16px; padding: 20px;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2); margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .timeline { border-right: 3px solid rgba(212, 175, 55, 0.3); padding-right: 25px; position: relative; margin-top: 20px; }
+        .timeline-item { position: relative; margin-bottom: 25px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #f1f5f9; }
+        .timeline-item::after {
+            content: ''; position: absolute; right: -34px; top: 25px; width: 16px; height: 16px; background: var(--firm-primary);
+            border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px var(--firm-accent);
+        }
+
+        /* تنسيق مخصص لحالات الاجتماعات (منجز، قادم، ملغي) */
+        .timeline-item.appt-completed::after { background: #198754; box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.3); border-color: white; }
+        .timeline-item.appt-canceled::after { background: #dc3545; box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.3); border-color: white; }
+
+        .fin-box { text-align: center; padding: 25px 15px; border-radius: 16px; border: 1px solid rgba(0,0,0,0.05); transition: 0.3s; }
+        .nav-pills { background: white; padding: 8px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+        .nav-pills::-webkit-scrollbar { display: none; }
+        .nav-pills .nav-link { color: var(--firm-primary); font-weight: 800; border-radius: 14px; padding: 12px 10px; font-size: 0.9rem; white-space: nowrap; }
+        .nav-pills .nav-link.active { background-color: var(--firm-primary); color: var(--firm-accent); }
+        .nav-pills .nav-item { min-width: max-content; }
+
+        /* إعدادات لوحة التوقيع (Canvas) */
+        #signaturePad {
+            border: 2px dashed var(--firm-primary);
+            border-radius: 12px;
+            cursor: crosshair;
+            background-color: #fff;
+            touch-action: none;
+            width: 100%;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: slideUpFade 0.5s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <h5 class="mt-4 fw-bold" style="color: var(--firm-primary);">جاري تأسيس الاتصال المشفر...</h5>
+    </div>
+
+    <div id="security-layer" class="d-none">
+        <div class="security-card">
+            <div id="firm-logo-sec" class="mb-4 d-none">
+                <img src="" id="firm-logo-img" style="max-height: 85px; border-radius: 14px;">
+            </div>
+            <i class="fas fa-lock fa-3x mb-3" style="color: var(--firm-accent);"></i>
+            <h4 class="fw-bold mb-2" style="color: var(--firm-primary);">بوابة الموكل الآمنة</h4>
+            <form onsubmit="verifyAccess(event)" class="mt-4">
+                <input type="password" id="pin_input" class="form-control pin-input mb-4" placeholder="----" maxlength="6" required dir="ltr">
+                <button type="submit" class="btn w-100 fw-bold py-3 fs-5" id="btn-verify" style="background: linear-gradient(135deg, var(--firm-primary), var(--firm-light)); color: var(--firm-accent); border-radius: 16px; border: none;">
+                    <i class="fas fa-shield-check me-2"></i> تأكيد ودخول
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <main id="main-content" class="d-none fade-in">
+        
+        <header class="client-header">
+            <div class="d-flex justify-content-between align-items-center position-relative z-1 mb-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="avatar-container" id="ui-client-avatar-container">
+                        <i class="fas fa-user-tie fa-2x text-muted" id="ui-client-avatar-icon"></i>
+                        <img id="ui-client-avatar-img" src="" class="d-none" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div>
+                        <h6 class="mb-1 fw-bold" style="color: var(--firm-accent);" id="ui-firm-name">مكتب المحاماة</h6>
+                        <h4 class="fw-bold mb-1 text-white" id="ui-client-name">--</h4>
+                        <span class="badge bg-white text-dark shadow-sm px-3 mt-1" id="ui-case-status">حالة القضية</span>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-outline-light" onclick="logoutClient()"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+            
+            <div class="position-relative z-1 pt-2">
+                <div class="d-flex justify-content-between mb-2">
+                    <small class="text-white fw-bold" id="ui-progress-text">جاري العمل على الملف...</small>
+                </div>
+                <div class="progress" style="height: 10px; background-color: rgba(255,255,255,0.15); border-radius: 10px;">
+                    <div id="ui-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 50%; background-color: var(--firm-accent);"></div>
+                </div>
+            </div>
+        </header>
+
+        <section class="container mt-4">
+            
+            <div id="signature-request-banner" class="signature-banner d-none position-relative z-1" style="margin-top: -30px;">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="fas fa-signature me-2 text-primary"></i> توقيع إلكتروني مطلوب</h6>
+                    <small class="opacity-75" id="signature-request-text">طلب المحامي توقيعك على مستند قانوني هام.</small>
+                </div>
+                <button class="btn btn-primary fw-bold rounded-pill px-3 shadow-sm" onclick="openSignatureModal()">عرض وتوقيع</button>
+            </div>
+
+            <div id="missing-docs-banner" class="missing-docs-banner d-none position-relative z-1" style="margin-top: -30px;">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="fas fa-exclamation-triangle me-2 text-warning"></i> نواقص ومستندات مطلوبة</h6>
+                    <small class="opacity-75" id="missing-docs-text">يرجى رفع المستندات المطلوبة لاستكمال إجراءات القضية.</small>
+                </div>
+                <button class="btn btn-dark fw-bold rounded-pill px-3 shadow-sm" onclick="openMissingDocsUpload()">رفع الآن</button>
+            </div>
+
+            <div id="telegram-connect-banner" class="telegram-banner d-none position-relative z-1" style="margin-top: -30px;">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="fab fa-telegram-plane me-2"></i> اربط حسابك بتيليغرام</h6>
+                    <small class="opacity-75">لتصلك تحديثات الجلسات وإيصالات الدفع فوراً.</small>
+                </div>
+                <a href="#" id="telegram-deep-link" target="_blank" class="btn btn-light fw-bold text-primary rounded-pill px-4 shadow-sm">ربط الآن</a>
+            </div>
+
+            <div class="info-card">
+                <h5 class="fw-bold border-bottom pb-3 mb-4" style="color: var(--firm-primary);"><i class="fas fa-gavel me-2" style="color: var(--firm-accent);"></i> معلومات القضية</h5>
+                <div class="row g-4">
+                    <div class="col-6"><small class="text-muted fw-bold d-block mb-1">الرقم المرجعي</small><b class="fs-6 font-monospace" id="ui-case-id">--</b></div>
+                    <div class="col-6"><small class="text-muted fw-bold d-block mb-1">المحكمة</small><b class="fs-6" id="ui-court-name">--</b></div>
+                    <div class="col-12"><small class="text-danger fw-bold d-block mb-1">الخصم</small><b class="fs-6 text-danger" id="ui-opponent">--</b></div>
+                </div>
+            </div>
+
+            <ul class="nav nav-pills mb-4 justify-content-between gap-1" id="pills-tab" role="tablist">
+                <li class="nav-item flex-fill text-center"><button class="nav-link active w-100" data-bs-toggle="pill" data-bs-target="#tab-updates"><i class="fas fa-stream d-block mb-1"></i> الإجراءات</button></li>
+                <li class="nav-item flex-fill text-center"><button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tab-appointments"><i class="fas fa-calendar-check d-block mb-1"></i> المواعيد</button></li>
+                <li class="nav-item flex-fill text-center"><button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tab-finance"><i class="fas fa-wallet d-block mb-1"></i> المالية</button></li>
+                <li class="nav-item flex-fill text-center"><button class="nav-link w-100" data-bs-toggle="pill" data-bs-target="#tab-files"><i class="fas fa-folder d-block mb-1"></i> المستندات</button></li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tab-updates">
+                    <h5 class="fw-bold mb-4 ms-2" style="color: var(--firm-primary);"><i class="fas fa-history me-2" style="color: var(--firm-accent);"></i> السجل الإجرائي</h5>
+                    <div class="timeline" id="ui-timeline-container"></div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-appointments">
+                    <h5 class="fw-bold mb-4 ms-2" style="color: var(--firm-primary);"><i class="fas fa-handshake me-2" style="color: var(--firm-accent);"></i> جدول اللقاءات والجلسات</h5>
+                    <div class="timeline" id="ui-appointments-container"></div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-finance">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-sm btn-outline-dark fw-bold rounded-pill shadow-sm" onclick="generateStatement()"><i class="fas fa-file-invoice-dollar me-1"></i> تحميل كشف حساب (PDF)</button>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-4"><div class="fin-box bg-white shadow-sm h-100"><small class="text-muted fw-bold d-block mb-2">إجمالي</small><b class="text-dark fs-5 font-monospace" id="ui-fin-agreed">0</b></div></div>
+                        <div class="col-4"><div class="fin-box text-white shadow-sm h-100" style="background: #2d6a4f;"><small class="opacity-75 fw-bold d-block mb-2">المدفوع</small><b class="fs-5 font-monospace" id="ui-fin-paid">0</b></div></div>
+                        <div class="col-4"><div class="fin-box bg-white shadow-sm h-100"><small class="text-danger fw-bold d-block mb-2">المتبقي</small><b class="text-danger fs-5 font-monospace" id="ui-fin-rem">0</b></div></div>
+                    </div>
+                    <div class="info-card mb-4" style="border-top-color: #2d6a4f;"><h6 class="fw-bold mb-4 text-success"><i class="fas fa-money-bill-wave me-2"></i> السجل المالي</h6><div id="ui-payments-container"></div></div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-files">
+                    <div class="row g-3" id="ui-files-container"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal fade" id="missingDocsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-0 bg-light rounded-top-4">
+                    <h5 class="modal-title fw-bold" style="color: var(--firm-primary);"><i class="fas fa-cloud-upload-alt me-2 text-warning"></i> رفع المستندات المطلوبة</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="text-muted fw-bold mb-4" id="missing-docs-list-display">يرجى اختيار المستند المطلوب (صورة أو PDF) ورفعه.</p>
+                    <input type="file" id="missing-doc-file" class="form-control form-control-lg mb-3" accept="image/*,.pdf">
+                    <button class="btn w-100 fw-bold py-3 text-dark fs-5 shadow-sm" style="background-color: var(--firm-accent); border-radius: 12px;" onclick="uploadMissingDoc()">
+                        <i class="fas fa-paper-plane me-2"></i> رفع المستند وإرساله للمكتب
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="signatureModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-0" style="background: linear-gradient(135deg, #1e3a8a, #1e40af);">
+                    <h5 class="modal-title fw-bold text-white"><i class="fas fa-signature me-2 text-warning"></i> التوقيع الإلكتروني المُصادق</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="alert alert-info border-0 shadow-sm fw-bold small text-start mb-4">
+                        <i class="fas fa-info-circle me-1"></i> إقرارك وتوقيعك هنا يعتبر موافقة رسمية موثقة إلكترونياً (بالتاريخ والـ IP) على المستند المعروض من قبل المحامي.
+                    </div>
+                    
+                    <div class="bg-white p-3 rounded-3 border shadow-sm mb-4" id="signature-document-preview" style="max-height: 250px; overflow-y: auto; text-align: right; font-size: 0.95rem; line-height: 1.8;">
+                        جاري تحميل المستند...
+                    </div>
+
+                    <p class="text-muted fw-bold small mb-2 text-start">يرجى التوقيع داخل الإطار بإصبعك (للموبايل) أو الماوس (للكمبيوتر):</p>
+                    <canvas id="signaturePad" height="200" class="shadow-sm"></canvas>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <button class="btn btn-outline-danger fw-bold rounded-pill px-4" onclick="clearSignature()"><i class="fas fa-eraser me-1"></i> مسح وإعادة</button>
+                        <button class="btn btn-success fw-bold rounded-pill px-5 shadow-sm" onclick="submitSignature()"><i class="fas fa-check-circle me-1"></i> أقر وأوافق</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/client.js"></script>
+</body>
+</html>

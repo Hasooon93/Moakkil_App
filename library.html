@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>المكتبة القانونية | نظام موكّل ERP</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    
+    <link href="./css/style.css" rel="stylesheet">
+    
+    <style>
+        /* ========================================================================
+           المتغيرات اللونية: الهوية الملكية الفاخرة
+           ======================================================================== */
+        :root { 
+            --primary-dark: #0B132B; 
+            --primary-light: #1C2541;
+            --gold-luxury: #D4AF37;
+            --gold-hover: #b5952f;
+            --light-bg: #F4F6F9;
+            --text-dark: #1A1A1A;
+            --text-muted: #6C757D;
+        }
+
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 90px;
+        }
+
+        /* الترويسة العلوية الفاخرة */
+        .top-nav {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            padding: 15px 20px;
+            color: white;
+            box-shadow: 0 4px 20px rgba(11, 19, 43, 0.15);
+            border-bottom: 3px solid var(--gold-luxury);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+
+        /* التبويبات القابلة للتمرير (Swipeable Tabs) */
+        .nav-pills-custom { 
+            display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 15px; gap: 10px; 
+            -webkit-overflow-scrolling: touch; 
+        }
+        .nav-pills-custom::-webkit-scrollbar { display: none; }
+        .nav-pills-custom .nav-link { 
+            white-space: nowrap; border-radius: 14px; color: var(--text-muted); font-weight: 800; 
+            border: 2px solid rgba(0,0,0,0.05); transition: 0.3s; background: white; padding: 12px 22px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        }
+        .nav-pills-custom .nav-link:hover { background: #f8fafc; color: var(--primary-dark); border-color: rgba(212, 175, 55, 0.3); }
+        .nav-pills-custom .nav-link.active { 
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); 
+            color: var(--gold-luxury); 
+            border-color: var(--primary-dark); 
+            box-shadow: 0 8px 20px rgba(11, 19, 43, 0.2); 
+            transform: translateY(-2px);
+        }
+
+        /* حقل البحث الذكي */
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 25px;
+        }
+        .search-box {
+            background: white;
+            border: 2px solid #E2E8F0;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            padding: 8px 20px;
+            transition: 0.3s;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+        }
+        .search-box:focus-within { 
+            border-color: var(--gold-luxury); 
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); 
+            transform: translateY(-2px);
+        }
+        .search-box i { color: var(--gold-luxury); font-size: 1.2rem; }
+        .search-box input { 
+            border: none; background: transparent; outline: none; padding: 12px; width: 100%; 
+            font-weight: 800; font-size: 1.05rem; color: var(--primary-dark);
+        }
+        .search-box input::placeholder { color: #94A3B8; font-weight: 700; }
+
+        /* تنسيق كروت المكتبة التي يولدها الـ JS (.template-card) */
+        .template-card { 
+            border-right: 5px solid var(--gold-luxury); 
+            border-radius: 16px; 
+            background: white; 
+            padding: 22px; 
+            position: relative; 
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.03); 
+            border-top: 1px solid rgba(0,0,0,0.03);
+            border-left: 1px solid rgba(0,0,0,0.03);
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .template-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 35px rgba(11, 19, 43, 0.08); 
+            border-right-color: var(--primary-dark);
+        }
+
+        /* الأزرار (Buttons) */
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
+            color: var(--primary-dark);
+            border: none;
+            font-weight: 900;
+            border-radius: 14px;
+            padding: 10px 22px;
+            box-shadow: 0 6px 15px rgba(212, 175, 55, 0.2);
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-gold:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4); 
+            color: var(--primary-dark); 
+        }
+        
+        /* النوافذ المنبثقة (Modals) */
+        .modal-content { border-radius: 24px; border: none; box-shadow: 0 30px 60px rgba(11, 19, 43, 0.3); overflow: hidden; }
+        .modal-header { background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); color: white; border-bottom: 4px solid var(--gold-luxury); padding: 20px 25px; }
+        .modal-title { font-weight: 900; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; }
+        .modal-body { padding: 30px 25px; background: var(--light-bg); }
+        
+        .card-inner { background: white; border-radius: 16px; padding: 22px; border: 1px solid rgba(0,0,0,0.03); box-shadow: 0 5px 15px rgba(0,0,0,0.02); margin-bottom: 20px; }
+
+        .form-control, .form-select {
+            border-radius: 12px; border: 2px solid #E2E8F0; padding: 14px 15px; font-weight: 700; color: var(--primary-dark); transition: 0.3s; background: #F8F9FA;
+        }
+        .form-control:focus, .form-select:focus { 
+            border-color: var(--gold-luxury); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); background: white; outline: none;
+        }
+        .form-label { font-weight: 800; color: var(--primary-dark); font-size: 0.95rem; margin-bottom: 8px;}
+
+        /* تنسيق مساحة الإسقاط (Dropzone style) للملفات */
+        .upload-dropzone {
+            border: 2px dashed var(--gold-luxury);
+            border-radius: 16px;
+            padding: 30px;
+            background: rgba(212, 175, 55, 0.03);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .upload-dropzone:hover {
+            background: rgba(212, 175, 55, 0.08);
+            border-style: solid;
+        }
+
+        /* شريط التنقل السفلي الفاخر */
+        .bottom-nav { 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 -10px 30px rgba(11, 19, 43, 0.05); border-radius: 30px 30px 0 0; 
+            padding: 12px 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+            position: fixed; bottom: 0; width: 100%; z-index: 1040; display: flex; justify-content: space-around; 
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; text-decoration: none; }
+        .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); transform: translateY(-4px); }
+        .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 5px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--gold-luxury); transform: scale(1.15); }
+
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ========================================================================
+           إضافات المحرر الذكي (Smart Editor Styles)
+           ======================================================================== */
+        .editor-wrapper {
+            background-color: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.05);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        #editor-container {
+            height: 400px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 16px;
+            border: none;
+        }
+        .ql-toolbar.ql-snow {
+            border: none;
+            border-bottom: 1px solid #E2E8F0;
+            background-color: #F8F9FA;
+            padding: 12px;
+        }
+        #signaturePad {
+            border: 2px dashed var(--primary-light);
+            border-radius: 12px;
+            cursor: crosshair;
+            background-color: #fff;
+            touch-action: none; /* مهم جداً لمنع السكرول أثناء التوقيع بالموبايل */
+            width: 100%;
+        }
+
+        /* إعدادات الطباعة النظيفة (إخفاء كل شيء عدا المحرر) */
+        @media print {
+            body * { visibility: hidden; }
+            #smart-editor-section, #smart-editor-section * { visibility: visible; }
+            #smart-editor-section {
+                position: absolute;
+                left: 0; top: 0;
+                width: 100%;
+                margin: 0; padding: 0;
+            }
+            .ql-toolbar, .smart-controls, .bottom-nav, .top-nav { display: none !important; }
+            #editor-container { height: auto !important; overflow: visible !important; border: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <button class="btn btn-link text-white p-0 text-decoration-none me-3" onclick="window.location.href='app.html'">
+                <i class="fas fa-arrow-right fs-4"></i>
+            </button>
+            <h5 class="mb-0 fw-bold text-white"><i class="fas fa-book me-2" style="color: var(--gold-luxury);"></i> المكتبة والنماذج</h5>
+        </div>
+        <button id="btn-add-template" class="btn-gold shadow-sm" onclick="new bootstrap.Modal(document.getElementById('uploadModal')).show()">
+            <i class="fas fa-cloud-upload-alt fs-5"></i> <span class="d-none d-sm-inline">أرشفة نموذج</span>
+        </button>
+    </div>
+
+    <div class="container mt-4 fade-in">
+        
+        <div class="alert border-0 shadow-sm fw-bold mb-4 d-flex align-items-center rounded-4" style="background: rgba(212, 175, 55, 0.08); color: var(--primary-dark); border-right: 4px solid var(--gold-luxury) !important; padding: 15px 20px;">
+            <i class="fas fa-info-circle fs-4 me-3" style="color: var(--gold-luxury);"></i> 
+            هذه المكتبة السحابية (R2) مشتركة. جميع النماذج، اللوائح، والتشريعات المضافة هنا متاحة لجميع أفراد المكتب لتسهيل وسرعة الإنجاز.
+        </div>
+
+        <div id="smart-editor-section" class="editor-wrapper mb-5">
+            <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)) !important;">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-magic me-2 text-warning"></i> صياغة العقود والنماذج الذكية</h6>
+            </div>
+            
+            <div class="p-3 smart-controls bg-light border-bottom">
+                <div class="row g-2">
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small mb-1 text-muted">القالب الجاهز</label>
+                        <select class="form-select form-select-sm fw-bold" id="templateSelector">
+                            <option value="">-- اختر قالباً --</option>
+                            <option value="contract">عقد أتعاب محاماة</option>
+                            <option value="notice">إنذار عدلي</option>
+                            <option value="plea">لائحة دعوى (فارغة)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small mb-1 text-muted">سحب الموكل (استبدال آلي)</label>
+                        <select class="form-select form-select-sm fw-bold" id="clientSelector">
+                            <option value="">-- اختر الموكل --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="form-label small mb-1 text-muted">سحب القضية (اختياري)</label>
+                        <select class="form-select form-select-sm fw-bold" id="caseSelector">
+                            <option value="">-- اختر القضية --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-6 d-flex align-items-end gap-1">
+                        <button class="btn btn-secondary flex-grow-1 fw-bold border-0 shadow-sm px-1" onclick="saveDraft()" style="border-radius:10px; font-size: 0.85rem;" title="حفظ كمسودة للعودة إليها لاحقاً">
+                            <i class="fas fa-save"></i> مسودة
+                        </button>
+                        <button class="btn btn-warning flex-grow-1 fw-bold border-0 shadow-sm px-1" onclick="openSignatureModal()" style="border-radius:10px; font-size: 0.85rem;" title="توقيع حي">
+                            <i class="fas fa-pen-nib"></i> توقيع
+                        </button>
+                        <button class="btn btn-success flex-grow-1 fw-bold border-0 shadow-sm px-1" onclick="printDocument()" style="border-radius:10px; font-size: 0.85rem;" title="تصدير للطباعة">
+                            <i class="fas fa-print"></i> تصدير
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="editor-container"></div>
+        </div>
+        <h5 class="fw-bold mb-3 mt-5" style="color: var(--primary-dark);"><i class="fas fa-archive me-2 text-muted"></i> أرشيف المكتبة السحابي</h5>
+        <ul class="nav nav-pills nav-pills-custom mb-4" id="pills-tab" role="tablist">
+            <li class="nav-item-tab flex-shrink-0">
+                <button class="nav-link bg-light text-primary border-primary" data-bs-toggle="pill" onclick="filterTemplates('مسودات')"><i class="fas fa-edit me-1"></i> مسوداتي (Drafts)</button>
+            </li>
+            <li class="nav-item-tab flex-shrink-0">
+                <button class="nav-link active" data-bs-toggle="pill" onclick="filterTemplates('عقود')"><i class="fas fa-file-signature me-1"></i> عقود</button>
+            </li>
+            <li class="nav-item-tab flex-shrink-0">
+                <button class="nav-link" data-bs-toggle="pill" onclick="filterTemplates('وكالات')"><i class="fas fa-file-contract me-1"></i> وكالات</button>
+            </li>
+            <li class="nav-item-tab flex-shrink-0">
+                <button class="nav-link" data-bs-toggle="pill" onclick="filterTemplates('لوائح')"><i class="fas fa-balance-scale me-1"></i> لوائح</button>
+            </li>
+            <li class="nav-item-tab flex-shrink-0">
+                <button class="nav-link" data-bs-toggle="pill" onclick="filterTemplates('قوانين')"><i class="fas fa-gavel me-1"></i> تشريعات</button>
+            </li>
+        </ul>
+
+        <div class="search-wrapper">
+            <div class="search-box">
+                <i class="fas fa-search ms-2"></i>
+                <input type="text" id="search-input" placeholder="البحث الذكي عن نموذج، وكالة، قانون أو مسودة..." onkeyup="searchTemplates()">
+            </div>
+        </div>
+
+        <div class="row g-4 pb-5" id="templates-container">
+            <div class="col-12 text-center p-5 text-muted fw-bold bg-white rounded-4 border shadow-sm">
+                <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: var(--gold-luxury);"></i>
+                <h5 class="fw-bold" style="color: var(--primary-dark);">جاري جلب ملفات المكتبة...</h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white"><i class="fas fa-cloud-upload-alt me-2" style="color: var(--gold-luxury);"></i> أرشفة نموذج مرجعي جديد</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="uploadForm" onsubmit="uploadTemplate(event)">
+                        
+                        <div class="mb-4 text-center upload-dropzone position-relative">
+                            <i class="fas fa-file-word fa-4x mb-3" style="color: var(--primary-light);"></i>
+                            <label class="form-label d-block fw-bold fs-5" style="color: var(--primary-dark);">اختر الملف <span class="text-danger">*</span></label>
+                            <span class="text-muted small fw-bold d-block mb-3">الصيغ المدعومة: PDF, DOC, DOCX</span>
+                            <input type="file" id="tpl_file" class="form-control fw-bold" accept=".pdf,.doc,.docx" required>
+                        </div>
+
+                        <div class="card-inner mb-4">
+                            <div class="mb-3">
+                                <label class="form-label">عنوان المرجع / التشريع <span class="text-danger">*</span></label>
+                                <input type="text" id="tpl_title" class="form-control" required placeholder="مثال: نموذج عقد عمل محدد المدة...">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">التصنيف القانوني <span class="text-danger">*</span></label>
+                                <select id="tpl_category" class="form-select" required>
+                                    <option value="عقود">عقود واتفاقيات جاهزة</option>
+                                    <option value="وكالات">نماذج وكالات قانونية</option>
+                                    <option value="لوائح">لوائح ومذكرات دفاع</option>
+                                    <option value="قوانين">نصوص قانونية / تشريعات</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn_upload_tpl" class="btn btn-gold w-100 py-3 fs-5 justify-content-center">
+                            <i class="fas fa-save me-2"></i> رفع وحفظ في المكتبة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="signatureModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-white border-bottom border-warning">
+                    <h5 class="modal-title fw-bold" style="color: var(--primary-dark)"><i class="fas fa-signature me-2 text-warning"></i> التوقيع الإلكتروني (شاشة اللمس)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="text-muted fw-bold small mb-3">يرجى من الموكل التوقيع بإصبعه أو الماوس داخل الإطار المخصص أدناه.</p>
+                    <canvas id="signaturePad" height="250"></canvas>
+                </div>
+                <div class="modal-footer bg-light border-0 justify-content-between">
+                    <button type="button" class="btn btn-outline-danger fw-bold" onclick="clearSignature()"><i class="fas fa-eraser me-1"></i> مسح اللوحة</button>
+                    <button type="button" class="btn btn-success fw-bold px-4" onclick="insertSignature()"><i class="fas fa-check-circle me-1"></i> إعتماد وإدراج</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="app.html" class="nav-item text-decoration-none">
+            <i class="fas fa-home"></i> المكتب
+        </a>
+        <a href="app-cases.html" class="nav-item text-decoration-none">
+            <i class="fas fa-gavel"></i> القضايا
+        </a>
+        <a href="app-clients.html" class="nav-item text-decoration-none">
+            <i class="fas fa-users"></i> الموكلين
+        </a>
+        <a href="app-agenda.html" class="nav-item text-decoration-none">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </a>
+        <a href="library.html" class="nav-item active text-decoration-none">
+            <i class="fas fa-toolbox"></i> الأدوات
+        </a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script> 
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    
+    <script src="./js/library.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const settings = JSON.parse(localStorage.getItem('firm_settings'));
+                if (settings) {
+                    if (settings.primary_color) {
+                        document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                        document.documentElement.style.setProperty('--primary-light', settings.primary_color);
+                    }
+                    if (settings.accent_color) {
+                        document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                        document.documentElement.style.setProperty('--gold-hover', settings.accent_color);
+                    }
+                }
+            } catch (e) {
+                console.error("Theme Loading Error:", e);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>تفاصيل القضية | نظام موكّل ERP</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <link href="./css/style.css" rel="stylesheet">
+    
+    <script>
+        try {
+            const settings = JSON.parse(localStorage.getItem('firm_settings'));
+            if (settings) {
+                if (settings.primary_color) {
+                    document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                    document.documentElement.style.setProperty('--navy', settings.primary_color);
+                }
+                if (settings.accent_color) {
+                    document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                    document.documentElement.style.setProperty('--accent', settings.accent_color);
+                }
+            }
+        } catch (e) { console.error("Error loading firm settings", e); }
+    </script>
+
+    <style>
+        /* --- 3.1 المتغيرات اللونية الأساسية --- */
+        :root { 
+            --primary-dark: #0B132B; 
+            --primary-light: #1C2541;
+            --gold-luxury: #D4AF37;
+            --gold-hover: #b5952f;
+            --light-bg: #F4F6F9;
+            --text-dark: #1A1A1A;
+            --text-muted: #6C757D;
+            --danger-luxury: #9e2a2b;
+            --success-luxury: #2d6a4f;
+        }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 90px;
+        }
+
+        /* --- طبقة الحماية المانعة للتسريب (Screen Leak Protection) --- */
+        #screen-leak-protection {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            pointer-events: none; z-index: 99999; overflow: hidden; 
+            opacity: 0.04; font-size: 1.5rem; font-weight: 900; 
+            color: #000; transform: rotate(-30deg) scale(1.5); 
+            white-space: pre-wrap; user-select: none; display: flex;
+            align-items: center; justify-content: center; text-align: center;
+        }
+        .confidential-active { user-select: none !important; -webkit-user-select: none !important; }
+
+        /* --- 3.2 الترويسة العلوية --- */
+        .top-nav {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            padding: 15px 20px;
+            color: white;
+            box-shadow: 0 4px 20px rgba(11, 19, 43, 0.15);
+            border-bottom: 3px solid var(--gold-luxury);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+
+        /* --- 3.3 كارت القضية الأساسي (Case Hero Card) --- */
+        .case-header-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid rgba(0,0,0,0.03);
+            border-right: 6px solid var(--gold-luxury);
+            box-shadow: 0 10px 35px rgba(0,0,0,0.04);
+            padding: 30px 25px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        /* --- 3.4 الحاويات الداخلية --- */
+        .card-custom {
+            background: white;
+            border-radius: 16px;
+            padding: 25px 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0,0,0,0.03);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.02);
+            border-top: 4px solid var(--primary-dark);
+            transition: 0.3s ease;
+        }
+        .card-custom:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .card-custom h6 {
+            color: var(--primary-dark);
+            border-bottom: 2px solid #F4F6F9;
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+            font-weight: 900;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* --- 3.5 التبويبات القابلة للتمرير (Swipeable Tabs) --- */
+        .nav-tabs { 
+            border: none; gap: 8px; margin-bottom: 20px; flex-wrap: nowrap; 
+            overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch;
+        }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .nav-tabs .nav-link {
+            border: 2px solid rgba(0,0,0,0.05) !important;
+            border-radius: 14px !important;
+            color: var(--text-muted);
+            font-weight: 800;
+            padding: 12px 22px;
+            background: white;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .nav-tabs .nav-link:hover { background: #f8fafc; color: var(--primary-dark); border-color: rgba(212, 175, 55, 0.3) !important; }
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)) !important;
+            color: var(--gold-luxury) !important;
+            border-color: var(--primary-dark) !important;
+            box-shadow: 0 6px 20px rgba(11, 19, 43, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* --- 3.6 الخط الزمني (Timeline) --- */
+        .timeline { border-right: 3px solid rgba(212, 175, 55, 0.3); padding-right: 25px; position: relative; margin-top: 15px;}
+        .timeline-item { 
+            position: relative; margin-bottom: 25px; background: white; padding: 20px; 
+            border-radius: 16px; border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 4px 15px rgba(0,0,0,0.02); 
+            transition: 0.3s;
+        }
+        .timeline-item:hover { border-color: var(--gold-luxury); transform: translateX(-5px); }
+        .timeline-item::after { 
+            content: ''; position: absolute; right: -33px; top: 20px; 
+            width: 16px; height: 16px; background: var(--primary-dark); 
+            border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px var(--gold-luxury);
+        }
+
+        /* --- 3.7 الحقول والأزرار --- */
+        .form-control, .form-select, textarea {
+            border-radius: 12px; border: 2px solid #E2E8F0; padding: 14px 15px; font-weight: 700; color: var(--text-dark); transition: 0.3s; background: #F8F9FA;
+        }
+        .form-control:focus, .form-select:focus, textarea:focus { border-color: var(--gold-luxury); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); background: white; outline: none; }
+        .form-label { font-weight: 800; color: var(--primary-dark); font-size: 0.95rem; margin-bottom: 8px;}
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
+            color: var(--primary-dark); border: none; font-weight: 900; border-radius: 14px; padding: 12px 24px;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-gold:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4); color: var(--primary-dark); }
+        
+        .btn-outline-navy {
+            border: 2px solid var(--primary-dark); color: var(--primary-dark); background: transparent; 
+            font-weight: 800; border-radius: 12px; padding: 10px 20px; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center;
+        }
+        .btn-outline-navy:hover { background: var(--primary-dark); color: var(--gold-luxury); }
+
+        /* --- 3.8 النوافذ المنبثقة (Modals) --- */
+        .modal-content { border-radius: 24px; border: none; box-shadow: 0 30px 60px rgba(11, 19, 43, 0.3); overflow: hidden; }
+        .modal-header { background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); color: white; border-bottom: 4px solid var(--gold-luxury); padding: 20px 25px; }
+        .modal-title { font-weight: 900; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;}
+        .modal-body { background: #F8F9FA; padding: 30px 25px; }
+
+        /* --- 3.9 شريط التنقل السفلي --- */
+        .bottom-nav { 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 -10px 30px rgba(11, 19, 43, 0.05); border-radius: 30px 30px 0 0; 
+            padding: 12px 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+            position: fixed; bottom: 0; width: 100%; z-index: 1040; display: flex; justify-content: space-around; 
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; }
+        .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); transform: translateY(-4px); }
+        .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 5px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--gold-luxury); transform: scale(1.15); }
+
+        /* --- 3.10 إعدادات الطباعة (Print Media Queries) --- */
+        @media screen { #print-section { display: none !important; } }
+        @media print {
+            body { background: white !important; font-family: 'Cairo', sans-serif !important; }
+            body > *:not(#print-section) { display: none !important; }
+            #print-section { display: block !important; position: absolute; top: 0; left: 0; width: 100%; background: white; z-index: 9999; }
+            .no-print { display: none !important; }
+            .table-bordered { border: 2px solid #000 !important; }
+            .table-bordered th, .table-bordered td { border: 1px solid #000 !important; }
+        }
+
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="pb-5 mb-5">
+
+    <div id="screen-leak-protection" class="d-none"></div>
+
+    <div id="print-section" dir="rtl" class="p-4 bg-white text-dark">
+        <div id="invoice-print-container" style="display: none;">
+            <div class="text-center mb-4 border-bottom border-2 border-dark pb-3">
+                <h2 class="fw-bold mb-2" id="print-firm-name">مكتب المحاماة</h2>
+                <h4 class="text-muted fw-bold">سند قبض / فاتورة ماليّة</h4>
+            </div>
+            <div class="row mb-4 align-items-center">
+                <div class="col-6">
+                    <p class="mb-2 fs-5"><strong>التاريخ:</strong> <span id="print-inv-date"></span></p>
+                    <p class="mb-0 fs-5"><strong>رقم الملف الداخلي:</strong> <span id="print-inv-case"></span></p>
+                </div>
+                <div class="col-6 text-end">
+                    <div id="invoice-verification-qr" class="d-inline-block p-2 border border-dark rounded"></div>
+                    <small class="d-block mt-1 fw-bold">امسح للتحقق</small>
+                </div>
+            </div>
+            <table class="table table-bordered text-center border-dark mt-4">
+                <thead class="table-light border-dark">
+                    <tr><th class="fs-5 py-3">البيان والتفاصيل</th><th class="fs-5 py-3">المبلغ (دينار أردني)</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="py-4 fs-5 text-start pe-4">دفعة مالية مقبوضة من السيد/ة: <strong id="print-inv-client"></strong></td>
+                        <td class="py-4 fw-bold fs-4 align-middle" id="print-inv-amount">0</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="mb-4 bg-light p-3 border border-dark rounded mt-4">
+                <span class="fs-5"><strong>المبلغ فقط:</strong> <span id="print-inv-tafqeet" class="fst-italic"></span> لا غير.</span>
+            </div>
+            <div class="row mt-5 pt-5 text-center">
+                <div class="col-6 fs-5"><strong>توقيع المستلم</strong><br><br>..........................</div>
+                <div class="col-6 fs-5"><strong>ختم المكتب</strong><br><br>..........................</div>
+            </div>
+        </div>
+
+        <div id="qr-print-container" class="text-center mt-5" style="display: none;">
+            <h2 class="fw-bold mb-3" id="print-qr-casenum">رقم الملف</h2>
+            <h5 class="text-muted mb-4">امسح الرمز أدناه للوصول السريع والآمن لهذا الملف</h5>
+            <div id="qrcode" class="d-flex justify-content-center p-3 border border-dark rounded shadow-sm d-inline-block bg-white mt-3"></div>
+        </div>
+    </div>
+
+    <header class="top-nav d-flex align-items-center justify-content-between d-print-none">
+        <button class="btn btn-link text-white p-0 text-decoration-none" onclick="goBack()"><i class="fas fa-arrow-right fs-4"></i></button>
+        <h5 class="mb-0 fw-bold text-white text-truncate mx-2" id="case-title" style="max-width: 60%;">تفاصيل القضية</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm rounded-3 px-3" id="btn_sync" onclick="manualSync()" title="مزامنة البيانات السحابية">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm rounded-3 px-3" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2" style="border-radius: 16px; min-width: 250px;">
+                    <li><a class="dropdown-item py-2 fw-bold rounded-2 mb-1" href="#" onclick="openEditModal()"><i class="fas fa-edit text-warning me-3"></i>تعديل بيانات القضية</a></li>
+                    <li><a class="dropdown-item py-2 fw-bold rounded-2 mb-1" href="#" onclick="openShareModal()"><i class="fas fa-share-alt text-primary me-3"></i>مشاركة البوابة للموكل</a></li>
+                    <li><a class="dropdown-item py-2 fw-bold rounded-2 mb-1" href="#" onclick="printQRCode()"><i class="fas fa-qrcode text-dark me-3"></i>طباعة ملصق QR للملف</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2 fw-bold rounded-2 mb-1 text-danger" href="#" onclick="openDelegationModal()"><i class="fas fa-exchange-alt me-3"></i>نقل عهدة القضية</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2 fw-bold rounded-2" href="#" onclick="openAiDraftModal()"><i class="fas fa-robot text-info me-3"></i>توليد مسودة قانونية (AI)</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div id="alertBox"></div>
+
+    <main class="container mt-4 fade-in" id="main-content">
+        
+        <section class="case-header-card position-relative">
+            <div id="case-badges" class="position-absolute top-0 end-0 p-3 d-flex flex-column gap-2 z-1"></div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                <h4 class="fw-bold mb-0 text-truncate" style="color: var(--primary-dark); cursor:pointer; max-width: 70%;" id="case-client-name" onclick="goToClientProfile()" title="الانتقال لملف الموكل"></h4>
+                <span id="case-status" class="badge px-4 py-2 fs-6 rounded-pill shadow-sm" style="background: var(--gold-luxury); color: var(--primary-dark);">نشطة</span>
+            </div>
+            
+            <div class="mb-4" id="assigned-lawyers-container"></div>
+            
+            <div class="row g-3 text-muted small fw-bold">
+                <div class="col-6"><i class="fas fa-balance-scale" style="color: var(--gold-luxury);"></i> المحكمة: <b class="text-dark ms-1" id="det-court">--</b></div>
+                <div class="col-6"><i class="fas fa-hashtag" style="color: var(--gold-luxury);"></i> الغرفة: <b class="text-dark ms-1 font-monospace" id="det-chamber">--</b></div>
+                <div class="col-6"><i class="fas fa-file-signature" style="color: var(--gold-luxury);"></i> رقم الدعوى: <b class="text-dark ms-1 font-monospace" id="det-court-num">--</b></div>
+                <div class="col-6"><i class="fas fa-calendar-alt" style="color: var(--gold-luxury);"></i> سنة الدعوى: <b class="text-dark ms-1 font-monospace" id="det-case-year">--</b></div>
+                <div class="col-6"><i class="fas fa-gavel" style="color: var(--gold-luxury);"></i> القاضي: <b class="text-dark ms-1" id="det-judge">--</b></div>
+                <div class="col-6"><i class="fas fa-layer-group" style="color: var(--gold-luxury);"></i> التدرج: <b class="text-dark ms-1" id="det-litigation">--</b></div>
+                <div class="col-6"><i class="fas fa-users" style="color: var(--danger-luxury);"></i> الخصم: <b class="ms-1" style="color: var(--danger-luxury);" id="det-opponent">--</b></div>
+                <div class="col-6"><i class="fas fa-file-contract" style="color: var(--gold-luxury);"></i> الوكالة: <b class="text-dark ms-1 font-monospace" id="det-poa-number">--</b></div>
+                <div class="col-12"><i class="fas fa-user-tie" style="color: var(--gold-luxury);"></i> محامي الخصم: <b class="text-dark ms-1" id="det-opp-lawyer">--</b></div>
+                
+                <div class="col-12 mt-3 p-3 rounded-3" style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3);">
+                    <i class="fas fa-hourglass-end text-danger fs-5 align-middle"></i> <span class="fs-6 ms-1">موعد الإجراء القادم:</span> <b class="text-danger ms-1 fs-5 font-monospace" id="det-deadline">--</b>
+                </div>
+            </div>
+
+            <div class="row g-2 text-muted small mt-4 border-top pt-3">
+                <div class="col-12"><i class="fas fa-exclamation-circle text-danger"></i> الرقم التنفيذي (ERP): <b class="text-danger ms-1 font-monospace" id="det-execution-num">--</b></div>
+                <div class="col-12 mt-2"><i class="fas fa-tags text-info"></i> تصنيفات (Tags): <span id="det-tags" class="ms-1">--</span></div>
+            </div>
+
+            <div class="mt-4 border-top pt-3">
+                <div class="d-flex justify-content-between small mb-2 fw-bold"><span style="color: var(--primary-dark);">نسبة النجاح المتوقعة:</span><span id="det-success-text" style="color: var(--success-luxury); font-size: 1.1rem;">0%</span></div>
+                <div class="progress shadow-sm" style="height: 12px; border-radius: 10px; background: #e2e8f0;">
+                    <div id="det-success-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar"></div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                <div id="case-pin" class="fw-bold fs-5 text-danger font-monospace" style="letter-spacing: 3px;"></div>
+                <div class="text-muted small fw-bold d-none bg-light px-3 py-2 rounded-pill border shadow-sm" id="client-last-seen-container" title="آخر مرة فتح فيها الموكل الرابط">
+                    <i class="fas fa-eye text-success me-1"></i> <span id="det-client-last-seen"></span>
+                </div>
+            </div>
+        </section>
+
+        <ul class="nav nav-tabs d-print-none" id="caseTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active shadow-sm" id="timeline-tab" data-bs-toggle="tab" data-bs-target="#timeline" type="button" role="tab"><i class="fas fa-stream me-1 text-primary"></i> الإجراءات</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" id="details-tab" data-bs-toggle="tab" data-bs-target="#full-details" type="button" role="tab"><i class="fas fa-list-alt me-1 text-info"></i> التفاصيل</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" id="finance-tab" data-bs-toggle="tab" data-bs-target="#finance" type="button" role="tab"><i class="fas fa-money-bill-wave me-1 text-success"></i> المالية</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab"><i class="fas fa-folder-open me-1 text-warning"></i> الأرشيف</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit-content" type="button" role="tab"><i class="fas fa-shield-alt me-1 text-danger"></i> الرقابة</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="caseTabsContent">
+            
+            <div class="tab-pane fade show active" id="timeline" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="fw-bold mb-0" style="color: var(--primary-dark);"><i class="fas fa-calendar-check me-2" style="color: var(--gold-luxury);"></i> سجل الوقائع والجلسات</h6>
+                    <button class="btn btn-gold shadow-sm" onclick="openUpdateModal()"><i class="fas fa-plus me-1"></i> إضافة إجراء</button>
+                </div>
+                
+                <div class="timeline" id="timeline-container">
+                    <div class="text-center p-5 fw-bold bg-white rounded-4 border shadow-sm" style="color: var(--primary-dark);">
+                        <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: var(--gold-luxury);"></i><br>جاري تحميل السجل الإجرائي...
+                    </div>
+                </div>
+                
+                <div class="card-custom mt-4" style="border-top-color: var(--danger-luxury);">
+                    <h6><i class="fas fa-user-secret me-2" style="color: var(--danger-luxury);"></i> ملاحظات سرية للمحامين (لا تظهر للموكل إطلاقاً)</h6>
+                    <textarea class="form-control bg-light mb-3 shadow-sm" id="secret_notes_input" rows="4" placeholder="اكتب هنا خطة الدفاع، نقاط ضعف الخصم، أو أي ملاحظة استراتيجية سرية..."></textarea>
+                    <button class="btn w-100 fw-bold text-white shadow-sm" style="background: var(--danger-luxury); border-radius: 12px; padding: 14px; font-size: 1.1rem;" onclick="saveSecretNotes()"><i class="fas fa-save me-2"></i> تشفير وحفظ الملاحظات السرية</button>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="full-details" role="tabpanel">
+                <div class="card-custom" style="border-top-color: var(--info);">
+                    <h6><i class="fas fa-users text-info me-2"></i> الأطراف، الشهود، والوكالة الإضافية</h6>
+                    <div class="row g-3 small text-muted fw-bold">
+                        <div class="col-12"><strong class="text-dark">المدعين / المشتكون الإضافيون:</strong> <span id="det-co-plaintiffs" class="ms-2">--</span></div>
+                        <div class="col-12"><strong class="text-dark">المدعى عليهم / المشتكى عليهم الإضافيون:</strong> <span id="det-co-defendants" class="ms-2">--</span></div>
+                        <div class="col-12"><strong class="text-dark">الشهود والخبراء:</strong> <span id="det-experts" class="ms-2">--</span></div>
+                        <div class="col-12 mt-3 pt-3 border-top"><strong class="text-dark">تفاصيل الوكالة الإضافية:</strong> <span id="det-poa-details" class="ms-2">--</span></div>
+                    </div>
+                </div>
+
+                <div class="card-custom" style="border-top-color: #f59e0b;">
+                    <h6><i class="fas fa-balance-scale-right text-warning me-2"></i> طبيعة الدعوى ومآلها</h6>
+                    <div class="row g-3 small text-muted fw-bold">
+                        <div class="col-md-6"><strong class="text-dark">نوع الدعوى:</strong> <span id="det-case-type" class="ms-2">--</span></div>
+                        <div class="col-md-6"><strong class="text-dark">قضية رئيسية مرتبطة:</strong> <span id="det-parent-case" class="ms-2">لا يوجد</span></div>
+                        <div class="col-12"><hr class="my-1 border-light"></div>
+                        <div class="col-md-6 text-danger"><strong class="text-danger">تاريخ السقوط / التقادم:</strong> <span id="det-limit-date" class="ms-2 font-monospace">--</span></div>
+                        <div class="col-md-6 text-success"><strong class="text-success">تاريخ النطق بالحكم:</strong> <span id="det-judgment-date" class="ms-2 font-monospace">--</span></div>
+                        <div class="col-12 mt-3"><strong class="text-dark d-block mb-2">نتيجة القضية النهائية:</strong> <span class="badge bg-secondary fs-6 px-3 py-2 rounded-pill shadow-sm" id="det-outcome">--</span></div>
+                        <div class="col-12 mt-2"><strong class="text-dark d-block mb-2">سبب الإغلاق وموجز الحكم:</strong> <div id="det-closure-reason" class="bg-light p-3 rounded-3 border">--</div></div>
+                    </div>
+                </div>
+
+                <div class="card-custom" style="border-top-color: var(--secondary);">
+                    <h6><i class="fas fa-book-open text-secondary me-2"></i> السرد اليدوي للائحة الدعوى</h6>
+                    <div class="row g-3 small text-muted fw-bold">
+                        <div class="col-12"><strong class="text-dark d-block mb-2">الوقائع:</strong> <div id="det-manual-facts" class="bg-light p-3 rounded-3 border text-wrap lh-lg">--</div></div>
+                        <div class="col-12"><strong class="text-dark d-block mb-2">الأسانيد القانونية:</strong> <div id="det-manual-legal" class="bg-light p-3 rounded-3 border text-wrap lh-lg">--</div></div>
+                        <div class="col-12"><strong class="text-dark d-block mb-2">الطلبات الختامية:</strong> <div id="det-manual-reqs" class="bg-light p-3 rounded-3 border text-wrap lh-lg">--</div></div>
+                    </div>
+                </div>
+
+                <div class="card-custom" style="background: linear-gradient(135deg, #ffffff, #fcfaf5); border-color: var(--gold-luxury); border-top-color: var(--gold-luxury);">
+                    <h6 style="color: var(--primary-dark);"><i class="fas fa-robot me-2" style="color: var(--gold-luxury); font-size: 1.3rem;"></i> الاستخلاص والملخص الذكي (AI Analyzer)</h6>
+                    <p class="small text-dark mb-2 fw-bold">الملخص التراكمي الذكي (يتم تحديثه مع كل إجراء جديد):</p>
+                    <div class="fw-bold p-3 rounded-3 shadow-sm border mb-4" id="det-ai-summary" style="background: rgba(212, 175, 55, 0.05); border-color: rgba(212, 175, 55, 0.3) !important; color: var(--primary-dark); line-height: 1.8; font-size: 1.05rem;">لا يوجد ملخص تراكمي بعد.</div>
+                    
+                    <div class="row g-4 small text-muted fw-bold border-top pt-4">
+                        <div class="col-12"><strong class="text-dark d-block mb-2"><i class="fas fa-magic text-info me-1"></i> الوقائع المستخلصة:</strong> <div id="det-ai-facts" class="bg-white p-3 border rounded-3 lh-lg">--</div></div>
+                        <div class="col-12"><strong class="text-dark d-block mb-2"><i class="fas fa-gavel text-warning me-1"></i> الأسانيد المستخلصة:</strong> <div id="det-ai-legal" class="bg-white p-3 border rounded-3 lh-lg">--</div></div>
+                        <div class="col-12"><strong class="text-dark d-block mb-2"><i class="fas fa-check-double text-success me-1"></i> الطلبات المستخلصة:</strong> <div id="det-ai-requests" class="bg-white p-3 border rounded-3 lh-lg">--</div></div>
+                    </div>
+                </div>
+
+                <div class="card-custom" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-top-color: var(--primary-dark);">
+                    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                        <h6 class="mb-0" style="color: var(--primary-dark);"><i class="fas fa-brain me-2" style="color: var(--gold-luxury); font-size: 1.3rem;"></i> السوابق والاستراتيجية (Smart Archive)</h6>
+                        <button class="btn btn-sm btn-outline-navy fw-bold shadow-sm" onclick="consultSmartArchive()" id="btn_consult_archive">
+                            <i class="fas fa-search-plus me-1"></i> استشر الأرشيف الذكي
+                        </button>
+                    </div>
+                    <p class="small text-muted fw-bold mb-3">يبحث هذا المحرك دلالياً (Vector Search) في قضايا المكتب السابقة المشابهة لوقائع هذه القضية، ويستخلص الدفوع التي أدت للنجاح.</p>
+                    
+                    <div id="cross-case-loading" class="text-center p-4 d-none">
+                        <i class="fas fa-circle-notch fa-spin fa-2x mb-3" style="color: var(--gold-luxury);"></i>
+                        <h6 class="text-navy fw-bold small">جاري البحث في الأرشيف وتحليل الدفوع...</h6>
+                    </div>
+
+                    <div id="cross-case-results" class="d-none fade-in mt-3">
+                        <div class="p-3 mb-4 rounded-3 border shadow-sm" style="background: rgba(45, 106, 79, 0.05); border-color: rgba(45, 106, 79, 0.2) !important;">
+                            <h6 class="fw-bold mb-3" style="color: var(--success-luxury);"><i class="fas fa-lightbulb me-2"></i> التوصية الاستراتيجية المستخلصة:</h6>
+                            <div id="cross-case-recommendation" class="small fw-bold text-dark lh-lg" style="white-space: pre-wrap;"></div>
+                        </div>
+                        <h6 class="fw-bold text-navy small mb-3"><i class="fas fa-link me-1 text-primary"></i> القضايا المرجعية المطابقة:</h6>
+                        <div id="cross-case-list" class="row g-3">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="card-custom border-dark border-top-dark">
+                    <h6><i class="fas fa-archive text-dark me-2"></i> المراجع المادية والأرشيف الورقي</h6>
+                    <div class="row g-3 small text-muted fw-bold">
+                        <div class="col-md-6"><i class="fas fa-shield-alt text-primary"></i> مركز أمني: <b class="text-dark ms-1" id="det-police">--</b></div>
+                        <div class="col-md-6"><i class="fas fa-building text-secondary"></i> نيابة عامة: <b class="text-dark ms-1" id="det-prosecution">--</b></div>
+                        <div class="col-12 border-top pt-3 mt-3"><i class="fas fa-box text-warning"></i> موقع الأرشيف الورقي بالشركة: <b class="text-dark ms-1" id="det-archive">--</b></div>
+                        <div class="col-12"><i class="fas fa-pen-nib text-info"></i> كاتب الجلسة بالمحكمة: <b class="text-dark ms-1" id="det-clerk">--</b></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="finance" role="tabpanel">
+                <div class="card-custom mb-4 p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center" style="background: rgba(13, 202, 240, 0.05); border-color: rgba(13, 202, 240, 0.3) !important;">
+                    <span class="fw-bold text-navy fs-5 mb-2 mb-md-0"><i class="fas fa-file-invoice-dollar text-info me-2"></i> قيمة المطالبة (موضوع الدعوى):</span>
+                    <b class="fs-2 text-info fw-900 font-monospace" id="det-claim-amount">0</b>
+                </div>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-4">
+                        <div class="card-custom text-center h-100 m-0 p-3" style="border-top-color: var(--primary-dark);">
+                            <small class="text-muted fw-bold d-block mb-2">الأتعاب المتفق عليها</small>
+                            <b class="fs-4 font-monospace" style="color: var(--primary-dark);" id="sum-agreed">0</b>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card-custom text-center h-100 m-0 p-3" style="border-top-color: var(--success-luxury);">
+                            <small class="fw-bold d-block mb-2" style="color: var(--success-luxury);">إجمالي المقبوض</small>
+                            <b class="fs-4 font-monospace" style="color: var(--success-luxury);" id="sum-paid">0</b>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card-custom text-center h-100 m-0 p-3" style="border-top-color: var(--danger-luxury);">
+                            <small class="fw-bold d-block mb-2" style="color: var(--danger-luxury);">المصروفات المدفوعة</small>
+                            <b class="fs-4 font-monospace" style="color: var(--danger-luxury);" id="sum-expenses">0</b>
+                        </div>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <div class="card-custom p-4 mb-2 d-flex justify-content-between align-items-center" style="border-left: 5px solid var(--danger-luxury);">
+                            <span class="fw-bold fs-5" style="color: var(--primary-dark);">الرصيد المتبقي على الموكل:</span>
+                            <span id="sum-net" class="fw-bold fs-2 text-danger font-monospace">0</span>
+                        </div>
+                        <div class="progress shadow-sm mb-4" style="height: 15px; border-radius: 15px; background: #e2e8f0;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="fin_progress" role="progressbar" style="width: 0%; background: var(--success-luxury);"></div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm mb-3">
+                            <span class="text-muted fw-bold"><i class="fas fa-university me-2 text-primary"></i> رسوم الصندوق المدفوعة:</span>
+                            <b class="text-dark fs-5 font-monospace" id="sum-court-fees">0 <small class="fs-6">د.أ</small></b>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-4 border shadow-sm">
+                            <span class="text-muted fw-bold"><i class="fas fa-undo-alt me-2 text-warning"></i> التأمينات المستردة:</span>
+                            <b class="text-warning text-dark fs-5 font-monospace" id="sum-court-deposits">0 <small class="fs-6">د.أ</small></b>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-5 mb-4 border-bottom pb-3">
+                    <h5 class="fw-bold mb-0" style="color: var(--success-luxury);"><i class="fas fa-hand-holding-usd me-2"></i> سجل المقبوضات <span class="badge rounded-pill ms-2" style="background: var(--success-luxury);" id="inst-count">0</span></h5>
+                    <div>
+                        <button class="btn btn-sm text-white fw-bold shadow-sm px-3 py-2 rounded-pill" style="background: var(--success-luxury);" onclick="openModal('paymentModal')"><i class="fas fa-plus me-1"></i> سند جديد</button>
+                        <button class="btn btn-sm btn-outline-success fw-bold shadow-sm px-3 py-2 rounded-pill ms-2" onclick="openFeeSplitModal()"><i class="fas fa-layer-group me-1"></i> تقسيم لعدة دفعات</button>
+                    </div>
+                </div>
+                <div id="payments-container" class="mb-5"></div>
+
+                <div class="d-flex justify-content-between align-items-center mt-5 mb-4 border-bottom pb-3">
+                    <h5 class="fw-bold mb-0" style="color: var(--danger-luxury);"><i class="fas fa-receipt me-2"></i> سجل المصروفات والرسوم <span class="badge rounded-pill ms-2" style="background: var(--danger-luxury);" id="exp-count">0</span></h5>
+                    <button class="btn btn-sm text-white fw-bold shadow-sm px-4 py-2 rounded-pill" style="background: var(--danger-luxury);" onclick="openModal('expenseModal')"><i class="fas fa-plus me-1"></i> تسجيل مصروف</button>
+                </div>
+                <div id="expenses-container" class="pb-4"></div>
+            </div>
+
+            <div class="tab-pane fade" id="files" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="fw-bold mb-0 fs-5" style="color: var(--primary-dark);"><i class="fas fa-cloud text-info me-2"></i> الأرشيف السحابي للملف (R2)</h6>
+                    <button class="btn btn-gold shadow-sm px-4" onclick="openModal('fileModal')"><i class="fas fa-upload me-2"></i> رفع مستند وتشفيره</button>
+                </div>
+                <div class="row g-4" id="files-container">
+                    <div class="col-12 text-center p-5 fw-bold bg-white rounded-4 border shadow-sm" style="color: var(--primary-dark);">
+                        <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: var(--gold-luxury);"></i><br>جاري جلب الملفات من الخوادم الآمنة...
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="audit-content" role="tabpanel">
+                <div class="card-custom border-dark border-top-dark">
+                    <h6 class="mb-4 fs-5"><i class="fas fa-shield-check text-success me-2"></i> سجل الحركات والتدقيق الأمني (Audit Trail)</h6>
+                    <p class="small text-muted fw-bold mb-4">يُظهر هذا السجل كافة الحركات والإضافات والتعديلات التي تمت على هذا الملف مع تحديد الموظف والوقت.</p>
+                    <div id="audit-container">
+                        <div class="text-center p-5 text-muted fw-bold bg-light rounded-4 border">
+                            <i class="fas fa-spinner fa-spin fa-3x mb-3"></i><br>جاري جلب السجل الأمني الموثق...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="modal fade" id="editCaseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white"><i class="fas fa-edit text-warning"></i> التعديل الشامل لبيانات القضية</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    
+                    <ul class="nav nav-pills bg-white p-3 border-bottom overflow-auto flex-nowrap" id="editCaseTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active shadow-sm" data-bs-toggle="pill" data-bs-target="#edit-basic" type="button">الأساسيات</button></li>
+                        <li class="nav-item"><button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#edit-court" type="button">المحكمة والمواعيد</button></li>
+                        <li class="nav-item"><button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#edit-parties" type="button">الأطراف والوكالة</button></li>
+                        <li class="nav-item"><button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#edit-lawsuit" type="button">اللائحة والأرشيف</button></li>
+                        <li class="nav-item"><button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#edit-finance" type="button">المالية</button></li>
+                    </ul>
+
+                    <form id="editCaseForm" onsubmit="updateCaseDetails(event)" class="p-4">
+                        <div class="tab-content" id="editCaseTabsContent">
+                            
+                            <div class="tab-pane fade show active" id="edit-basic">
+                                <div class="row g-4">
+                                    <div class="col-md-6"><label class="form-label">رقم الملف الداخلي</label><input type="text" class="form-control font-monospace" id="edit_internal_id"></div>
+                                    <div class="col-md-6"><label class="form-label">حالة القضية الحالية</label>
+                                        <select class="form-select fw-bold" id="edit_status">
+                                            <option value="نشطة">نشطة</option><option value="استئناف">استئناف</option><option value="تمييز">تمييز</option><option value="مكتملة">مكتملة/مغلقة</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><label class="form-label">رقم PIN لبوابة الموكل (السري)</label><input type="text" class="form-control text-center text-danger fw-bold fs-5" style="letter-spacing: 5px; font-family: monospace;" id="edit_access_pin"></div>
+                                    <div class="col-md-6"><label class="form-label">نوع الدعوى</label><input type="text" class="form-control" id="edit_type" placeholder="عمالية، تنفيذية، شرعية..."></div>
+                                    
+                                    <div class="col-md-6"><label class="form-label"><i class="fas fa-fire text-danger me-1"></i> مستوى الأولوية</label>
+                                        <select class="form-select border-danger" id="edit_priority_level">
+                                            <option value="عادي">عادي</option><option value="هام">هام</option><option value="عاجل جداً">عاجل جداً</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><label class="form-label"><i class="fas fa-lock text-warning me-1"></i> مستوى السرية</label>
+                                        <select class="form-select border-warning" id="edit_confidentiality_level">
+                                            <option value="عادي">عادي (متاح لمحاميي المكتب)</option><option value="سري">سري (للمحامي المسؤول والمدير فقط)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-12"><label class="form-label">المرحلة الإجرائية الحالية</label><input type="text" class="form-control" id="edit_current_stage" placeholder="تقديم البينات، مرافعة، انتظار قرار..."></div>
+                                    
+                                    <div class="col-12">
+                                        <label class="form-label text-primary"><i class="fas fa-users-cog me-1"></i> إسناد القضية لـ (فريق المحامين)</label>
+                                        <select class="form-control" id="edit_assigned_lawyer" multiple></select>
+                                    </div>
+                                    
+                                    <div class="col-12 mt-4 pt-3 border-top">
+                                        <label class="form-label text-info"><i class="fas fa-tags me-1"></i> تصنيفات ذكية (Tags)</label>
+                                        <input type="text" class="form-control border-info" id="edit_case_tags" placeholder="مثال: تجاري, صلح, عقارات (افصل بفاصلة)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="edit-court">
+                                <div class="row g-4">
+                                    <div class="col-md-6"><label class="form-label">المحكمة المختصة</label><input type="text" class="form-control" id="edit_court"></div>
+                                    <div class="col-md-6"><label class="form-label">الغرفة / الهيئة</label><input type="text" class="form-control font-monospace" id="edit_court_chamber"></div>
+                                    <div class="col-md-6"><label class="form-label">رقم الدعوى الرسمي</label><input type="text" class="form-control font-monospace" id="edit_court_case_number"></div>
+                                    <div class="col-md-6"><label class="form-label">سنة الدعوى</label><input type="number" class="form-control font-monospace" id="edit_case_year"></div>
+                                    <div class="col-md-6"><label class="form-label">درجة التقاضي</label>
+                                        <select class="form-select" id="edit_litigation_degree">
+                                            <option value="">غير محدد</option><option value="صلح">صلح</option><option value="بداية">بداية</option><option value="استئناف">استئناف</option><option value="تمييز">تمييز</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><label class="form-label">اسم القاضي</label><input type="text" class="form-control" id="edit_judge"></div>
+                                    <div class="col-12"><label class="form-label">كاتب الجلسة (قلم المحكمة)</label><input type="text" class="form-control" id="edit_court_clerk"></div>
+                                    <div class="col-12"><label class="form-label">ربط هذه القضية بقضية رئيسية (إن وجدت)</label><select class="form-select" id="edit_parent_case_id"></select></div>
+                                    
+                                    <div class="col-12 mt-4 pt-3 border-top">
+                                        <label class="form-label text-danger fw-bold"><i class="fas fa-exclamation-triangle me-1"></i> الرقم التنفيذي (في حال وصلت للتنفيذ)</label>
+                                        <input type="text" class="form-control bg-light border-danger text-danger fw-bold font-monospace" id="edit_execution_file_number" placeholder="مثال: 2024/15/ت">
+                                    </div>
+
+                                    <div class="col-12 mt-4 pt-3 border-top"><h6 class="fw-bold" style="color: var(--primary-dark);"><i class="fas fa-calendar-times me-2 text-danger"></i> المواعيد القانونية الحساسة</h6></div>
+                                    <div class="col-md-6"><label class="form-label text-danger">موعد الجلسة / الإجراء القادم</label><input type="date" class="form-control border-danger font-monospace" id="edit_deadline_date"></div>
+                                    <div class="col-md-6"><label class="form-label text-danger">تاريخ السقوط / التقادم</label><input type="date" class="form-control border-danger font-monospace" id="edit_statute_of_limitations_date"></div>
+                                    <div class="col-md-6"><label class="form-label text-success">تاريخ النطق بالحكم</label><input type="date" class="form-control border-success font-monospace" id="edit_judgment_date"></div>
+                                    
+                                    <div class="col-12 mt-4 pt-3 border-top"><h6 class="fw-bold" style="color: var(--primary-dark);"><i class="fas fa-building me-2 text-secondary"></i> مراجع الجهات الحكومية</h6></div>
+                                    <div class="col-md-6"><label class="form-label">مرجع المركز الأمني</label><input type="text" class="form-control" id="edit_police_station_ref" placeholder="رقم الضبط، اسم المركز..."></div>
+                                    <div class="col-md-6"><label class="form-label">مرجع النيابة العامة</label><input type="text" class="form-control" id="edit_prosecution_ref"></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="edit-parties">
+                                <div class="row g-4">
+                                    <div class="col-12"><label class="form-label text-danger fw-bold">اسم الخصم الرئيسي <span class="text-danger">*</span></label><input type="text" class="form-control border-danger" id="edit_opponent" required></div>
+                                    <div class="col-12"><label class="form-label">محامي الخصم (بيانات التواصل)</label><input type="text" class="form-control" id="edit_opponent_lawyer" placeholder="الاسم، المكتب، أرقام الهواتف..."></div>
+                                    <div class="col-12"><label class="form-label">مدعين / مشتكون إضافيون</label><input type="text" class="form-control" id="edit_co_plaintiffs" placeholder="افصل بين الأسماء بفاصلة"></div>
+                                    <div class="col-12"><label class="form-label">مدعى عليهم / مشتكى عليهم إضافيون</label><input type="text" class="form-control" id="edit_co_defendants" placeholder="افصل بين الأسماء بفاصلة"></div>
+                                    <div class="col-12"><label class="form-label">الشهود والخبراء المرتبطين بالدعوى</label><textarea class="form-control" id="edit_experts_and_witnesses" rows="3" placeholder="اكتب أسماء وتفاصيل الشهود..."></textarea></div>
+                                    
+                                    <div class="col-12 mt-4 pt-4 border-top"><h6 class="fw-bold" style="color: var(--primary-dark);"><i class="fas fa-file-signature me-2 text-info"></i> بيانات الوكالة الخاصة بهذه القضية</h6></div>
+                                    <div class="col-md-6"><label class="form-label">رقم الوكالة</label><input type="text" class="form-control font-monospace" id="edit_poa_number" placeholder="الرقم الرسمي الموثق..."></div>
+                                    <div class="col-md-6"><label class="form-label">تفاصيل الوكالة الإضافية</label><input type="text" class="form-control" id="edit_poa_details" placeholder="الكاتب العدل، التاريخ، النطاق..."></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="edit-lawsuit">
+                                <div class="alert alert-info border-0 shadow-sm fw-bold small mb-4">
+                                    <i class="fas fa-info-circle me-1"></i> تعبئة هذه الحقول بدقة يساعد محرك الذكاء الاصطناعي على توليد مسودات وملخصات احترافية لك لاحقاً.
+                                </div>
+                                <div class="row g-4">
+                                    <div class="col-12"><label class="form-label">الوقائع (سرد متسلسل للدعوى)</label><textarea class="form-control" id="edit_lawsuit_facts" rows="5"></textarea></div>
+                                    <div class="col-12"><label class="form-label">الأسانيد القانونية (المواد والنصوص)</label><textarea class="form-control" id="edit_legal_basis" rows="4"></textarea></div>
+                                    <div class="col-12"><label class="form-label">الطلبات الختامية</label><textarea class="form-control" id="edit_final_requests" rows="4"></textarea></div>
+                                    
+                                    <div class="col-12 mt-4 pt-4 border-top"><h6 class="fw-bold" style="color: var(--primary-dark);"><i class="fas fa-archive me-2 text-secondary"></i> الإغلاق والأرشيف المادي</h6></div>
+                                    <div class="col-md-6"><label class="form-label">نتيجة القضية النهائية</label>
+                                        <select class="form-select fw-bold" id="edit_case_outcome">
+                                            <option value="">لم تحسم بعد</option><option value="ربح">ربح القضية</option><option value="خسارة">خسارة القضية</option><option value="صلح وتنازل">صلح وتنازل</option><option value="رد الدعوى">رد الدعوى / شطب</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6"><label class="form-label text-success">نسبة النجاح المتوقعة (%) - تقييم المحامي</label><input type="number" class="form-control border-success text-success fw-bold font-monospace" id="edit_success_probability" min="0" max="100"></div>
+                                    <div class="col-12"><label class="form-label">سبب الإغلاق / منطوق الحكم باختصار</label><textarea class="form-control bg-light" id="edit_closure_reason" rows="3"></textarea></div>
+                                    <div class="col-12"><label class="form-label">موقع ملف الأرشيف الورقي (Physical Archive)</label><input type="text" class="form-control" id="edit_physical_archive_location" placeholder="مثال: الخزانة 1 - رف B - ملف رقم 44"></div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="edit-finance">
+                                <div class="row g-4">
+                                    <div class="col-md-6"><label class="form-label text-info fw-bold">قيمة المطالبة في الدعوى (د.أ)</label><input type="number" class="form-control border-info font-monospace" id="edit_claim"></div>
+                                    <div class="col-md-6"><label class="form-label fw-bold" style="color: var(--primary-dark);">إجمالي الأتعاب المتفق عليها (د.أ) <span class="text-danger">*</span></label><input type="number" class="form-control fw-bold border-2 font-monospace" style="border-color: var(--primary-dark);" id="edit_fees" required></div>
+                                    <div class="col-12"><hr class="my-2 border-light"></div>
+                                    <div class="col-md-6"><label class="form-label text-danger">الرسوم القضائية المدفوعة من الصندوق (د.أ)</label><input type="number" class="form-control border-danger text-danger fw-bold font-monospace" id="edit_court_fees_paid"></div>
+                                    <div class="col-md-6"><label class="form-label text-warning text-dark">التأمينات المودعة في صندوق المحكمة (د.أ)</label><input type="number" class="form-control border-warning text-dark fw-bold font-monospace" id="edit_court_deposits"></div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                        <button type="submit" class="btn btn-gold w-100 py-3 mt-5 fs-5 shadow-sm" id="btn_save_case_edit">
+                            <i class="fas fa-save me-2"></i> حفظ التحديثات الشاملة للملف
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="updateModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white"><i class="fas fa-plus-circle text-warning"></i> توثيق إجراء قانوني جديد</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="updateForm" onsubmit="saveUpdate(event)">
+                        <div class="mb-3">
+                            <label class="form-label">عنوان الإجراء (مختصر) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control fw-bold" id="upd_title" required placeholder="مثال: حضور جلسة، تقديم لائحة، مراجعة خبير...">
+                        </div>
+                        <div class="mb-4 position-relative">
+                            <label class="form-label">التفاصيل الكاملة <span class="text-danger">*</span></label>
+                            <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 border rounded-pill px-3 shadow-sm" onclick="startDictation('upd_details')" title="إملاء صوتي لتوفير الوقت">
+                                <i class="fas fa-microphone text-danger me-1"></i> إملاء
+                            </button>
+                            <textarea class="form-control mb-3" id="upd_details" rows="5" required placeholder="اكتب تفاصيل ما حدث بالتفصيل..."></textarea>
+                            
+                            <button type="button" id="btn_ai_extract" onclick="previewAIExtraction()" class="btn w-100 fw-bold shadow-sm" style="background: rgba(13, 202, 240, 0.1); color: var(--primary-dark); border: 1px solid var(--gold-luxury); border-radius: 14px; padding: 12px; transition: 0.3s;">
+                                <i class="fas fa-robot fs-5 me-2" style="color: var(--gold-luxury);"></i> تحليل ذكي واستخراج تواريخ (AI)
+                            </button>
+                            <input type="hidden" id="upd_extracted_json">
+                        </div>
+                        
+                        <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
+                            <div class="col-6">
+                                <label class="form-label">تاريخ هذا الإجراء</label>
+                                <input type="date" class="form-control font-monospace text-center" id="upd_hearing_date">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-danger fw-bold"><i class="fas fa-bell me-1"></i> تاريخ الإجراء القادم</label>
+                                <input type="date" class="form-control border-danger font-monospace text-center" id="upd_next_hearing">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4 p-4 bg-white rounded-4 border shadow-sm text-center" style="border: 2px dashed rgba(11, 19, 43, 0.2) !important;">
+                            <label class="form-label fw-bold d-block mb-3 text-navy"><i class="fas fa-cloud-upload-alt fs-4 me-2 text-info"></i> إرفاق محضر / ملف ضوئي للعملية (R2)</label>
+                            <input type="file" id="upd_attachment_input" class="form-control bg-light fw-bold" accept="image/*,.pdf,.doc,.docx">
+                        </div>
+                        
+                        <div class="mb-4 form-check form-switch bg-light p-3 rounded-3 border d-flex justify-content-between align-items-center shadow-sm">
+                            <div>
+                                <label class="form-check-label fw-bold mb-1 d-block" for="upd_visible" style="color: var(--primary-dark);"><i class="fas fa-eye text-success me-1"></i> إتاحة رؤية الإجراء للموكل</label>
+                                <small class="text-muted fw-bold">سيظهر هذا الإجراء في البوابة الإلكترونية الخاصة بالموكل.</small>
+                            </div>
+                            <input class="form-check-input ms-0 me-3" type="checkbox" id="upd_visible" checked style="width: 3.5rem; height: 1.8rem; cursor:pointer;">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-gold w-100 py-3 fs-5 shadow-sm" id="btn_save_update">
+                            <i class="fas fa-save me-2"></i> توثيق الإجراء في السجل
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="paymentModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0" style="border-top: 6px solid var(--success-luxury);">
+                <div class="modal-header bg-white border-bottom">
+                    <h5 class="modal-title fw-bold" style="color: var(--success-luxury);"><i class="fas fa-hand-holding-usd me-2"></i> استلام دفعة مالية</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <form id="paymentForm" onsubmit="savePayment(event)">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">المبلغ (دينار أردني) <span class="text-danger">*</span></label>
+                            <input type="number" id="pay_amount" class="form-control text-center fs-2 fw-900 border-success text-success font-monospace py-3 bg-light" required placeholder="0.00">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">تاريخ الاستحقاق/الدفع <span class="text-danger">*</span></label>
+                            <input type="date" id="pay_due_date" class="form-control text-center fw-bold font-monospace" required>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label fw-bold">حالة الدفعة <span class="text-danger">*</span></label>
+                            <select id="pay_status" class="form-select fw-bold border-2">
+                                <option value="مدفوعة">مقبوضة (تم الدفع)</option>
+                                <option value="مستحقة">مستحقة (لم تدفع بعد/شيكات)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn w-100 py-3 fw-bold text-white fs-5 shadow-sm" style="background: var(--success-luxury); border-radius: 14px;">
+                            <i class="fas fa-check-circle me-2"></i> حفظ واعتماد السند
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="feeSplitModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-top border-4 border-success">
+                <div class="modal-header">
+                    <h5 class="modal-title text-success fw-bold"><i class="fas fa-layer-group me-2"></i> تقسيم الأتعاب لعدة دفعات</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="feeSplitForm" onsubmit="generateFeeInstallments(event)">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-navy">إجمالي المبلغ المراد تقسيمه (د.أ) <span class="text-danger">*</span></label>
+                            <input type="number" id="split_total_amount" class="form-control font-monospace text-center fs-4 bg-light text-success fw-900 border-success" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-navy">تاريخ الدفعة الأولى <span class="text-danger">*</span></label>
+                            <input type="date" id="split_start_date" class="form-control text-center font-monospace" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-navy">عدد الدفعات (الأقساط) <span class="text-danger">*</span></label>
+                            <input type="number" id="split_count" class="form-control text-center font-monospace fw-bold" min="2" max="60" value="3" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-navy">دورية الدفع <span class="text-danger">*</span></label>
+                            <select id="split_period" class="form-select fw-bold">
+                                <option value="monthly">شهرياً (نفس اليوم من كل شهر)</option>
+                                <option value="weekly">أسبوعياً (كل 7 أيام)</option>
+                            </select>
+                        </div>
+                        <div class="alert alert-warning small fw-bold shadow-sm border-warning rounded-3">
+                            <i class="fas fa-info-circle me-1"></i> سيقوم النظام بجدولة الدفعات وتفعيل إشعارات الاستحقاق التلقائية قبل موعدها.
+                        </div>
+                        <button type="submit" class="btn w-100 py-3 fw-bold text-white fs-5 shadow-sm" style="background: var(--success-luxury); border-radius: 14px;">
+                            <i class="fas fa-magic me-2"></i> توليد الدفعات وجدولتها آلياً
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="expenseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0" style="border-top: 6px solid var(--danger-luxury);">
+                <div class="modal-header bg-white border-bottom">
+                    <h5 class="modal-title fw-bold" style="color: var(--danger-luxury);"><i class="fas fa-money-check-alt me-2"></i> تسجيل مصروف / رسوم</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <form id="expenseForm" onsubmit="saveExpense(event)">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">قيمة المصروف (د.أ) <span class="text-danger">*</span></label>
+                            <input type="number" id="exp_amount" class="form-control text-center fs-2 fw-900 border-danger text-danger font-monospace py-3 bg-light" required placeholder="0.00">
+                        </div>
+                        <div class="mb-3 text-start">
+                            <label class="form-label fw-bold">البيان / الوصف <span class="text-danger">*</span></label>
+                            <input type="text" id="exp_desc" class="form-control fw-bold" required placeholder="مثال: رسوم إبراز طوابع، مواصلات...">
+                        </div>
+                        <div class="mb-3 text-start">
+                            <label class="form-label fw-bold">تاريخ الصرف <span class="text-danger">*</span></label>
+                            <input type="date" id="exp_date" class="form-control text-center fw-bold font-monospace bg-light" required>
+                        </div>
+                        <div class="mb-4 text-start">
+                            <label class="form-label fw-bold text-muted">رابط إيصال الدفع (اختياري)</label>
+                            <input type="url" id="exp_receipt_url" class="form-control font-monospace text-start" placeholder="https://..." dir="ltr">
+                        </div>
+                        <button type="submit" class="btn w-100 py-3 fw-bold text-white fs-5 shadow-sm" style="background: var(--danger-luxury); border-radius: 14px;">
+                            <i class="fas fa-save me-2"></i> توثيق المصروف
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fileModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white"><i class="fas fa-cloud-upload-alt text-info"></i> الأرشفة السحابية (R2 Encryption)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="fileForm" onsubmit="saveFile(event)">
+                        <div class="mb-4 text-center border rounded-4 p-4 bg-white shadow-sm" style="border: 2px dashed var(--gold-luxury) !important;">
+                            <i class="fas fa-shield-alt fa-4x mb-3 text-success opacity-75"></i>
+                            <h6 class="fw-bold mb-3 text-navy">اختر المستند لتشفيره ورفعه <span class="text-danger">*</span></h6>
+                            <input type="file" id="file_input" class="form-control fw-bold bg-light" required>
+                        </div>
+                        <div class="card-inner mb-4">
+                            <div class="mb-3">
+                                <label class="form-label">اسم المستند (اختياري)</label>
+                                <input type="text" id="file_title_input" class="form-control" placeholder="إذا تُرك فارغاً سيتم استخدام الاسم الأصلي للملف">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">تصنيف المستند <span class="text-danger">*</span></label>
+                                <select id="file_category_input" class="form-select fw-bold" required>
+                                    <option value="مستند شخصي">مستند شخصي للموكل</option>
+                                    <option value="وكالة">وكالة قانونية</option>
+                                    <option value="لائحة">لائحة دعوى/مذكرة رد</option>
+                                    <option value="بينة">بينات ومرفقات</option>
+                                    <option value="قرار">قرار حكم</option>
+                                    <option value="وصل">وصل مالي/رسوم</option>
+                                </select>
+                            </div>
+                            <div class="mb-2 p-3 bg-light rounded-3 border border-danger shadow-sm">
+                                <label class="form-label text-danger fw-bold"><i class="fas fa-hourglass-end me-1"></i> تاريخ انتهاء الصلاحية (اختياري)</label>
+                                <input type="date" id="file_expiry_date" class="form-control text-center text-danger fw-bold font-monospace">
+                                <small class="text-muted d-block mt-2 fw-bold">يفيد النظام في تذكيرك آلياً بتجديد الوكالات أو الكفالات المنتهية.</small>
+                            </div>
+                        </div>
+                        <button type="submit" id="btn_upload" class="btn btn-gold w-100 py-3 fs-5 shadow-sm">
+                            <i class="fas fa-lock me-2"></i> بدء التشفير والرفع
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="delegationModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-top: 6px solid var(--danger-luxury);">
+                <div class="modal-header bg-white border-bottom">
+                    <h5 class="modal-title fw-bold" style="color: var(--danger-luxury);"><i class="fas fa-exchange-alt me-2"></i> نقل عهدة القضية (تسليم رسمي)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="delegationForm" onsubmit="submitDelegation(event)">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-navy">نقل العهدة إلى الزميل (المحامي) <span class="text-danger">*</span></label>
+                            <select id="delegation_lawyer" class="form-select fw-bold border-2" required>
+                                <option value="">-- جاري تحميل قائمة الزملاء --</option>
+                            </select>
+                        </div>
+                        <div class="alert alert-danger border-0 shadow-sm small fw-bold mb-4 rounded-3 text-start">
+                            <i class="fas fa-shield-alt fs-5 d-block mb-2 text-danger"></i>
+                            عند تأكيد النقل، سيتم سحب الصلاحيات منك (إلا إذا كنت مديراً) وسيتم تسجيل إقرار رسمي غير قابل للحذف في سجل الرقابة بأن المحامي المختار استلم الملف بجميع أوراقه وعهده.
+                        </div>
+                        <button type="submit" class="btn w-100 py-3 fw-bold text-white fs-5 shadow-sm" style="background: var(--danger-luxury); border-radius: 14px;">
+                            <i class="fas fa-signature me-2"></i> أقر بتسليم الملف ونقل العهدة
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="aiDocModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
+                    <h5 class="modal-title text-white"><i class="fas fa-robot me-2 text-info"></i> القراءة التحليلية للمستندات (AI Core)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h5 class="fw-bold border-bottom pb-3 mb-4" id="ai_doc_title" style="color: var(--primary-dark);">جاري استخلاص النص والتحليل...</h5>
+                    <div id="ai_doc_summary" class="bg-white p-4 rounded-4 shadow-sm border" style="line-height: 2; white-space: pre-wrap; color: var(--text-dark); font-size: 1.1rem; font-weight: 600;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="aiDraftModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a, #1e40af);">
+                    <h5 class="modal-title text-white"><i class="fas fa-magic me-2 text-warning"></i> صياغة المذكرات القانونية الذكية (AI)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 shadow-sm mb-4 fw-bold lh-lg rounded-3">
+                        <i class="fas fa-brain fs-4 me-2 text-primary align-middle"></i>
+                        يقوم هذا المحرك العملاق بقراءة كافة "الوقائع، الأسانيد، والطلبات" المسجلة في هذه القضية، ويدمجها مع ملاحظاتك لإنتاج مسودة قانونية احترافية مبدئية توفر ساعات من العمل.
+                    </div>
+                    
+                    <div class="card-inner mb-4 border-primary">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-navy">نوع المسودة المطلوب صياغتها <span class="text-danger">*</span></label>
+                            <select id="ai_draft_type" class="form-select fw-bold fs-6 py-2">
+                                <option value="لائحة دعوى">لائحة دعوى ابتدائية</option>
+                                <option value="مذكرة دفاع">مذكرة دفاع / لائحة جوابية</option>
+                                <option value="إنذار عدلي">إنذار عدلي رسمي</option>
+                                <option value="كتاب مطالبة مالية">كتاب مطالبة مالية للموكل</option>
+                            </select>
+                        </div>
+                        <div class="mb-2 position-relative">
+                            <label class="form-label fw-bold text-navy">ملاحظات لتوجيه الذكاء الاصطناعي (Prompts)</label>
+                            <button type="button" class="btn btn-sm btn-light position-absolute top-0 end-0 border rounded-pill px-3 shadow-sm" onclick="startDictation('ai_draft_notes')" title="إملاء صوتي لتوجيه الـ AI">
+                                <i class="fas fa-microphone text-danger me-1"></i> إملاء توجيهات
+                            </button>
+                            <textarea id="ai_draft_notes" class="form-control" rows="3" placeholder="مثال: ركز على أن الخصم تخلّف عن السداد لأكثر من 3 أشهر، واستند للمادة كذا من القانون..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <button class="btn w-100 py-3 text-white fw-bold fs-5 mb-4 shadow-sm" id="btn_generate_draft" onclick="generateAiDraft()" style="background: linear-gradient(135deg, #1e3a8a, #1e40af); border-radius: 14px;">
+                        <i class="fas fa-cogs me-2"></i> توليد المسودة الآن
+                    </button>
+                    
+                    <div id="ai_draft_result_container" class="d-none fade-in">
+                        <h6 class="fw-bold mb-3" style="color: var(--success-luxury);"><i class="fas fa-check-circle me-2"></i> النتيجة المبدئية (قابلة للتحرير المباشر):</h6>
+                        <textarea id="ai_draft_result" class="form-control border-success mb-3 shadow-sm bg-white" rows="15" style="font-size: 1.1rem; line-height: 1.9; font-weight: 600;"></textarea>
+                        <button class="btn btn-outline-navy w-100 py-3 fw-bold fs-5 rounded-3 shadow-sm" onclick="copyToClipboard('ai_draft_result')">
+                            <i class="fas fa-copy me-2"></i> نسخ النص الكامل للائحة
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="shareModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0">
+                <div class="modal-header" style="background: var(--primary-dark);">
+                    <h5 class="modal-title text-white"><i class="fas fa-share-nodes text-info me-2"></i> مشاركة البوابة السرية</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="alert alert-warning border-0 shadow-sm small fw-bold mb-4 rounded-3 text-start">
+                        <i class="fas fa-exclamation-triangle text-danger me-1"></i> يتم إنشاء رمز الـ QR والرابط بناءً على الرمز السري (PIN) الخاص بهذه القضية.
+                    </div>
+
+                    <div id="share-qrcode" class="mb-4 d-flex justify-content-center p-3 bg-white rounded-4 border shadow-sm mx-auto" style="width: fit-content;"></div>
+                    
+                    <div class="mb-3 text-start bg-light p-3 rounded-3 border">
+                        <label class="form-label small fw-bold text-navy mb-1">الرابط السري المباشر للبوابة:</label>
+                        <input type="text" id="share_link_input" class="form-control form-control-sm text-start border-0 bg-transparent font-monospace text-primary" dir="ltr" readonly>
+                    </div>
+                    <div class="mb-4 text-center bg-danger bg-opacity-10 p-3 rounded-3 border border-danger border-opacity-25">
+                        <label class="form-label small fw-bold text-danger mb-1 d-block">رمز الدخول السري (PIN Code):</label>
+                        <input type="text" id="share_pin_input" class="form-control text-center fw-900 text-danger fs-2 border-0 bg-transparent" style="letter-spacing: 10px; font-family: monospace;" readonly>
+                    </div>
+                    
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn text-white w-50 fw-bold shadow-sm rounded-3 py-2" style="background: #25D366;" onclick="sendShareViaWhatsApp()">
+                            <i class="fab fa-whatsapp me-1 fs-5 align-middle"></i> واتساب
+                        </button>
+                        <button class="btn btn-outline-navy w-50 fw-bold rounded-3 py-2" onclick="copyShareLinkApp()">
+                            <i class="fas fa-copy me-1"></i> نسخ الرابط
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav d-print-none">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> المكتب
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-toolbox"></i> الأدوات
+        </div>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    
+    <script src="./js/ai-handler.js"></script>
+    
+    <script src="./js/case-details.js"></script>
+
+</body>
+</html>

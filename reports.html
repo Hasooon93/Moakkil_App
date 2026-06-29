@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>التقارير والإحصائيات | نظام موكّل ERP</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        try {
+            const settings = JSON.parse(localStorage.getItem('firm_settings'));
+            if (settings) {
+                if (settings.primary_color) {
+                    document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                    document.documentElement.style.setProperty('--navy', settings.primary_color);
+                }
+                if (settings.accent_color) {
+                    document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                    document.documentElement.style.setProperty('--accent', settings.accent_color);
+                }
+            }
+            if (localStorage.getItem('moakkil_dark_mode') === 'true') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) { console.error("Error loading firm settings", e); }
+    </script>
+
+    <style>
+        /* --- 3.1 المتغيرات اللونية: الهوية الملكية الفاخرة --- */
+        :root { 
+            --primary-dark: #0B132B; 
+            --primary-light: #1C2541;
+            --gold-luxury: #D4AF37;
+            --gold-hover: #b5952f;
+            --light-bg: #F4F6F9;
+            --text-dark: #1A1A1A;
+            --text-muted: #6C757D;
+        }
+
+        /* --- 3.2 الهيكل الأساسي --- */
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 90px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- 3.3 الترويسة العلوية --- */
+        .top-nav {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            padding: 15px 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(11, 19, 43, 0.15);
+            border-bottom: 3px solid var(--gold-luxury);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            transition: all 0.3s ease;
+        }
+
+        /* --- 3.4 الحاويات والبطاقات --- */
+        .card-custom {
+            background: white; border-radius: 20px; padding: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02); 
+            transition: transform 0.3s, background-color 0.3s, border-color 0.3s;
+        }
+
+        /* --- 3.5 الحقول والأزرار --- */
+        .form-control, .form-select {
+            border-radius: 12px; border: 2px solid #E2E8F0; padding: 12px 15px; 
+            font-weight: 700; color: var(--primary-dark); transition: 0.3s; background: #F8F9FA;
+        }
+        .form-control:focus, .form-select:focus { 
+            border-color: var(--gold-luxury); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1); background: white; outline: none;
+        }
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
+            color: var(--primary-dark); border: none; font-weight: 900; border-radius: 12px; padding: 12px 20px;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .btn-gold:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4); color: var(--primary-dark); }
+
+        /* --- 3.6 بطاقات المؤشرات المالية (KPI Cards) --- */
+        .kpi-card { 
+            border-radius: 20px; border: none; transition: transform 0.3s, box-shadow 0.3s; color: white; 
+            padding: 25px; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+        }
+        .kpi-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.12); }
+        .kpi-icon { 
+            font-size: 4rem; opacity: 0.15; position: absolute; left: -10px; bottom: -15px; 
+            transform: rotate(-15deg); transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .kpi-card:hover .kpi-icon { transform: rotate(0deg) scale(1.15); opacity: 0.25; }
+        
+        .kpi-agreed { background: linear-gradient(135deg, var(--primary-light), var(--primary-dark)); }
+        .kpi-paid { background: linear-gradient(135deg, #059669, #064e3b); }
+        .kpi-rem { background: linear-gradient(135deg, #d97706, #78350f); }
+        .kpi-exp { background: linear-gradient(135deg, #dc2626, #7f1d1d); }
+
+        /* بطاقات الإحصائيات المصغرة */
+        .stat-mini-card {
+            background: white; padding: 20px; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); 
+            border: 1px solid rgba(0,0,0,0.02); height: 100%; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; transition: 0.3s; cursor: default;
+        }
+        .stat-mini-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+
+        /* --- 3.7 حاويات الرسوم البيانية والجداول --- */
+        .chart-container { 
+            background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+            margin-bottom: 25px; border: 1px solid rgba(0,0,0,0.02); transition: background-color 0.3s, border-color 0.3s;
+        }
+        .table-container-wrapper {
+            background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+            margin-bottom: 25px; border: 1px solid rgba(0,0,0,0.02); overflow: hidden;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .table-responsive-custom { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        
+        /* تنسيق الجداول الفاخر */
+        .table { margin-bottom: 0; white-space: nowrap; color: var(--text-dark); }
+        .table thead th { 
+            background-color: var(--primary-dark); color: white; border: none; font-weight: 800; 
+            font-size: 0.95rem; padding: 18px 15px; letter-spacing: 0.5px;
+        }
+        .table tbody td { vertical-align: middle; font-size: 0.95rem; padding: 15px; border-bottom: 1px solid #f1f5f9; color: inherit; font-weight: 600;}
+        .table tbody tr:hover { background-color: rgba(0,0,0,0.02); }
+
+        /* --- 3.8 شريط التنقل السفلي الموحد --- */
+        .bottom-nav { 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 -10px 30px rgba(11, 19, 43, 0.05); border-radius: 30px 30px 0 0; 
+            padding: 12px 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
+            position: fixed; bottom: 0; width: 100%; z-index: 1040; display: flex; justify-content: space-around; 
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+            transition: all 0.3s ease;
+        }
+        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; }
+        .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); transform: translateY(-4px); }
+        .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 5px; transition: transform 0.3s; }
+        .nav-item.active i { color: var(--gold-luxury); transform: scale(1.15); }
+
+        /* حركات التلاشي */
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* =========================================
+           🌙 الوضع الليلي (Dark Mode)
+           ========================================= */
+        [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
+        [data-theme="dark"] .top-nav { background: linear-gradient(135deg, #020617 0%, #0f172a 100%); border-bottom-color: var(--accent); }
+        [data-theme="dark"] .bottom-nav { background: #1e293b; border-top-color: rgba(212, 175, 55, 0.2); }
+        [data-theme="dark"] .card-custom, [data-theme="dark"] .chart-container, [data-theme="dark"] .table-container-wrapper, [data-theme="dark"] .stat-mini-card { background-color: #1e293b; color: #f8fafc; border-color: #334155; }
+        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: #0f172a; color: #f8fafc; border-color: #334155; }
+        [data-theme="dark"] .form-control:focus, [data-theme="dark"] .form-select:focus { border-color: var(--accent); }
+        [data-theme="dark"] .table { color: #f8fafc; }
+        [data-theme="dark"] .table thead th { background-color: #020617; border-bottom-color: var(--accent); }
+        [data-theme="dark"] .table tbody td { border-bottom-color: #334155; }
+        [data-theme="dark"] .table tbody tr:hover { background-color: #0f172a; }
+        [data-theme="dark"] h5, [data-theme="dark"] h6 { color: #f8fafc !important; }
+
+        /* --- 3.9 تحسينات الطباعة (Print Media Queries) --- */
+        @media print {
+            body { background: white !important; padding-bottom: 0; font-size: 12pt; color: black !important; }
+            .bottom-nav, .top-nav, .d-print-none { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .card-custom, .chart-container, .table-container-wrapper, .kpi-card, .stat-mini-card { 
+                box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; margin-bottom: 15px; background: white !important;
+            }
+            .kpi-card { color: black !important; }
+            .kpi-card * { color: black !important; }
+            .kpi-icon { display: none; }
+            .table thead th { background-color: #f8f9fa !important; color: black !important; border-bottom: 2px solid #000 !important; }
+            .table tbody td { border-bottom: 1px solid #ddd !important; color: black !important; }
+            canvas { max-width: 100% !important; height: auto !important; }
+            * { color: black !important; text-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="top-nav px-3 d-flex align-items-center justify-content-between d-print-none">
+        <button class="btn btn-link text-white p-0 text-decoration-none me-3" onclick="window.location.href='app.html'">
+            <i class="fas fa-arrow-right fs-4"></i>
+        </button>
+        <h5 class="mb-0 fw-bold text-white"><i class="fas fa-chart-line me-2" style="color: var(--gold-luxury);"></i> التقارير والمالية</h5>
+        <button class="btn btn-sm text-white fw-bold shadow-sm" style="background: rgba(255,255,255,0.15); border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);" onclick="printReport()" title="طباعة التقرير">
+            <i class="fas fa-print me-1"></i> طباعة
+        </button>
+    </header>
+
+    <main class="container mt-4 fade-in">
+        
+        <section class="card-custom mb-4 border-top border-4 d-print-none" style="border-top-color: var(--gold-luxury) !important; padding: 20px 25px;">
+            <h6 class="fw-bold mb-3" style="color: var(--primary-dark);"><i class="fas fa-filter me-2" style="color: var(--gold-luxury);"></i> تصفية البيانات حسب التاريخ</h6>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3 col-12">
+                    <label class="form-label">الفترة الزمنية</label>
+                    <select id="filter_period" class="form-select" onchange="handlePeriodChange()">
+                        <option value="all">كل الأوقات (شامل)</option>
+                        <option value="today">اليوم</option>
+                        <option value="this_month">هذا الشهر</option>
+                        <option value="this_year">هذا العام</option>
+                        <option value="custom">تحديد فترة (مخصص)</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-6 custom-date d-none">
+                    <label class="form-label">من تاريخ</label>
+                    <input type="date" id="filter_start" class="form-control">
+                </div>
+                <div class="col-md-3 col-6 custom-date d-none">
+                    <label class="form-label">إلى تاريخ</label>
+                    <input type="date" id="filter_end" class="form-control">
+                </div>
+                <div class="col-md-3 col-12 ms-auto mt-3 mt-md-0">
+                    <button class="btn-gold w-100" onclick="generateReports()">
+                        <i class="fas fa-sync-alt me-2"></i> تطبيق وعرض النتائج
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-agreed h-100">
+                    <i class="fas fa-handshake kpi-icon"></i>
+                    <p class="mb-2 small fw-bold text-white-50">الأتعاب (القضايا الجديدة)</p>
+                    <h3 class="fw-bold mb-0"><span id="kpi-total-agreed">0</span> <small class="fs-6 fw-normal opacity-75">د.أ</small></h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-paid h-100">
+                    <i class="fas fa-wallet kpi-icon"></i>
+                    <p class="mb-2 small fw-bold text-white-50">المقبوضات (التحصيلات)</p>
+                    <h3 class="fw-bold mb-0"><span id="kpi-total-paid">0</span> <small class="fs-6 fw-normal opacity-75">د.أ</small></h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-rem h-100">
+                    <i class="fas fa-exclamation-circle kpi-icon"></i>
+                    <p class="mb-2 small fw-bold text-white-50">عجز التحصيل (المتبقي)</p>
+                    <h3 class="fw-bold mb-0"><span id="kpi-total-rem">0</span> <small class="fs-6 fw-normal opacity-75">د.أ</small></h3>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="kpi-card kpi-exp h-100">
+                    <i class="fas fa-money-bill-wave kpi-icon"></i>
+                    <p class="mb-2 small fw-bold text-white-50">المدفوعات (المصروفات)</p>
+                    <h3 class="fw-bold mb-0"><span id="kpi-total-exp">0</span> <small class="fs-6 fw-normal opacity-75">د.أ</small></h3>
+                </div>
+            </div>
+        </section>
+
+        <section class="row g-3 mb-4">
+            <div class="col-4">
+                <div class="stat-mini-card text-center">
+                    <h2 class="fw-bold mb-1" style="color: var(--primary-dark);" id="kpi-cases-count">0</h2>
+                    <small class="text-muted fw-bold"><i class="fas fa-gavel me-1" style="color: var(--gold-luxury);"></i> قضايا مسجلة</small>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="stat-mini-card text-center">
+                    <h2 class="text-success fw-bold mb-1" id="kpi-clients-count">0</h2>
+                    <small class="text-muted fw-bold"><i class="fas fa-users me-1 text-success"></i> موكلين جدد</small>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="stat-mini-card text-center">
+                    <h2 class="text-warning fw-bold mb-1 text-dark" id="kpi-appts-count">0</h2>
+                    <small class="text-muted fw-bold"><i class="fas fa-calendar-check me-1 text-warning"></i> مهام وجلسات</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="row mb-4">
+            <div class="col-md-8">
+                <div class="chart-container h-100">
+                    <h6 class="fw-bold mb-4" style="color: var(--primary-dark);"><i class="fas fa-chart-bar me-2" style="color: var(--gold-luxury);"></i> التدفق المالي للفترة المحددة</h6>
+                    <div style="height: 300px; width: 100%; position: relative;">
+                        <canvas id="financeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mt-4 mt-md-0">
+                <div class="chart-container h-100">
+                    <h6 class="fw-bold mb-4" style="color: var(--primary-dark);"><i class="fas fa-chart-pie me-2 text-primary"></i> حالة القضايا (ضمن الفترة)</h6>
+                    <div style="height: 300px; display: flex; justify-content: center; align-items: center; width: 100%; position: relative;">
+                        <canvas id="casesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h5 class="fw-bold mb-3 mt-4" style="color: var(--primary-dark);"><i class="fas fa-user-tie text-success me-2"></i> تقرير أداء المحامين والموظفين</h5>
+            <div class="table-container-wrapper mb-5">
+                <div class="table-responsive-custom">
+                    <table class="table table-hover mb-0 text-center bg-white align-middle">
+                        <thead>
+                            <tr>
+                                <th class="text-start ps-4">المحامي / الموظف</th>
+                                <th>قضايا مسندة</th>
+                                <th>قضايا نشطة</th>
+                                <th>قضايا منجزة</th>
+                                <th>مهام أُنجزت</th>
+                                <th>تحصيلات ماليّة (د.أ)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staff-performance-tbody">
+                            <tr><td colspan="6" class="py-5 text-muted fw-bold"><i class="fas fa-spinner fa-spin me-2" style="color: var(--gold-luxury);"></i> جاري تقييم الأداء...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h5 class="fw-bold mb-3 mt-4" style="color: var(--primary-dark);"><i class="fas fa-history text-danger me-2"></i> الحركات المالية التفصيلية (ضمن الفترة)</h5>
+            <div class="table-container-wrapper mb-5">
+                <div class="table-responsive-custom">
+                    <table class="table table-hover mb-0 text-center bg-white align-middle">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">التاريخ</th>
+                                <th>نوع الحركة</th>
+                                <th>المبلغ (د.أ)</th>
+                                <th class="text-start">البيان / القضية</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-transactions-tbody">
+                            <tr><td colspan="5" class="py-5 text-muted fw-bold"><i class="fas fa-spinner fa-spin me-2" style="color: var(--gold-luxury);"></i> جاري تحميل وتحليل البيانات...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        
+    </main>
+
+    <nav class="bottom-nav d-print-none">
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-home"></i> المكتب
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-gavel"></i> القضايا
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-users"></i> الموكلين
+        </div>
+        <div class="nav-item" onclick="window.location.href='app.html'">
+            <i class="fas fa-calendar-check"></i> الأجندة
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-toolbox"></i> الأدوات
+        </div>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/reports.js"></script>
+
+</body>
+</html>

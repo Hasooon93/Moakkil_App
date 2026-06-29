@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>تفاصيل الموكل | نظام موكّل ERP</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    
+    <link href="./css/style.css" rel="stylesheet">
+    
+    <script>
+        try {
+            const settings = JSON.parse(localStorage.getItem('firm_settings'));
+            if (settings) {
+                if (settings.primary_color) {
+                    document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                    document.documentElement.style.setProperty('--navy', settings.primary_color);
+                }
+                if (settings.accent_color) {
+                    document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                    document.documentElement.style.setProperty('--accent', settings.accent_color);
+                }
+            }
+        } catch (e) { console.error("Error loading firm settings", e); }
+    </script>
+
+    <style>
+        /* --- 3.1 المتغيرات اللونية: الهوية الملكية الفاخرة --- */
+        :root { 
+            --primary-dark: #0B132B; 
+            --primary-light: #1C2541;
+            --gold-luxury: #D4AF37;
+            --gold-hover: #b5952f;
+            --light-bg: #F4F6F9;
+            --text-dark: #1A1A1A;
+            --text-muted: #6C757D;
+        }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-dark);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- 3.2 الترويسة العلوية (Top Nav) --- */
+        .top-nav {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            padding: 15px 20px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(11, 19, 43, 0.15);
+            border-bottom: 3px solid var(--gold-luxury);
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+
+        /* --- 3.3 الكارت الرئيسي لبروفايل الموكل (Client Profile Card) --- */
+        .client-profile-card {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid rgba(0,0,0,0.03);
+            border-top: 6px solid var(--gold-luxury);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        /* خلفية زخرفية للكارت */
+        .client-profile-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 120px;
+            background: linear-gradient(135deg, rgba(11, 19, 43, 0.03), transparent);
+            z-index: 0;
+        }
+
+        .client-avatar { 
+            width: 100px; 
+            height: 100px; 
+            font-size: 2.8rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 50%; 
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); 
+            color: var(--gold-luxury); 
+            margin: 0 auto 15px auto; 
+            box-shadow: 0 10px 25px rgba(11, 19, 43, 0.25); 
+            border: 4px solid white;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* --- 3.4 تنسيقات عرض البيانات الداخلية --- */
+        .view-section { 
+            background: white; 
+            border-radius: 16px; 
+            padding: 25px; 
+            margin-bottom: 20px; 
+            border: 1px solid rgba(0,0,0,0.04); 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.02); 
+            transition: 0.3s;
+        }
+        .view-section:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.05); }
+        .view-section h6 { 
+            color: var(--primary-dark); 
+            border-bottom: 2px solid #F4F6F9; 
+            padding-bottom: 12px; 
+            margin-bottom: 20px; 
+            font-weight: 900; 
+        }
+        .data-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 800; margin-bottom: 6px; display: block; }
+        .data-value { font-size: 1.05rem; color: var(--text-dark); font-weight: 700; }
+
+        /* --- 3.5 التبويبات القابلة للتمرير (Swipeable Tabs) --- */
+        .nav-pills { 
+            flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; gap: 8px;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        }
+        .nav-pills::-webkit-scrollbar { display: none; }
+        .nav-pills .nav-item { flex: 1; min-width: max-content;}
+        .nav-pills .nav-link { 
+            border-radius: 14px; 
+            color: var(--text-muted); 
+            font-weight: 800; 
+            padding: 14px 15px;
+            text-align: center; 
+            border: 1px solid rgba(0,0,0,0.05); 
+            background: white;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        .nav-pills .nav-link:hover { background: #f8fafc; color: var(--primary-dark); border-color: rgba(212, 175, 55, 0.2);}
+        .nav-pills .nav-link.active { 
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+            color: var(--gold-luxury); 
+            border-color: var(--primary-dark); 
+            box-shadow: 0 6px 20px rgba(11, 19, 43, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* --- 3.6 كروت القضايا والملفات --- */
+        .case-card, .doc-item { 
+            background: white;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); 
+            border: 1px solid #E2E8F0; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+            padding: 20px;
+        }
+        .case-card:hover, .doc-item:hover { 
+            transform: translateY(-5px); 
+            border-color: var(--gold-luxury); 
+            box-shadow: 0 15px 30px rgba(11, 19, 43, 0.08) !important; 
+        }
+
+        /* --- 3.7 النوافذ المنبثقة (Modals) --- */
+        .modal-content { border-radius: 24px; border: none; box-shadow: 0 30px 60px rgba(11, 19, 43, 0.3); overflow: hidden;}
+        .modal-header { background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); color: white; border-bottom: 4px solid var(--gold-luxury); padding: 20px 25px; }
+        .modal-body { background: #F8F9FA; padding: 30px 25px; }
+        .card-inner { background: white; border-radius: 16px; padding: 25px; border: 1px solid rgba(0,0,0,0.03); box-shadow: 0 5px 15px rgba(0,0,0,0.02); margin-bottom: 20px; }
+
+        /* --- 3.8 حقول الإدخال والأزرار --- */
+        .form-control, .form-select, textarea {
+            border-radius: 12px; border: 2px solid #E2E8F0; padding: 14px 15px; font-weight: 700; transition: 0.3s; color: var(--primary-dark); background: white;
+        }
+        .form-control:focus, .form-select:focus, textarea:focus {
+            border-color: var(--gold-luxury); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); outline: none;
+        }
+        .form-label { font-weight: 800; color: var(--primary-dark); font-size: 0.95rem; margin-bottom: 8px;}
+
+        .btn-gold {
+            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
+            color: var(--primary-dark); border: none; font-weight: 900; border-radius: 12px; padding: 12px 22px;
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-gold:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(212, 175, 55, 0.4); color: var(--primary-dark); }
+        
+        .btn-outline-navy {
+            border: 2px solid var(--primary-dark); color: var(--primary-dark); background: transparent; 
+            font-weight: 800; border-radius: 12px; padding: 10px 20px; transition: 0.3s;
+        }
+        .btn-outline-navy:hover { background: var(--primary-dark); color: var(--gold-luxury); }
+
+        /* --- 3.9 الصناديق المالية (Finance Boxes) --- */
+        .fin-box { border-radius: 16px; padding: 18px 10px; border: 1px solid rgba(0,0,0,0.05); text-align: center; transition: 0.3s;}
+        .fin-box:hover { transform: translateY(-3px); }
+        .fin-box.info { background: rgba(13, 202, 240, 0.05); border-color: rgba(13, 202, 240, 0.2); }
+        .fin-box.success { background: rgba(25, 135, 84, 0.05); border-color: rgba(25, 135, 84, 0.2); }
+        .fin-box.danger { background: rgba(220, 53, 69, 0.05); border-color: rgba(220, 53, 69, 0.2); }
+
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="pb-5 mb-5">
+
+    <header class="top-nav d-flex align-items-center justify-content-between">
+        <button class="btn btn-link text-white p-0 text-decoration-none" onclick="goBack()" title="عودة">
+            <i class="fas fa-arrow-right fs-4"></i>
+        </button>
+        <h5 class="mb-0 fw-bold text-white text-truncate mx-2" id="header-client-name">تفاصيل الموكل</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm rounded-3 px-3" onclick="manualSync()" title="مزامنة وتحديث البيانات">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm rounded-3 px-3" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="خيارات إضافية">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2" style="border-radius: 16px;">
+                    <li><a class="dropdown-item py-2 fw-bold rounded-3 mb-1" href="#" onclick="openEditModal()"><i class="fas fa-edit text-warning me-2"></i> تعديل بيانات الموكل</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2 fw-bold text-danger rounded-3" href="#" onclick="deleteClient()"><i class="fas fa-trash-alt me-2"></i> حذف الموكل نهائياً</a></li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div id="alertBox"></div>
+
+    <main class="container mt-4 fade-in">
+        
+        <section class="client-profile-card p-4 mb-4 text-center">
+            <div id="client-badges" class="position-absolute top-0 end-0 p-3 d-flex flex-column gap-2 z-2"></div>
+            
+            <div class="client-avatar" id="client-avatar-icon"><i class="fas fa-user-tie"></i></div>
+            <h4 class="fw-bold mb-1 position-relative z-1" style="color: var(--primary-dark);" id="det-full-name">--</h4>
+            <div class="text-muted small fw-bold mb-4 position-relative z-1 font-monospace" dir="ltr" id="det-phone">--</div>
+            
+            <div class="d-flex justify-content-center gap-2 mb-4 position-relative z-1">
+                <button class="btn btn-outline-navy fw-bold px-4 rounded-pill shadow-sm" onclick="callClient()">
+                    <i class="fas fa-phone-alt me-2"></i> اتصال
+                </button>
+                <button class="btn btn-success fw-bold px-4 rounded-pill shadow-sm" onclick="whatsappClient()" style="background: #25D366; border: none;">
+                    <i class="fab fa-whatsapp me-2 fs-5"></i> واتساب
+                </button>
+            </div>
+
+            <div class="mt-3 mb-4 d-flex justify-content-center flex-wrap gap-2 position-relative z-1">
+                <span class="badge px-3 py-2 rounded-pill shadow-sm" style="background: rgba(11, 19, 43, 0.05); color: var(--primary-dark); border: 1px solid rgba(11, 19, 43, 0.1);" id="portal_status_badge"><i class="fas fa-spinner fa-spin"></i> جاري التحقق...</span>
+                <span class="badge px-3 py-2 rounded-pill shadow-sm" style="background: rgba(11, 19, 43, 0.05); color: var(--text-muted); border: 1px solid rgba(11, 19, 43, 0.1);" id="portal_last_seen_badge"><i class="fas fa-clock"></i> آخر زيارة: جاري التحقق...</span>
+            </div>
+
+            <div class="row g-3 mt-4 pt-4 border-top position-relative z-1" style="border-color: rgba(0,0,0,0.05) !important;">
+                <div class="col-4">
+                    <div class="fin-box info h-100">
+                        <small class="data-label text-info mb-2 fw-bold"><i class="fas fa-file-invoice-dollar d-block d-md-inline mb-1 mb-md-0"></i> إجمالي الأتعاب</small>
+                        <span class="data-value fs-5 text-info fw-900 font-monospace" id="fin-total-agreed">0</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="fin-box success h-100">
+                        <small class="data-label text-success mb-2 fw-bold"><i class="fas fa-hand-holding-usd d-block d-md-inline mb-1 mb-md-0"></i> إجمالي المدفوع</small>
+                        <span class="data-value fs-5 text-success fw-900 font-monospace" id="fin-total-paid">0</span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="fin-box danger h-100">
+                        <small class="data-label text-danger mb-2 fw-bold"><i class="fas fa-balance-scale-right d-block d-md-inline mb-1 mb-md-0"></i> الرصيد المتبقي</small>
+                        <span class="data-value fs-5 text-danger fw-900 font-monospace" id="fin-remaining">0</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <ul class="nav nav-pills mb-4" id="clientTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-cases" type="button"><i class="fas fa-gavel me-1 d-none d-sm-inline"></i> القضايا</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-appointments" type="button"><i class="fas fa-calendar-check me-1 d-none d-sm-inline"></i> المواعيد</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-files" type="button"><i class="fas fa-folder-open me-1 d-none d-sm-inline"></i> المستندات</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link shadow-sm" data-bs-toggle="pill" data-bs-target="#tab-info" type="button"><i class="fas fa-id-card me-1 d-none d-sm-inline"></i> الهوية</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            
+            <div class="tab-pane fade show active" id="tab-cases">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 px-1 gap-3">
+                    <h6 class="fw-bold mb-0" style="color: var(--primary-dark);"><i class="fas fa-briefcase me-2" style="color: var(--gold-luxury);"></i> سجل القضايا المرتبطة (<span id="cases-count" class="text-danger">0</span>)</h6>
+                    <div class="d-flex gap-2">
+                        <button id="btn_generate_report" class="btn btn-sm btn-gold fw-bold shadow-sm px-3 rounded-pill" onclick="generateMonthlyReport()">
+                            <i class="fas fa-magic me-1"></i> تقرير الإنجاز الشهري
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm px-3 rounded-pill" onclick="openRequestDocsModal()">
+                            <i class="fas fa-exclamation-circle me-1"></i> طلب مستندات
+                        </button>
+                    </div>
+                </div>
+                <div id="client-cases-list">
+                    <div class="text-center p-5 text-muted fw-bold bg-white rounded-4 border shadow-sm">
+                        <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: var(--gold-luxury);"></i><br>جاري تحميل سجلات القضايا...
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-appointments">
+                <div class="d-flex justify-content-between align-items-center mb-4 px-1">
+                    <h6 class="fw-bold mb-0" style="color: var(--primary-dark);"><i class="fas fa-handshake me-2" style="color: var(--gold-luxury);"></i> سجل المواعيد والاجتماعات</h6>
+                    <button class="btn btn-sm btn-gold shadow-sm px-3 rounded-pill" onclick="window.location.href='app.html#appointments'">
+                        <i class="fas fa-plus me-1"></i> جدولة جديد
+                    </button>
+                </div>
+                <div id="client-appointments-list">
+                    <div class="text-center p-5 text-muted fw-bold bg-white rounded-4 border shadow-sm">
+                        <i class="fas fa-calendar-alt fa-3x mb-3 opacity-50" style="color: var(--gold-luxury);"></i><br>جاري جلب جدول المواعيد...
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-files">
+                <div class="d-flex justify-content-between align-items-center mb-4 px-1">
+                    <h6 class="fw-bold mb-0" style="color: var(--primary-dark);"><i class="fas fa-file-pdf me-2" style="color: var(--gold-luxury);"></i> الأرشيف الرقمي للموكل</h6>
+                    <button class="btn btn-sm btn-gold shadow-sm px-3 rounded-pill" onclick="openModal('fileModal')">
+                        <i class="fas fa-cloud-upload-alt me-1"></i> رفع مستند
+                    </button>
+                </div>
+                <div class="row g-3" id="client-files-list">
+                    <div class="col-12 text-center p-5 text-muted fw-bold bg-white rounded-4 border shadow-sm w-100">
+                        <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: var(--gold-luxury);"></i><br>جاري جلب الملفات من الأرشيف السحابي...
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-info">
+                <section class="view-section border-start border-4" style="border-color: var(--primary-dark) !important;">
+                    <h6><i class="fas fa-address-card me-2" style="color: var(--gold-luxury);"></i> البيانات الشخصية والمهنية</h6>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <span class="data-label">الرقم الوطني / رقم تسجيل الشركة</span>
+                            <span class="data-value font-monospace text-start d-block" id="det-national-id" dir="ltr">--</span>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="data-label">البريد الإلكتروني</span>
+                            <span class="data-value text-break font-monospace text-start d-block" dir="ltr" id="det-email">--</span>
+                        </div>
+                        <div class="col-12">
+                            <span class="data-label">العنوان التفصيلي (المنزل/العمل)</span>
+                            <span class="data-value" id="det-address">--</span>
+                        </div>
+                        
+                        <div class="col-12"><hr class="my-2 border-light opacity-50"></div>
+                        
+                        <div class="col-6 col-md-4">
+                            <span class="data-label">اسم الأم</span>
+                            <span class="data-value" id="det-mother">--</span>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="data-label">تاريخ الولادة</span>
+                            <span class="data-value font-monospace" id="det-dob" dir="ltr">--</span>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="data-label">مكان الولادة</span>
+                            <span class="data-value" id="det-pob">--</span>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="data-label">الجنسية</span>
+                            <span class="data-value" id="det-nationality">--</span>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="data-label">الحالة الاجتماعية</span>
+                            <span class="data-value" id="det-marital">--</span>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <span class="data-label">المهنة</span>
+                            <span class="data-value" id="det-profession">--</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+        </div>
+    </main>
+
+    <div class="modal fade" id="editClientModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white"><i class="fas fa-user-edit me-2" style="color: var(--gold-luxury);"></i> تحديث بيانات الموكل (KYC)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="editClientForm" onsubmit="updateClient(event)">
+                        
+                        <div class="card-inner">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">البيانات الأساسية</h6>
+                            <div class="mb-3">
+                                <label class="form-label">اسم الموكل / الشركة <span class="text-danger">*</span></label>
+                                <input type="text" id="edit_full_name" class="form-control" required>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">رقم الهاتف <span class="text-danger">*</span></label>
+                                    <input type="tel" id="edit_phone" class="form-control font-monospace text-start" dir="ltr" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">الرقم الوطني/الشركة</label>
+                                    <input type="text" id="edit_national_id" class="form-control font-monospace text-start" dir="ltr">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-inner">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">بيانات الهوية التفصيلية</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">اسم الأم</label><input type="text" id="edit_mother" class="form-control"></div>
+                                <div class="col-md-6"><label class="form-label">تاريخ الميلاد</label><input type="date" id="edit_dob" class="form-control"></div>
+                                <div class="col-md-6"><label class="form-label">مكان الولادة</label><input type="text" id="edit_pob" class="form-control"></div>
+                                <div class="col-md-6"><label class="form-label">الجنسية</label><input type="text" id="edit_nationality" class="form-control"></div>
+                                <div class="col-md-6">
+                                    <label class="form-label">الحالة الاجتماعية</label>
+                                    <select id="edit_marital" class="form-select">
+                                        <option value="">غير محدد</option><option value="أعزب">أعزب</option><option value="متزوج">متزوج</option><option value="مطلق">مطلق</option><option value="أرمل">أرمل</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6"><label class="form-label">المهنة</label><input type="text" id="edit_profession" class="form-control"></div>
+                            </div>
+                        </div>
+
+                        <div class="card-inner">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">التواصل والمراسلات</h6>
+                            <div class="mb-3">
+                                <label class="form-label">البريد الإلكتروني</label>
+                                <input type="email" id="edit_email" class="form-control font-monospace text-start" dir="ltr">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">العنوان التفصيلي</label>
+                                <textarea id="edit_address" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="card-inner mb-4 border-warning border-2">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2 text-warning"><i class="fas fa-cog me-1"></i> إعدادات النظام والأمان</h6>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">صفة الموكل</label>
+                                    <select id="edit_client_type" class="form-select">
+                                        <option value="فرد">أفراد (شخص طبيعي)</option><option value="شركة">شركات (شخص اعتباري)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label"><i class="fas fa-lock text-danger"></i> مستوى السرية</label>
+                                    <select id="edit_confidentiality" class="form-select border-danger text-danger fw-bold">
+                                        <option value="عادي">عادي (متاح للمكتب)</option><option value="سري">سري جداً (للمدير والمحامي المسؤول)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-check form-switch bg-light p-3 rounded-3 border d-flex justify-content-between align-items-center shadow-sm">
+                                <div>
+                                    <label class="form-check-label fw-bold text-navy mb-1" for="edit_portal_active"><i class="fas fa-laptop-house text-primary me-2"></i> تفعيل بوابة الموكل (Client Portal)</label>
+                                    <small class="text-danger d-block fw-bold"><i class="fas fa-exclamation-triangle me-1"></i> تعطيل الخيار سيمنع الموكل من الدخول إلى بوابته حتى لو امتلك الرمز السري.</small>
+                                </div>
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="edit_portal_active" style="width: 3.5rem; height: 1.8rem; cursor: pointer;">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-gold w-100 py-3 fs-5 shadow-sm" id="btn_save_client">
+                            <i class="fas fa-save me-2"></i> حفظ وتحديث البيانات
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fileModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-white"><i class="fas fa-cloud-upload-alt me-2" style="color: var(--gold-luxury);"></i> أرشفة مستند خاص بالموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="fileForm" onsubmit="saveClientFile(event)">
+                        <div class="mb-4 text-center border rounded-4 p-4 bg-white shadow-sm" style="border: 2px dashed var(--gold-luxury) !important;">
+                            <i class="fas fa-file-invoice fa-4x mb-3" style="color: var(--primary-light);"></i>
+                            <label class="form-label d-block fw-bold fs-5 text-navy mb-3">اختر الملف أو الصورة <span class="text-danger">*</span></label>
+                            <input type="file" id="file_input" class="form-control fw-bold" required>
+                        </div>
+                        <div class="card-inner mb-4">
+                            <div class="mb-3">
+                                <label class="form-label">اسم المستند (اختياري)</label>
+                                <input type="text" id="file_title_input" class="form-control" placeholder="مثال: صورة الهوية، وكالة عامة، سجل تجاري...">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">تصنيف المستند <span class="text-danger">*</span></label>
+                                <select id="file_category_input" class="form-select" required>
+                                    <option value="هوية شخصية">صورة هوية/جواز</option>
+                                    <option value="وكالة عامة">وكالة عامة / خاصة</option>
+                                    <option value="سجل تجاري">سجل تجاري / رخصة مهن</option>
+                                    <option value="أخرى">مستندات أخرى</option>
+                                </select>
+                            </div>
+                            <div class="mb-2 p-3 bg-light rounded-3 border border-danger">
+                                <label class="form-label text-danger fw-bold"><i class="fas fa-hourglass-end me-1"></i> تاريخ انتهاء الصلاحية (للتنبيه مستقبلاً)</label>
+                                <input type="date" id="file_expiry_date" class="form-control text-center text-danger fw-bold font-monospace">
+                            </div>
+                        </div>
+                        <button type="submit" id="btn_upload" class="btn btn-gold w-100 py-3 fs-5 shadow-sm">
+                            <i class="fas fa-shield-alt me-2"></i> تشفير ورفع للأرشيف
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="requestDocsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger border-bottom border-warning border-3">
+                    <h5 class="modal-title text-white"><i class="fas fa-exclamation-triangle me-2 text-warning"></i> طلب مستندات ناقصة من الموكل</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="requestDocsForm" onsubmit="submitMissingDocsRequest(event)">
+                        <div class="alert alert-warning fw-bold small shadow-sm border-warning rounded-3">
+                            <i class="fas fa-info-circle me-1"></i> سيظهر هذا الطلب فوراً في بوابة الموكل كإشعار عاجل.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">اختر القضية المرتبطة بالطلب <span class="text-danger">*</span></label>
+                            <select id="req_docs_case_id" class="form-select" required>
+                                <option value="">جاري تحميل قضايا الموكل...</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">اسم المستند المطلوب <span class="text-danger">*</span></label>
+                            <input type="text" id="req_docs_name" class="form-control" placeholder="مثال: صورة عن جواز السفر، مخالصة مالية..." required>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100 py-3 fs-5 shadow-sm fw-bold rounded-3">
+                            <i class="fas fa-paper-plane me-2"></i> إرسال الطلب للموكل
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/client-details.js"></script>
+</body>
+</html>
