@@ -4,7 +4,10 @@
  * الملف: js/app-core.js
  * الوصف: المحرك الأساسي، المزامنة، الإشعارات، العقود الذكية، الـ QR Scanner، 
  * وإدارة السجل الأمني ومؤشر التواجد (Heartbeat) وتطبيقات الويب التقدمية (PWA).
- * التحديث: ربط بطاقة العمل (vCard) برابط صفحة التحقق (verify-cv) لتفادي طفحان الـ QR.
+ * التحديث: 
+ * 1. ربط بطاقة العمل (vCard) برابط صفحة التحقق (verify-cv) لتفادي طفحان الـ QR.
+ * 2. تطبيق مانع الطوفان الجذري (Boot Muter & State Manager) للإشعارات لمنع التكرار والإزعاج المطلق.
+ * 3. تحسين بطاقة (Online Staff) لتشمل الصور الرمزية (Avatars) والأسماء بشكل متقدم (إصلاح تداخل ألوان Bootstrap).
  * ============================================================================
  */
 
@@ -14,6 +17,10 @@ window.AppCore = {
     isKanbanView: false, 
     currentCaseFilter: '', 
     currentShareLink: '',
+    
+    // 🛡️ مانع طوفان الإشعارات (Anti-Spam State Manager)
+    displayedNotifications: new Set(), 
+    isInitialNotifLoad: true, // كابح الطوفان عند أول عملية جلب للبيانات
 
     escapeHTML: function(str) { 
         if (!str) return ''; 
@@ -233,7 +240,7 @@ window.runConflictCheck = async () => {
 };
 
 // ============================================================================
-// [4] المراقبة ونبض الموظفين (Heartbeat & Online Status)
+// [4] المراقبة ونبض الموظفين (Heartbeat & Online Staff Display Fix)
 // ============================================================================
 
 window.renderOnlineStaff = () => {
@@ -253,11 +260,23 @@ window.renderOnlineStaff = () => {
 
     if(onlineStaff.length > 0) {
         widget.style.display = 'block';
-        container.innerHTML = onlineStaff.map(s => `
-            <div class="badge bg-white text-navy border shadow-sm px-3 py-2 rounded-pill d-flex align-items-center gap-2">
-                <span class="online-dot"></span> ${window.escapeHTML(s.full_name)}
+        container.innerHTML = onlineStaff.map(s => {
+            const name = s.full_name || 'موظف';
+            const initial = name.charAt(0);
+            
+            // 💡 التحديث الجذري: استخدام متغيرات نظامك الصحيحة (navy و accent) وإزالة كلاس الـ badge المخرب للنصوص
+            const avatarHtml = s.avatar_url 
+                ? `<img src="${s.avatar_url}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 2px solid var(--accent); flex-shrink: 0;">` 
+                : `<div style="width:28px; height:28px; border-radius:50%; background:var(--navy); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:0.9rem; font-weight:900; flex-shrink: 0;">${initial}</div>`;
+            
+            return `
+            <div class="bg-white border shadow-sm px-3 py-2 rounded-pill d-flex align-items-center gap-2" style="display: inline-flex; margin: 3px;">
+                <span style="width: 10px; height: 10px; background: #01B574; border-radius: 50%; box-shadow: 0 0 6px rgba(1, 181, 116, 0.6); flex-shrink: 0;"></span> 
+                ${avatarHtml}
+                <span style="font-size: 0.95rem; font-weight: 800; color: var(--navy); white-space: nowrap; margin-right: 2px;">${window.escapeHTML(name)}</span>
             </div>
-        `).join('');
+            `;
+        }).join('');
     } else {
         container.innerHTML = `<span class="text-muted small fw-bold"><i class="fas fa-moon me-1"></i> لا يوجد موظفين متصلين حالياً.</span>`;
         widget.style.display = 'block';
@@ -285,35 +304,59 @@ window.startHeartbeat = () => {
 };
 
 // ============================================================================
-// [5] نظام الإشعارات (Notifications)
+// [5] نظام الإشعارات الكابح للطوفان (Anti-Spam Notifications)
 // ============================================================================
 
 window.renderNotifications = () => {
     const list = document.getElementById('notifications-list');
     const badge = document.getElementById('notification-badge');
-    if(!list) return;
-    
     const notifs = window.AppCore.globalData.notifications || [];
-    const unread = notifs.filter(n => !n.is_read).length;
     
-    if(unread > 0 && badge) {
-        badge.innerText = unread;
+    // 🛡️ التحديث الجذري لمنع الطوفان: 
+    // 1. في أول تحميل للنظام، نعتبر كل الإشعارات الحالية "مقروءة صامتاً في الذاكرة" لمنع القفز المفاجئ
+    if (window.AppCore.isInitialNotifLoad) {
+        notifs.forEach(n => window.AppCore.displayedNotifications.add(n.id));
+        window.AppCore.isInitialNotifLoad = false;
+    }
+
+    // 2. فرز الإشعارات الجديدة فعلياً فقط التي لم تنبه المستخدم بعد
+    const newUnreadNotifs = notifs.filter(n => !n.is_read && !window.AppCore.displayedNotifications.has(n.id));
+    
+    // 3. معالجة التنبيهات المزعجة (Anti-Spam Logic)
+    if (newUnreadNotifs.length > 0) {
+        if (newUnreadNotifs.length > 3) {
+            // إشعار مجمع ذكي بدلاً من 50 نافذة منبثقة
+            window.showToast(`لديك ${newUnreadNotifs.length} إشعارات جديدة بانتظارك.`, 'info');
+        } else {
+            // إشعارات فردية
+            newUnreadNotifs.forEach(n => window.showToast(n.title, 'info'));
+        }
+        // إضافة المعرفات للذاكرة حتى لا تتكرر التنبيهات لنفس الإشعار
+        newUnreadNotifs.forEach(n => window.AppCore.displayedNotifications.add(n.id));
+    }
+
+    // 4. تحديث الشارة الحمراء (Badge) وقائمة الإشعارات المنسدلة
+    const totalUnread = notifs.filter(n => !n.is_read).length;
+    if(totalUnread > 0 && badge) {
+        badge.innerText = totalUnread > 99 ? '+99' : totalUnread;
         badge.classList.remove('d-none');
     } else if (badge) {
         badge.classList.add('d-none');
     }
     
     if(notifs.length === 0) {
-        list.innerHTML = '<li class="p-4 text-center text-muted fw-bold small">لا توجد إشعارات حالياً</li>';
+        if(list) list.innerHTML = '<li class="p-4 text-center text-muted fw-bold small">لا توجد إشعارات حالياً</li>';
         return;
     }
     
-    list.innerHTML = notifs.slice(0, 10).map(n => `
-        <li><a class="dropdown-item py-3 border-bottom ${n.is_read ? 'text-muted' : 'fw-bold text-navy bg-light'}" href="${n.action_url || '#'}">
-            <small class="d-block mb-1" style="color: var(--accent);">${window.escapeHTML(n.title)}</small>
-            <span style="font-size:0.85rem; white-space: normal;">${window.escapeHTML(n.message)}</span>
-        </a></li>
-    `).join('');
+    if(list) {
+        list.innerHTML = notifs.slice(0, 10).map(n => `
+            <li><a class="dropdown-item py-3 border-bottom ${n.is_read ? 'text-muted' : 'fw-bold text-navy bg-light'}" href="${n.action_url || '#'}">
+                <small class="d-block mb-1" style="color: var(--accent);">${window.escapeHTML(n.title)}</small>
+                <span style="font-size:0.85rem; white-space: normal;">${window.escapeHTML(n.message)}</span>
+            </a></li>
+        `).join('');
+    }
 };
 
 window.markNotificationsRead = async () => {

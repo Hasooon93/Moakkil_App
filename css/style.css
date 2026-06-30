@@ -230,3 +230,36 @@ body {
 }
 [data-theme="dark"] #screen-leak-protection { color: #ffffff; opacity: 0.02; }
 .confidential-active { user-select: none !important; -webkit-user-select: none !important; }
+
+/* ========================================================================
+   [ الهيكل التجاوبي الشامل للهواتف الذكية - Global Mobile Scaling ]
+   هذا الكود يصغر كل شيء أوتوماتيكياً دون الحاجة لتعديل الـ HTML
+   ======================================================================== */
+@media (max-width: 768px) {
+    /* 1. تصغير حجم الخط الأساسي للنظام بنسبة 10-15% */
+    html { font-size: 14.5px !important; }
+
+    /* 2. تقليص المسافات الداخلية للبطاقات والحاويات بشكل ناعم */
+    .card, .data-card, .stat-card, .modal-content, .card-custom, .card-stat, .compact-card {
+        padding: 14px !important;
+        border-radius: 16px !important; /* تنعيم الحواف لتناسب الهاتف */
+    }
+
+    /* تقليص الفجوات الداخلية لـ grid داخل البطاقات */
+    .card-data-grid { gap: 6px !important; padding-top: 8px !important;}
+
+    /* 3. تصغير الأيقونات قليلاً لتتناسب مع الشاشة */
+    i.fas, i.fab, i.far { font-size: 0.9em !important; }
+    
+    /* 4. تصغير الأزرار وحقول الإدخال لتكون مدمجة ومريحة للأصبع */
+    .btn, .btn-primary-custom, .btn-gold { padding: 8px 16px !important; font-size: 0.9rem !important; }
+    .form-control, .form-select, textarea { padding: 10px 12px !important; font-size: 0.95rem !important; }
+
+    /* 5. الجداول: منع خروجها عن الشاشة وإلغاء المسافات الكبيرة */
+    .table th, .table td { padding: 10px 8px !important; font-size: 0.85rem !important; }
+    
+    /* 6. العناوين الأساسية والتنبيهات */
+    h1, h2, h3 { font-size: 1.5rem !important; }
+    h4, h5, h6 { font-size: 1.1rem !important; }
+    .alert-custom { padding: 12px !important; font-size: 0.85rem !important; gap: 10px !important;}
+}
