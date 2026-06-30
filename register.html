@@ -141,13 +141,37 @@
         .fade-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* التجاوب مع شاشات الموبايل */
+        /* التجاوب مع شاشات الموبايل (تصغير وتنسيق ممتاز) */
         @media (max-width: 768px) {
-            .super-header h4 { font-size: 1.3rem !important; text-align: center; margin-bottom: 20px !important;}
-            .header-actions { display: flex; flex-direction: column; gap: 12px; width: 100%;}
-            .header-actions button { width: 100%; margin: 0 !important;}
-            .data-card-header { flex-direction: column; gap: 15px; align-items: stretch !important; }
-            .search-box { max-width: 100%; }
+            .super-header h4 { font-size: 1.2rem !important; text-align: center; margin-bottom: 15px !important;}
+            .super-header i.fa-chess-king { font-size: 1.4rem !important; }
+            .super-header { padding: 15px 0; }
+            .header-actions { display: flex; flex-direction: column; gap: 10px; width: 100%;}
+            .header-actions button { width: 100%; margin: 0 !important; padding: 8px 15px; font-size: 0.9rem;}
+            
+            /* تصغير الكروت الإحصائية */
+            .row.g-4 { --bs-gutter-y: 1rem; --bs-gutter-x: 1rem; }
+            .stat-card { padding: 15px 12px; border-radius: 16px; }
+            .stat-card h6 { font-size: 0.8rem; margin-bottom: 8px !important; }
+            .stat-card h6 i { font-size: 0.9rem; }
+            .stat-value { font-size: 1.8rem; }
+            
+            /* تصغير شريط الذكاء الاصطناعي */
+            .ai-banner { padding: 15px; gap: 12px; margin-bottom: 20px; flex-direction: column; text-align: center; }
+            .ai-icon-container { width: 45px; height: 45px; font-size: 1.2rem; margin: 0 auto; }
+            .ai-banner h5 { font-size: 1rem; }
+            .ai-banner p { font-size: 0.85rem !important; }
+
+            /* تنسيق الجدول والبحث */
+            .data-card-header { flex-direction: column; gap: 15px; align-items: stretch !important; padding: 15px;}
+            .search-box { max-width: 100%; padding: 6px 12px; }
+            .data-card-header .fs-4 { font-size: 1.1rem !important; text-align: center; }
+            .btn-gold { padding: 8px 15px; font-size: 0.9rem; }
+            
+            /* تصغير المودال */
+            .modal-header { padding: 15px; }
+            .modal-body { padding: 15px; }
+            .form-section { padding: 15px; }
         }
     </style>
 </head>
@@ -215,16 +239,16 @@
                     <i class="fas fa-server me-2" style="color: var(--gold);"></i> قاعدة بيانات الكيانات المستضافة
                 </span>
                 
-                <div class="search-box">
+                <div class="search-box mt-3 mt-md-0">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchFirmInput" placeholder="بحث بالاسم، أو حالة الحساب..." oninput="filterFirms()">
                 </div>
 
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 mt-3 mt-md-0">
                     <button class="btn btn-outline-dark fw-bold border-2 rounded-3 px-3" onclick="loadFirms()" title="تحديث البيانات">
                         <i class="fas fa-sync-alt"></i>
                     </button>
-                    <button class="btn btn-gold" data-bs-toggle="modal" data-bs-target="#addFirmModal">
+                    <button class="btn btn-gold w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#addFirmModal">
                         <i class="fas fa-plus-circle"></i> تأسيس كيان جديد
                     </button>
                 </div>
@@ -301,7 +325,7 @@
     </div>
 
     <div class="modal fade" id="editFirmModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header" style="background: linear-gradient(135deg, #0f172a, #1e293b);">
                     <h5 class="modal-title text-white"><i class="fas fa-sliders-h text-info"></i> التعديل الشامل لبيانات المكتب</h5>
@@ -310,22 +334,45 @@
                 <div class="modal-body">
                     <form id="editFirmForm">
                         <input type="hidden" id="editFirmId">
+                        
                         <div class="form-section">
+                            <h6 class="fw-bold mb-4 border-bottom pb-2 text-navy"><i class="fas fa-building text-info me-2"></i> بيانات المكتب الرئيسية</h6>
                             <div class="mb-3">
                                 <label>الاسم التجاري للمكتب</label>
                                 <input type="text" class="form-control" id="editFirmName" required>
                             </div>
-                            <div class="mb-3">
-                                <label>كوتا الموظفين المسموح بها</label>
-                                <input type="number" class="form-control text-center font-monospace" id="editFirmMaxUsers" min="1" required>
-                            </div>
-                            <div class="mb-2">
-                                <label class="text-danger"><i class="fas fa-calendar-times me-1"></i> تاريخ إغلاق الحساب (Expiration Date)</label>
-                                <input type="date" class="form-control text-start border-danger font-monospace" id="editFirmEndDate" dir="ltr" required>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label>كوتا الموظفين المسموح بها</label>
+                                    <input type="number" class="form-control text-center font-monospace" id="editFirmMaxUsers" min="1" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-danger"><i class="fas fa-calendar-times me-1"></i> تاريخ إغلاق الحساب</label>
+                                    <input type="date" class="form-control text-start border-danger font-monospace" id="editFirmEndDate" dir="ltr" required>
+                                </div>
                             </div>
                         </div>
+
+                        <div class="form-section">
+                            <h6 class="fw-bold mb-4 border-bottom pb-2 text-navy"><i class="fas fa-user-tie text-warning me-2"></i> بيانات مدير النظام (Admin)</h6>
+                            <div class="mb-3">
+                                <label>الاسم الكامل لمدير النظام</label>
+                                <input type="text" class="form-control" id="editAdminName" required>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label>رقم الهاتف</label>
+                                    <input type="tel" class="form-control font-monospace text-start" id="editAdminPhone" dir="ltr" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label>معرف تيليغرام</label>
+                                    <input type="text" class="form-control font-monospace text-start" id="editAdminTelegram" dir="ltr">
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-gold w-100 py-3 fs-5" id="btnSubmitEditFirm">
-                            <i class="fas fa-save me-2"></i> حفظ التعديلات الحرجة
+                            <i class="fas fa-save me-2"></i> حفظ التعديلات الشاملة
                         </button>
                     </form>
                 </div>
@@ -363,7 +410,7 @@
     <script src="./js/auth.js"></script>
     <script src="./js/api.js"></script>
     
-    <script src="./js/register.js?v=5.0"></script>
+    <script src="./js/register.js?v=6.0"></script>
 
 </body>
 </html>
