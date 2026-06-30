@@ -2,7 +2,7 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/auth.js
- * الوصف: محرك المصادقة وإدارة الهوية الرقمية (V4.1 Enterprise Security & MFA Edition)
+ * الوصف: محرك المصادقة وإدارة الهوية الرقمية (V4.2 Enterprise Security & MFA Edition)
  * الميزات الأمنية المطبقة:
  * 1. الجلسة الأحادية (Single Session) لمنع الدخول المتعدد عبر x-device-id.
  * 2. التحقق المزدوج (2FA) عبر بوت التيليغرام.
@@ -169,11 +169,24 @@ const AUTH = {
         return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     },
     
+    // 🔥 الحل الجذري لمشكلة البصمة (Base64 Padding Fix) 🔥
     _base64ToBuffer: (base64) => {
-        const str = atob(base64.replace(/-/g, "+").replace(/_/g, "/"));
-        const bytes = new Uint8Array(str.length);
-        for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
-        return bytes.buffer;
+        try {
+            let b64 = base64.replace(/-/g, "+").replace(/_/g, "/");
+            // إضافة الحشوة الناقصة التي تسبب انهيار المتصفح
+            while (b64.length % 4 !== 0) {
+                b64 += "=";
+            }
+            const str = window.atob(b64);
+            const bytes = new Uint8Array(str.length);
+            for (let i = 0; i < str.length; i++) {
+                bytes[i] = str.charCodeAt(i);
+            }
+            return bytes.buffer;
+        } catch (e) {
+            console.error("🛡️ [Base64 Decode Error]:", e);
+            throw new Error("بيانات البصمة غير صالحة. يرجى تسجيل الدخول عبر الرمز السري (OTP) لتحديث مفاتيح الأمان.");
+        }
     },
 
     _generateChallenge: () => {
@@ -190,7 +203,9 @@ const AUTH = {
         if (!window.PublicKeyCredential) throw new Error("للأسف، متصفحك أو جهازك لا يدعم تقنية البصمة البيومترية.");
 
         const user = JSON.parse(localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user'));
-        if (!user) throw new Error("يجب عليك تسجيل الدخول باستخدام الرمز السري (OTP) أولاً لتتمكن من تفعيل البصمة.");
+        const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+        
+        if (!user || !token) throw new Error("يجب عليك تسجيل الدخول باستخدام الرمز السري (OTP) أولاً لتتمكن من تفعيل البصمة.");
 
         try {
             const publicKey = {
@@ -217,9 +232,18 @@ const AUTH = {
                 device_name: navigator.userAgent.includes('Mobi') ? 'هاتف ذكي (موبايل)' : 'جهاز كمبيوتر (مكتبي)'
             };
 
-            // إرسال التشفير للباك إند
-            const res = await API.registerBiometric(payload);
-            if (res.error) throw new Error(res.error);
+            // إرسال التشفير للباك إند مباشرة لتجنب الاعتماد على API خارجي
+            const response = await fetch(`${CONFIG.API_URL}/api/auth/biometric-register`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const res = await response.json();
+            if (!response.ok) throw new Error(res.error || 'فشل الحفظ في الخادم');
             
             // حفظ المفاتيح محلياً للتعرف على الجهاز لاحقاً
             localStorage.setItem('moakkil_biometric_id', credential.id);
@@ -270,9 +294,19 @@ const AUTH = {
                 deviceId: localStorage.getItem('moakkil_device_id') || 'unknown'
             };
 
-            // التحقق من المطابقة في الباك إند
-            const data = await API.biometricLogin(payload);
-            if (data.error) throw new Error(data.error);
+            // التحقق من المطابقة في الباك إند عبر اتصال مباشر
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown';
+            const response = await fetch(`${CONFIG.API_URL}/api/auth/biometric-login`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-device-id': deviceId 
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'البصمة غير متطابقة مع السجلات.');
 
             // بدء الجلسة
             localStorage.setItem(CONFIG?.TOKEN_KEY || 'moakkil_token', data.token);
