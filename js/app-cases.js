@@ -1,6 +1,12 @@
 /**
+ * ============================================================================
+ * نظام موكّل (Moakkil System) - 2026
  * الملف: js/app-cases.js
  * الوصف: محرك القضايا وإدارة النوافذ الذكية، متوافق 100% مع الهيكلية المعمارية الجديدة (Compact UI).
+ * التحديثات:
+ * 1. إضافة جدار التحقق الصارم باستخدام SweetAlert2 لمنع إدخال قضايا وهمية أو غير مكتملة.
+ * 2. تعزيز قفل الأزرار أثناء الحفظ لمنع تكرار الإرسال (Double-Submit Prevention).
+ * ============================================================================
  */
 window.AppCases = {
     render: function() {
@@ -126,14 +132,36 @@ window.AppCases = {
     save: async function(e) {
         e.preventDefault();
         
+        const btn = document.getElementById('btn_save_case'); 
+        if (btn.disabled) return; // حماية ضد النقر المزدوج السريع
+
+        const clientIdVal = document.getElementById('case_client_id').value;
+        const caseInternalIdVal = document.getElementById('case_internal_id').value;
+
+        // 🛡️ جدار التحقق الصارم باستخدام SweetAlert2
+        if (!clientIdVal || !caseInternalIdVal) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'بيانات غير مكتملة',
+                    text: 'يجب اختيار "الموكل" وإدخال "رقم الملف الداخلي" قبل اعتماد القضية.',
+                    confirmButtonText: 'حسناً',
+                    confirmButtonColor: 'var(--mo-primary)'
+                });
+            } else {
+                window.AppCore.showToast('الرجاء إكمال البيانات الأساسية للقضية.', 'danger');
+            }
+            return;
+        }
+        
         const lawyerSelect = document.getElementById('case_assigned_lawyers');
         const lawyers = lawyerSelect ? Array.from(lawyerSelect.selectedOptions).map(opt => opt.value) : [];
         if(lawyers.length === 0) lawyers.push(window.AppCore.currentUser.id);
 
         // تجميع وبناء مصفوفة البيانات للقضية الجديدة
         const data = { 
-            client_id: document.getElementById('case_client_id').value, 
-            case_internal_id: document.getElementById('case_internal_id').value, 
+            client_id: clientIdVal, 
+            case_internal_id: caseInternalIdVal, 
             access_pin: document.getElementById('case_access_pin').value, 
             case_type: document.getElementById('case_type').value, 
             priority_level: document.getElementById('case_priority_level').value,
@@ -178,7 +206,6 @@ window.AppCases = {
             created_by: window.AppCore.currentUser.id
         };
         
-        const btn = document.getElementById('btn_save_case'); 
         btn.disabled = true; 
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الحفظ...';
         
@@ -187,7 +214,19 @@ window.AppCases = {
             if (res && !res.error) { 
                 window.AppCore.closeModal('caseModal'); 
                 await window.AppCore.loadAllData(); 
-                window.AppCore.showToast('تم فتح الملف وتوثيقه بنجاح', 'success'); 
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم بنجاح',
+                        text: 'تم فتح الملف وتوثيقه بنجاح.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    window.AppCore.showToast('تم فتح الملف وتوثيقه بنجاح', 'success'); 
+                }
+                
                 e.target.reset(); 
                 
                 // تفريغ الرمز السري ليتم توليد واحد جديد تلقائياً المرة القادمة
@@ -197,7 +236,11 @@ window.AppCases = {
                 throw new Error(res.error || 'حدث خطأ أثناء الاتصال بالخادم');
             }
         } catch(err) { 
-            window.AppCore.showToast('خطأ بالحفظ: ' + err.message, 'danger'); 
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'خطأ', text: err.message });
+            } else {
+                window.AppCore.showToast('خطأ بالحفظ: ' + err.message, 'danger'); 
+            }
         } finally { 
             btn.disabled = false; 
             btn.innerHTML = '<i class="fas fa-save me-2"></i> حفظ واعتماد فتح الملف'; 

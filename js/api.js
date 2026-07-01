@@ -2,14 +2,13 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/api.js
- * الوصف: المحرك الموحد للاتصال بالخادم (V4.6 Cloudflare R2, AI Batch Sync & MFA Edition)
+ * الوصف: المحرك الموحد للاتصال بالخادم (V4.7 Enterprise Security & Sync Edition)
  * الميزات:
- * 1. نظام المزامنة الدفعي (Batch Queue) للعمل بكفاءة دون إنترنت مع قفل منع التكرار (Anti-Spam Lock).
- * 2. اعتراض الأخطاء وإدارة الجلسات (401 Unauthorized Interceptor & 409 Conflict).
- * 3. التشفير الآمن للحروف العربية في الـ Headers لخدمات الرفع السحابي (R2).
- * 4. ربط جميع وحدات النظام بموجهات موحدة متضمنة السوابق الذكية (Cross-Case AI).
- * 5. إصلاح جذري لمشكلة الإزاحة الزمنية (Zero-Offset UTC).
- * 6. تصحيح الاعتماديات لدالة getCases لتعمل بانسجام مع app-core.js.
+ * 1. نظام المزامنة الدفعي (Batch Queue) للعمل بكفاءة دون إنترنت.
+ * 2. قفل منع التكرار (Idempotency Key) باستخدام UUID لمنع تكرار الإدخال.
+ * 3. تمرير توكن المصادقة الثنائية (x-action-token) لعمليات الحذف (MFA).
+ * 4. اعتراض الأخطاء وإدارة الجلسات (401 Unauthorized Interceptor & 409 Conflict).
+ * 5. التشفير الآمن للحروف العربية في الـ Headers لخدمات الرفع السحابي (R2).
  * ============================================================================
  */
 
@@ -141,6 +140,16 @@ const getCurrentUser = () => JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 
  * دالة التغليف الذكية للاتصال بالـ API (تعالج الـ Tokens والأخطاء والأوفلاين والمصادقة الثنائية)
  */
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false, actionToken = null) {
+    
+    // 🛡️ [قفل التكرار - Idempotency Key]: توليد UUID فريد لطلبات الإضافة لمنع تكرار البيانات
+    if (method === 'POST' && body && typeof body === 'object' && !Array.isArray(body)) {
+        const excludedPaths = ['/ai/', '/auth/', '/public/', '/sync/', '/r2/', '/notifications/', '/webhook/'];
+        const isCrud = !excludedPaths.some(p => endpoint.includes(p));
+        if (isCrud && !body.id) {
+            body.id = crypto.randomUUID();
+        }
+    }
+
     // 1. معالجة حالة انقطاع الإنترنت (Offline Handling)
     if (!navigator.onLine && !isPublic) {
         if (['POST', 'PATCH', 'DELETE'].includes(method)) {
@@ -165,7 +174,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // إضافة ترويسة المصادقة الثنائية (WebAuthn) إن وجدت للعمليات الحساسة
+    // 🛡️ إضافة ترويسة المصادقة الثنائية (WebAuthn) لعمليات الحذف (MFA)
     if (actionToken) {
         headers['x-action-token'] = actionToken;
     }
@@ -233,28 +242,28 @@ const API = {
     getClients: () => fetchAPI(getCurrentUser().firm_id ? `/api/clients?firm_id=eq.${getCurrentUser().firm_id}` : '/api/clients'),
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
-    deleteClient: (id) => fetchAPI(`/api/clients?id=eq.${id}`, 'DELETE'),
+    deleteClient: (id, actionToken) => fetchAPI(`/api/clients?id=eq.${id}`, 'DELETE', null, false, actionToken),
     
     getPOAs: (clientId) => fetchAPI(clientId ? `/api/poas?client_id=eq.${clientId}` : '/api/poas'),
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
-    deletePOA: (id) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE'),
+    deletePOA: (id, actionToken) => fetchAPI(`/api/poas?id=eq.${id}`, 'DELETE', null, false, actionToken),
 
     // -------------------------------------------------------------
     // 4.3 إدارة القضايا والإجراءات (Cases & Updates & Hearings)
     // -------------------------------------------------------------
-    getCases: () => fetchAPI(getCurrentUser().firm_id ? `/api/cases?firm_id=eq.${getCurrentUser().firm_id}` : '/api/cases'), // 🔥 تم إرجاعها إلى getCases لتعمل بشكل سليم
+    getCases: () => fetchAPI(getCurrentUser().firm_id ? `/api/cases?firm_id=eq.${getCurrentUser().firm_id}` : '/api/cases'),
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
-    deleteCase: (id) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE'),
+    deleteCase: (id, actionToken) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE', null, false, actionToken),
     
     getUpdates: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/updates?${param}` : `/api/updates?case_id=eq.${param}`) : '/api/updates'),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),
-    deleteUpdate: (id) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE'),
+    deleteUpdate: (id, actionToken) => fetchAPI(`/api/updates?id=eq.${id}`, 'DELETE', null, false, actionToken),
     
     getHearings: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/hearings?${param}` : `/api/hearings?case_id=eq.${param}`) : '/api/hearings'),
     addHearing: (data) => fetchAPI('/api/hearings', 'POST', data),
     updateHearing: (id, data) => fetchAPI(`/api/hearings?id=eq.${id}`, 'PATCH', data),
-    deleteHearing: (id) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE'),
+    deleteHearing: (id, actionToken) => fetchAPI(`/api/hearings?id=eq.${id}`, 'DELETE', null, false, actionToken),
 
     // -------------------------------------------------------------
     // 4.4 إدارة الموارد البشرية والمهام (HR & Appointments)
@@ -262,7 +271,7 @@ const API = {
     getStaff: () => fetchAPI(getCurrentUser().firm_id ? `/api/users?firm_id=eq.${getCurrentUser().firm_id}` : '/api/users'),
     addStaff: (data) => fetchAPI('/api/users', 'POST', data),
     updateStaff: (id, data) => fetchAPI(`/api/users?id=eq.${id}`, 'PATCH', data),
-    deleteStaff: (id) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE'),
+    deleteStaff: (id, actionToken) => fetchAPI(`/api/users?id=eq.${id}`, 'DELETE', null, false, actionToken),
     
     getAppointments: () => fetchAPI(getCurrentUser().firm_id ? `/api/appointments?firm_id=eq.${getCurrentUser().firm_id}` : '/api/appointments'),
     addAppointment: async (data) => {
@@ -270,18 +279,18 @@ const API = {
         return await fetchAPI('/api/appointments', 'POST', data);
     },
     updateAppointment: (id, data) => fetchAPI(`/api/appointments?id=eq.${id}`, 'PATCH', data),
-    deleteAppointment: (id) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE'),
+    deleteAppointment: (id, actionToken) => fetchAPI(`/api/appointments?id=eq.${id}`, 'DELETE', null, false, actionToken),
 
     // -------------------------------------------------------------
     // 4.5 الإدارة المالية (Finance)
     // -------------------------------------------------------------
     getInstallments: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/installments?${param}` : `/api/installments?case_id=eq.${param}`) : '/api/installments'),
     addInstallment: (data) => fetchAPI('/api/installments', 'POST', data),
-    deleteInstallment: (id, caseId) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE'),
+    deleteInstallment: (id, caseId, actionToken) => fetchAPI(`/api/installments?id=eq.${id}&case_id=eq.${caseId}`, 'DELETE', null, false, actionToken),
     
     getExpenses: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/expenses?${param}` : `/api/expenses?case_id=eq.${param}`) : '/api/expenses'),
     addExpense: (data) => fetchAPI('/api/expenses', 'POST', data),
-    deleteExpense: (id) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE'),
+    deleteExpense: (id, actionToken) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE', null, false, actionToken),
 
     // -------------------------------------------------------------
     // 4.6 العقل الذكي والبحث (AI Integration Engine)
@@ -323,7 +332,7 @@ const API = {
     // مسارات الميزات الماسية
     checkConflict: (name) => fetchAPI(`/api/conflict-check?name=${encodeURIComponent(name)}`),
     generateSmartContract: (data) => fetchAPI('/api/contracts/generate', 'POST', data),
-    getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*${query}*)` : '/api/legal_brain'),
+    getLegalBrain: (query = '') => fetchAPI(query ? `/api/legal_brain?or=(title.ilike.*${query}*,category.ilike.*query}*)` : '/api/legal_brain'),
 
     // -------------------------------------------------------------
     // 4.7 الإشعارات والمصادقة وتاريخ النشاط (Security & Notifications)
@@ -351,7 +360,7 @@ const API = {
     // 4.8 إدارة التخزين السحابي (Cloudflare R2 Files)
     // -------------------------------------------------------------
     getFiles: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/files?${param}` : `/api/files?case_id=eq.${param}`) : '/api/files'),
-    deleteFile: (id) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE'),
+    deleteFile: (id, actionToken) => fetchAPI(`/api/files?id=eq.${id}`, 'DELETE', null, false, actionToken),
     
     addFileRecord: (data) => {
         const currentUser = getCurrentUser();
@@ -367,7 +376,7 @@ const API = {
         const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
         const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
 
-        // تشفير الحروف العربية في הـ Headers لمنع أخطاء (ISO-8859-1 HTTP Header encoding error)
+        // تشفير الحروف العربية في الـ Headers لمنع أخطاء (ISO-8859-1 HTTP Header encoding error)
         const headers = {
             'Authorization': `Bearer ${token}`,
             'x-device-id': deviceId,

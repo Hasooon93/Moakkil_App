@@ -3,7 +3,10 @@
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/app-agenda.js
  * الوصف: المحرك المتطور للأجندة، وإدارة المواعيد، الإنجاز المرفق، والإلغاء.
- * التحديث: إصلاح جذري لأسماء الدوال (Naming Mismatch) لضمان عمل الإنجاز والتأجيل.
+ * التحديث: 
+ * 1. استبدال نوافذ التفاعل بالكامل بـ SweetAlert2 لتجربة مستخدم (Enterprise UX).
+ * 2. دمج المصادقة والتحذيرات القاطعة عند إلغاء أو تغيير حالة المواعيد.
+ * 3. تحسين المزامنة الحية لتحديث الواجهة بسلاسة (Smooth Rerender).
  * ============================================================================
  */
 
@@ -125,9 +128,9 @@ window.AppAgenda = {
             if (a.status === 'مجدول' || a.status === 'مؤجل') {
                 actionBtns = `
                 <div class="d-flex gap-2 mt-3 pt-3 border-top">
-                    <button class="btn btn-sm btn-outline-success bg-white flex-grow-1 fw-bold rounded-pill shadow-sm py-2" onclick="window.AppCore.openModal('apptOutcomeModal'); document.getElementById('outcome_appt_id').value='${a.id}';"><i class="fas fa-check me-1"></i> إنجاز</button>
-                    <button class="btn btn-sm btn-outline-warning bg-white flex-grow-1 fw-bold rounded-pill shadow-sm py-2 text-dark" onclick="window.AppCore.openModal('apptPostponeModal'); document.getElementById('postpone_appt_id').value='${a.id}';"><i class="fas fa-clock me-1"></i> تأجيل</button>
-                    <button class="btn btn-sm btn-outline-danger bg-white flex-grow-1 fw-bold rounded-pill shadow-sm py-2" onclick="window.AppCore.openModal('apptCancelModal'); document.getElementById('cancel_appt_id').value='${a.id}';"><i class="fas fa-ban me-1"></i> إلغاء</button>
+                    <button class="btn btn-sm btn-outline-success bg-white flex-grow-1 fw-bold rounded-pill shadow-sm py-2" onclick="window.AppAgenda.promptApptOutcome('${a.id}')"><i class="fas fa-check me-1"></i> إنجاز</button>
+                    <button class="btn btn-sm btn-outline-warning bg-white flex-grow-1 fw-bold rounded-pill shadow-sm py-2 text-dark" onclick="window.AppAgenda.promptApptPostpone('${a.id}')"><i class="fas fa-clock me-1"></i> تأجيل</button>
+                    <button class="btn btn-sm btn-outline-danger bg-white flex-grow-1 fw-bold rounded-pill shadow-sm py-2" onclick="window.AppAgenda.promptApptCancel('${a.id}')"><i class="fas fa-ban me-1"></i> إلغاء</button>
                 </div>`;
             } else if (a.status === 'تم') {
                 actionBtns = `<div class="mt-3 pt-2 border-top text-success fw-bold small text-truncate"><i class="fas fa-check-double me-1"></i> ${window.AppCore.escapeHTML(a.notes || 'تم الإنجاز')}</div>`;
@@ -203,9 +206,9 @@ window.AppAgenda = {
                         </div>
                         ${(a.status !== 'تم' && a.status !== 'ملغي') ? `
                         <div class="d-flex gap-2 mt-3 pt-2 border-top">
-                            <button class="btn btn-sm btn-outline-success flex-grow-1 rounded-pill shadow-sm py-1 bg-white" onclick="window.AppCore.openModal('apptOutcomeModal'); document.getElementById('outcome_appt_id').value='${a.id}';"><i class="fas fa-check"></i></button>
-                            <button class="btn btn-sm btn-outline-warning flex-grow-1 rounded-pill shadow-sm py-1 bg-white text-dark" onclick="window.AppCore.openModal('apptPostponeModal'); document.getElementById('postpone_appt_id').value='${a.id}';"><i class="fas fa-clock"></i></button>
-                            <button class="btn btn-sm btn-outline-danger flex-grow-1 rounded-pill shadow-sm py-1 bg-white" onclick="window.AppCore.openModal('apptCancelModal'); document.getElementById('cancel_appt_id').value='${a.id}';"><i class="fas fa-ban"></i></button>
+                            <button class="btn btn-sm btn-outline-success flex-grow-1 rounded-pill shadow-sm py-1 bg-white" onclick="window.AppAgenda.promptApptOutcome('${a.id}')"><i class="fas fa-check"></i></button>
+                            <button class="btn btn-sm btn-outline-warning flex-grow-1 rounded-pill shadow-sm py-1 bg-white text-dark" onclick="window.AppAgenda.promptApptPostpone('${a.id}')"><i class="fas fa-clock"></i></button>
+                            <button class="btn btn-sm btn-outline-danger flex-grow-1 rounded-pill shadow-sm py-1 bg-white" onclick="window.AppAgenda.promptApptCancel('${a.id}')"><i class="fas fa-ban"></i></button>
                         </div>` : `<div class="mt-2 text-${stColor} fw-bold small"><i class="fas fa-info-circle me-1"></i> ${a.status}</div>`}
                     </div>`;
                 }).join('')}
@@ -300,7 +303,19 @@ window.AppAgenda = {
             const res = await API.addAppointment(data);
             if (res && !res.error) { 
                 window.AppCore.closeModal('apptModal'); 
-                window.AppCore.showToast('تمت الجدولة بنجاح', 'success'); 
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تمت الجدولة بنجاح',
+                        text: 'سيتم إشعار فريق العمل بالموعد.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    window.AppCore.showToast('تمت الجدولة بنجاح', 'success'); 
+                }
+                
                 e.target.reset(); 
                 document.querySelectorAll('.assigned-staff-checkbox').forEach(cb => cb.checked = false);
                 document.getElementById('appt_client_wrapper')?.classList.add('d-none');
@@ -313,100 +328,125 @@ window.AppAgenda = {
             }
         } catch(err) { 
             console.error("Appointment Save Error: ", err);
-            window.AppCore.showToast('فشل الجدولة: ' + err.message, 'danger'); 
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'فشل الجدولة', text: err.message });
+            } else {
+                window.AppCore.showToast('فشل الجدولة: ' + err.message, 'danger'); 
+            }
         } finally {
             if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-bell me-2"></i> جدولة وتفعيل التنبيه الآلي'; }
         }
     },
-    
-    // 💡 تم تصحيح اسم الدالة هنا ليتطابق مع الاستدعاء في الـ HTML
-    saveApptOutcome: async function(e) { 
-        if(e) e.preventDefault(); 
-        const btn = document.querySelector('#apptOutcomeModal button[type="submit"]');
-        if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التوثيق...'; }
 
-        const apptId = document.getElementById('outcome_appt_id').value; 
-        const notes = document.getElementById('outcome_text').value;
-        const fileInput = document.getElementById('outcome_file');
-        
-        try { 
-            let finalNotes = `النتيجة: ${notes}`;
-            
-            if (fileInput && fileInput.files && fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const uploadRes = await API.uploadFileToR2(file, 'agenda', apptId);
-
-                if (uploadRes && uploadRes.success) {
-                    const baseUrl = window.API_BASE_URL || (typeof CONFIG !== 'undefined' ? CONFIG.API_URL : '');
-                    const fileUrl = `${baseUrl}/api/r2/download?key=${encodeURIComponent(uploadRes.r2_key)}`;
-                    finalNotes += `\n\n📎 المرفق المستندي: ${fileUrl}`;
-                }
+    // 🚀 تطبيق SweetAlert2 على عمليات تغيير حالة الأجندة
+    promptApptOutcome: async function(apptId) {
+        const { value: formValues } = await Swal.fire({
+            title: 'إنجاز الموعد/المهمة',
+            html: `
+                <textarea id="swal-outcome-notes" class="swal2-textarea" placeholder="أدخل ملخص مخرجات هذا الاجتماع أو المهمة..."></textarea>
+                <div class="mt-3 text-start">
+                    <label class="form-label text-navy fw-bold small"><i class="fas fa-paperclip me-1"></i> إرفاق محضر/مستند (اختياري)</label>
+                    <input type="file" id="swal-outcome-file" class="form-control border-primary shadow-sm bg-light">
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-check-circle me-1"></i> تأكيد الإنجاز',
+            cancelButtonText: 'إلغاء',
+            confirmButtonColor: '#198754',
+            preConfirm: () => {
+                const notes = document.getElementById('swal-outcome-notes').value;
+                const fileInput = document.getElementById('swal-outcome-file');
+                return { notes, file: fileInput.files[0] };
             }
+        });
 
-            await API.updateAppointment(apptId, { status: 'تم', notes: finalNotes }); 
-            
-            window.AppCore.closeModal('apptOutcomeModal'); 
-            window.AppCore.showToast('تم اعتماد الإنجاز بنجاح', 'success'); 
-            document.getElementById('outcome_file').value = '';
-            document.getElementById('outcome_text').value = '';
-            
-            if(typeof window.loadAllData === 'function') await window.loadAllData();
-            else if(window.AppCore && typeof window.AppCore.loadAllData === 'function') await window.AppCore.loadAllData();
+        if (formValues) {
+            Swal.fire({ title: 'جاري التوثيق...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+            try {
+                let finalNotes = `النتيجة: ${formValues.notes || 'تم الإنجاز بنجاح.'}`;
+                if (formValues.file) {
+                    const uploadRes = await API.uploadFileToR2(formValues.file, 'agenda', apptId);
+                    if (uploadRes && uploadRes.success) {
+                        const baseUrl = window.API_BASE_URL || (typeof CONFIG !== 'undefined' ? CONFIG.API_URL : '');
+                        const fileUrl = `${baseUrl}/api/r2/download?key=${encodeURIComponent(uploadRes.r2_key)}`;
+                        finalNotes += `\n\n📎 المرفق المستندي: ${fileUrl}`;
+                    }
+                }
 
-        } catch(err) { 
-            window.AppCore.showToast('حدث خطأ أثناء حفظ الإنجاز', 'danger'); 
-        } finally {
-            if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-signature me-2"></i> تأكيد وتوثيق'; }
-        }
-    },
-    
-    saveCancel: async function(e) {
-        if(e) e.preventDefault();
-        const btn = document.querySelector('#apptCancelModal button[type="submit"]');
-        if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الإلغاء...'; }
+                await API.updateAppointment(apptId, { status: 'تم', notes: finalNotes });
+                
+                await Swal.fire('نجاح!', 'تم اعتماد إنجاز المهمة وإضافتها للسجل.', 'success');
+                if(typeof window.loadAllData === 'function') await window.loadAllData();
+                else if(window.AppCore && typeof window.AppCore.loadAllData === 'function') await window.AppCore.loadAllData();
 
-        const id = document.getElementById('cancel_appt_id').value;
-        const reason = document.getElementById('cancel_reason').value;
-        
-        try {
-            await API.updateAppointment(id, { status: 'ملغي', notes: `تم الإلغاء. السبب: ${reason}` });
-            window.AppCore.closeModal('apptCancelModal');
-            window.AppCore.showToast('تم إلغاء الموعد', 'success');
-            document.getElementById('cancel_reason').value = '';
-            
-            if(typeof window.loadAllData === 'function') await window.loadAllData();
-            else if(window.AppCore && typeof window.AppCore.loadAllData === 'function') await window.AppCore.loadAllData();
-            
-        } catch(err) {
-            window.AppCore.showToast('فشل الإلغاء', 'danger');
-        } finally {
-            if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt me-2"></i> تأكيد الإلغاء'; }
+            } catch (err) {
+                Swal.fire('خطأ', 'حدث خطأ أثناء حفظ الإنجاز: ' + err.message, 'error');
+            }
         }
     },
 
-    // 💡 تم تصحيح اسم الدالة هنا ليتطابق مع الاستدعاء في الـ HTML
-    saveApptPostpone: async function(e) { 
-        if(e) e.preventDefault(); 
-        const id = document.getElementById('postpone_appt_id').value; 
-        const dInput = document.getElementById('postpone_date').value; 
-        if(!dInput) return; 
-        
-        window.AppCore.closeModal('apptPostponeModal'); 
-        window.AppCore.showToast('جاري التأجيل...', 'info');
-        try { 
-            const exactTime = this.getLocalISOString(dInput);
-            await API.updateAppointment(id, { status: 'مؤجل', appt_date: exactTime }); 
-            window.AppCore.showToast('تم التأجيل بنجاح', 'success'); 
-            
-            if(typeof window.loadAllData === 'function') await window.loadAllData();
-            else if(window.AppCore && typeof window.AppCore.loadAllData === 'function') await window.AppCore.loadAllData();
-            
-        } catch(err) { window.AppCore.showToast('حدث خطأ أثناء التأجيل', 'danger'); }
+    promptApptPostpone: async function(apptId) {
+        const { value: newDate } = await Swal.fire({
+            title: 'تأجيل الموعد',
+            html: '<input type="datetime-local" id="swal-postpone-date" class="swal2-input border-warning">',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-clock me-1"></i> تأكيد التأجيل',
+            cancelButtonText: 'إلغاء',
+            confirmButtonColor: '#ffc107',
+            preConfirm: () => {
+                const dt = document.getElementById('swal-postpone-date').value;
+                if (!dt) Swal.showValidationMessage('يجب اختيار تاريخ جديد للتأجيل');
+                return dt;
+            }
+        });
+
+        if (newDate) {
+            Swal.fire({ title: 'جاري التأجيل...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+            try {
+                const exactTime = this.getLocalISOString(newDate);
+                await API.updateAppointment(apptId, { status: 'مؤجل', appt_date: exactTime });
+                await Swal.fire('تم التأجيل', 'تم تأجيل الموعد للموعد الجديد بنجاح.', 'success');
+                
+                if(typeof window.loadAllData === 'function') await window.loadAllData();
+                else if(window.AppCore && typeof window.AppCore.loadAllData === 'function') await window.AppCore.loadAllData();
+                
+            } catch (err) {
+                Swal.fire('خطأ', 'حدث خطأ أثناء التأجيل.', 'error');
+            }
+        }
     },
 
-    // Aliases للإبقاء على التوافقية (Safety Net)
-    saveOutcome: function(e) { return this.saveApptOutcome(e); },
-    savePostpone: function(e) { return this.saveApptPostpone(e); }
+    promptApptCancel: async function(apptId) {
+        const { value: reason } = await Swal.fire({
+            title: 'تأكيد الإلغاء القاطع',
+            text: "هل أنت متأكد من رغبتك في إلغاء هذا الموعد؟",
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'الرجاء إدخال سبب الإلغاء (إلزامي)',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash"></i> نعم، إلغاء الموعد',
+            cancelButtonText: 'تراجع',
+            inputValidator: (value) => {
+                if (!value) return 'يجب إدخال سبب الإلغاء لتوثيقه في السجل الأمني';
+            }
+        });
+
+        if (reason) {
+            Swal.fire({ title: 'جاري الإلغاء...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+            try {
+                await API.updateAppointment(apptId, { status: 'ملغي', notes: `تم الإلغاء. السبب: ${reason}` });
+                await Swal.fire('تم الإلغاء', 'تم إلغاء الموعد بنجاح وتوثيق السبب.', 'success');
+                
+                if(typeof window.loadAllData === 'function') await window.loadAllData();
+                else if(window.AppCore && typeof window.AppCore.loadAllData === 'function') await window.AppCore.loadAllData();
+                
+            } catch (err) {
+                Swal.fire('خطأ', 'حدث خطأ أثناء إلغاء الموعد.', 'error');
+            }
+        }
+    }
 };
 
 window.toggleClientSelectForAppt = function() {
@@ -448,9 +488,6 @@ window.renderKanbanBoard = () => window.AppAgenda.renderKanban();
 window.toggleAgendaView = () => window.AppAgenda.toggleView();
 window.filterAgenda = () => window.AppAgenda.render();
 window.saveAppointment = (e) => window.AppAgenda.save(e);
-window.saveApptOutcome = (e) => window.AppAgenda.saveApptOutcome(e); // 👈 تم التعديل
-window.saveApptPostpone = (e) => window.AppAgenda.saveApptPostpone(e); // 👈 تم التعديل
-window.saveCancel = (e) => window.AppAgenda.saveCancel(e);
 
 document.addEventListener('DOMContentLoaded', () => {
     const typeSelect = document.getElementById('appt_type');

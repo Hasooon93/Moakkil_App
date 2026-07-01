@@ -3,7 +3,9 @@
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/library.js
  * الوصف: المحرك الشامل للمكتبة (Smart Editor + Cloud Archive + Canvas Signature + Drafts Engine)
- * التحديث: إضافة محرك حفظ المسودات المحلي لضمان عدم ضياع العمل.
+ * التحديث: 
+ * 1. إضافة محرك حفظ المسودات المحلي لضمان عدم ضياع العمل.
+ * 2. تطبيق المصادقة الثنائية (MFA Delete Protection) على حذف النماذج السحابية.
  * ============================================================================
  */
 
@@ -567,6 +569,7 @@ window.downloadArchiveFile = async function(r2Key, fileName) {
     await API.downloadR2File(r2Key, fileName);
 }
 
+// 🛡️ سد الثغرة: تفعيل الـ Action-Based MFA لحذف ملفات المكتبة السحابية
 window.deleteArchiveFile = async function(id) {
     const result = await Swal.fire({
         title: 'هل أنت متأكد؟',
@@ -580,14 +583,35 @@ window.deleteArchiveFile = async function(id) {
     });
 
     if (result.isConfirmed) {
+        // 🛡️ WebAuthn / PIN Security Check (Action-Based MFA)
+        const secCheck = await Swal.fire({
+            title: 'مصادقة أمنية مطلوبة',
+            text: 'هذا إجراء جذري. يرجى إدخال الرمز السري الخاص بك (PIN) لتأكيد الحذف من المكتبة السحابية.',
+            input: 'password',
+            inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-fingerprint"></i> تأكيد ההوية',
+            cancelButtonText: 'إلغاء',
+            confirmButtonColor: '#0B132B',
+            preConfirm: (pin) => {
+                if (!pin) Swal.showValidationMessage('يجب إدخال الرمز السري لتأكيد العملية');
+                return pin;
+            }
+        });
+
+        if (!secCheck.isConfirmed) return;
+        const actionToken = secCheck.value;
+
         Swal.fire({ title: 'جاري الحذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const res = await API.deleteFile(id);
+        
+        // تمرير التوكن في دالة الحذف لسد الثغرة بالكامل
+        const res = await API.deleteFile(id, actionToken);
         
         if (!res.error) {
-            Swal.fire('تم الحذف', 'تم حذف النموذج من الأرشيف بنجاح.', 'success');
+            Swal.fire('تم الحذف', 'تم حذف النموذج من الأرشيف بنجاح وتسجيل حركتك في السجل الأمني.', 'success');
             await loadArchiveFiles();
         } else {
-            Swal.fire('خطأ', res.error, 'error');
+            Swal.fire('خطأ أمني', res.error, 'error');
         }
     }
 }

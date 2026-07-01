@@ -6,7 +6,7 @@
  * الميزات:
  * 1. جلب متوازٍ (Parallel Fetch) لبيانات الموكل، قضاياه، ملفاته، ومواعيده.
  * 2. محرك طلب النواقص (Missing Docs) وربطها التلقائي ببوابة الموكل.
- * 3. حماية ضد الحذف الخاطئ وتفعيل المصادقة الثنائية (MFA / WebAuthn).
+ * 3. حماية ضد الحذف الخاطئ وتفعيل المصادقة الثنائية (MFA / WebAuthn) لحذف الموكل والملفات.
  * 4. دعم كامل للعمل بلا إنترنت والمزامنة التلقائية.
  * 5. التوليد الآلي لتقارير الإنجاز الشهرية الذكية (AI Monthly Reports).
  * ============================================================================
@@ -415,12 +415,20 @@ window.openEditModal = function() {
 // حفظ تعديلات الموكل
 window.updateClient = async function(event) {
     event.preventDefault();
+    
+    const fullNameVal = document.getElementById('edit_full_name').value.trim();
+    if (!fullNameVal) {
+        Swal.fire({ icon: 'warning', title: 'بيانات غير مكتملة', text: 'الاسم الكامل إلزامي لتحديث بيانات الموكل.', confirmButtonColor: '#0B132B' });
+        return;
+    }
+
     const btn = document.getElementById('btn_save_client');
+    if (btn.disabled) return;
     btn.disabled = true; 
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الحفظ...';
 
     const data = {
-        full_name: document.getElementById('edit_full_name').value.trim(),
+        full_name: fullNameVal,
         phone: document.getElementById('edit_phone').value.trim(),
         national_id: document.getElementById('edit_national_id').value.trim() || null,
         mother_name: document.getElementById('edit_mother').value.trim() || null,
@@ -481,10 +489,10 @@ window.deleteClient = async function() {
 
     if(!confirm.isConfirmed) return;
 
-    // 🛡️ WebAuthn / PIN Security Check (Action-Based MFA) - فكرة 31
+    // 🛡️ WebAuthn / PIN Security Check (Action-Based MFA)
     const secCheck = await Swal.fire({
         title: 'مصادقة أمنية مطلوبة',
-        text: 'يرجى إدخال الرمز السري الخاص بك (PIN) أو استخدام البصمة لتأكيد الحذف الجذري.',
+        text: 'يرجى إدخال الرمز السري الخاص بك (PIN) لتأكيد الحذف الجذري.',
         input: 'password',
         inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
         showCancelButton: true,
@@ -498,10 +506,11 @@ window.deleteClient = async function() {
     });
 
     if(!secCheck.isConfirmed) return;
+    const actionToken = secCheck.value; // التقاط التوكن/الرقم السري
 
-    // هنا يتم إرسال طلب الحذف للـ API
+    // هنا يتم إرسال طلب الحذف للـ API مع التوكن
     try {
-        const res = await API.deleteClient(currentClientId);
+        const res = await API.deleteClient(currentClientId, actionToken);
         
         if (res && !res.error) {
             await Swal.fire('تم الحذف', res.offline ? 'تم حفظ طلب الحذف محلياً.' : 'تم حذف الموكل وتدمير بياناته بنجاح.', 'success');
@@ -537,6 +546,7 @@ window.saveClientFile = async function(event) {
         return; 
     }
     
+    if (btn.disabled) return;
     btn.disabled = true; 
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التشفير والأرشفة...';
     
@@ -579,6 +589,9 @@ window.saveClientFile = async function(event) {
     }
 };
 
+/**
+ * الحذف الآمن للمستند السحابي مع المصادقة الثنائية (MFA) - تم إصلاح الثغرة
+ */
 window.deleteClientFile = async function(id) {
     const res = await Swal.fire({ 
         title: 'تأكيد الحذف؟', 
@@ -592,8 +605,27 @@ window.deleteClientFile = async function(id) {
     
     if(!res.isConfirmed) return;
     
+    // 🛡️ WebAuthn / PIN Security Check لحذف الملفات
+    const secCheck = await Swal.fire({
+        title: 'مصادقة أمنية مطلوبة',
+        text: 'يرجى إدخال الرمز السري الخاص بك (PIN) لتأكيد حذف المستند الحساس.',
+        input: 'password',
+        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-fingerprint"></i> تأكيد',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#0B132B',
+        preConfirm: (pin) => {
+            if (!pin) Swal.showValidationMessage('يجب إدخال الرمز السري لتأكيد العملية');
+            return pin;
+        }
+    });
+
+    if(!secCheck.isConfirmed) return;
+    const actionToken = secCheck.value;
+
     try {
-        const delRes = await API.deleteFile(id);
+        const delRes = await API.deleteFile(id, actionToken); // تمرير الـ actionToken بنجاح
         if(delRes && !delRes.error) {
             window.showAlert(delRes.offline ? 'تم الحفظ محلياً (سيحذف عند عودة الإنترنت)' : 'تم الحذف من الأرشيف بنجاح', delRes.offline ? 'warning' : 'success'); 
             await loadClientData();

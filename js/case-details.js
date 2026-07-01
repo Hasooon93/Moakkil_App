@@ -11,6 +11,7 @@
  * 5. واجهة مدمجة وهادئة (Soft & Compact UI).
  * 6. تقسيم الأتعاب آلياً، نقل العهدة، ومنع تسريب الشاشة للقضايا السرية.
  * 7. الرابط الذكي للسوابق القضائية (Smart Cross-Case Linker).
+ * 8. حماية الحذف الجذري بالمصادقة الثنائية (MFA Delete Protection).
  * ============================================================================
  */
 
@@ -1013,6 +1014,10 @@ window.saveFile = async function(event) {
     }
 };
 
+/**
+ * 🛡️ ترقية الحذف (Action-Based MFA)
+ * الآن يتم طلب التوكن للمصادقة وتمريره للعمليات الحساسة في الـ API.
+ */
 window.deleteRecord = async function(type, id) {
     const confirm = await Swal.fire({ 
         title: 'متأكد؟', text: "لا تراجع عن عملية الحذف، وستسجل العملية في الرقابة!", 
@@ -1021,13 +1026,33 @@ window.deleteRecord = async function(type, id) {
     });
     
     if(!confirm.isConfirmed) return;
+
+    // 🛡️ WebAuthn / PIN Security Check (Action-Based MFA)
+    const secCheck = await Swal.fire({
+        title: 'مصادقة أمنية مطلوبة',
+        text: 'يرجى إدخال الرمز السري الخاص بك (PIN) أو استخدام البصمة لتأكيد الحذف الجذري.',
+        input: 'password',
+        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-fingerprint"></i> تأكيد الهوية',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: '#0B132B',
+        preConfirm: (pin) => {
+            if (!pin) Swal.showValidationMessage('يجب إدخال الرمز السري أو المصادقة لتأكيد العملية');
+            return pin;
+        }
+    });
+
+    if(!secCheck.isConfirmed) return;
+    const actionToken = secCheck.value;
     
     try {
         let res;
-        if (type === 'update') res = await API.deleteUpdate(id);
-        if (type === 'installment') res = await API.deleteInstallment(id, currentCaseId);
-        if (type === 'expense') res = await API.deleteExpense(id);
-        if (type === 'file') res = await API.deleteFile(id);
+        // تمرير الـ actionToken بنجاح لدوال الـ API لتتوافق مع تعديلات api.js و worker.js
+        if (type === 'update') res = await API.deleteUpdate(id, actionToken);
+        if (type === 'installment') res = await API.deleteInstallment(id, currentCaseId, actionToken);
+        if (type === 'expense') res = await API.deleteExpense(id, actionToken);
+        if (type === 'file') res = await API.deleteFile(id, actionToken);
         
         if (res && !res.error) { 
             showAlert(res.offline ? 'تم حفظ الحذف محلياً لتنفذ لاحقاً' : 'تم الحذف وتوثيقه أمنياً', res.offline ? 'warning' : 'success'); 
