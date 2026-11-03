@@ -2,12 +2,12 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/config.js
- * الوصف: الإعدادات العامة والمتغيرات المركزية للنظام (V4.2 Enterprise Edition)
+ * الوصف: الإعدادات العامة والمتغيرات المركزية للنظام (V5.1 Enterprise Security Edition)
  * المهام:
  * 1. إدارة متغيرات البيئة (Environment Variables).
  * 2. توحيد مفاتيح التخزين المحلي (Local Storage Keys) لمنع الأخطاء الإملائية.
  * 3. تهيئة روابط الاتصال السحابي (Cloudflare Workers & R2).
- * 4. دوال التشفير المساعدة للإشعارات (VAPID Keys Converter).
+ * 4. دوال التشفير والتعقيم الأمني المساعدة (VAPID Converter & XSS Sanitizer).
  * ============================================================================
  */
 
@@ -18,7 +18,7 @@
 const ENV = "production"; 
 
 // رقم الإصدار (يُستخدم لتحديث الكاش الخاص بـ Service Worker عند إطلاق ميزات جديدة)
-const APP_VERSION = "4.2.0"; 
+const APP_VERSION = "5.1.0"; 
 
 // ============================================================================
 // [2] روابط الاتصال السحابي (Cloud & API Endpoints)
@@ -33,6 +33,7 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwxHOR6u00UEP-VLzFwuIIC
 // [3] كائن الإعدادات المركزي (The Central Configuration Object)
 // ============================================================================
 const CONFIG = {
+    ENV: ENV,
     APP_VERSION: APP_VERSION,
     API_URL: API_BASE_URL,
     GAS_URL: GAS_URL,
@@ -42,6 +43,8 @@ const CONFIG = {
     TOKEN_KEY: "moakkil_token",                 // مفتاح تخزين الـ JWT
     USER_KEY: "moakkil_user",                   // مفتاح بيانات المستخدم الحالية
     FIRM_KEY: "moakkil_firm_id",                // مفتاح معرّف المكتب (للعزل التام)
+    FIRM_SETTINGS_KEY: "firm_settings",         // مفتاح إعدادات الهوية البصرية للمكتب
+    DEVICE_ID_KEY: "moakkil_device_id",         // مفتاح بصمة الجهاز للجلسة الأحادية
     
     // --- مفاتيح الميزات المتقدمة (Advanced Features Keys) ---
     OFFLINE_QUEUE_KEY: "moakkil_offline_queue", // طابور الطلبات أثناء انقطاع الإنترنت
@@ -54,24 +57,58 @@ const CONFIG = {
 };
 
 // ============================================================================
-// [4] دوال التشفير والمساعدة (Cryptographic & Utility Functions)
+// [4] دوال التشفير والتعقيم والمساعدة (Cryptographic & Security Utility Functions)
 // ============================================================================
 const UTILS = {
     /**
      * دالة مساعدة لتحويل مفتاح VAPID من صيغة Base64 إلى مصفوفة بايتات (Uint8Array)
      * هذه الخطوة إلزامية ليقبلها المتصفح عند الاشتراك في خدمة إشعارات الدفع (Push Notifications).
-     * @param {string} base64String - مفتاح VAPID النصي
-     * @returns {Uint8Array} - المصفوفة المشفرة الجاهزة
+     * @param {string} base64String مفتاح VAPID النصي
+     * @returns {Uint8Array} المصفوفة المشفرة الجاهزة
      */
     urlBase64ToUint8Array: (base64String) => {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
+        try {
+            if (!base64String || typeof base64String !== 'string') return new Uint8Array(0);
+            const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        } catch (e) {
+            console.warn("⚠️ [VAPID Key Warning]: مفتاح VAPID غير قياسي أو غير مفعل بعد.", e);
+            return new Uint8Array(0);
         }
-        return outputArray;
+    },
+
+    /**
+     * 🛡️ دالة تعقيم النصوص لمنع ثغرات حقن الأكواد الخبيثة (XSS Sanitizer)
+     * @param {any} str النص المراد تعقيمه
+     * @returns {string} نص آمن للعرض في HTML
+     */
+    escapeHTML: (str) => {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>'"]/g, (tag) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag));
+    },
+
+    /**
+     * 🛡️ التحقق من صحة كود اللون لمنع حقن CSS غير صالح
+     * @param {string} colorValue اللون المدخل
+     * @param {string} fallback اللون الافتراضي
+     * @returns {string} كود لون آمن
+     */
+    sanitizeColor: (colorValue, fallback = '#0B132B') => {
+        if (!colorValue || typeof colorValue !== 'string') return fallback;
+        const clean = colorValue.trim();
+        return /^#[0-9A-Fa-f]{3,8}$/.test(clean) ? clean : fallback;
     }
 };
 

@@ -21,6 +21,11 @@
     
     <script>
         try {
+            const savedTheme = localStorage.getItem('moakkil_dark_mode');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
             const settings = JSON.parse(localStorage.getItem('firm_settings'));
             if (settings) {
                 if (settings.primary_color) {
@@ -55,7 +60,47 @@
             color: var(--text-dark);
             -webkit-font-smoothing: antialiased;
             padding-bottom: 90px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* --- دعم الوضع الليلي الشامل (Dark Mode) --- */
+        [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
+        [data-theme="dark"] .case-header-card,
+        [data-theme="dark"] .card-custom,
+        [data-theme="dark"] .timeline-item,
+        [data-theme="dark"] .modal-content,
+        [data-theme="dark"] .card-inner,
+        [data-theme="dark"] .bottom-nav,
+        [data-theme="dark"] .nav-tabs .nav-link:not(.active) {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .modal-body,
+        [data-theme="dark"] .bg-light,
+        [data-theme="dark"] .bg-white:not(#print-section):not(#qrcode) {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] textarea {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .text-dark,
+        [data-theme="dark"] .text-navy,
+        [data-theme="dark"] .form-label,
+        [data-theme="dark"] .card-custom h6,
+        [data-theme="dark"] #case-client-name {
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .text-muted { color: #94a3b8 !important; }
+        [data-theme="dark"] .dropdown-menu { background-color: #1e293b; border-color: #334155; }
+        [data-theme="dark"] .dropdown-item { color: #f8fafc; }
+        [data-theme="dark"] .dropdown-item:hover { background-color: #334155; }
 
         /* --- طبقة الحماية المانعة للتسريب (Screen Leak Protection) --- */
         #screen-leak-protection {
@@ -179,6 +224,7 @@
         .modal-header { background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); color: white; border-bottom: 4px solid var(--gold-luxury); padding: 20px 25px; }
         .modal-title { font-weight: 900; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;}
         .modal-body { background: #F8F9FA; padding: 30px 25px; }
+        .card-inner { background: white; border-radius: 16px; padding: 22px; border: 1px solid rgba(0,0,0,0.03); box-shadow: 0 5px 15px rgba(0,0,0,0.02); margin-bottom: 20px; }
 
         /* --- 3.9 شريط التنقل السفلي --- */
         .bottom-nav { 
@@ -188,7 +234,7 @@
             position: fixed; bottom: 0; width: 100%; z-index: 1040; display: flex; justify-content: space-around; 
             border-top: 1px solid rgba(212, 175, 55, 0.2);
         }
-        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; }
+        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; text-decoration: none; }
         .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); transform: translateY(-4px); }
         .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 5px; transition: transform 0.3s; }
         .nav-item.active i { color: var(--gold-luxury); transform: scale(1.15); }
@@ -874,10 +920,17 @@
                                     <option value="وصل">وصل مالي/رسوم</option>
                                 </select>
                             </div>
-                            <div class="mb-2 p-3 bg-light rounded-3 border border-danger shadow-sm">
+                            <div class="mb-3 p-3 bg-light rounded-3 border border-danger shadow-sm">
                                 <label class="form-label text-danger fw-bold"><i class="fas fa-hourglass-end me-1"></i> تاريخ انتهاء الصلاحية (اختياري)</label>
                                 <input type="date" id="file_expiry_date" class="form-control text-center text-danger fw-bold font-monospace">
                                 <small class="text-muted d-block mt-2 fw-bold">يفيد النظام في تذكيرك آلياً بتجديد الوكالات أو الكفالات المنتهية.</small>
+                            </div>
+                            <div class="form-check form-switch bg-light p-3 rounded-3 border d-flex justify-content-between align-items-center shadow-sm mt-3">
+                                <div>
+                                    <label class="form-check-label fw-bold mb-1 d-block" for="file_visible_to_client" style="color: var(--primary-dark);"><i class="fas fa-eye text-success me-1"></i> إتاحة المستند في بوابة الموكل</label>
+                                    <small class="text-muted fw-bold d-block">تفعيل هذا الخيار يسمح للموكل بعرض وتحميل هذا المستند من بوابته.</small>
+                                </div>
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="file_visible_to_client" style="width: 3.5rem; height: 1.8rem; cursor:pointer;">
                             </div>
                         </div>
                         <button type="submit" id="btn_upload" class="btn btn-gold w-100 py-3 fs-5 shadow-sm">
@@ -1017,21 +1070,21 @@
     </div>
 
     <nav class="bottom-nav d-print-none">
-        <div class="nav-item" onclick="window.location.href='app.html'">
+        <a href="app.html" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'dashboard');">
             <i class="fas fa-home"></i> المكتب
-        </div>
-        <div class="nav-item active">
+        </a>
+        <a href="app.html#cases" class="nav-item active text-decoration-none" onclick="localStorage.setItem('last_active_view', 'cases');">
             <i class="fas fa-gavel"></i> القضايا
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
+        </a>
+        <a href="app.html#clients" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'clients');">
             <i class="fas fa-users"></i> الموكلين
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
+        </a>
+        <a href="app.html#agenda" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'agenda');">
             <i class="fas fa-calendar-check"></i> الأجندة
-        </div>
-        <div class="nav-item" onclick="window.location.href='app.html'">
+        </a>
+        <a href="app.html#tools" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'tools');">
             <i class="fas fa-toolbox"></i> الأدوات
-        </div>
+        </a>
     </nav>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

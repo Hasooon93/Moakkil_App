@@ -10,15 +10,36 @@
     <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
     <link rel="manifest" href="./manifest.json">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" crossorigin="anonymous" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js" crossorigin="anonymous"></script>
     
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/html5-qrcode" crossorigin="anonymous"></script>
+
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('moakkil_dark_mode');
+                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+                const settings = JSON.parse(localStorage.getItem('firm_settings'));
+                if (settings) {
+                    if (settings.primary_color) {
+                        document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                    }
+                    if (settings.accent_color) {
+                        document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <style>
         :root { 
@@ -44,16 +65,18 @@
         }
 
         [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
-        [data-theme="dark"] .card-custom, [data-theme="dark"] .compact-card, [data-theme="dark"] .stat-card, [data-theme="dark"] .modal-content, [data-theme="dark"] .bottom-nav { background-color: #1e293b; color: #f8fafc; border-color: #334155; }
+        [data-theme="dark"] .card-custom, [data-theme="dark"] .compact-card, [data-theme="dark"] .stat-card, [data-theme="dark"] .modal-content, [data-theme="dark"] .bottom-nav, [data-theme="dark"] .card-inner { background-color: #1e293b; color: #f8fafc; border-color: #334155; }
         [data-theme="dark"] .form-control, [data-theme="dark"] .form-select, [data-theme="dark"] textarea { background-color: #0f172a; color: #f8fafc; border-color: #334155; }
         [data-theme="dark"] .form-control:focus, [data-theme="dark"] .form-select:focus, [data-theme="dark"] textarea:focus { background-color: #0f172a; color: #f8fafc; }
-        [data-theme="dark"] .text-dark { color: #f8fafc !important; }
+        [data-theme="dark"] .text-dark, [data-theme="dark"] .text-navy, [data-theme="dark"] .form-label, [data-theme="dark"] .card-title, [data-theme="dark"] .card-inner h6 { color: #f8fafc !important; }
         [data-theme="dark"] .text-muted { color: #94a3b8 !important; }
-        [data-theme="dark"] .bg-light { background-color: #0f172a !important; }
+        [data-theme="dark"] .bg-light, [data-theme="dark"] .modal-body { background-color: #0f172a !important; }
         [data-theme="dark"] .bg-white { background-color: #1e293b !important; }
         [data-theme="dark"] .dropdown-menu { background-color: #1e293b; border-color: #334155; }
         [data-theme="dark"] .dropdown-item { color: #f8fafc; }
         [data-theme="dark"] .dropdown-item:hover { background-color: #334155; }
+        [data-theme="dark"] .kanban-col { background-color: #1e293b; border-color: #334155; }
+        [data-theme="dark"] .kanban-header { color: #f8fafc; }
 
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -94,6 +117,35 @@
             transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
         }
         
+        .urgent-briefing-bar {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(11, 19, 43, 0.04) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-right: 5px solid var(--gold-luxury);
+            border-radius: 18px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .briefing-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .briefing-pill:hover { transform: translateY(-2px); }
+        [data-theme="dark"] .briefing-pill { background: #0f172a; color: #f8fafc; border: 1px solid #334155; }
+
         .stat-card { 
             background: white; border-radius: 20px; padding: 20px 15px; text-align: center;
             box-shadow: 0 5px 15px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
@@ -178,6 +230,8 @@
         .modal-header { background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); color: white; border-bottom: 4px solid var(--gold-luxury); padding: 25px; }
         .modal-title { font-weight: 900; font-size: 1.3rem; display: flex; align-items: center; gap: 12px; }
         .modal-body { padding: 0; background: #F8F9FA; }
+        .sticky-modal-footer { position: sticky; bottom: 0; z-index: 20; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); padding: 15px 25px; border-top: 1px solid rgba(0,0,0,0.08); }
+        [data-theme="dark"] .sticky-modal-footer { background: rgba(30, 41, 59, 0.95); border-top-color: #334155; }
         
         .nav-pills { background: white; padding: 10px 15px; border-bottom: 1px solid rgba(0,0,0,0.05); flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;}
         .nav-pills::-webkit-scrollbar { display: none; }
@@ -288,6 +342,25 @@
                 </div>
             </div>
 
+            <!-- بوصلة اليوم والتنبيهات العاجلة (Urgent Legal Briefing) -->
+            <div class="urgent-briefing-bar shadow-sm" id="urgent-briefing-card">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-compass fa-lg" style="color: var(--gold-luxury);"></i>
+                    <span class="fw-900" style="color: var(--primary-dark);">بوصلة اليوم والتنبيهات العاجلة:</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2" id="urgent-briefing-pills">
+                    <span class="briefing-pill" onclick="switchView('agenda')">
+                        <i class="fas fa-calendar-day text-warning"></i> مواعيد اليوم: <b id="brief-today-appts" class="text-danger">0</b>
+                    </span>
+                    <span class="briefing-pill" onclick="switchView('cases')">
+                        <i class="fas fa-fire text-danger"></i> قضايا عاجلة جداً: <b id="brief-urgent-cases" class="text-danger">0</b>
+                    </span>
+                    <span class="briefing-pill" onclick="switchView('cases')">
+                        <i class="fas fa-hourglass-half text-info"></i> مدد قانونية حرجة (7 أيام): <b id="brief-critical-deadlines" class="text-primary">0</b>
+                    </span>
+                </div>
+            </div>
+
             <div class="position-relative mb-4 search-input-wrapper d-flex shadow-sm" style="border-radius: 18px; overflow:hidden;">
                 <input type="text" class="form-control form-control-lg border-0 bg-white flex-grow-1" placeholder="بحث شامل عن قضية، موكل، أو مستند..." id="smart-search-input" oninput="if(window.handleSmartSearch) window.handleSmartSearch(this.value)" style="border-radius: 0; font-weight: 800; font-size: 1.1rem; height: 60px;">
                 <button class="btn btn-gold px-4 m-0 rounded-0 border-0" type="button" onclick="openQRScanner('smart-search-input')" title="مسح باركود/QR للملف"><i class="fas fa-qrcode fa-lg"></i></button>
@@ -377,8 +450,7 @@
                 <button class="btn btn-gold px-4" type="button" onclick="openQRScanner('search-cases')" title="مسح ملصق QR للملف"><i class="fas fa-qrcode fa-lg"></i></button>
             </div>
             
-            <div id="cases-list" class="row g-3">
-                </div>
+            <div id="cases-list" class="row g-3"></div>
         </div>
 
         <div id="clients-view" class="view fade-in d-none">
@@ -399,8 +471,7 @@
                 </div>
             </div>
             
-            <div id="clients-list" class="row g-3">
-                 </div>
+            <div id="clients-list" class="row g-3"></div>
         </div>
 
         <div id="agenda-view" class="view fade-in d-none">
@@ -421,8 +492,7 @@
                 </div>
             </div>
             
-            <div id="agenda-list" class="row g-3">
-                </div>
+            <div id="agenda-list" class="row g-3"></div>
             <div id="kanban-board" class="row d-none flex-nowrap overflow-auto pb-4 mt-3" style="min-height: 75vh; gap: 20px; padding-right: 15px; padding-left: 15px;"></div>
         </div>
 
@@ -550,7 +620,7 @@
                 </div>
                 <div class="modal-body p-4 text-center bg-light">
                     <div class="alert alert-warning border-0 shadow-sm small fw-bold mb-4 rounded-3 text-start" id="share_pin_alert">
-                        <i class="fas fa-exclamation-triangle text-danger me-1"></i> يتم إنشاء الرابط الموثق بناءً على الرقم السري (PIN) الخاص بهذه القضية.
+                        <i class="fas fa-shield-alt text-danger me-1"></i> لأمان الموكل: يُنصح بإرسال الرابط في رسالة، ورمز الدخول (PIN) في رسالة مستقلة.
                     </div>
                     <div id="share-qrcode" class="mb-4 d-flex justify-content-center p-3 bg-white rounded-4 border shadow-sm mx-auto" style="width: fit-content;"></div>
                     <div class="mb-3 text-start bg-light p-3 rounded-3 border">
@@ -562,13 +632,16 @@
                         <input type="text" id="share_pin_input" class="form-control text-center fw-900 text-danger fs-2 border-0 bg-transparent" style="letter-spacing: 10px; font-family: monospace;" readonly>
                     </div>
                     <div class="d-flex gap-2 mt-2">
-                        <button class="btn text-white w-50 fw-bold shadow-sm rounded-3 py-2" style="background: #25D366; border: none;" onclick="sendShareViaWhatsApp()">
-                            <i class="fab fa-whatsapp me-1 fs-5 align-middle"></i> واتساب
+                        <button class="btn text-white w-50 fw-bold shadow-sm rounded-3 py-2" style="background: #25D366; border: none;" onclick="sendShareViaWhatsApp(false)">
+                            <i class="fab fa-whatsapp me-1 fs-5 align-middle"></i> إرسال الرابط
                         </button>
                         <button class="btn btn-outline-navy w-50 fw-bold rounded-3 py-2" onclick="copyShareLinkApp()">
                             <i class="fas fa-copy me-1"></i> نسخ الرابط
                         </button>
                     </div>
+                    <button class="btn btn-sm btn-outline-danger w-100 fw-bold rounded-3 py-2 mt-2" onclick="sendShareViaWhatsApp(true)">
+                        <i class="fas fa-key me-1"></i> إرسال رمز الـ PIN برسالة منفصلة
+                    </button>
                 </div>
             </div>
         </div>
@@ -680,7 +753,9 @@
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-primary-custom w-100 py-3 fs-5 shadow-sm rounded-4 mt-3"><i class="fas fa-check-double me-2"></i> حفظ وتطبيق الإعدادات فوراً</button>
+                        <div class="sticky-modal-footer rounded-4">
+                            <button type="submit" class="btn btn-primary-custom w-100 py-3 fs-5 shadow-sm rounded-4"><i class="fas fa-check-double me-2"></i> حفظ وتطبيق الإعدادات فوراً</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -832,7 +907,9 @@
                             </div>
                         </div>
 
-                        <button type="submit" class="btn btn-gold w-100 py-3 fs-5 shadow-sm" id="btn_save_client"><i class="fas fa-check-circle me-2"></i> حفظ واعتماد ملف الموكل</button>
+                        <div class="sticky-modal-footer rounded-4">
+                            <button type="submit" class="btn btn-gold w-100 py-3 fs-5 shadow-sm" id="btn_save_client"><i class="fas fa-check-circle me-2"></i> حفظ واعتماد ملف الموكل</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -998,16 +1075,18 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-gold w-100 py-3 mt-4 fs-4 shadow-sm" id="btn_save_case"><i class="fas fa-save me-2"></i> حفظ واعتماد فتح الملف</button>
+                        <div class="sticky-modal-footer rounded-4 mt-4">
+                            <button type="submit" class="btn btn-gold w-100 py-3 fs-4 shadow-sm" id="btn_save_case"><i class="fas fa-save me-2"></i> حفظ واعتماد فتح الملف</button>
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- نافذة המواعيد (Appointment Modal) -->
+    <!-- نافذة المواعيد المطورة (Appointment Modal - Linked to Client & Case + .ics Export) -->
     <div class="modal fade" id="apptModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0" style="border-top: 5px solid var(--gold-luxury);">
                 <div class="modal-header bg-white border-bottom">
                     <h5 class="modal-title fw-bold" style="color: var(--primary-dark);"><i class="fas fa-calendar-check text-warning me-2"></i> جدولة موعد أو مهمة إدارية</h5>
@@ -1015,29 +1094,55 @@
                 </div>
                 <div class="modal-body p-4">
                     <form id="apptForm" onsubmit="saveAppointment(event)">
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">العنوان <span class="text-danger">*</span></label>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">العنوان / موضوع الجلسة أو المهمة <span class="text-danger">*</span></label>
                             <input type="text" id="appt_title" class="form-control form-control-lg fw-bold shadow-sm" required placeholder="مثال: مرافعة في محكمة البداية للموكل...">
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-danger"><i class="fas fa-clock me-1"></i> التاريخ والوقت الدقيق <span class="text-danger">*</span></label>
-                            <input type="datetime-local" id="appt_date" class="form-control text-center fw-bold font-monospace bg-light border-danger text-danger fs-5" required>
+
+                        <!-- ربط الموعد بالموكل والقضية لضمان ظهوره في صفحة الموكل وبوابته -->
+                        <div class="row g-3 mb-3 p-3 rounded-4 border bg-white shadow-sm">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-success"><i class="fas fa-user-tie me-1"></i> ربط بموكل (اختياري)</label>
+                                <select id="appt_client_id" class="form-select fw-bold" onchange="window.filterApptCasesByClient(this.value)">
+                                    <option value="">-- موعد عام / غير مرتبط بموكل --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-primary"><i class="fas fa-gavel me-1"></i> ربط بملف قضية (اختياري)</label>
+                                <select id="appt_case_id" class="form-select fw-bold">
+                                    <option value="">-- اختر القضية المرتبطة --</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-info"><i class="fas fa-tags me-1"></i> تصنيف الإجراء</label>
-                            <select id="appt_type" class="form-select fw-bold border-info text-dark bg-light">
-                                <option value="جلسة محكمة">جلسة محكمة مرافعة/حكم</option>
-                                <option value="اجتماع موكل">اجتماع مع الموكل بالمكتب</option>
-                                <option value="مراجعة دائرة">مراجعة دائرة حكومية/أمنية</option>
-                                <option value="كتابة لائحة">مهمة مكتبية (صياغة وتجهيز)</option>
-                                <option value="أخرى">أخرى</option>
-                            </select>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-danger"><i class="fas fa-clock me-1"></i> التاريخ والوقت الدقيق <span class="text-danger">*</span></label>
+                                <input type="datetime-local" id="appt_date" class="form-control text-center fw-bold font-monospace bg-light border-danger text-danger fs-6" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-info"><i class="fas fa-tags me-1"></i> تصنيف الإجراء</label>
+                                <select id="appt_type" class="form-select fw-bold border-info text-dark bg-light">
+                                    <option value="جلسة محكمة">جلسة محكمة مرافعة/حكم</option>
+                                    <option value="اجتماع موكل">اجتماع مع الموكل بالمكتب</option>
+                                    <option value="مراجعة دائرة">مراجعة دائرة حكومية/أمنية</option>
+                                    <option value="كتابة لائحة">مهمة مكتبية (صياغة وتجهيز)</option>
+                                    <option value="أخرى">أخرى</option>
+                                </select>
+                            </div>
                         </div>
+
                         <div class="mb-4 pt-3 border-top">
                             <label class="form-label fw-bold text-navy"><i class="fas fa-user-check me-1"></i> إسناد المهمة للمحامي المسؤول <span class="text-danger">*</span></label>
                             <select class="form-control fw-bold shadow-sm" id="appt_assigned_to" required multiple></select>
                         </div>
-                        <button type="submit" class="btn btn-gold w-100 py-3 fs-5 shadow-sm rounded-4 mt-2"><i class="fas fa-bell me-2"></i> جدولة وتفعيل التنبيه الآلي</button>
+
+                        <div class="d-flex flex-column flex-md-row gap-2 mt-2">
+                            <button type="submit" class="btn btn-gold flex-grow-1 py-3 fs-5 shadow-sm rounded-4"><i class="fas fa-bell me-2"></i> جدولة وتفعيل التنبيه الآلي</button>
+                            <button type="button" class="btn btn-outline-navy py-3 px-4 fw-bold rounded-4 shadow-sm" onclick="window.exportApptFormToICS()" title="تصدير الموعد إلى تقويم الهاتف Apple / Google Calendar">
+                                <i class="fas fa-calendar-plus me-1"></i> تقويم الهاتف (.ics)
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -1138,9 +1243,9 @@
     </div>
 
     <!-- Scripts Section -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
     
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
@@ -1166,13 +1271,135 @@
             if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
                 document.documentElement.setAttribute('data-theme', 'dark');
             }
+
+            if (!navigator.onLine) {
+                document.getElementById('offline-banner').classList.remove('d-none');
+            }
+
+            setTimeout(() => {
+                if (typeof window.populateApptRelations === 'function') window.populateApptRelations();
+                if (typeof window.updateUrgentBriefing === 'function') window.updateUrgentBriefing();
+            }, 2200);
         });
 
         window.saveCancel = (e) => { if(window.AppAgenda) window.AppAgenda.saveCancel(e); };
         window.saveApptOutcome = (e) => { if(window.AppAgenda) window.AppAgenda.saveApptOutcome(e); };
         window.saveApptPostpone = (e) => { if(window.AppAgenda) window.AppAgenda.saveApptPostpone(e); };
 
-        // 💡 الفصل الواضح بين مشاركة الهوية (vCard) ومشاركة بوابة الموكل (Share Modal) 💡
+        // تعبئة قوائم الموكلين والقضايا في نافذة جدولة الموعد (#apptModal)
+        window.populateApptRelations = function() {
+            const gData = (window.AppCore && window.AppCore.globalData) ? window.AppCore.globalData : (window.globalData || {});
+            const clients = gData.clients || [];
+            const cases = gData.cases || [];
+
+            const clientSelect = document.getElementById('appt_client_id');
+            const caseSelect = document.getElementById('appt_case_id');
+
+            if (clientSelect && clients.length > 0) {
+                const currentVal = clientSelect.value;
+                clientSelect.innerHTML = '<option value="">-- موعد عام / غير مرتبط بموكل --</option>' +
+                    clients.map(c => `<option value="${c.id}">${c.full_name || 'موكل'}</option>`).join('');
+                clientSelect.value = currentVal;
+            }
+
+            if (caseSelect && cases.length > 0) {
+                const currentCaseVal = caseSelect.value;
+                caseSelect.innerHTML = '<option value="">-- اختر القضية المرتبطة --</option>' +
+                    cases.map(cs => `<option value="${cs.id}" data-client="${cs.client_id || ''}">${cs.internal_id || cs.court_case_number || 'ملف'} - ${cs.opponent_name || cs.case_type || ''}</option>`).join('');
+                caseSelect.value = currentCaseVal;
+            }
+        };
+
+        window.filterApptCasesByClient = function(clientId) {
+            const gData = (window.AppCore && window.AppCore.globalData) ? window.AppCore.globalData : (window.globalData || {});
+            const cases = gData.cases || [];
+            const caseSelect = document.getElementById('appt_case_id');
+            if (!caseSelect) return;
+
+            const filtered = clientId ? cases.filter(cs => String(cs.client_id) === String(clientId)) : cases;
+            caseSelect.innerHTML = '<option value="">-- اختر القضية المرتبطة --</option>' +
+                filtered.map(cs => `<option value="${cs.id}" data-client="${cs.client_id || ''}">${cs.internal_id || cs.court_case_number || 'ملف'} - ${cs.opponent_name || cs.case_type || ''}</option>`).join('');
+        };
+
+        // تحديث بوصلة اليوم والتنبيهات العاجلة تلقائياً
+        window.updateUrgentBriefing = function() {
+            const gData = (window.AppCore && window.AppCore.globalData) ? window.AppCore.globalData : (window.globalData || {});
+            const cases = gData.cases || [];
+            const appts = gData.appointments || [];
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayAppts = appts.filter(a => a.appt_date && a.appt_date.startsWith(todayStr) && a.status !== 'ملغي' && a.status !== 'منجز').length;
+            const urgentCases = cases.filter(c => c.priority_level === 'عاجل جداً' && c.status !== 'مكتملة').length;
+
+            const now = new Date();
+            const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const criticalDeadlines = cases.filter(c => {
+                if (!c.deadline_date || c.status === 'مكتملة') return false;
+                const d = new Date(c.deadline_date);
+                return d >= now && d <= in7Days;
+            }).length;
+
+            const elToday = document.getElementById('brief-today-appts');
+            const elUrgent = document.getElementById('brief-urgent-cases');
+            const elCritical = document.getElementById('brief-critical-deadlines');
+
+            if (elToday) elToday.textContent = todayAppts;
+            if (elUrgent) elUrgent.textContent = urgentCases;
+            if (elCritical) elCritical.textContent = criticalDeadlines;
+        };
+
+        // تصدير الموعد إلى ملف تقويم الهاتف القياسي (.ics)
+        window.exportApptFormToICS = function() {
+            const title = document.getElementById('appt_title')?.value?.trim();
+            const dateVal = document.getElementById('appt_date')?.value;
+            const typeVal = document.getElementById('appt_type')?.value || 'موعد قانوني';
+
+            if (!title || !dateVal) {
+                Swal.fire({ icon: 'warning', title: 'بيانات ناقصة', text: 'يرجى إدخال عنوان الموعد والتاريخ أولاً لتصديره للتقويم.', confirmButtonColor: 'var(--primary-dark)' });
+                return;
+            }
+
+            const startDate = new Date(dateVal);
+            const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+            const formatICSDate = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//Moakkil ERP//Legal Calendar//AR',
+                'BEGIN:VEVENT',
+                `UID:moakkil-${Date.now()}@moakkil.erp`,
+                `DTSTAMP:${formatICSDate(new Date())}`,
+                `DTSTART:${formatICSDate(startDate)}`,
+                `DTEND:${formatICSDate(endDate)}`,
+                `SUMMARY:${title} (${typeVal})`,
+                `DESCRIPTION:موعد مجدول عبر نظام موكّل ERP - التصنيف: ${typeVal}`,
+                'BEGIN:VALARM',
+                'TRIGGER:-PT30M',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:تذكير بموعد قانوني - موكّل ERP',
+                'END:VALARM',
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\r\n');
+
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Moakkil_Appt_${Date.now()}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        // تحديث القوائم عند فتح نافذة الموعد
+        document.getElementById('apptModal')?.addEventListener('show.bs.modal', () => {
+            window.populateApptRelations();
+        });
+
+        // الفصل الواضح بين مشاركة الهوية (vCard) ومشاركة بوابة الموكل (Share Modal)
         window.showVCard = function() {
             if(!window.AppCore || !window.AppCore.currentUser) {
                 if(window.showToast) window.showToast('تعذر تحميل بيانات المستخدم', 'error');
@@ -1253,16 +1480,18 @@
             }
         };
 
-        window.sendShareViaWhatsApp = function() {
+        window.sendShareViaWhatsApp = function(pinOnly = false) {
             const linkInput = document.getElementById('share_link_input');
             const pinInput = document.getElementById('share_pin_input');
+            if (pinOnly) {
+                if (!pinInput || !pinInput.value) return;
+                const pinText = `رمز الدخول السري (PIN) الخاص ببوابتكم القانونية هو:\n*${pinInput.value}*\n\nيرجى عدم مشاركة هذا الرمز مع أي طرف.`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(pinText)}`, '_blank', 'noopener,noreferrer');
+                return;
+            }
             if (linkInput && linkInput.value) {
-                let text = `مرحباً،\nمرفق لكم الرابط الموثق من نظام إدارة المكتب لمتابعة قضيتكم:\n\n${linkInput.value}\n`;
-                if (pinInput && pinInput.value && !document.getElementById('share_pin_container').classList.contains('d-none')) {
-                    text += `\nرمز الدخول الآمن (PIN): ${pinInput.value}\n`;
-                }
-                text += `\nمع التحية.`;
-                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                let text = `مرحباً،\nمرفق لكم الرابط الموثق من نظام إدارة المكتب لمتابعة قضيتكم:\n\n${linkInput.value}\n\n(سيتم إرسال رمز الدخول السري PIN في رسالة منفصلة لضمان الخصوصية والأمان).\nمع التحية.`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
             }
         };
 

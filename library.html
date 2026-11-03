@@ -18,9 +18,30 @@
     
     <link href="./css/style.css" rel="stylesheet">
     
+    <script>
+        try {
+            const savedTheme = localStorage.getItem('moakkil_dark_mode');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+            const settings = JSON.parse(localStorage.getItem('firm_settings'));
+            if (settings) {
+                if (settings.primary_color) {
+                    document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                    document.documentElement.style.setProperty('--primary-light', settings.primary_color);
+                }
+                if (settings.accent_color) {
+                    document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                    document.documentElement.style.setProperty('--gold-hover', settings.accent_color);
+                }
+            }
+        } catch (e) { console.error("Theme Init Error:", e); }
+    </script>
+
     <style>
         /* ========================================================================
-           المتغيرات اللونية: الهوية الملكية الفاخرة
+           المتغيرات اللونية: الهوية الملكية الفاخرة + دعم الوضع الليلي
            ======================================================================== */
         :root { 
             --primary-dark: #0B132B; 
@@ -38,7 +59,44 @@
             color: var(--text-dark);
             -webkit-font-smoothing: antialiased;
             padding-bottom: 90px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* دعم الوضع الليلي الشامل (Dark Mode) */
+        [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
+        [data-theme="dark"] .template-card, 
+        [data-theme="dark"] .editor-wrapper, 
+        [data-theme="dark"] .search-box, 
+        [data-theme="dark"] .modal-content, 
+        [data-theme="dark"] .card-inner, 
+        [data-theme="dark"] .bottom-nav,
+        [data-theme="dark"] .nav-pills-custom .nav-link:not(.active) { 
+            background-color: #1e293b !important; 
+            color: #f8fafc !important; 
+            border-color: #334155 !important; 
+        }
+        [data-theme="dark"] .smart-controls, 
+        [data-theme="dark"] .ql-toolbar.ql-snow, 
+        [data-theme="dark"] .modal-body,
+        [data-theme="dark"] .bg-light { 
+            background-color: #0f172a !important; 
+            color: #f8fafc !important; 
+            border-color: #334155 !important; 
+        }
+        [data-theme="dark"] .form-control, 
+        [data-theme="dark"] .form-select, 
+        [data-theme="dark"] .search-box input { 
+            background-color: #0f172a !important; 
+            color: #f8fafc !important; 
+            border-color: #334155 !important; 
+        }
+        [data-theme="dark"] .text-dark, 
+        [data-theme="dark"] .form-label { color: #f8fafc !important; }
+        [data-theme="dark"] .text-muted { color: #94a3b8 !important; }
+        [data-theme="dark"] .ql-snow .ql-stroke { stroke: #f8fafc !important; }
+        [data-theme="dark"] .ql-snow .ql-fill { fill: #f8fafc !important; }
+        [data-theme="dark"] .ql-snow .ql-picker { color: #f8fafc !important; }
+        [data-theme="dark"] .ql-editor { color: #f8fafc !important; }
 
         /* الترويسة العلوية الفاخرة */
         .top-nav {
@@ -215,7 +273,7 @@
             border-radius: 12px;
             cursor: crosshair;
             background-color: #fff;
-            touch-action: none; /* مهم جداً لمنع السكرول أثناء التوقيع بالموبايل */
+            touch-action: none;
             width: 100%;
         }
 
@@ -395,19 +453,19 @@
     </div>
 
     <div class="bottom-nav">
-        <a href="app.html" class="nav-item text-decoration-none">
+        <a href="app.html" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'dashboard');">
             <i class="fas fa-home"></i> المكتب
         </a>
-        <a href="app-cases.html" class="nav-item text-decoration-none">
+        <a href="app.html#cases" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'cases');">
             <i class="fas fa-gavel"></i> القضايا
         </a>
-        <a href="app-clients.html" class="nav-item text-decoration-none">
+        <a href="app.html#clients" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'clients');">
             <i class="fas fa-users"></i> الموكلين
         </a>
-        <a href="app-agenda.html" class="nav-item text-decoration-none">
+        <a href="app.html#agenda" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'agenda');">
             <i class="fas fa-calendar-check"></i> الأجندة
         </a>
-        <a href="library.html" class="nav-item active text-decoration-none">
+        <a href="app.html#tools" class="nav-item active text-decoration-none" onclick="localStorage.setItem('last_active_view', 'tools');">
             <i class="fas fa-toolbox"></i> الأدوات
         </a>
     </div>
@@ -420,25 +478,5 @@
     <script src="./js/auth.js"></script>
     
     <script src="./js/library.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const settings = JSON.parse(localStorage.getItem('firm_settings'));
-                if (settings) {
-                    if (settings.primary_color) {
-                        document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
-                        document.documentElement.style.setProperty('--primary-light', settings.primary_color);
-                    }
-                    if (settings.accent_color) {
-                        document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
-                        document.documentElement.style.setProperty('--gold-hover', settings.accent_color);
-                    }
-                }
-            } catch (e) {
-                console.error("Theme Loading Error:", e);
-            }
-        });
-    </script>
 </body>
 </html>

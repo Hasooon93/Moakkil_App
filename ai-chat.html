@@ -7,11 +7,36 @@
     <title>موكّل | المستشار القانوني الذكي</title>
     
     <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="manifest" href="./manifest.json">
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link href="./css/style.css" rel="stylesheet">
+
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('moakkil_dark_mode');
+                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+                const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
+                if (fwSettings) {
+                    if (fwSettings.primary_color) {
+                        document.documentElement.style.setProperty('--primary-dark', fwSettings.primary_color);
+                        document.documentElement.style.setProperty('--text-navy', fwSettings.primary_color);
+                    }
+                    if (fwSettings.accent_color) {
+                        document.documentElement.style.setProperty('--gold-luxury', fwSettings.accent_color);
+                    }
+                }
+            } catch (e) {}
+        })();
+    </script>
     
     <style>
         :root { 
@@ -26,13 +51,29 @@
 
         body { 
             background: var(--light-bg); 
+            color: var(--text-dark);
             font-family: 'Cairo', sans-serif; 
             display: flex; 
             flex-direction: column; 
             height: 100dvh; 
             margin: 0; 
-            overflow: hidden; 
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* --- دعم الوضع الليلي الشامل (Dark Mode) --- */
+        [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
+        [data-theme="dark"] .main-chat-area { background-color: #0f172a; }
+        [data-theme="dark"] .chat-ai { background-color: #1e293b; color: #f8fafc; border-color: var(--gold-luxury); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+        [data-theme="dark"] .chat-ai .text-navy, [data-theme="dark"] .form-check-label.text-navy { color: #f8fafc !important; }
+        [data-theme="dark"] .chat-ai .msg-footer { color: #94a3b8; }
+        [data-theme="dark"] .input-wrapper { background: rgba(30, 41, 59, 0.95); border-top-color: #334155; }
+        [data-theme="dark"] .chat-input { background: #0f172a; color: #f8fafc; border-color: #334155; }
+        [data-theme="dark"] .chat-input:focus { background: #0f172a; color: #f8fafc; border-color: var(--gold-luxury); }
+        [data-theme="dark"] .btn-mic { background: #0f172a; color: #f8fafc; border-color: #334155; }
+        [data-theme="dark"] .bottom-nav { background: #1e293b; border-top-color: #334155; }
+        [data-theme="dark"] .nav-item.active { color: var(--gold-luxury); }
 
         .top-nav { 
             background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
@@ -66,7 +107,7 @@
             padding: 12px 16px;
             border-radius: 18px;
             font-size: 0.95rem;
-            line-height: 1.6;
+            line-height: 1.7;
             position: relative;
             word-wrap: break-word;
             animation: fadeInBubble 0.3s ease-out forwards;
@@ -119,6 +160,7 @@
             flex-shrink: 0;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-top: 1px solid rgba(0,0,0,0.05);
             padding: 10px 15px;
             display: flex;
@@ -156,7 +198,9 @@
             font-size: 1.2rem; transition: all 0.3s ease; flex-shrink: 0;
         }
         .btn-send { background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover)); color: var(--primary-dark); box-shadow: 0 4px 10px rgba(212, 175, 55, 0.3); }
+        .btn-send:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(212, 175, 55, 0.45); }
         .btn-mic { background: white; color: var(--primary-dark); border: 1px solid #E2E8F0; }
+        .btn-mic:hover { border-color: var(--gold-luxury); color: var(--gold-luxury); }
 
         .bottom-nav { 
             height: 70px;
@@ -166,16 +210,17 @@
             display: flex; justify-content: space-around; 
             padding-bottom: env(safe-area-inset-bottom);
         }
-        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; padding: 10px 0; cursor: pointer; }
+        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; padding: 10px 0; cursor: pointer; text-decoration: none; transition: 0.2s; }
         .nav-item.active { color: var(--primary-dark); border-top: 3px solid var(--gold-luxury); margin-top: -1px; }
         .nav-item i { font-size: 1.3rem; display: block; margin-bottom: 4px; }
+        .nav-item.active i { color: var(--gold-luxury); }
     </style>
 </head>
 <body>
 
     <div class="top-nav px-3 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
-            <button class="btn btn-sm text-white p-0 border-0 text-decoration-none" onclick="window.location.href='app.html'">
+            <button class="btn btn-sm text-white p-0 border-0 text-decoration-none" onclick="localStorage.setItem('last_active_view', 'tools'); window.location.href='app.html#tools'" title="عودة">
                 <i class="fas fa-arrow-right fs-4"></i>
             </button>
             <div class="d-flex align-items-center gap-2">
@@ -184,13 +229,22 @@
                 </div>
                 <div>
                     <h6 class="mb-0 fw-bold text-white">المستشار القانوني</h6>
-                    <small style="color: rgba(255,255,255,0.7); font-size: 0.75rem;"><i class="fas fa-circle text-success me-1" style="font-size: 8px;"></i>متصل بالتشريعات الأردنية</small>
+                    <small style="color: rgba(255,255,255,0.7); font-size: 0.75rem;" id="ai-connection-status"><i class="fas fa-circle text-success me-1" style="font-size: 8px;"></i>متصل بالتشريعات الأردنية</small>
                 </div>
             </div>
         </div>
-        <button class="btn btn-sm border-0 text-white" onclick="AIChatEngine.clearChat()" title="مسح المحادثة" style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 6px 12px;">
-            <i class="fas fa-broom"></i>
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm border-0 text-white" onclick="toggleDarkMode()" title="تبديل الوضع الليلي" style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 6px 12px;">
+                <i class="fas fa-moon"></i>
+            </button>
+            <button class="btn btn-sm border-0 text-white" onclick="if(window.AIChatEngine) AIChatEngine.clearChat()" title="مسح المحادثة" style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 6px 12px;">
+                <i class="fas fa-broom"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="offline-banner" class="bg-warning text-dark text-center py-2 fw-bold d-none shadow-sm" style="font-size: 0.85rem; z-index: 9999; flex-shrink: 0; border-bottom: 2px solid #b45309;">
+        <i class="fas fa-wifi-slash me-2"></i> لا يوجد اتصال بالإنترنت - المستشار الذكي يتطلب اتصالاً بالشبكة لتحليل التشريعات.
     </div>
 
     <div class="main-chat-area">
@@ -215,36 +269,77 @@
             </div>
             
             <div class="input-area">
-                <button class="btn-action btn-mic" id="btn-mic" onclick="AIChatEngine.startDictation()" title="إملاء صوتي">
+                <button class="btn-action btn-mic" id="btn-mic" onclick="if(window.AIChatEngine) AIChatEngine.startDictation()" title="إملاء صوتي">
                     <i class="fas fa-microphone"></i>
                 </button>
                 <textarea id="chat-input" class="chat-input" rows="1" placeholder="اكتب سؤالك أو وقائع القضية..."></textarea>
-                <button class="btn-action btn-send" id="btn-send" onclick="AIChatEngine.sendMessage()">
+                <button class="btn-action btn-send" id="btn-send" onclick="if(window.AIChatEngine) AIChatEngine.sendMessage()">
                     <i class="fas fa-paper-plane"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-home"></i>المكتب</div>
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-gavel"></i>القضايا</div>
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-users"></i>الموكلين</div>
-        <div class="nav-item active"><i class="fas fa-robot"></i>الذكاء</div>
-    </div>
+    <nav class="bottom-nav">
+        <a href="app.html" class="nav-item" onclick="localStorage.setItem('last_active_view', 'dashboard');">
+            <i class="fas fa-home"></i>المكتب
+        </a>
+        <a href="app.html#cases" class="nav-item" onclick="localStorage.setItem('last_active_view', 'cases');">
+            <i class="fas fa-gavel"></i>القضايا
+        </a>
+        <a href="app.html#clients" class="nav-item" onclick="localStorage.setItem('last_active_view', 'clients');">
+            <i class="fas fa-users"></i>الموكلين
+        </a>
+        <a href="app.html#agenda" class="nav-item" onclick="localStorage.setItem('last_active_view', 'agenda');">
+            <i class="fas fa-calendar-check"></i>الأجندة
+        </a>
+        <a href="app.html#tools" class="nav-item active" onclick="localStorage.setItem('last_active_view', 'tools');">
+            <i class="fas fa-robot"></i>الذكاء
+        </a>
+    </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/auth.js"></script>
     <script src="./js/ai-chat.js"></script>
     
     <script>
-        const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
-        if (fwSettings) {
-            if (fwSettings.primary_color) { document.documentElement.style.setProperty('--primary-dark', fwSettings.primary_color); document.documentElement.style.setProperty('--text-navy', fwSettings.primary_color); }
-            if (fwSettings.accent_color) document.documentElement.style.setProperty('--gold-luxury', fwSettings.accent_color);
+        function updateConnectionUI() {
+            const banner = document.getElementById('offline-banner');
+            const statusEl = document.getElementById('ai-connection-status');
+            if (!navigator.onLine) {
+                if (banner) banner.classList.remove('d-none');
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle text-danger me-1" style="font-size: 8px;"></i>غير متصل بالشبكة';
+            } else {
+                if (banner) banner.classList.add('d-none');
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-circle text-success me-1" style="font-size: 8px;"></i>متصل بالتشريعات الأردنية';
+            }
+        }
+
+        window.addEventListener('load', updateConnectionUI);
+        window.addEventListener('offline', updateConnectionUI);
+        window.addEventListener('online', updateConnectionUI);
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('moakkil_dark_mode', 'false');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('moakkil_dark_mode', 'true');
+            }
+        }
+
+        // تمديد تلقائي لحقل النص أثناء الكتابة
+        const chatInputEl = document.getElementById('chat-input');
+        if (chatInputEl) {
+            chatInputEl.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
         }
     </script>
 </body>

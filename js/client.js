@@ -2,17 +2,19 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/client.js
- * الوصف: المحرك الشامل لبوابة الموكل العامة (Client Portal)
- * الميزات:
- * 1. المصادقة الآمنة عبر الـ PIN مع دعم العمل بلا إنترنت (Offline Cache).
+ * الوصف: المحرك الشامل لبوابة الموكل العامة (Client Portal - V5.2 Full Enterprise)
+ * الميزات الكاملة المحتفظ بها والمحصنة:
+ * 1. المصادقة الآمنة عبر الـ PIN (Zero-Trust Server PIN) مع دعم العمل بلا إنترنت (Offline Cache).
  * 2. محرك التوقيع الرقمي المزدوج (Canvas + Cryptographic SHA-256 Hash + WebAuthn).
  * 3. آلية رفع المستندات الناقصة (Missing Docs Upload) للباك إند.
- * 4. التوليد الآلي لكشوفات الحساب بصيغة PDF.
+ * 4. التوليد الآلي لكشوفات الحساب بصيغة PDF عبر html2pdf.
+ * 5. تصدير المواعيد لتقويم الهاتف (.ics) والتحميل الآمن من Cloudflare R2.
  * ============================================================================
  */
 
 let publicData = null;
 let activeToken = null;
+let verifiedSessionPin = '';
 const BOT_USERNAME = "Moakkil_bot";
 
 // متغيرات لوحة التوقيع (Canvas)
@@ -26,7 +28,7 @@ let pendingSignatureFile = null;
  */
 const escapeHTML = (str) => {
     if (str === null || str === undefined) return '';
-    return str.toString().replace(/[&<>'"]/g, 
+    return str.toString().replace(/[&<>'"]/g,
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
 };
@@ -37,7 +39,7 @@ const escapeHTML = (str) => {
 
 window.onload = async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    activeToken = urlParams.get('token');
+    activeToken = urlParams.get('token')?.trim() || null;
 
     if (!activeToken) {
         document.getElementById('loader').innerHTML = '<div class="alert alert-danger text-center w-75 fw-bold shadow-sm mx-auto mt-5 rounded-4"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>الرابط غير صالح أو مفقود. يرجى طلب رابط جديد من المكتب.</div>';
@@ -45,32 +47,56 @@ window.onload = async () => {
     }
 
     try {
+        // استرجاع الـ PIN المحفوظ في الجلسة الحالية إن وجد لتجنب طلب 401
+        try {
+            verifiedSessionPin = sessionStorage.getItem(`moakkil_portal_pin_${activeToken}`) || '';
+        } catch (e) {}
+
         let data = null;
         if (navigator.onLine) {
-            const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${activeToken}`);
-            data = await res.json();
-            if (!res.ok) throw new Error(data.error || "الملف غير موجود أو تم إيقاف صلاحية الوصول من قبل الإدارة.");
+            // إذا لم يُدخل الموكل الـ PIN بعد في هذه الجلسة، نظهر شاشة القفل مباشرة دون إطلاق طلب 401 في الكونسول
+            if (!verifiedSessionPin) {
+                const cached = localStorage.getItem(`moakkil_client_cache_${activeToken}`);
+                if (cached) {
+                    try { publicData = JSON.parse(cached); } catch (e) {}
+                }
+                showSecurityLockScreen();
+                return;
+            }
+
+            const pinQuery = verifiedSessionPin ? `&pin=${encodeURIComponent(verifiedSessionPin)}` : '';
+            const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}${pinQuery}`);
+            data = await res.json().catch(() => ({}));
+
+            // إذا طلب الوركر رمز الـ PIN (حالة 401 require_pin)، نظهر شاشة إدخال الـ PIN بهدوء
+            if (res.status === 401 && data.require_pin) {
+                try { sessionStorage.removeItem(`moakkil_portal_pin_${activeToken}`); } catch (e) {}
+                verifiedSessionPin = '';
+                showSecurityLockScreen();
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error(data.error || "الملف غير موجود أو تم إيقاف صلاحية الوصول من قبل الإدارة.");
+            }
             localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(data));
         } else {
             const cached = localStorage.getItem(`moakkil_client_cache_${activeToken}`);
             if (cached) {
                 data = JSON.parse(cached);
                 if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'أنت تتصفح في وضع عدم الاتصال.', showConfirmButton: false, timer: 3000 });
-            } else throw new Error("لا يوجد اتصال بالإنترنت لتحميل ملف القضية لأول مرة.");
+            } else {
+                throw new Error("لا يوجد اتصال بالإنترنت لتحميل ملف القضية لأول مرة.");
+            }
         }
 
         if (data && (data.case || (data.cases && data.cases.length > 0))) {
             publicData = data;
-            document.getElementById('loader').classList.add('d-none');
-            document.getElementById('security-layer').classList.remove('d-none');
-            document.getElementById('security-layer').classList.add('fade-in');
-            
-            if(publicData.firm && publicData.firm.logo_url) {
-                document.getElementById('firm-logo-sec').classList.remove('d-none');
-                document.getElementById('firm-logo-img').src = escapeHTML(publicData.firm.logo_url);
+            if (verifiedSessionPin && navigator.onLine) {
+                unlockPortal();
+            } else {
+                showSecurityLockScreen();
             }
-            
-            setTimeout(() => document.getElementById('pin_input').focus(), 300);
         } else {
             throw new Error("بيانات ملف القضية غير متوفرة أو معلقة.");
         }
@@ -79,42 +105,92 @@ window.onload = async () => {
     }
 };
 
+/**
+ * إظهار شاشة القفل وإدخال رمز الـ PIN
+ */
+function showSecurityLockScreen() {
+    document.getElementById('loader').classList.add('d-none');
+    const secLayer = document.getElementById('security-layer');
+    secLayer.classList.remove('d-none');
+    secLayer.classList.add('fade-in');
+
+    if (publicData && publicData.firm && publicData.firm.logo_url) {
+        document.getElementById('firm-logo-sec').classList.remove('d-none');
+        document.getElementById('firm-logo-img').src = escapeHTML(publicData.firm.logo_url);
+    }
+
+    setTimeout(() => {
+        const pinEl = document.getElementById('pin_input');
+        if (pinEl) pinEl.focus();
+    }, 300);
+}
+
 window.verifyAccess = async function(event) {
     event.preventDefault();
-    const enteredPin = document.getElementById('pin_input').value;
-    const caseData = publicData.case || publicData.cases[0] || {};
+    const enteredPin = document.getElementById('pin_input').value.trim();
+    const caseData = (publicData && (publicData.case || (publicData.cases && publicData.cases[0]))) || {};
     const btn = document.getElementById('btn-verify');
-    
-    btn.disabled = true; 
+
+    btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحقق الأمني...';
 
     try {
         if (!navigator.onLine) {
-            const savedPin = localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`);
-            if (savedPin === enteredPin) { unlockPortal(); return; } 
-            else throw new Error("الرمز السري غير صحيح.");
+            const savedPinByToken = localStorage.getItem(`moakkil_offline_pin_${activeToken}`);
+            const savedPinByCase = caseData.case_internal_id ? localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`) : null;
+            if ((savedPinByToken && savedPinByToken === enteredPin) || (savedPinByCase && savedPinByCase === enteredPin)) {
+                verifiedSessionPin = enteredPin;
+                unlockPortal();
+                return;
+            } else {
+                throw new Error("الرمز السري غير صحيح.");
+            }
         }
 
+        // 1. التحقق من الـ PIN عبر مسار تسجيل دخول الموكل (يدعم token و case_number معاً)
         const res = await fetch(`${CONFIG.API_URL}/api/public/client/login`, {
-            method: 'POST', 
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ case_number: caseData.case_internal_id, access_pin: enteredPin })
+            body: JSON.stringify({
+                token: activeToken,
+                case_number: caseData.case_internal_id || undefined,
+                access_pin: enteredPin
+            })
         });
-        
-        const resData = await res.json();
-        
+
+        const resData = await res.json().catch(() => ({}));
+
         if (res.ok && resData.success) {
-            localStorage.setItem(`moakkil_offline_pin_${caseData.case_internal_id}`, enteredPin);
+            verifiedSessionPin = enteredPin;
+            try { sessionStorage.setItem(`moakkil_portal_pin_${activeToken}`, enteredPin); } catch (e) {}
+            localStorage.setItem(`moakkil_offline_pin_${activeToken}`, enteredPin);
+
+            // 2. جلب بيانات البوابة الكاملة بعد توثيق الـ PIN على الخادم
+            const portalRes = await fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}&pin=${encodeURIComponent(enteredPin)}`);
+            const portalJson = await portalRes.json().catch(() => ({}));
+
+            if (!portalRes.ok || portalJson.error) {
+                throw new Error(portalJson.error || "تعذر جلب بيانات القضية بعد التحقق.");
+            }
+
+            publicData = portalJson;
+            localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(portalJson));
+
+            const loadedCase = publicData.case || (publicData.cases && publicData.cases[0]) || {};
+            if (loadedCase.case_internal_id) {
+                localStorage.setItem(`moakkil_offline_pin_${loadedCase.case_internal_id}`, enteredPin);
+            }
+
             unlockPortal();
         } else {
             throw new Error(resData.error || "الرمز السري خاطئ، يرجى التأكد والمحاولة مجدداً.");
         }
     } catch (error) {
         if (typeof Swal !== 'undefined') Swal.fire('رفض الوصول', error.message, 'error');
-        document.getElementById('pin_input').value = ''; 
+        document.getElementById('pin_input').value = '';
         document.getElementById('pin_input').focus();
     } finally {
-        btn.disabled = false; 
+        btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-shield-check me-2"></i> تأكيد ودخول';
     }
 };
@@ -131,6 +207,8 @@ window.logoutClient = function() {
         cancelButtonText: 'إلغاء'
     }).then((result) => {
         if (result.isConfirmed) {
+            try { sessionStorage.removeItem(`moakkil_portal_pin_${activeToken}`); } catch (e) {}
+            verifiedSessionPin = '';
             document.getElementById('main-content').classList.add('d-none');
             document.getElementById('security-layer').classList.remove('d-none');
             document.getElementById('pin_input').value = '';
@@ -143,6 +221,7 @@ window.logoutClient = function() {
 // ============================================================================
 
 function unlockPortal() {
+    document.getElementById('loader').classList.add('d-none');
     document.getElementById('security-layer').classList.add('d-none');
     const mainContent = document.getElementById('main-content');
     mainContent.classList.remove('d-none');
@@ -151,15 +230,29 @@ function unlockPortal() {
 }
 
 function renderClientPortal() {
+    if (!publicData) return;
     const firm = publicData.firm || {};
     const client = publicData.client || {};
-    const caseData = publicData.case || publicData.cases[0] || {};
+    const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
     const updates = publicData.updates || [];
     const files = publicData.files || [];
     const installments = publicData.installments || [];
     const appointments = publicData.appointments || [];
 
-    // 1. الترويسة وبيانات המوكل
+    // تطبيق ألوان المكتب (White-Labeling)
+    if (firm.primary_color) {
+        document.documentElement.style.setProperty('--firm-primary', firm.primary_color);
+        document.documentElement.style.setProperty('--firm-light', firm.primary_color);
+    }
+    if (firm.accent_color) {
+        document.documentElement.style.setProperty('--firm-accent', firm.accent_color);
+    }
+    if (firm.logo_url) {
+        document.getElementById('firm-logo-sec').classList.remove('d-none');
+        document.getElementById('firm-logo-img').src = escapeHTML(firm.logo_url);
+    }
+
+    // 1. الترويسة وبيانات الموكل
     document.getElementById('ui-firm-name').innerText = escapeHTML(firm.firm_name || 'مكتب المحاماة');
     document.getElementById('ui-client-name').innerText = escapeHTML(client.full_name || 'الموكل الكريم');
     document.getElementById('ui-case-status').innerText = escapeHTML(caseData.status || 'نشطة');
@@ -175,6 +268,17 @@ function renderClientPortal() {
         const tgLink = `https://t.me/${BOT_USERNAME}?start=${activeToken}`;
         document.getElementById('telegram-deep-link').href = tgLink;
         document.getElementById('telegram-connect-banner').classList.remove('d-none');
+    } else {
+        document.getElementById('telegram-connect-banner').classList.add('d-none');
+    }
+
+    // شريط التقدم
+    const stageText = caseData.current_stage ? `المرحلة الإجرائية: ${caseData.current_stage}` : 'جاري العمل على الملف...';
+    const progressTextEl = document.getElementById('ui-progress-text');
+    if (progressTextEl) progressTextEl.innerText = stageText;
+    const progressBarEl = document.getElementById('ui-progress-bar');
+    if (progressBarEl) {
+        progressBarEl.style.width = caseData.status === 'مكتملة' ? '100%' : (caseData.status === 'استئناف' || caseData.status === 'تمييز' ? '75%' : '50%');
     }
 
     // 2. معلومات القضية
@@ -187,7 +291,7 @@ function renderClientPortal() {
     try {
         if (typeof caseData.missing_documents === 'string') missingDocsList = JSON.parse(caseData.missing_documents);
         else if (Array.isArray(caseData.missing_documents)) missingDocsList = caseData.missing_documents;
-    } catch(e) {}
+    } catch (e) {}
 
     if (missingDocsList && missingDocsList.length > 0) {
         document.getElementById('missing-docs-banner').classList.remove('d-none');
@@ -219,7 +323,7 @@ function renderClientPortal() {
         timelineContainer.innerHTML = '<div class="alert text-center small text-muted border shadow-sm fw-bold p-4 rounded-4 bg-white"><i class="fas fa-info-circle fa-2x mb-2 opacity-50"></i><br>لا توجد إجراءات مسجلة حتى الآن.</div>';
     }
 
-    // 6. المواعيد
+    // 6. المواعيد (مع زر الإضافة لتقويم الهاتف .ics)
     const apptsContainer = document.getElementById('ui-appointments-container');
     if (appointments.length > 0) {
         apptsContainer.innerHTML = appointments.map(a => {
@@ -231,10 +335,15 @@ function renderClientPortal() {
             <div class="timeline-item fade-in mb-3 ${statusClass}">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <small class="fw-bold font-monospace text-muted"><i class="fas ${icon} me-1"></i> ${new Date(a.appt_date).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })}</small>
-                    <span class="badge ${badgeBg} bg-opacity-10 text-${badgeBg.replace('bg-','')} border border-${badgeBg.replace('bg-','')} border-opacity-25 rounded-pill px-3 py-1">${escapeHTML(a.status)}</span>
+                    <span class="badge ${badgeBg} bg-opacity-10 text-${badgeBg.replace('bg-', '')} border border-${badgeBg.replace('bg-', '')} border-opacity-25 rounded-pill px-3 py-1">${escapeHTML(a.status)}</span>
                 </div>
                 <h6 class="fw-bold mb-1 mt-2 fs-5" style="color: var(--firm-primary);">${escapeHTML(a.title)}</h6>
-                <small class="text-muted fw-bold"><i class="fas fa-tag me-1"></i> ${escapeHTML(a.type || 'موعد')}</small>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small class="text-muted fw-bold"><i class="fas fa-tag me-1"></i> ${escapeHTML(a.type || 'موعد')}</small>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill fw-bold px-3" onclick="exportClientApptToICS('${escapeHTML(a.title || 'موعد قانوني')}', '${escapeHTML(a.appt_date || '')}')">
+                        <i class="fas fa-calendar-plus me-1"></i> أضف للتقويم
+                    </button>
+                </div>
                 ${a.completion_notes ? `<div class="mt-2 text-success small fw-bold"><i class="fas fa-quote-right me-1"></i> مخرجات: ${escapeHTML(a.completion_notes)}</div>` : ''}
             </div>`;
         }).join('');
@@ -243,12 +352,12 @@ function renderClientPortal() {
     }
 
     // 7. المالية
-    const totalAgreed = Number(caseData.total_agreed_fees) || 0;
+    const totalAgreed = Number(caseData.total_agreed_fees || caseData.agreed_fees) || 0;
     const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-    
+
     document.getElementById('ui-fin-agreed').innerText = totalAgreed.toLocaleString('en-US');
     document.getElementById('ui-fin-paid').innerText = totalPaid.toLocaleString('en-US');
-    document.getElementById('ui-fin-rem').innerText = (totalAgreed - totalPaid).toLocaleString('en-US');
+    document.getElementById('ui-fin-rem').innerText = Math.max(0, totalAgreed - totalPaid).toLocaleString('en-US');
 
     const payContainer = document.getElementById('ui-payments-container');
     if (installments.length > 0) {
@@ -271,14 +380,15 @@ function renderClientPortal() {
     const filesContainer = document.getElementById('ui-files-container');
     if (files.length > 0) {
         filesContainer.innerHTML = files.map(f => {
-            const isR2 = f.file_url && !f.file_url.startsWith('http');
-            const viewBtn = isR2 
-                ? `<button class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm" onclick="downloadSecureFile('${escapeHTML(f.file_url)}', '${escapeHTML(f.file_name)}')"><i class="fas fa-lock me-1"></i> تحميل آمن</button>`
-                : `<a href="${escapeHTML(f.file_url || '#')}" target="_blank" class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-external-link-alt me-1"></i> عرض</a>`;
-            
+            const fileKeyOrUrl = f.file_url || f.gdrive_file_id || '';
+            const isR2 = fileKeyOrUrl && !fileKeyOrUrl.startsWith('http');
+            const viewBtn = isR2
+                ? `<button class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm" onclick="downloadSecureFile('${escapeHTML(fileKeyOrUrl)}', '${escapeHTML(f.file_name)}')"><i class="fas fa-lock me-1"></i> تحميل آمن</button>`
+                : `<a href="${escapeHTML(fileKeyOrUrl || '#')}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm"><i class="fas fa-external-link-alt me-1"></i> عرض</a>`;
+
             let signBadge = '';
             if (f.signature_hash) {
-                signBadge = `<div class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 mt-2 w-100"><i class="fas fa-signature me-1"></i> مُوَقَّع إلكترونياً</div>`;
+                signBadge = `<div class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 mt-2 w-100"><i class="fas fa-signature me-1"></i> مُوَقَّع إلكترونياً</div>`;
             }
 
             return `
@@ -297,6 +407,41 @@ function renderClientPortal() {
     }
 }
 
+/**
+ * تصدير الموعد إلى ملف تقويم الهاتف القياسي (.ics)
+ */
+window.exportClientApptToICS = function(title, dateStr) {
+    if (!dateStr) return;
+    const start = new Date(dateStr);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Moakkil Client Portal//AR',
+        'BEGIN:VEVENT',
+        `UID:moakkil-client-${Date.now()}@moakkil.erp`,
+        `DTSTAMP:${fmt(new Date())}`,
+        `DTSTART:${fmt(start)}`,
+        `DTEND:${fmt(end)}`,
+        `SUMMARY:${title}`,
+        'DESCRIPTION:موعد قضائي مجدول عبر بوابة الموكل - نظام موكّل ERP',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Moakkil_Appt_${Date.now()}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+};
+
 // ============================================================================
 // [3] إدارة النواقص (Missing Documents Upload)
 // ============================================================================
@@ -308,12 +453,12 @@ window.openMissingDocsUpload = function() {
 
 window.uploadMissingDoc = async function() {
     const fileInput = document.getElementById('missing-doc-file');
-    if (!fileInput.files.length) return Swal.fire({toast: true, position: 'top-end', icon: 'warning', title: 'يرجى اختيار ملف أولاً', showConfirmButton: false, timer: 3000});
-    
-    const file = fileInput.files[0];
-    const caseData = publicData.case || publicData.cases[0] || {};
+    if (!fileInput.files.length) return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'يرجى اختيار ملف أولاً', showConfirmButton: false, timer: 3000 });
 
-    Swal.fire({toast: true, position: 'top-end', icon: 'info', title: 'جاري الرفع والتشفير...', showConfirmButton: false});
+    const file = fileInput.files[0];
+    const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
+
+    Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'جاري الرفع والتشفير...', showConfirmButton: false });
 
     try {
         const reader = new FileReader();
@@ -322,6 +467,7 @@ window.uploadMissingDoc = async function() {
             const base64 = reader.result.split(',')[1];
             const payload = {
                 token: activeToken,
+                pin: verifiedSessionPin || undefined,
                 case_id: caseData.id,
                 file_name: file.name,
                 file_type: file.type,
@@ -336,38 +482,51 @@ window.uploadMissingDoc = async function() {
 
             if (!res.ok) throw new Error("فشل الرفع السحابي، يرجى المحاولة لاحقاً.");
 
-            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تم إرسال المستند للمكتب بنجاح', showConfirmButton: false, timer: 4000});
-            
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'تم إرسال المستند للمكتب بنجاح', showConfirmButton: false, timer: 4000 });
+
             const modalEl = document.getElementById('missingDocsModal');
             const modalIns = bootstrap.Modal.getInstance(modalEl);
-            if(modalIns) modalIns.hide();
-            
+            if (modalIns) modalIns.hide();
+
             document.getElementById('missing-docs-banner').classList.add('d-none');
             fileInput.value = '';
-            
-            // إعادة تحميل البيانات صامتاً لتحديث الواجهة
-            fetch(`${CONFIG.API_URL}/api/public/client?token=${activeToken}`).then(r=>r.json()).then(d=>{ publicData=d; renderClientPortal(); });
+
+            const pinParam = verifiedSessionPin ? `&pin=${encodeURIComponent(verifiedSessionPin)}` : '';
+            fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}${pinParam}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d && !d.error) {
+                        publicData = d;
+                        localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(d));
+                        renderClientPortal();
+                    }
+                });
         };
     } catch (e) {
-        Swal.fire({toast: true, position: 'top-end', icon: 'error', title: 'خطأ: ' + e.message, showConfirmButton: false, timer: 3000});
+        Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'خطأ: ' + e.message, showConfirmButton: false, timer: 3000 });
     }
 };
 
 window.downloadSecureFile = async function(r2Key, fileName) {
-    if (!navigator.onLine) return Swal.fire({toast: true, position: 'top-end', icon: 'warning', title: 'تحتاج إنترنت للتحميل', showConfirmButton: false, timer: 3000});
+    if (!navigator.onLine) return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'تحتاج إنترنت للتحميل', showConfirmButton: false, timer: 3000 });
     try {
-        Swal.fire({toast: true, position: 'top-end', icon: 'info', title: 'جاري فك التشفير والتحميل...', showConfirmButton: false});
-        const res = await fetch(`${CONFIG.API_URL}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${activeToken}`);
-        
-        if (res.status === 401) throw new Error('صلاحية التحميل مرفوضة أمنياً.');
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'جاري فك التشفير والتحميل...', showConfirmButton: false });
+        const res = await fetch(`${CONFIG.API_URL}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(activeToken)}`);
+
+        if (res.status === 401 || res.status === 403) throw new Error('صلاحية التحميل مرفوضة أمنياً.');
         if (!res.ok) throw new Error('الملف غير متوفر حالياً في الأرشيف السحابي.');
-        
+
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = fileName || 'document.pdf';
-        document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || 'document.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
     } catch (e) {
-        Swal.fire({toast: true, position: 'top-end', icon: 'error', title: 'خطأ: ' + e.message, showConfirmButton: false, timer: 3000});
+        Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'خطأ: ' + e.message, showConfirmButton: false, timer: 3000 });
     }
 };
 
@@ -383,27 +542,28 @@ window.openSignatureModal = function() {
     `;
     const modal = new bootstrap.Modal(document.getElementById('signatureModal'));
     modal.show();
-    initSignaturePad();
+    setTimeout(initSignaturePad, 250);
 };
 
 function initSignaturePad() {
     const canvas = document.getElementById('signaturePad');
-    if(!canvas) return;
-    
+    if (!canvas) return;
+    signaturePad = canvas;
+
     // ضبط الأبعاد لمنع التمدد في الشاشات
     const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width - 30; // حواف بسيطة
+    canvas.width = Math.max(260, rect.width - 30);
     canvas.height = 200;
-    
+
     signatureCtx = canvas.getContext('2d');
     signatureCtx.lineWidth = 3;
     signatureCtx.lineCap = 'round';
     signatureCtx.strokeStyle = '#0B132B';
-    
-    clearSignature(); // لضمان خلفية بيضاء نظيفة
+
+    clearSignature();
 
     // منع التمرير (Scrolling) أثناء التوقيع على الموبايل
-    const preventScroll = (e) => { if(e.target === canvas) e.preventDefault(); };
+    const preventScroll = (e) => { if (e.target === canvas) e.preventDefault(); };
     document.body.addEventListener("touchstart", preventScroll, { passive: false });
     document.body.addEventListener("touchmove", preventScroll, { passive: false });
     document.body.addEventListener("touchend", preventScroll, { passive: false });
@@ -443,27 +603,29 @@ function stopDrawing() {
 }
 
 window.clearSignature = function() {
-    if(!signatureCtx || !signaturePad) return;
+    if (!signatureCtx || !signaturePad) return;
     signatureCtx.fillStyle = '#ffffff';
     signatureCtx.fillRect(0, 0, signaturePad.width, signaturePad.height);
 };
 
 window.submitSignature = async function() {
-    if (!pendingSignatureFile) return;
+    if (!pendingSignatureFile || !signaturePad) return;
 
     // فحص ما إذا كانت اللوحة بيضاء (لم يتم التوقيع)
     const blankCanvas = document.createElement('canvas');
-    blankCanvas.width = signaturePad.width; blankCanvas.height = signaturePad.height;
+    blankCanvas.width = signaturePad.width;
+    blankCanvas.height = signaturePad.height;
     const blankCtx = blankCanvas.getContext('2d');
-    blankCtx.fillStyle = '#ffffff'; blankCtx.fillRect(0, 0, blankCanvas.width, blankCanvas.height);
-    
+    blankCtx.fillStyle = '#ffffff';
+    blankCtx.fillRect(0, 0, blankCanvas.width, blankCanvas.height);
+
     if (signaturePad.toDataURL() === blankCanvas.toDataURL()) {
-        return Swal.fire({toast: true, position: 'top-end', icon: 'warning', title: 'يرجى رسم توقيعك داخل الإطار أولاً.', showConfirmButton: false, timer: 3000});
+        return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'يرجى رسم توقيعك داخل الإطار أولاً.', showConfirmButton: false, timer: 3000 });
     }
 
-    // طلب التحقق عبر البصمة (WebAuthn) إن وجد، وإلا نطلب הـ PIN الخاص بالبوابة كبديل أمني
+    // طلب التحقق عبر البصمة (WebAuthn) إن وجد، وإلا نطلب الـ PIN الخاص بالبوابة كبديل أمني
     let authConfirmed = false;
-    
+
     if (window.PublicKeyCredential) {
         try {
             const challenge = new Uint8Array(32);
@@ -476,19 +638,18 @@ window.submitSignature = async function() {
                     timeout: 60000
                 }
             });
-            authConfirmed = true; // تمت المصادقة البيومترية
+            authConfirmed = true;
         } catch (e) {
             console.warn("Biometric verification failed or cancelled, falling back to PIN.", e);
         }
     }
 
-    // إذا فشلت البصمة أو لم يدعمها الجهاز، نطلب הـ PIN للتوثيق الإضافي
     if (!authConfirmed) {
         const pinCheck = await Swal.fire({
             title: 'مصادقة التوقيع',
             text: 'يرجى إدخال الرمز السري (PIN) الخاص بملفك لتأكيد التوقيع واعتماده قانونياً.',
             input: 'password',
-            inputAttributes: { maxlength: 6, autocapitalize: 'off', autocorrect: 'off' },
+            inputAttributes: { maxlength: 6, autocapitalize: 'off', autocorrect: 'off', inputmode: 'numeric' },
             showCancelButton: true,
             confirmButtonText: 'تأكيد التوقيع',
             cancelButtonText: 'إلغاء',
@@ -496,35 +657,35 @@ window.submitSignature = async function() {
         });
 
         if (!pinCheck.isConfirmed || !pinCheck.value) return;
-        
-        const caseData = publicData.case || publicData.cases[0] || {};
-        const savedPin = localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`);
-        
-        if (pinCheck.value !== savedPin) {
+
+        const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
+        const savedPin = verifiedSessionPin || localStorage.getItem(`moakkil_offline_pin_${activeToken}`) || localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`);
+
+        if (pinCheck.value.trim() !== savedPin) {
             return Swal.fire('فشل المصادقة', 'الرمز السري غير صحيح، تم إلغاء عملية التوقيع.', 'error');
         }
     }
 
     // توليد الهاش التشفيري (Cryptographic Hash)
-    Swal.fire({title: 'جاري التشفير والاعتماد...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-    
+    Swal.fire({ title: 'جاري التشفير والاعتماد...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
     try {
         const signatureBase64 = signaturePad.toDataURL('image/png');
         const timestamp = new Date().toISOString();
         const userAgent = navigator.userAgent;
-        
+
         const encoder = new TextEncoder();
         const dataToHash = encoder.encode(signatureBase64 + timestamp + userAgent + activeToken);
         const hashBuffer = await crypto.subtle.digest('SHA-256', dataToHash);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const signatureHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // إرسال للباك إند (نستدعي مسار عام مخصص لاستقبال التواقيع)
         const res = await fetch(`${CONFIG.API_URL}/api/public/submit-signature`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token: activeToken,
+                pin: verifiedSessionPin || undefined,
                 file_id: pendingSignatureFile.id,
                 signature_base64: signatureBase64,
                 signature_hash: signatureHash,
@@ -535,16 +696,24 @@ window.submitSignature = async function() {
         if (!res.ok) throw new Error("تعذر حفظ التوقيع في الخادم.");
 
         Swal.fire('تم الاعتماد', 'تم توثيق وتشفير توقيعك على المستند بنجاح.', 'success');
-        
+
         const modalEl = document.getElementById('signatureModal');
         const modalIns = bootstrap.Modal.getInstance(modalEl);
-        if(modalIns) modalIns.hide();
-        
+        if (modalIns) modalIns.hide();
+
         document.getElementById('signature-request-banner').classList.add('d-none');
         pendingSignatureFile = null;
-        
-        // إعادة تحميل البيانات لتحديث حالة الملف
-        fetch(`${CONFIG.API_URL}/api/public/client?token=${activeToken}`).then(r=>r.json()).then(d=>{ publicData=d; renderClientPortal(); });
+
+        const pinParam = verifiedSessionPin ? `&pin=${encodeURIComponent(verifiedSessionPin)}` : '';
+        fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}${pinParam}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d && !d.error) {
+                    publicData = d;
+                    localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(d));
+                    renderClientPortal();
+                }
+            });
 
     } catch (e) {
         Swal.fire('خطأ تقني', e.message, 'error');
@@ -555,7 +724,7 @@ window.submitSignature = async function() {
 // [5] إنشاء كشف الحساب المالي (PDF Generator)
 // ============================================================================
 window.generateStatement = async function() {
-    if(typeof Swal !== 'undefined') Swal.fire({toast: true, position: 'top-end', icon: 'info', title: 'جاري إنشاء كشف الحساب...', showConfirmButton: false});
+    if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'جاري إنشاء كشف الحساب...', showConfirmButton: false });
 
     if (typeof html2pdf === 'undefined') {
         await new Promise((resolve) => {
@@ -568,12 +737,12 @@ window.generateStatement = async function() {
 
     const firm = publicData.firm || {};
     const client = publicData.client || {};
-    const caseData = publicData.case || publicData.cases[0] || {};
+    const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
     const installments = publicData.installments || [];
-    
-    const totalAgreed = Number(caseData.total_agreed_fees) || 0;
+
+    const totalAgreed = Number(caseData.total_agreed_fees || caseData.agreed_fees) || 0;
     const totalPaid = installments.filter(i => i.status === 'مدفوعة').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-    const totalRem = totalAgreed - totalPaid;
+    const totalRem = Math.max(0, totalAgreed - totalPaid);
 
     const dateToday = new Date().toLocaleDateString('ar-EG');
 
@@ -630,7 +799,7 @@ window.generateStatement = async function() {
 
     const opt = {
         margin:       0,
-        filename:     `كشف_حساب_${client.full_name.replace(/\s+/g, '_')}.pdf`,
+        filename:     `كشف_حساب_${(client.full_name || 'موكل').replace(/\s+/g, '_')}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -638,6 +807,6 @@ window.generateStatement = async function() {
 
     html2pdf().set(opt).from(tempDiv.firstElementChild).save().then(() => {
         document.body.removeChild(tempDiv);
-        if(typeof Swal !== 'undefined') Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'تم تحميل الكشف بنجاح', showConfirmButton: false, timer: 3000});
+        if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'تم تحميل الكشف بنجاح', showConfirmButton: false, timer: 3000 });
     });
 };

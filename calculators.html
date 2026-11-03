@@ -8,26 +8,35 @@
     
     <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
     <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="manifest" href="./manifest.json">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" crossorigin="anonymous">
+    <link href="./css/style.css" rel="stylesheet">
     
     <script>
-        try {
-            const settings = JSON.parse(localStorage.getItem('firm_settings'));
-            if (settings) {
-                if (settings.primary_color) {
-                    document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
-                    document.documentElement.style.setProperty('--navy', settings.primary_color);
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('moakkil_dark_mode');
+                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
                 }
-                if (settings.accent_color) {
-                    document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
-                    document.documentElement.style.setProperty('--accent', settings.accent_color);
+                const settings = JSON.parse(localStorage.getItem('firm_settings'));
+                if (settings) {
+                    if (settings.primary_color) {
+                        document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                        document.documentElement.style.setProperty('--navy', settings.primary_color);
+                    }
+                    if (settings.accent_color) {
+                        document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                        document.documentElement.style.setProperty('--accent', settings.accent_color);
+                    }
                 }
-            }
-        } catch (e) { console.error("Error loading firm settings", e); }
+            } catch (e) { console.error("Error loading firm settings", e); }
+        })();
     </script>
 
     <style>
@@ -40,6 +49,8 @@
             --light-bg: #F4F6F9;
             --text-dark: #1A1A1A;
             --text-muted: #6C757D;
+            --danger-luxury: #9e2a2b;
+            --success-luxury: #2d6a4f;
         }
 
         body { 
@@ -48,7 +59,39 @@
             color: var(--text-dark);
             -webkit-font-smoothing: antialiased;
             padding-bottom: 90px;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* --- دعم الوضع الليلي الشامل (Dark Mode) --- */
+        [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
+        [data-theme="dark"] .card-custom,
+        [data-theme="dark"] .bottom-nav,
+        [data-theme="dark"] .nav-pills-custom .nav-link:not(.active) {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] .bg-light {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: var(--gold-luxury) !important;
+        }
+        [data-theme="dark"] .card-custom h5,
+        [data-theme="dark"] .form-label,
+        [data-theme="dark"] h4 {
+            color: #f8fafc !important;
+            border-bottom-color: #334155 !important;
+        }
+        [data-theme="dark"] .text-muted { color: #94a3b8 !important; }
+        [data-theme="dark"] .nav-item.active { color: var(--gold-luxury); }
 
         /* --- 3.2 الترويسة العلوية الفاخرة --- */
         .top-nav {
@@ -123,7 +166,7 @@
             position: fixed; bottom: 0; width: 100%; z-index: 1040; display: flex; justify-content: space-around; 
             border-top: 1px solid rgba(212, 175, 55, 0.2);
         }
-        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; }
+        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; text-decoration: none; }
         .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); transform: translateY(-4px); }
         .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 5px; transition: transform 0.3s; }
         .nav-item.active i { color: var(--gold-luxury); transform: scale(1.15); }
@@ -136,12 +179,19 @@
 
     <header class="top-nav d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
-            <button class="btn btn-link text-white p-0 text-decoration-none me-3" onclick="window.location.href='app.html'">
+            <button class="btn btn-link text-white p-0 text-decoration-none me-3" onclick="localStorage.setItem('last_active_view', 'tools'); window.location.href='app.html#tools'" title="عودة للأدوات">
                 <i class="fas fa-arrow-right fs-4"></i>
             </button>
             <h5 class="mb-0 fw-bold text-white"><i class="fas fa-calculator me-2" style="color: var(--gold-luxury);"></i> الأدوات والحاسبات</h5>
         </div>
+        <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm rounded-3 px-3" onclick="toggleCalcDarkMode()" title="تبديل الوضع الليلي">
+            <i class="fas fa-moon"></i>
+        </button>
     </header>
+
+    <div id="offline-banner" class="bg-warning text-dark text-center py-2 fw-bold d-none shadow-sm" style="font-size: 0.9rem; z-index: 9999; position: relative; border-bottom: 2px solid #b45309;">
+        <i class="fas fa-wifi-slash me-2"></i> لا يوجد اتصال بالإنترنت - الحاسبات المالية والشرعية تعمل بكفاءة تامة في الوضع المحلي (Offline).
+    </div>
 
     <main class="container mt-4 mb-5 pb-5 fade-in">
         
@@ -384,27 +434,48 @@
     </main>
 
     <nav class="bottom-nav no-print">
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-home"></i> الرئيسية</div>
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-gavel"></i> القضايا</div>
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-users"></i> الموكلين</div>
-        <div class="nav-item" onclick="window.location.href='app.html'"><i class="fas fa-calendar-check"></i> الأجندة</div>
-        <div class="nav-item active"><i class="fas fa-toolbox"></i> الأدوات</div>
+        <a href="app.html" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'dashboard');"><i class="fas fa-home"></i> الرئيسية</a>
+        <a href="app.html#cases" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'cases');"><i class="fas fa-gavel"></i> القضايا</a>
+        <a href="app.html#clients" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'clients');"><i class="fas fa-users"></i> الموكلين</a>
+        <a href="app.html#agenda" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'agenda');"><i class="fas fa-calendar-check"></i> الأجندة</a>
+        <a href="app.html#tools" class="nav-item active text-decoration-none" onclick="localStorage.setItem('last_active_view', 'tools');"><i class="fas fa-toolbox"></i> الأدوات</a>
     </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
     <script src="./js/config.js"></script>
+    <script src="./js/auth.js"></script>
     
     <script>
-        // التحقق الأمني وإعداد الألوان المخصصة
-        window.addEventListener('load', () => {
-            const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-            const userStr = localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user');
-            if (!token || !userStr) {
-                window.location.replace('login.html');
-                return;
+        // التحقق الأمني الموحد عبر الحارس المركزي AUTH.checkSession()
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof AUTH !== 'undefined' && typeof AUTH.checkSession === 'function') {
+                AUTH.checkSession();
+            } else {
+                const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+                const userStr = localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user');
+                if (!token || !userStr) {
+                    window.location.replace('login.html');
+                }
+            }
+            if (!navigator.onLine) {
+                document.getElementById('offline-banner')?.classList.remove('d-none');
             }
         });
+
+        window.addEventListener('offline', () => document.getElementById('offline-banner')?.classList.remove('d-none'));
+        window.addEventListener('online', () => document.getElementById('offline-banner')?.classList.add('d-none'));
+
+        function toggleCalcDarkMode() {
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('moakkil_dark_mode', 'false');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('moakkil_dark_mode', 'true');
+            }
+        }
 
         // دالة التنبيهات الموحدة
         function showAlert(message, type = 'info') {
