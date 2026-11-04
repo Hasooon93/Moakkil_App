@@ -8,36 +8,39 @@
     
     <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
     <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="manifest" href="./manifest.json">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" crossorigin="anonymous">
     
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" crossorigin="anonymous" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js" crossorigin="anonymous"></script>
 
     <link href="./css/style.css" rel="stylesheet">
     
     <script>
-        try {
-            const savedTheme = localStorage.getItem('moakkil_dark_mode');
-            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-            }
-            const settings = JSON.parse(localStorage.getItem('firm_settings'));
-            if (settings) {
-                if (settings.primary_color) {
-                    document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
-                    document.documentElement.style.setProperty('--navy', settings.primary_color);
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('moakkil_dark_mode');
+                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
                 }
-                if (settings.accent_color) {
-                    document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
-                    document.documentElement.style.setProperty('--accent', settings.accent_color);
+                const settings = JSON.parse(localStorage.getItem('firm_settings'));
+                if (settings) {
+                    if (settings.primary_color) {
+                        document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                        document.documentElement.style.setProperty('--navy', settings.primary_color);
+                    }
+                    if (settings.accent_color) {
+                        document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                        document.documentElement.style.setProperty('--accent', settings.accent_color);
+                    }
                 }
-            }
-        } catch (e) { console.error("Error loading firm settings", e); }
+            } catch (e) { console.error("Error loading firm settings", e); }
+        })();
     </script>
 
     <style>
@@ -101,6 +104,7 @@
         [data-theme="dark"] .dropdown-menu { background-color: #1e293b; border-color: #334155; }
         [data-theme="dark"] .dropdown-item { color: #f8fafc; }
         [data-theme="dark"] .dropdown-item:hover { background-color: #334155; }
+        [data-theme="dark"] #screen-leak-protection { color: #ffffff; opacity: 0.05; }
 
         /* --- طبقة الحماية المانعة للتسريب (Screen Leak Protection) --- */
         #screen-leak-protection {
@@ -112,6 +116,7 @@
             align-items: center; justify-content: center; text-align: center;
         }
         .confidential-active { user-select: none !important; -webkit-user-select: none !important; }
+        .confidential-blur #main-content { filter: blur(18px); transition: filter 0.2s ease; }
 
         /* --- 3.2 الترويسة العلوية --- */
         .top-nav {
@@ -225,6 +230,8 @@
         .modal-title { font-weight: 900; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;}
         .modal-body { background: #F8F9FA; padding: 30px 25px; }
         .card-inner { background: white; border-radius: 16px; padding: 22px; border: 1px solid rgba(0,0,0,0.03); box-shadow: 0 5px 15px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .sticky-modal-footer { position: sticky; bottom: 0; z-index: 20; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); padding: 15px 0 0 0; border-top: 1px solid rgba(0,0,0,0.08); }
+        [data-theme="dark"] .sticky-modal-footer { background: rgba(15, 23, 42, 0.95); border-top-color: #334155; }
 
         /* --- 3.9 شريط التنقل السفلي --- */
         .bottom-nav { 
@@ -261,8 +268,10 @@
     <div id="print-section" dir="rtl" class="p-4 bg-white text-dark">
         <div id="invoice-print-container" style="display: none;">
             <div class="text-center mb-4 border-bottom border-2 border-dark pb-3">
-                <h2 class="fw-bold mb-2" id="print-firm-name">مكتب المحاماة</h2>
-                <h4 class="text-muted fw-bold">سند قبض / فاتورة ماليّة</h4>
+                <img id="print-firm-logo" src="" alt="شعار المكتب" class="mb-2 d-none" style="max-height: 75px; object-fit: contain;">
+                <h2 class="fw-bold mb-1" id="print-firm-name">مكتب المحاماة</h2>
+                <p class="small text-muted fw-bold mb-2" id="print-firm-contact"></p>
+                <h4 class="text-muted fw-bold mb-0">سند قبض / فاتورة ماليّة</h4>
             </div>
             <div class="row mb-4 align-items-center">
                 <div class="col-6">
@@ -288,10 +297,11 @@
             <div class="mb-4 bg-light p-3 border border-dark rounded mt-4">
                 <span class="fs-5"><strong>المبلغ فقط:</strong> <span id="print-inv-tafqeet" class="fst-italic"></span> لا غير.</span>
             </div>
-            <div class="row mt-5 pt-5 text-center">
+            <div class="row mt-5 pt-4 text-center">
                 <div class="col-6 fs-5"><strong>توقيع المستلم</strong><br><br>..........................</div>
                 <div class="col-6 fs-5"><strong>ختم المكتب</strong><br><br>..........................</div>
             </div>
+            <div class="mt-4 pt-3 border-top text-center small text-muted fw-bold" id="print-firm-terms"></div>
         </div>
 
         <div id="qr-print-container" class="text-center mt-5" style="display: none;">
@@ -302,9 +312,12 @@
     </div>
 
     <header class="top-nav d-flex align-items-center justify-content-between d-print-none">
-        <button class="btn btn-link text-white p-0 text-decoration-none" onclick="goBack()"><i class="fas fa-arrow-right fs-4"></i></button>
+        <button class="btn btn-link text-white p-0 text-decoration-none" onclick="goBack()" title="عودة"><i class="fas fa-arrow-right fs-4"></i></button>
         <h5 class="mb-0 fw-bold text-white text-truncate mx-2" id="case-title" style="max-width: 60%;">تفاصيل القضية</h5>
         <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm rounded-3 px-3" onclick="toggleCaseDetailsDarkMode()" title="تبديل الوضع الليلي">
+                <i class="fas fa-moon"></i>
+            </button>
             <button class="btn btn-sm btn-outline-light text-white fw-bold shadow-sm rounded-3 px-3" id="btn_sync" onclick="manualSync()" title="مزامنة البيانات السحابية">
                 <i class="fas fa-sync-alt"></i>
             </button>
@@ -322,6 +335,10 @@
             </div>
         </div>
     </header>
+
+    <div id="offline-banner" class="bg-warning text-dark text-center py-2 fw-bold d-none shadow-sm d-print-none" style="font-size: 0.9rem; z-index: 9999; position: relative; border-bottom: 2px solid #b45309;">
+        <i class="fas fa-wifi-slash me-2"></i> لا يوجد اتصال بالإنترنت - أنت تعمل على النسخة المحلية (سيتم مزامنة أي تعديل فور عودة الشبكة).
+    </div>
 
     <div id="alertBox"></div>
 
@@ -477,8 +494,7 @@
                             <div id="cross-case-recommendation" class="small fw-bold text-dark lh-lg" style="white-space: pre-wrap;"></div>
                         </div>
                         <h6 class="fw-bold text-navy small mb-3"><i class="fas fa-link me-1 text-primary"></i> القضايا المرجعية المطابقة:</h6>
-                        <div id="cross-case-list" class="row g-3">
-                            </div>
+                        <div id="cross-case-list" class="row g-3"></div>
                     </div>
                 </div>
 
@@ -661,7 +677,15 @@
                                     <div class="col-12 mt-4 pt-3 border-top"><h6 class="fw-bold" style="color: var(--primary-dark);"><i class="fas fa-calendar-times me-2 text-danger"></i> المواعيد القانونية الحساسة</h6></div>
                                     <div class="col-md-6"><label class="form-label text-danger">موعد الجلسة / الإجراء القادم</label><input type="date" class="form-control border-danger font-monospace" id="edit_deadline_date"></div>
                                     <div class="col-md-6"><label class="form-label text-danger">تاريخ السقوط / التقادم</label><input type="date" class="form-control border-danger font-monospace" id="edit_statute_of_limitations_date"></div>
-                                    <div class="col-md-6"><label class="form-label text-success">تاريخ النطق بالحكم</label><input type="date" class="form-control border-success font-monospace" id="edit_judgment_date"></div>
+                                    <div class="col-md-12">
+                                        <label class="form-label text-success d-flex justify-content-between align-items-center">
+                                            <span>تاريخ النطق بالحكم</span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill fw-bold px-3" onclick="calculateLegalAppealDeadline()" title="حساب آخر موعد للاستئناف/التمييز آلياً حسب درجة التقاضي">
+                                                <i class="fas fa-calculator me-1"></i> حساب مهلة الطعن آلياً
+                                            </button>
+                                        </label>
+                                        <input type="date" class="form-control border-success font-monospace" id="edit_judgment_date">
+                                    </div>
                                     
                                     <div class="col-12 mt-4 pt-3 border-top"><h6 class="fw-bold" style="color: var(--primary-dark);"><i class="fas fa-building me-2 text-secondary"></i> مراجع الجهات الحكومية</h6></div>
                                     <div class="col-md-6"><label class="form-label">مرجع المركز الأمني</label><input type="text" class="form-control" id="edit_police_station_ref" placeholder="رقم الضبط، اسم المركز..."></div>
@@ -715,9 +739,11 @@
                             </div>
                             
                         </div>
-                        <button type="submit" class="btn btn-gold w-100 py-3 mt-5 fs-5 shadow-sm" id="btn_save_case_edit">
-                            <i class="fas fa-save me-2"></i> حفظ التحديثات الشاملة للملف
-                        </button>
+                        <div class="sticky-modal-footer mt-4">
+                            <button type="submit" class="btn btn-gold w-100 py-3 fs-5 shadow-sm" id="btn_save_case_edit">
+                                <i class="fas fa-save me-2"></i> حفظ التحديثات الشاملة للملف
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -1042,7 +1068,7 @@
                 </div>
                 <div class="modal-body p-4 text-center">
                     <div class="alert alert-warning border-0 shadow-sm small fw-bold mb-4 rounded-3 text-start">
-                        <i class="fas fa-exclamation-triangle text-danger me-1"></i> يتم إنشاء رمز الـ QR والرابط بناءً على الرمز السري (PIN) الخاص بهذه القضية.
+                        <i class="fas fa-shield-alt text-danger me-1"></i> لأمان الموكل: يُنصح بإرسال رابط البوابة في رسالة، ورمز الدخول (PIN) في رسالة مستقلة.
                     </div>
 
                     <div id="share-qrcode" class="mb-4 d-flex justify-content-center p-3 bg-white rounded-4 border shadow-sm mx-auto" style="width: fit-content;"></div>
@@ -1057,13 +1083,16 @@
                     </div>
                     
                     <div class="d-flex gap-2 mt-2">
-                        <button class="btn text-white w-50 fw-bold shadow-sm rounded-3 py-2" style="background: #25D366;" onclick="sendShareViaWhatsApp()">
-                            <i class="fab fa-whatsapp me-1 fs-5 align-middle"></i> واتساب
+                        <button class="btn text-white w-50 fw-bold shadow-sm rounded-3 py-2" style="background: #25D366;" onclick="sendShareViaWhatsApp(false)">
+                            <i class="fab fa-whatsapp me-1 fs-5 align-middle"></i> إرسال الرابط
                         </button>
                         <button class="btn btn-outline-navy w-50 fw-bold rounded-3 py-2" onclick="copyShareLinkApp()">
                             <i class="fas fa-copy me-1"></i> نسخ الرابط
                         </button>
                     </div>
+                    <button class="btn btn-sm btn-outline-danger w-100 fw-bold rounded-3 py-2 mt-2" onclick="sendShareViaWhatsApp(true)">
+                        <i class="fas fa-key me-1"></i> إرسال رمز الـ PIN برسالة منفصلة
+                    </button>
                 </div>
             </div>
         </div>
@@ -1087,12 +1116,12 @@
         </a>
     </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
 
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
@@ -1101,6 +1130,94 @@
     <script src="./js/ai-handler.js"></script>
     
     <script src="./js/case-details.js"></script>
+    <script>
+        window.addEventListener('offline', () => document.getElementById('offline-banner')?.classList.remove('d-none'));
+        window.addEventListener('online', () => document.getElementById('offline-banner')?.classList.add('d-none'));
+        if (!navigator.onLine) document.getElementById('offline-banner')?.classList.remove('d-none');
+
+        function toggleCaseDetailsDarkMode() {
+            const html = document.documentElement;
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('moakkil_dark_mode', 'false');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                localStorage.setItem('moakkil_dark_mode', 'true');
+            }
+        }
+
+        // محرك حساب المدد القانونية التلقائي (10 أيام للصلح والتنفيذ، 30 يوماً للبداية والاستئناف)
+        window.calculateLegalAppealDeadline = function() {
+            const judgDateVal = document.getElementById('edit_judgment_date')?.value;
+            const degreeVal = document.getElementById('edit_litigation_degree')?.value || '';
+
+            if (!judgDateVal) {
+                Swal.fire({ icon: 'warning', title: 'تاريخ الحكم مطلوب', text: 'يرجى تحديد تاريخ النطق بالحكم أولاً لحساب مهلة الطعن القانونية.', confirmButtonColor: 'var(--primary-dark)' });
+                return;
+            }
+
+            const daysToAdd = (degreeVal === 'صلح') ? 10 : 30;
+            const judgDate = new Date(judgDateVal);
+            judgDate.setDate(judgDate.getDate() + daysToAdd);
+            const deadlineStr = judgDate.toISOString().split('T')[0];
+
+            const deadlineInput = document.getElementById('edit_deadline_date');
+            if (deadlineInput) {
+                deadlineInput.value = deadlineStr;
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'success',
+                    title: `تم احتساب مهلة الطعن (${daysToAdd} يوماً): ${deadlineStr}`,
+                    showConfirmButton: false, timer: 3500
+                });
+            }
+        };
+
+        // تعبئة الترويسة الرسمية للمكتب عند الطباعة
+        window.addEventListener('beforeprint', () => {
+            try {
+                const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
+                if (settings.logo_url) {
+                    const logoEl = document.getElementById('print-firm-logo');
+                    if (logoEl) { logoEl.src = settings.logo_url; logoEl.classList.remove('d-none'); }
+                }
+                const contactEl = document.getElementById('print-firm-contact');
+                if (contactEl) {
+                    const parts = [settings.firm_address || settings.address, settings.firm_phone || settings.phone].filter(Boolean);
+                    contactEl.textContent = parts.join(' | ');
+                }
+                const termsEl = document.getElementById('print-firm-terms');
+                if (termsEl && settings.legal_terms) {
+                    termsEl.textContent = settings.legal_terms;
+                }
+            } catch (e) {}
+        });
+
+        // حماية العلامة المائية في القضايا السرية ضد الحذف من DevTools وتضبيب الشاشة عند مغادرة التبويب
+        (function initScreenLeakGuard() {
+            const ensureWatermarkIntegrity = () => {
+                if (!document.body.classList.contains('confidential-active')) return;
+                let wm = document.getElementById('screen-leak-protection');
+                if (!wm) {
+                    wm = document.createElement('div');
+                    wm.id = 'screen-leak-protection';
+                    document.body.prepend(wm);
+                }
+                wm.classList.remove('d-none');
+            };
+
+            const observer = new MutationObserver(ensureWatermarkIntegrity);
+            observer.observe(document.body, { childList: true, attributes: true, subtree: false });
+
+            window.addEventListener('blur', () => {
+                if (document.body.classList.contains('confidential-active')) {
+                    document.body.classList.add('confidential-blur');
+                }
+            });
+            window.addEventListener('focus', () => {
+                document.body.classList.remove('confidential-blur');
+            });
+        })();
+    </script>
 
 </body>
 </html>
