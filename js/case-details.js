@@ -132,7 +132,8 @@ async function loadCaseFullDetails() {
         if (document.getElementById('secret_notes_input')) {
             document.getElementById('secret_notes_input').value = caseObj.secret_notes || '';
         }
-        await loadAuditTrail();
+        // تحميل السجل الأمني بالخلفية دون تعطيل عرض الواجهة لسرعة استجابة فورية
+        loadAuditTrail();
 
     } catch (error) {
         console.error("Load Case Error:", error);
@@ -544,20 +545,33 @@ async function loadAuditTrail() {
             const action = actionMap[h.action_type] || { color: 'secondary', ar: h.action_type, icon: 'fa-cog' };
             const staffMember = (window.firmStaff || []).find(s => String(s.id) === String(h.user_id));
             const actorName = staffMember ? staffMember.full_name : 'النظام / الإدارة';
-            const humanLog = (h.new_data && h.new_data._human_log)
-                ? h.new_data._human_log
-                : `قام ${actorName} بإجراء (${action.ar}) على هذا الملف.`;
+            const dateObj = new Date(h.created_at);
+            const exactDayTime = dateObj.toLocaleString('ar-JO', { dateStyle: 'full', timeStyle: 'short' });
+
+            let rawHumanLog = (h.new_data && h.new_data._human_log)
+                ? String(h.new_data._human_log)
+                : `قام ${actorName} يوم ${exactDayTime} بإجراء (${action.ar}) على هذا الملف.`;
+
+            // تنظيف السجلات القديمة التي كانت تحتوي على [فارغ] ⬅️ [فارغ]
+            const cleanLines = rawHumanLog
+                .split('\n')
+                .filter(line => !/(\[فارغ\]|\(فارغ\))\s*⬅️\s*(إلى\s*)?(\[فارغ\]|\(فارغ\))/.test(line))
+                .filter(line => !/-\s*[a-zA-Z0-9_]+\s*:\s*\[فارغ\]\s*⬅️\s*\[فارغ\]/.test(line));
+            let humanLog = cleanLines.join('\n').replace(/🔄\s*التعديلات المجراة:\s*$/g, 'تم حفظ السجل دون تغيير في القيم.').trim();
+
+            const changesList = Array.isArray(h.new_data?._changes_list) ? h.new_data._changes_list : [];
 
             return `
             <div class="compact-card transition-hover p-3 mb-3 bg-white m-0" style="border-right: 4px solid var(--bs-${action.color});">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                     <div>
                         <span class="badge bg-${action.color} bg-opacity-10 text-${action.color} border border-${action.color} border-opacity-25 px-3 py-1 rounded-pill"><i class="fas ${action.icon} me-1"></i> ${action.ar}</span>
-                        <small class="fw-bold text-navy ms-2"><i class="fas fa-user-check text-muted me-1"></i> ${escapeHTML(actorName)}</small>
+                        <small class="fw-bold text-navy ms-2"><i class="fas fa-user-check text-primary me-1"></i> بواسطة: ${escapeHTML(actorName)}</small>
                     </div>
-                    <small class="text-muted fw-bold font-monospace"><i class="far fa-clock me-1"></i> ${new Date(h.created_at).toLocaleString('ar-JO')}</small>
+                    <small class="text-muted fw-bold"><i class="far fa-clock text-warning me-1"></i> ${escapeHTML(exactDayTime)}</small>
                 </div>
                 <p class="mb-0 small fw-bold text-navy mt-2 lh-lg" style="white-space: pre-wrap;">${escapeHTML(humanLog)}</p>
+                ${changesList.length > 0 ? `<div class="mt-2 pt-2 border-top small text-muted fw-bold">${changesList.map(c => `<div class="mb-1">${escapeHTML(c)}</div>`).join('')}</div>` : ''}
             </div>`;
         }).join('');
     } catch (e) {

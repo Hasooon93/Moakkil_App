@@ -25,12 +25,13 @@
             try {
                 const savedTheme = localStorage.getItem('moakkil_dark_mode');
                 const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                const isDark = (savedTheme === 'true' || (savedTheme === null && systemPrefersDark));
+                if (isDark) {
                     document.documentElement.setAttribute('data-theme', 'dark');
                 }
                 const settings = JSON.parse(localStorage.getItem('firm_settings'));
                 if (settings) {
-                    if (settings.primary_color) {
+                    if (settings.primary_color && !isDark) {
                         document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
                         document.documentElement.style.setProperty('--navy', settings.primary_color);
                     }
@@ -626,7 +627,7 @@
                                             <option value="نشطة">نشطة</option><option value="استئناف">استئناف</option><option value="تمييز">تمييز</option><option value="مكتملة">مكتملة/مغلقة</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-6"><label class="form-label">رقم PIN لبوابة الموكل (السري)</label><input type="text" class="form-control text-center text-danger fw-bold fs-5" style="letter-spacing: 5px; font-family: monospace;" id="edit_access_pin"></div>
+                                    <div class="col-md-6"><label class="form-label">رمز PIN لبوابة الموكل (أرقام أو أحرف)</label><input type="text" class="form-control text-center text-danger fw-bold fs-5" style="letter-spacing: 5px; font-family: monospace; text-transform: uppercase;" id="edit_access_pin" maxlength="12" oninput="this.value = this.value.toUpperCase()" dir="ltr"></div>
                                     <div class="col-md-6"><label class="form-label">نوع الدعوى</label><input type="text" class="form-control" id="edit_type" placeholder="عمالية، تنفيذية، شرعية..."></div>
                                     
                                     <div class="col-md-6"><label class="form-label"><i class="fas fa-fire text-danger me-1"></i> مستوى الأولوية</label>
@@ -1100,7 +1101,7 @@
 
     <nav class="bottom-nav d-print-none">
         <a href="app.html" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'dashboard');">
-            <i class="fas fa-home"></i> المكتب
+            <i class="fas fa-home"></i> الرئيسية
         </a>
         <a href="app.html#cases" class="nav-item active text-decoration-none" onclick="localStorage.setItem('last_active_view', 'cases');">
             <i class="fas fa-gavel"></i> القضايا
@@ -1137,12 +1138,19 @@
 
         function toggleCaseDetailsDarkMode() {
             const html = document.documentElement;
+            const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
             if (html.getAttribute('data-theme') === 'dark') {
                 html.removeAttribute('data-theme');
                 localStorage.setItem('moakkil_dark_mode', 'false');
+                if (settings.primary_color) {
+                    html.style.setProperty('--primary-dark', settings.primary_color);
+                    html.style.setProperty('--navy', settings.primary_color);
+                }
             } else {
                 html.setAttribute('data-theme', 'dark');
                 localStorage.setItem('moakkil_dark_mode', 'true');
+                html.style.removeProperty('--primary-dark');
+                html.style.removeProperty('--navy');
             }
         }
 

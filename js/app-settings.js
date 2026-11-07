@@ -70,11 +70,16 @@ window.AppSettings = {
         const safePrimary = this._sanitizeColor(primaryColor, '#0B132B');
         const safeAccent = this._sanitizeColor(accentColor, '#D4AF37');
 
+        document.documentElement.style.setProperty('--firm-brand-primary', safePrimary);
+        document.documentElement.style.setProperty('--gold-luxury', safeAccent);
+        document.documentElement.style.setProperty('--accent', safeAccent);
+
         if (document.documentElement.getAttribute('data-theme') !== 'dark') {
             document.documentElement.style.setProperty('--primary-dark', safePrimary);
             document.documentElement.style.setProperty('--navy', safePrimary);
-            document.documentElement.style.setProperty('--gold-luxury', safeAccent);
-            document.documentElement.style.setProperty('--accent', safeAccent);
+        } else {
+            document.documentElement.style.removeProperty('--primary-dark');
+            document.documentElement.style.removeProperty('--navy');
         }
     },
 
@@ -453,7 +458,7 @@ window.copyShareLink = () => window.AppSettings.copyShareLink();
 window.shareViaWhatsApp = () => window.AppSettings.shareViaWhatsApp();
 
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => { window.AppSettings.loadSettings(); }, 800);
+    window.AppSettings.loadSettings();
 
     const logoInput = document.getElementById('firm_setting_logo_file');
     if (logoInput) {

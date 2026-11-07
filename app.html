@@ -19,18 +19,20 @@
     <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js" crossorigin="anonymous"></script>
     
     <script src="https://unpkg.com/html5-qrcode" crossorigin="anonymous"></script>
+    <link href="./css/style.css" rel="stylesheet">
 
     <script>
         (function() {
             try {
                 const savedTheme = localStorage.getItem('moakkil_dark_mode');
                 const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                const isDark = (savedTheme === 'true' || (savedTheme === null && systemPrefersDark));
+                if (isDark) {
                     document.documentElement.setAttribute('data-theme', 'dark');
                 }
                 const settings = JSON.parse(localStorage.getItem('firm_settings'));
                 if (settings) {
-                    if (settings.primary_color) {
+                    if (settings.primary_color && !isDark) {
                         document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
                     }
                     if (settings.accent_color) {
@@ -1523,13 +1525,16 @@
 
         function toggleDarkMode() {
             const html = document.documentElement;
+            const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
             if (html.getAttribute('data-theme') === 'dark') {
                 html.removeAttribute('data-theme');
                 localStorage.setItem('moakkil_dark_mode', 'false');
+                if (settings.primary_color) html.style.setProperty('--primary-dark', settings.primary_color);
                 if(window.showToast) window.showToast('تم العودة للوضع النهاري ☀️', 'info');
             } else {
                 html.setAttribute('data-theme', 'dark');
                 localStorage.setItem('moakkil_dark_mode', 'true');
+                html.style.removeProperty('--primary-dark');
                 if(window.showToast) window.showToast('تم تفعيل الوضع الليلي 🌙', 'success');
             }
         }

@@ -21,12 +21,13 @@
             try {
                 const savedTheme = localStorage.getItem('moakkil_dark_mode');
                 const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                const isDark = (savedTheme === 'true' || (savedTheme === null && systemPrefersDark));
+                if (isDark) {
                     document.documentElement.setAttribute('data-theme', 'dark');
                 }
                 const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
                 if (fwSettings) {
-                    if (fwSettings.primary_color) {
+                    if (fwSettings.primary_color && !isDark) {
                         document.documentElement.style.setProperty('--primary-dark', fwSettings.primary_color);
                         document.documentElement.style.setProperty('--text-navy', fwSettings.primary_color);
                     }
@@ -203,17 +204,19 @@
         .btn-mic:hover { border-color: var(--gold-luxury); color: var(--gold-luxury); }
 
         .bottom-nav { 
-            height: 70px;
+            position: relative !important;
             flex-shrink: 0;
-            background: white; 
-            border-top: 1px solid #E2E8F0;
+            background: rgba(255, 255, 255, 0.96); 
+            border-top: 1px solid rgba(212, 175, 55, 0.25);
             display: flex; justify-content: space-around; 
-            padding-bottom: env(safe-area-inset-bottom);
+            padding: 10px 8px;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            border-radius: 26px 26px 0 0;
         }
-        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.75rem; font-weight: 800; padding: 10px 0; cursor: pointer; text-decoration: none; transition: 0.2s; }
-        .nav-item.active { color: var(--primary-dark); border-top: 3px solid var(--gold-luxury); margin-top: -1px; }
-        .nav-item i { font-size: 1.3rem; display: block; margin-bottom: 4px; }
-        .nav-item.active i { color: var(--gold-luxury); }
+        .nav-item { flex: 1; text-align: center; color: #64748b; font-size: 0.78rem; font-weight: 800; padding: 8px 4px; border-radius: 16px; cursor: pointer; text-decoration: none; transition: 0.25s; }
+        .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), transparent); transform: translateY(-3px); }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; }
+        .nav-item.active i { color: var(--gold-luxury); transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -280,21 +283,21 @@
         </div>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="app.html" class="nav-item" onclick="localStorage.setItem('last_active_view', 'dashboard');">
-            <i class="fas fa-home"></i>المكتب
+    <nav class="bottom-nav d-print-none">
+        <a href="app.html" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'dashboard');">
+            <i class="fas fa-home"></i> الرئيسية
         </a>
-        <a href="app.html#cases" class="nav-item" onclick="localStorage.setItem('last_active_view', 'cases');">
-            <i class="fas fa-gavel"></i>القضايا
+        <a href="app.html#cases" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'cases');">
+            <i class="fas fa-gavel"></i> القضايا
         </a>
-        <a href="app.html#clients" class="nav-item" onclick="localStorage.setItem('last_active_view', 'clients');">
-            <i class="fas fa-users"></i>الموكلين
+        <a href="app.html#clients" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'clients');">
+            <i class="fas fa-users"></i> الموكلين
         </a>
-        <a href="app.html#agenda" class="nav-item" onclick="localStorage.setItem('last_active_view', 'agenda');">
-            <i class="fas fa-calendar-check"></i>الأجندة
+        <a href="app.html#agenda" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'agenda');">
+            <i class="fas fa-calendar-check"></i> الأجندة
         </a>
-        <a href="app.html#tools" class="nav-item active" onclick="localStorage.setItem('last_active_view', 'tools');">
-            <i class="fas fa-robot"></i>الذكاء
+        <a href="app.html#tools" class="nav-item active text-decoration-none" onclick="localStorage.setItem('last_active_view', 'tools');">
+            <i class="fas fa-toolbox"></i> الأدوات
         </a>
     </nav>
 
@@ -324,12 +327,19 @@
 
         function toggleDarkMode() {
             const html = document.documentElement;
+            const fwSettings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
             if (html.getAttribute('data-theme') === 'dark') {
                 html.removeAttribute('data-theme');
                 localStorage.setItem('moakkil_dark_mode', 'false');
+                if (fwSettings.primary_color) {
+                    html.style.setProperty('--primary-dark', fwSettings.primary_color);
+                    html.style.setProperty('--text-navy', fwSettings.primary_color);
+                }
             } else {
                 html.setAttribute('data-theme', 'dark');
                 localStorage.setItem('moakkil_dark_mode', 'true');
+                html.style.removeProperty('--primary-dark');
+                html.style.removeProperty('--text-navy');
             }
         }
 

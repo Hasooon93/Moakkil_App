@@ -49,13 +49,26 @@ function purgeLegacyPlaintextPortalStorage(caseInternalId = '') {
 }
 
 /**
+ * توحيد صيغة رمز الدخول (PIN) ليقبل الأرقام والأحرف (الإنگليزية أو العربية) بدون حساسية لحالة الأحرف
+ */
+function normalizePin(rawPin) {
+    if (!rawPin) return '';
+    return String(rawPin)
+        .trim()
+        .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))
+        .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0))
+        .toUpperCase();
+}
+
+/**
  * اشتقاق مفتاح تشفير AES-GCM 256-bit من رمز الـ PIN ورابط القضية عبر PBKDF2
  */
 async function derivePortalAesKey(pin, saltBytes) {
     const enc = new TextEncoder();
+    const cleanPin = normalizePin(pin);
     const baseKey = await window.crypto.subtle.importKey(
         'raw',
-        enc.encode(`${pin}:${activeToken || ''}`),
+        enc.encode(`${cleanPin}:${activeToken || ''}`),
         { name: 'PBKDF2' },
         false,
         ['deriveKey']
@@ -318,7 +331,7 @@ function showSecurityLockScreen() {
 
 window.verifyAccess = async function(event) {
     event.preventDefault();
-    const enteredPin = document.getElementById('pin_input').value.trim();
+    const enteredPin = normalizePin(document.getElementById('pin_input').value);
     const caseData = (publicData && (publicData.case || (publicData.cases && publicData.cases[0]))) || {};
     const btn = document.getElementById('btn-verify');
 
@@ -888,9 +901,9 @@ window.submitSignature = async function() {
     // تأكيد هوية الموكل بإعادة إدخال الـ PIN والتحقق منه على الخادم (يجدد جلسة البوابة أيضاً)
     const pinCheck = await Swal.fire({
         title: 'مصادقة التوقيع',
-        text: 'يرجى إدخال الرمز السري (PIN) الخاص بملفك لتأكيد التوقيع واعتماده قانونياً.',
-        input: 'password',
-        inputAttributes: { maxlength: 6, autocapitalize: 'off', autocorrect: 'off', inputmode: 'numeric' },
+        text: 'يرجى إدخال الرمز السري (PIN - أرقام أو أحرف) الخاص بملفك لتأكيد التوقيع واعتماده قانونياً.',
+        input: 'text',
+        inputAttributes: { maxlength: 12, autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false', inputmode: 'text', dir: 'ltr', style: 'text-align:center; letter-spacing:6px; font-weight:900; text-transform:uppercase; font-family:monospace;' },
         showCancelButton: true,
         confirmButtonText: 'تأكيد التوقيع',
         cancelButtonText: 'إلغاء',
@@ -898,6 +911,7 @@ window.submitSignature = async function() {
     });
 
     if (!pinCheck.isConfirmed || !pinCheck.value) return;
+    const normalizedSigPin = normalizePin(pinCheck.value);
 
     Swal.fire({ title: 'جاري التحقق والاعتماد...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
@@ -909,14 +923,14 @@ window.submitSignature = async function() {
             body: JSON.stringify({
                 token: activeToken,
                 case_number: caseData.case_internal_id || undefined,
-                access_pin: pinCheck.value.trim()
+                access_pin: normalizedSigPin
             })
         });
         const loginData = await loginRes.json().catch(() => ({}));
         if (!loginRes.ok || !loginData.success) {
             return Swal.fire('فشل المصادقة', loginData.error || 'الرمز السري غير صحيح، تم إلغاء عملية التوقيع.', 'error');
         }
-        verifiedSessionPin = pinCheck.value.trim();
+        verifiedSessionPin = normalizedSigPin;
         setPortalSession(loginData.portal_session_token || portalSessionToken);
 
         // توليد الهاش التشفيري (Cryptographic Hash) كبصمة مرجعية للتوقيع

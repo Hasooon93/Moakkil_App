@@ -99,10 +99,19 @@
         }
 
         .pin-input {
-            font-size: 2.2rem; letter-spacing: 18px; text-align: center; border: 2px solid #E2E8F0; border-radius: 16px; font-weight: 900;
-            padding: 18px; color: var(--firm-primary); background: #F8F9FA; transition: all 0.3s ease; font-family: monospace;
+            font-size: 2rem; letter-spacing: 12px; text-align: center; border: 2px solid #E2E8F0; border-radius: 16px; font-weight: 900;
+            padding: 16px; color: var(--firm-primary); background: #F8F9FA; transition: all 0.3s ease; font-family: monospace;
+            text-transform: uppercase;
         }
         .pin-input:focus { border-color: var(--firm-accent); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); background: white; outline: none; }
+
+        @media (max-width: 576px) {
+            .security-card { padding: 2rem 1.25rem; border-radius: 22px; }
+            .pin-input { font-size: 1.65rem; letter-spacing: 8px; padding: 14px 10px; }
+            .client-header { padding: 28px 16px 36px 16px; border-radius: 0 0 28px 28px; }
+            .info-card { padding: 18px 15px; border-radius: 16px; }
+            .telegram-banner, .missing-docs-banner, .signature-banner { flex-direction: column; text-align: center; gap: 12px; padding: 16px; }
+        }
 
         .client-header {
             background: linear-gradient(135deg, var(--firm-primary) 0%, var(--firm-light) 100%); color: white; padding: 40px 25px 50px 25px;
@@ -187,9 +196,9 @@
             </div>
             <i class="fas fa-lock fa-3x mb-3" style="color: var(--firm-accent);"></i>
             <h4 class="fw-bold mb-2" style="color: var(--firm-primary);">بوابة الموكل الآمنة</h4>
-            <p class="text-muted small fw-bold mb-3">يرجى إدخال رمز الدخول السري (PIN) المرسل إليك من مكتب المحاماة لعرض ملف قضيتك:</p>
+            <p class="text-muted small fw-bold mb-3">يرجى إدخال رمز الدخول السري (PIN - أرقام أو أحرف) المرسل إليك من مكتب المحاماة لعرض ملف قضيتك:</p>
             <form onsubmit="verifyAccess(event)" class="mt-3">
-                <input type="password" id="pin_input" class="form-control pin-input mb-4" placeholder="----" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" required dir="ltr">
+                <input type="text" id="pin_input" class="form-control pin-input mb-4" placeholder="------" maxlength="12" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="one-time-code" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9\u0660-\u0669\u06F0-\u06F9]/gi, '')" required dir="ltr">
                 <button type="submit" class="btn w-100 fw-bold py-3 fs-5 shadow-sm" id="btn-verify" style="background: linear-gradient(135deg, var(--firm-primary), var(--firm-light)); color: var(--firm-accent); border-radius: 16px; border: none;">
                     <i class="fas fa-shield-alt me-2"></i> تأكيد ودخول
                 </button>

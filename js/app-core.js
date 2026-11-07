@@ -114,12 +114,14 @@ window.switchView = (viewId) => {
 
 window.loadAllData = async () => {
     try {
-        const [clients, cases, staff, appts, notifs] = await Promise.all([
+        const isAdminUser = window.AppCore.currentUser && ['admin', 'super_admin'].includes(window.AppCore.currentUser.role);
+        const [clients, cases, staff, appts, notifs, logsRes] = await Promise.all([
             API.getClients().catch(() => []),
             API.getCases().catch(() => []),
             API.getStaff().catch(() => []),
             API.getAppointments().catch(() => []),
-            API.getNotifications().catch(() => [])
+            API.getNotifications().catch(() => []),
+            isAdminUser ? API.getHistory().catch(() => []) : Promise.resolve([])
         ]);
 
         window.AppCore.globalData.staff = Array.isArray(staff) ? staff : [];
@@ -128,8 +130,7 @@ window.loadAllData = async () => {
         window.AppCore.globalData.appointments = Array.isArray(appts) ? appts : [];
         window.AppCore.globalData.notifications = Array.isArray(notifs) ? notifs : [];
 
-        if (window.AppCore.currentUser && ['admin', 'super_admin'].includes(window.AppCore.currentUser.role)) {
-            const logsRes = await API.getHistory().catch(() => []);
+        if (isAdminUser) {
             if (Array.isArray(logsRes)) {
                 window.AppCore.globalData.activityLogs = logsRes;
             }
@@ -545,6 +546,66 @@ window.copyToClipboard = (elementId) => {
 // [7] آلة الزمن الأمني وترجمة سجل الرقابة (Audit Trail & Time Machine)
 // ============================================================================
 
+// قاموس الترجمة الشامل للحقول (لجعل الـ Audit Log مقروءاً للبشر)
+const fieldDict = {
+    'status': 'الحالة', 'case_internal_id': 'رقم الملف الداخلي', 'opponent_name': 'اسم الخصم',
+    'opponent_lawyer': 'وكيل الخصم', 'total_agreed_fees': 'الأتعاب المتفق عليها', 'agreed_fees': 'الأتعاب المتفق عليها',
+    'claim_amount': 'قيمة المطالبة', 'paid_amount': 'المبلغ المقبوض', 'remaining_amount': 'المبلغ المتبقي',
+    'full_name': 'الاسم الكامل', 'phone': 'رقم الهاتف', 'national_id': 'الرقم الوطني',
+    'appt_date': 'تاريخ الموعد', 'notes': 'الملاحظات', 'title': 'العنوان', 'type': 'النوع',
+    'current_court': 'المحكمة المختصة', 'court_room': 'الدائرة / القاعة', 'court_case_number': 'رقم الدعوى بالمحكمة',
+    'case_year': 'سنة الدعوى', 'litigation_degree': 'درجة التقاضي', 'current_judge': 'هيئة القضاة',
+    'court_clerk': 'قلم المحكمة / الكاتب', 'execution_file_number': 'رقم الملف التنفيذي',
+    'statute_of_limitations_date': 'تاريخ التقادم / السقوط', 'judgment_date': 'تاريخ صدور الحكم',
+    'police_station_ref': 'رقم الضبط الشرطي', 'prosecution_ref': 'رقم التحقيق المدعي العام',
+    'co_plaintiffs': 'المدعون المشتركون', 'co_defendants': 'المدعى عليهم المشتركون',
+    'experts_and_witnesses': 'الخبراء والشهود', 'power_of_attorney_number': 'رقم الوكالة ونوعها',
+    'poa_details': 'تفاصيل الوكالة والتفويض', 'closure_reason': 'سبب إغلاق الملف',
+    'physical_archive_location': 'موقع الحفظ الورقي (الأرشيف)', 'court_fees_paid': 'الرسوم القضائية المدفوعة',
+    'court_deposits': 'الأمانات والودائع القضائية', 'case_tags': 'وسوم القضية',
+    'current_stage': 'المرحلة الإجرائية', 'case_type': 'تصنيف القضية', 'case_outcome': 'منطوق الحكم / النتيجة',
+    'lawsuit_facts': 'وقائع الدعوى', 'lawsuit_text': 'نص لائحة الدعوى', 'legal_basis': 'الأسانيد القانونية',
+    'final_requests': 'الطلبات الختامية', 'update_title': 'عنوان الإجراء', 'update_details': 'تفاصيل الإجراء',
+    'next_hearing_date': 'موعد الجلسة القادمة', 'description': 'البيان', 'expense_date': 'تاريخ المصروف',
+    'file_name': 'اسم المستند', 'file_category': 'تصنيف المستند', 'expiry_date': 'تاريخ انتهاء الوثيقة',
+    'assigned_lawyer_id': 'المحامون المسندون', 'assigned_to': 'المكلفون بالمهمة',
+    'amount': 'المبلغ المالي', 'due_date': 'تاريخ الاستحقاق', 'is_active': 'حالة التفعيل',
+    'missing_docs_request': 'طلب استكمال نواقص من الموكل', 'signature_request': 'طلب توقيع إلكتروني من الموكل',
+    'missing_documents': 'المستندات الناقصة', 'client_portal_active': 'بوابة الموكل',
+    'is_visible_to_client': 'إتاحة الرؤية للموكل', 'confidentiality_level': 'مستوى السرية',
+    'priority_level': 'مستوى الأولوية', 'is_deleted': 'حالة الأرشفة (Soft Delete)',
+    'role': 'الدور الوظيفي', 'can_login': 'صلاحية الدخول', 'permissions': 'الصلاحيات'
+};
+
+const isAuditValEmpty = (val) => {
+    if (val === null || val === undefined || val === '') return true;
+    if (typeof val === 'string' && val.trim() === '') return true;
+    if (Array.isArray(val) && val.length === 0) return true;
+    if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) return true;
+    return false;
+};
+
+const formatAuditVal = (val) => {
+    if (isAuditValEmpty(val)) return 'فارغ';
+    if (typeof val === 'boolean') return val ? 'نعم' : 'لا';
+    if (Array.isArray(val)) return val.join('، ');
+    if (typeof val === 'object') return JSON.stringify(val);
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}T/.test(str)) return str.split('T')[0];
+    return str;
+};
+
+const cleanAuditHumanText = (rawText) => {
+    if (!rawText || typeof rawText !== 'string') return '';
+    return rawText
+        .split('\n')
+        .filter(line => !/(\[فارغ\]|\(فارغ\))\s*⬅️\s*(إلى\s*)?(\[فارغ\]|\(فارغ\))/.test(line))
+        .filter(line => !/-\s*[a-zA-Z0-9_]+\s*:\s*\[فارغ\]\s*⬅️\s*\[فارغ\]/.test(line))
+        .join('\n')
+        .replace(/🔄\s*التعديلات المجراة:\s*$/g, 'تم حفظ السجل دون تغيير في القيم.')
+        .trim();
+};
+
 window.renderAuditTrail = () => {
     const list = document.getElementById('audit-list');
     if (!list) return;
@@ -566,45 +627,33 @@ window.renderAuditTrail = () => {
     let html = '';
     logs.slice(0, 100).forEach(log => {
         const staff = window.AppCore.globalData.staff.find(s => String(s.id) === String(log.user_id))?.full_name || 'إدارة النظام';
-        const target = log.new_data?.case_internal_id || log.new_data?.full_name || log.new_data?.title || log.old_data?.case_internal_id || log.old_data?.full_name || (log.entity_id ? String(log.entity_id).split('-')[0] : '--');
+        const target = log.new_data?.case_internal_id || log.new_data?.full_name || log.new_data?.title || log.new_data?.update_title || log.old_data?.case_internal_id || log.old_data?.full_name || (log.entity_id ? String(log.entity_id).split('-')[0] : '--');
         const cVar = colorVar[log.action_type] || 'secondary';
-        const humanDesc = log.new_data?._human_log || '';
+        const humanDesc = cleanAuditHumanText(log.new_data?._human_log || '');
+        const logDate = new Date(log.created_at);
+        const fullDayStr = logDate.toLocaleDateString('ar-JO', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+        const timeStr = logDate.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
 
         let desc = `<span class="badge bg-${cVar} bg-opacity-10 text-${cVar} border border-${cVar} border-opacity-25 me-1">${actLabel[log.action_type] || log.action_type}</span> ${entLabel[log.entity_type] || log.entity_type} <b class="text-navy">(${window.escapeHTML(target)})</b>`;
 
         html += `
         <div class="compact-card mb-3 transition-hover" style="border-right: 4px solid var(--bs-${cVar});">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="pe-2">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div class="pe-2 flex-grow-1">
                     <h6 class="fw-bold mb-1 text-navy lh-base">${desc}</h6>
                     ${humanDesc ? `<p class="small text-muted fw-bold mb-2 lh-base" style="white-space: pre-wrap;">${window.escapeHTML(humanDesc)}</p>` : ''}
-                    <small class="text-muted fw-bold"><i class="fas fa-user-tie text-info me-1"></i> بواسطة: ${window.escapeHTML(staff)}</small>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mt-1">
+                        <small class="text-muted fw-bold"><i class="fas fa-user-tie text-info me-1"></i> بواسطة: <b class="text-navy">${window.escapeHTML(staff)}</b></small>
+                        <small class="text-muted fw-bold"><i class="far fa-calendar-alt text-warning me-1"></i> ${window.escapeHTML(fullDayStr)} - الساعة ${window.escapeHTML(timeStr)}</small>
+                    </div>
                 </div>
                 <div class="text-end flex-shrink-0">
-                    <small class="d-block fw-bold font-monospace text-navy">${new Date(log.created_at).toLocaleDateString('ar-JO')}</small>
-                    <small class="text-muted font-monospace">${new Date(log.created_at).toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' })}</small>
+                    <button type="button" class="btn btn-sm btn-light border text-navy rounded-pill px-3 fw-bold shadow-sm" style="font-size: 0.78rem;" onclick="window.showAuditDiff('${log.id}')"><i class="fas fa-eye me-1" style="color: var(--gold-luxury);"></i> مقارنة التعديلات</button>
                 </div>
-            </div>
-            <div class="mt-3 pt-2 border-top text-end">
-                <button type="button" class="btn btn-sm btn-light border text-navy rounded-pill px-4 fw-bold shadow-sm" style="font-size: 0.8rem;" onclick="window.showAuditDiff('${log.id}')"><i class="fas fa-eye me-1" style="color: var(--gold-luxury);"></i> التفاصيل التقنية (Time Machine)</button>
             </div>
         </div>`;
     });
     list.innerHTML = html;
-};
-
-// قاموس الترجمة الشامل للحقول (لجعل الـ Audit Log مقروءاً للبشر)
-const fieldDict = {
-    'status': 'الحالة', 'case_internal_id': 'رقم القضية', 'opponent_name': 'اسم الخصم',
-    'total_agreed_fees': 'الأتعاب المتفق عليها', 'agreed_fees': 'الأتعاب المتفق عليها',
-    'claim_amount': 'قيمة المطالبة', 'full_name': 'الاسم الكامل', 'phone': 'رقم الهاتف',
-    'national_id': 'الرقم الوطني', 'appt_date': 'تاريخ الموعد', 'notes': 'الملاحظات',
-    'title': 'العنوان', 'current_court': 'المحكمة المختصة', 'current_stage': 'المرحلة الإجرائية',
-    'assigned_lawyer_id': 'المحامون المسندون', 'assigned_to': 'المكلفون بالمهمة',
-    'amount': 'المبلغ المالي', 'due_date': 'تاريخ الاستحقاق', 'is_active': 'حالة التفعيل',
-    'missing_documents': 'المستندات الناقصة', 'client_portal_active': 'بوابة الموكل',
-    'confidentiality_level': 'مستوى السرية', 'priority_level': 'مستوى الأولوية',
-    'is_deleted': 'حالة الأرشفة (Soft Delete)'
 };
 
 window.showAuditDiff = (logId) => {
@@ -613,43 +662,68 @@ window.showAuditDiff = (logId) => {
     const modalBody = document.getElementById('auditDiffModalBody');
     if (!modalBody) return;
 
-    let html = '';
-    if (log.new_data?._human_log) {
-        html += `<div class="alert alert-info border-0 shadow-sm fw-bold small mb-3 rounded-3"><i class="fas fa-info-circle me-1"></i> ${window.escapeHTML(log.new_data._human_log)}</div>`;
+    const staff = window.AppCore.globalData.staff.find(s => String(s.id) === String(log.user_id))?.full_name || 'إدارة النظام';
+    const logDate = new Date(log.created_at);
+    const fullDateTime = logDate.toLocaleString('ar-JO', { dateStyle: 'full', timeStyle: 'short' });
+
+    let html = `
+    <div class="d-flex flex-wrap justify-content-between align-items-center bg-light p-3 rounded-3 mb-3 border">
+        <div><i class="fas fa-user-shield text-primary me-1"></i> <b>المنفذ:</b> ${window.escapeHTML(staff)}</div>
+        <div><i class="far fa-clock text-warning me-1"></i> <b>اليوم والساعة:</b> ${window.escapeHTML(fullDateTime)}</div>
+    </div>`;
+
+    const cleanedHuman = cleanAuditHumanText(log.new_data?._human_log || '');
+    if (cleanedHuman) {
+        html += `<div class="alert alert-info border-0 shadow-sm fw-bold small mb-3 rounded-3" style="white-space: pre-wrap;"><i class="fas fa-robot me-1"></i> <b>توضيح الذكاء الاصطناعي:</b>\n${window.escapeHTML(cleanedHuman)}</div>`;
     }
 
     if (log.action_type === 'UPDATE' && log.new_data) {
-        html += '<h6 class="fw-bold mb-3 text-navy">مقارنة البيانات التقنية (قبل وبعد التعديل):</h6><ul class="list-group shadow-sm border-0">';
+        html += '<h6 class="fw-bold mb-3 text-navy">الحقول التي تم تعديلها فعلياً فقط (قبل ⬅️ بعد):</h6><ul class="list-group shadow-sm border-0">';
         let changesFound = false;
         const oldData = log.old_data || {};
+        const skipKeys = new Set([
+            'updated_at', 'last_login', 'client_last_seen', '_human_log', '_changes_list',
+            'id', 'firm_id', 'created_at', 'public_token', 'case_embedding', 'embedding'
+        ]);
+        const zeroNumKeys = new Set(['court_fees_paid', 'court_deposits', 'claim_amount', 'agreed_fees', 'total_agreed_fees', 'amount', 'paid_amount', 'remaining_amount']);
 
         for (let key in log.new_data) {
-            if (['updated_at', 'last_login', 'client_last_seen', '_human_log', 'id', 'firm_id', 'created_at'].includes(key)) continue;
+            if (skipKeys.has(key)) continue;
+            if (key === 'lawsuit_text' && log.new_data.lawsuit_facts !== undefined) continue;
 
-            let valNew = typeof log.new_data[key] === 'object' ? JSON.stringify(log.new_data[key]) : log.new_data[key];
-            let valOld = typeof oldData[key] === 'object' ? JSON.stringify(oldData[key]) : oldData[key];
+            const rawNew = log.new_data[key];
+            const rawOld = oldData[key];
 
-            if (valNew !== valOld && valNew !== undefined) {
+            if (isAuditValEmpty(rawNew) && isAuditValEmpty(rawOld)) continue;
+
+            if (zeroNumKeys.has(key)) {
+                const nOld = isAuditValEmpty(rawOld) ? 0 : Number(rawOld);
+                const nNew = isAuditValEmpty(rawNew) ? 0 : Number(rawNew);
+                if (!Number.isNaN(nOld) && !Number.isNaN(nNew) && nOld === nNew) continue;
+            }
+
+            const oldDisplay = formatAuditVal(rawOld);
+            const newDisplay = formatAuditVal(rawNew);
+
+            if (oldDisplay !== newDisplay) {
                 changesFound = true;
-                let fName = fieldDict[key] || key;
-                let oldDisplay = (oldData[key] !== null && oldData[key] !== undefined) ? String(valOld) : 'فارغ / غير محدد';
-                let newDisplay = (log.new_data[key] !== null && log.new_data[key] !== undefined) ? String(valNew) : 'فارغ / غير محدد';
+                const fName = fieldDict[key] || key;
 
                 html += `
                 <li class="list-group-item p-3 border-0 mb-2 rounded bg-white shadow-sm">
-                    <b class="text-navy d-block mb-2">حقل (${window.escapeHTML(fName)})</b>
+                    <b class="text-navy d-block mb-2"><i class="fas fa-pen-nib text-warning me-1"></i> حقل (${window.escapeHTML(fName)})</b>
                     <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
-                        <div class="p-2 bg-danger bg-opacity-10 text-danger rounded w-100 w-md-50 text-center text-decoration-line-through font-monospace" style="word-break: break-word;">${window.escapeHTML(oldDisplay)}</div>
+                        <div class="p-2 bg-danger bg-opacity-10 text-danger rounded w-100 w-md-50 text-center text-decoration-line-through font-monospace" style="word-break: break-word;">قبل: ${window.escapeHTML(oldDisplay)}</div>
                         <i class="fas fa-arrow-left text-muted d-none d-md-block"></i>
                         <i class="fas fa-arrow-down text-muted d-md-none text-center"></i>
-                        <div class="p-2 bg-success bg-opacity-10 text-success rounded w-100 w-md-50 text-center fw-bold font-monospace" style="word-break: break-word;">${window.escapeHTML(newDisplay)}</div>
+                        <div class="p-2 bg-success bg-opacity-10 text-success rounded w-100 w-md-50 text-center fw-bold font-monospace" style="word-break: break-word;">بعد: ${window.escapeHTML(newDisplay)}</div>
                     </div>
                 </li>`;
             }
         }
 
         if (!changesFound) {
-            html += '<li class="list-group-item p-3 border-0 text-center fw-bold text-muted bg-white rounded shadow-sm">تحديث بيانات عامة</li>';
+            html += '<li class="list-group-item p-3 border-0 text-center fw-bold text-muted bg-white rounded shadow-sm">لم يتم تغيير أي قيم نصية أو رقمية في هذا التحديث.</li>';
         }
         html += '</ul>';
     } else if (log.action_type === 'CREATE') {
