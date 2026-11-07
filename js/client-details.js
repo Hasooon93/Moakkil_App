@@ -637,6 +637,9 @@ window.saveClientFile = async function(event) {
                 window.showAlert('تم أرشفة وتشفير المستند بنجاح', 'success'); 
                 await loadClientData(); 
             } else {
+                if (typeof API.cleanupOrphanR2File === 'function') {
+                    await API.cleanupOrphanR2File(r2Res.r2_key);
+                }
                 throw new Error(res?.error || 'حدث خطأ في توثيق الملف بقاعدة البيانات');
             }
         }

@@ -20,6 +20,21 @@ const OFFLINE_QUEUE_KEY = 'moakkil_offline_queue';
 const MAX_SYNC_RETRIES = 3;
 const MAX_R2_FILE_SIZE = 25 * 1024 * 1024; // 25MB مطابق للحد الأقصى في الوركر
 let isSyncing = false; // قفل أمني لمنع التزامن المزدوج وطوفان الإشعارات (Mutex Lock)
+let syncAbortController = null; // 🛡️ متحكم إجهاض طلبات المزامنة الفورية عند تسجيل الخروج (AbortController)
+
+/**
+ * إجهاض أي عملية مزامنة جارية في الشبكة فوراً وتطهير حالة المزامنة عند تسجيل الخروج
+ */
+window.abortOfflineSync = function () {
+    try {
+        if (syncAbortController) {
+            syncAbortController.abort();
+            syncAbortController = null;
+        }
+    } catch (e) {}
+    isSyncing = false;
+    window.isSyncing = false;
+};
 
 // المسارات المدعومة للمزامنة في الباك إند (لمنع بقاء مسارات غير مدعومة في الطابور للأبد)
 const SYNCABLE_ENDPOINTS = new Set([
@@ -211,6 +226,8 @@ async function processOfflineQueue() {
         const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
         const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
 
+        syncAbortController = new AbortController();
+
         const syncHeaders = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -220,8 +237,16 @@ async function processOfflineQueue() {
         const response = await fetch(`${baseUrl}/api/sync/offline`, {
             method: 'POST',
             headers: syncHeaders,
-            body: JSON.stringify({ actions: queue })
+            body: JSON.stringify({ actions: queue }),
+            signal: syncAbortController.signal
         });
+
+        // 🛡️ التحقق من عدم قيام المستخدم بتسجيل الخروج أثناء انتظار رد الشبكة
+        const postSyncToken = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+        if (!postSyncToken || postSyncToken !== token) {
+            localStorage.removeItem(OFFLINE_QUEUE_KEY);
+            return;
+        }
 
         if (response.status === 401) {
             console.warn('⚠️ [Sync Engine] الجلسة منتهية أثناء المزامنة. جاري تطهير الطابور والجلسة...');
@@ -321,8 +346,13 @@ async function processOfflineQueue() {
             }
         }
     } catch (e) {
-        console.error(`❌ [Sync Error] فشل المزامنة الشاملة:`, e);
+        if (e && e.name === 'AbortError') {
+            console.warn('🛑 [Sync Aborted] تم إيقاف المزامنة الجارية فوراً بسبب تسجيل الخروج.');
+        } else {
+            console.error(`❌ [Sync Error] فشل المزامنة الشاملة:`, e);
+        }
     } finally {
+        syncAbortController = null;
         isSyncing = false;
         window.isSyncing = false;
     }
@@ -580,8 +610,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
         // 4. الحماية ضد الجلسات المنتهية أو اختطاف الجلسات (Single Session Firewall - خطأ 401)
         if (response.status === 401 && !isPublic && !endpoint.includes('/api/auth/')) {
             console.warn("⚠️ [Security] تم رفض الجلسة (قد يكون الحساب موقوفاً أو تم تسجيل الدخول من جهاز آخر). جاري تطهير الطابور والطرد...");
-            isSyncing = false;
-            window.isSyncing = false;
+            if (typeof window.abortOfflineSync === 'function') window.abortOfflineSync();
             localStorage.removeItem(OFFLINE_QUEUE_KEY);
             localStorage.removeItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
             localStorage.removeItem(CONFIG?.USER_KEY || 'moakkil_user');
@@ -816,6 +845,27 @@ const API = {
     },
 
     /**
+     * تنظيف الملف السحابي اليتيم في حال فشل حفظ السجل في mo_files بعد نجاح الرفع إلى R2
+     */
+    cleanupOrphanR2File: async (r2Key) => {
+        if (!r2Key) return;
+        try {
+            const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
+            const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+            await fetch(`${baseUrl}/api/r2/orphan?key=${encodeURIComponent(r2Key)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'x-device-id': deviceId
+                }
+            });
+        } catch (e) {
+            console.warn('⚠️ [R2 Orphan Cleanup]:', e);
+        }
+    },
+
+    /**
      * توافقية رجعية (Backward Compatibility) لأي كود قديم يستدعي uploadToDrive
      */
     uploadToDrive: async (file, caseInternalId) => {
@@ -856,14 +906,20 @@ const API = {
     },
 
     /**
-     * التحميل الآمن للملفات المتاحة للموكل عبر بوابة الموكل (Public R2 Download)
+     * التحميل الآمن للملفات المتاحة للموكل عبر بوابة الموكل (Public R2 Download - محمي بـ x-portal-session-token)
      */
-    downloadPublicR2File: async (r2Key, clientToken, fileName) => {
+    downloadPublicR2File: async (r2Key, clientToken, fileName, portalSessionToken = '') => {
         const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
         if (window.showToast) window.showToast('جاري تحميل المستند بشكل آمن...', 'info');
 
         try {
-            const res = await fetch(`${baseUrl}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(clientToken)}`);
+            const resolvedSess = portalSessionToken || sessionStorage.getItem(`moakkil_portal_session_${clientToken}`) || '';
+            const headers = {};
+            if (resolvedSess) headers['x-portal-session-token'] = resolvedSess;
+
+            const res = await fetch(`${baseUrl}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(clientToken)}`, {
+                headers
+            });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 throw new Error(errData.error || 'غير مصرح بتحميل هذا المستند أو لم يتم إتاحته للموكل');
@@ -900,25 +956,56 @@ const API = {
         return res;
     },
 
-    getPublicPortalData: (token, pin = '') => {
-        return fetchAPI(`/api/public/client?token=${encodeURIComponent(token || '')}${pin ? `&pin=${encodeURIComponent(pin)}` : ''}`, 'GET', null, true);
+    publicLogout: async (token, portalSessionToken = '') => {
+        const resolvedSess = portalSessionToken || sessionStorage.getItem(`moakkil_portal_session_${token}`) || '';
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+        try {
+            await fetch(`${baseUrl}/api/public/client/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(resolvedSess ? { 'x-portal-session-token': resolvedSess } : {})
+                },
+                body: JSON.stringify({ token, portal_session_token: resolvedSess })
+            });
+        } catch (e) {}
+        try {
+            if (token) sessionStorage.removeItem(`moakkil_portal_session_${token}`);
+        } catch (e) {}
+    },
+
+    getPublicPortalData: async (token, portalSessionToken = '') => {
+        const resolvedSess = portalSessionToken || sessionStorage.getItem(`moakkil_portal_session_${token}`) || '';
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (resolvedSess) headers['x-portal-session-token'] = resolvedSess;
+
+        const res = await fetch(`${baseUrl}/api/public/client?token=${encodeURIComponent(token || '')}`, {
+            method: 'GET',
+            headers
+        });
+        return await res.json().catch(() => ({ error: 'تعذر قراءة استجابة البوابة' }));
     },
 
     /**
      * رفع المستندات الناقصة من بوابة الموكل إلى R2 عبر المسار الخادمي الموثق
      */
-    uploadMissingPortalDoc: async (token, file) => {
+    uploadMissingPortalDoc: async (token, file, portalSessionToken = '') => {
         if (!file) throw new Error('يرجى اختيار المستند المطلوب أولاً');
         if (file.size > MAX_R2_FILE_SIZE) {
             throw new Error('حجم الملف يتجاوز الحد الأقصى المسموح به (25 ميجابايت)');
         }
+        const resolvedSess = portalSessionToken || sessionStorage.getItem(`moakkil_portal_session_${token}`) || '';
         const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+        const headers = {
+            'x-portal-token': token || '',
+            'x-file-name': encodeURIComponent(file.name)
+        };
+        if (resolvedSess) headers['x-portal-session-token'] = resolvedSess;
+
         const res = await fetch(`${baseUrl}/api/public/client/upload-missing-doc?token=${encodeURIComponent(token || '')}`, {
             method: 'POST',
-            headers: {
-                'x-portal-token': token || '',
-                'x-file-name': encodeURIComponent(file.name)
-            },
+            headers,
             body: file
         });
         const data = await res.json().catch(() => ({}));
@@ -929,11 +1016,21 @@ const API = {
     /**
      * إرسال التوقيع الإلكتروني الموثق من بوابة الموكل إلى الخادم
      */
-    submitPortalSignature: (token, signatureDataUrl) => {
-        return fetchAPI('/api/public/client/submit-signature', 'POST', {
-            token: token,
-            signature_data: signatureDataUrl
-        }, true);
+    submitPortalSignature: async (token, signatureDataUrl, portalSessionToken = '') => {
+        const resolvedSess = portalSessionToken || sessionStorage.getItem(`moakkil_portal_session_${token}`) || '';
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (resolvedSess) headers['x-portal-session-token'] = resolvedSess;
+
+        const res = await fetch(`${baseUrl}/api/public/client/submit-signature`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                token: token,
+                signature_data: signatureDataUrl
+            })
+        });
+        return await res.json().catch(() => ({ error: 'تعذر حفظ التوقيع الإلكتروني' }));
     },
 
     verifyReceipt: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-receipt?id=${encodeURIComponent(id)}` : '/api/public/verify-receipt', 'GET', null, true),

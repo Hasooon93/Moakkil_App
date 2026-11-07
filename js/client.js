@@ -2,13 +2,13 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/client.js
- * الوصف: المحرك الشامل لبوابة الموكل العامة (Client Portal - V5.2 Full Enterprise)
+ * الوصف: المحرك الشامل لبوابة الموكل العامة (Client Portal - V5.4 Zero-Trust Encrypted Cache)
  * الميزات الكاملة المحتفظ بها والمحصنة:
- * 1. المصادقة الآمنة عبر الـ PIN (Zero-Trust Server PIN) مع دعم العمل بلا إنترنت (Offline Cache).
- * 2. محرك التوقيع الرقمي المزدوج (Canvas + Cryptographic SHA-256 Hash + WebAuthn).
- * 3. آلية رفع المستندات الناقصة (Missing Docs Upload) للباك إند.
- * 4. التوليد الآلي لكشوفات الحساب بصيغة PDF عبر html2pdf.
- * 5. تصدير المواعيد لتقويم الهاتف (.ics) والتحميل الآمن من Cloudflare R2.
+ * 1. المصادقة الآمنة عبر جلسات البوابة المستقلة (portal_session_token عبر x-portal-session-token).
+ * 2. تشفير بيانات البوابة المخزنة محلياً (PBKDF2 + AES-GCM 256-bit) بمفتاح مشتق من الـ PIN مع صلاحية 24 ساعة وعدم تخزين الـ PIN نصياً نهائياً.
+ * 3. تسجيل خروج خادمي (/api/public/client/logout) يبطل الجلسة ويمسح أي بيانات مخزنة على الجهاز المشترك.
+ * 4. محرك التوقيع الرقمي المزدوج (Canvas + Cryptographic SHA-256 Hash) ورفع المستندات الناقصة.
+ * 5. التوليد الآلي لكشوفات الحساب بصيغة PDF عبر html2pdf وتصدير المواعيد (.ics) والتحميل الآمن من R2.
  * ============================================================================
  */
 
@@ -18,10 +18,126 @@ let verifiedSessionPin = '';
 // رمز جلسة البوابة الصادر من الوركر عند نجاح الدخول (POST /api/public/client/login)
 let portalSessionToken = '';
 const BOT_USERNAME = "Moakkil_bot";
+const PORTAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 ساعة كحد أقصى للكاش المشفر
 
 // مفاتيح التخزين المؤقت لجلسة البوابة (sessionStorage تُمسح بإغلاق التبويب)
 const portalSessionKey = () => `moakkil_portal_session_${activeToken}`;
 const legacyPortalPinKey = () => `moakkil_portal_pin_${activeToken}`;
+const encryptedPortalCacheKey = () => `moakkil_encrypted_portal_${activeToken}`;
+
+/**
+ * تنظيف أي بقايا قديمة غير مشفرة لبيانات الموكل أو الـ PIN من localStorage
+ */
+function purgeLegacyPlaintextPortalStorage(caseInternalId = '') {
+    try {
+        if (activeToken) {
+            localStorage.removeItem(`moakkil_offline_pin_${activeToken}`);
+            localStorage.removeItem(`moakkil_client_cache_${activeToken}`);
+        }
+        if (caseInternalId) {
+            localStorage.removeItem(`moakkil_offline_pin_${caseInternalId}`);
+        }
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && (k.startsWith('moakkil_offline_pin_') || k.startsWith('moakkil_client_cache_'))) {
+                keysToRemove.push(k);
+            }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+}
+
+/**
+ * اشتقاق مفتاح تشفير AES-GCM 256-bit من رمز الـ PIN ورابط القضية عبر PBKDF2
+ */
+async function derivePortalAesKey(pin, saltBytes) {
+    const enc = new TextEncoder();
+    const baseKey = await window.crypto.subtle.importKey(
+        'raw',
+        enc.encode(`${pin}:${activeToken || ''}`),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+    );
+    return await window.crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: saltBytes,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+/**
+ * حفظ بيانات البوابة بشكل مشفر (AES-GCM) في localStorage مع تاريخ انتهاء صلاحية (24 ساعة)
+ * لا يتم حفظ الـ PIN نهائياً، ولا يمكن فك تشفير البيانات إلا بإدخال الـ PIN الصحيح
+ */
+async function saveEncryptedPortalCache(dataObj, pin) {
+    if (!pin || !activeToken || !window.crypto || !window.crypto.subtle) return;
+    try {
+        purgeLegacyPlaintextPortalStorage(dataObj?.case?.case_internal_id);
+        const salt = window.crypto.getRandomValues(new Uint8Array(16));
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const aesKey = await derivePortalAesKey(pin, salt);
+        const payloadStr = JSON.stringify({
+            expiresAt: Date.now() + PORTAL_CACHE_TTL_MS,
+            data: dataObj
+        });
+        const cipherBuf = await window.crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            aesKey,
+            new TextEncoder().encode(payloadStr)
+        );
+        const toB64 = (arr) => window.btoa(String.fromCharCode(...new Uint8Array(arr)));
+        localStorage.setItem(encryptedPortalCacheKey(), JSON.stringify({
+            s: toB64(salt),
+            iv: toB64(iv),
+            ct: toB64(cipherBuf),
+            exp: Date.now() + PORTAL_CACHE_TTL_MS
+        }));
+    } catch (e) {
+        console.warn('Encrypted cache save skipped:', e);
+    }
+}
+
+/**
+ * محاولة فك تشفير بيانات البوابة عند انقطاع الإنترنت باستخدام الـ PIN الذي أدخله الموكل
+ */
+async function loadEncryptedPortalCache(pin) {
+    if (!pin || !activeToken || !window.crypto || !window.crypto.subtle) return null;
+    try {
+        const raw = localStorage.getItem(encryptedPortalCacheKey());
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || !parsed.s || !parsed.iv || !parsed.ct) return null;
+        if (parsed.exp && Date.now() > parsed.exp) {
+            localStorage.removeItem(encryptedPortalCacheKey());
+            return null;
+        }
+        const fromB64 = (b64) => Uint8Array.from(window.atob(b64), c => c.charCodeAt(0));
+        const aesKey = await derivePortalAesKey(pin, fromB64(parsed.s));
+        const plainBuf = await window.crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: fromB64(parsed.iv) },
+            aesKey,
+            fromB64(parsed.ct)
+        );
+        const decoded = JSON.parse(new TextDecoder().decode(plainBuf));
+        if (!decoded || (decoded.expiresAt && Date.now() > decoded.expiresAt)) {
+            localStorage.removeItem(encryptedPortalCacheKey());
+            return null;
+        }
+        return decoded.data || null;
+    } catch (e) {
+        // فشل فك التشفير يعني أن الـ PIN المدخل غير صحيح
+        return null;
+    }
+}
 
 /**
  * حفظ/مسح رمز جلسة البوابة
@@ -31,24 +147,30 @@ function setPortalSession(sessionToken) {
     try {
         if (portalSessionToken) sessionStorage.setItem(portalSessionKey(), portalSessionToken);
         else sessionStorage.removeItem(portalSessionKey());
-        // إزالة الـ PIN النصي القديم من التخزين (لم يعد يُستخدم)
         sessionStorage.removeItem(legacyPortalPinKey());
     } catch (e) {}
 }
 
-function clearPortalSession() {
+function clearPortalSession(wipeEncryptedCache = false) {
     setPortalSession('');
     verifiedSessionPin = '';
+    purgeLegacyPlaintextPortalStorage();
+    if (wipeEncryptedCache && activeToken) {
+        try { localStorage.removeItem(encryptedPortalCacheKey()); } catch (e) {}
+    }
 }
 
 /**
- * جلب بيانات البوابة من الخادم بالاعتماد على جلسة الـ PIN الموثقة في الوركر (بدون تمرير الـ PIN في الرابط)
+ * جلب بيانات البوابة من الخادم بتمرير x-portal-session-token في الترويسة
  * @returns {{ok:boolean, status:number, data:object}}
  */
 async function fetchPortalData() {
-    let url = `${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}`;
-    if (portalSessionToken) url += `&portal_session_token=${encodeURIComponent(portalSessionToken)}`;
-    const res = await fetch(url);
+    const url = `${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}`;
+    const headers = {};
+    if (portalSessionToken) {
+        headers['x-portal-session-token'] = portalSessionToken;
+    }
+    const res = await fetch(url, { headers });
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data };
 }
@@ -66,7 +188,9 @@ async function refreshPortalData() {
         }
         if (ok && data && !data.error) {
             publicData = data;
-            localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(data));
+            if (verifiedSessionPin) {
+                await saveEncryptedPortalCache(data, verifiedSessionPin);
+            }
             renderClientPortal();
         }
     } catch (e) {
@@ -119,7 +243,7 @@ window.onload = async () => {
     }
 
     try {
-        // استرجاع رمز جلسة البوابة الحالية إن وجد (بدلاً من تخزين الـ PIN نصياً)
+        purgeLegacyPlaintextPortalStorage();
         try {
             portalSessionToken = sessionStorage.getItem(portalSessionKey()) || '';
             sessionStorage.removeItem(legacyPortalPinKey());
@@ -129,10 +253,6 @@ window.onload = async () => {
         if (navigator.onLine) {
             // إذا لم تُفتح جلسة بوابة بعد، نظهر شاشة القفل مباشرة دون إطلاق طلب 401
             if (!portalSessionToken) {
-                const cached = localStorage.getItem(`moakkil_client_cache_${activeToken}`);
-                if (cached) {
-                    try { publicData = JSON.parse(cached); } catch (e) {}
-                }
                 showSecurityLockScreen();
                 return;
             }
@@ -150,12 +270,12 @@ window.onload = async () => {
             if (!portal.ok) {
                 throw new Error(data.error || "الملف غير موجود أو تم إيقاف صلاحية الوصول من قبل الإدارة.");
             }
-            localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(data));
         } else {
-            const cached = localStorage.getItem(`moakkil_client_cache_${activeToken}`);
-            if (cached) {
-                data = JSON.parse(cached);
-                if (typeof Swal !== 'undefined') Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'أنت تتصفح في وضع عدم الاتصال.', showConfirmButton: false, timer: 3000 });
+            // في وضع عدم الاتصال، نطلب إدخال الـ PIN أولاً لفك تشفير الكاش المحلي المشفر
+            const hasEncrypted = localStorage.getItem(encryptedPortalCacheKey());
+            if (hasEncrypted) {
+                showSecurityLockScreen();
+                return;
             } else {
                 throw new Error("لا يوجد اتصال بالإنترنت لتحميل ملف القضية لأول مرة.");
             }
@@ -207,14 +327,17 @@ window.verifyAccess = async function(event) {
 
     try {
         if (!navigator.onLine) {
-            const savedPinByToken = localStorage.getItem(`moakkil_offline_pin_${activeToken}`);
-            const savedPinByCase = caseData.case_internal_id ? localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`) : null;
-            if ((savedPinByToken && savedPinByToken === enteredPin) || (savedPinByCase && savedPinByCase === enteredPin)) {
+            const decryptedData = await loadEncryptedPortalCache(enteredPin);
+            if (decryptedData && (decryptedData.case || (decryptedData.cases && decryptedData.cases.length > 0))) {
                 verifiedSessionPin = enteredPin;
+                publicData = decryptedData;
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'أنت تتصفح النسخة المشفرة المحفوظة دون اتصال.', showConfirmButton: false, timer: 3000 });
+                }
                 unlockPortal();
                 return;
             } else {
-                throw new Error("الرمز السري غير صحيح.");
+                throw new Error("الرمز السري غير صحيح أو انتهت صلاحية النسخة المحفوظة (24 ساعة).");
             }
         }
 
@@ -233,12 +356,10 @@ window.verifyAccess = async function(event) {
 
         if (res.ok && resData.success) {
             verifiedSessionPin = enteredPin;
-            // الوركر يُعيد رابط القضية المعتمد ورمز جلسة البوابة (portal_session_token)
             if (resData.token && resData.token !== activeToken) activeToken = resData.token;
             setPortalSession(resData.portal_session_token || '');
-            localStorage.setItem(`moakkil_offline_pin_${activeToken}`, enteredPin);
 
-            // 2. جلب بيانات البوابة الكاملة عبر جلسة الـ PIN الموثقة على الخادم (بدون إعادة إرسال الـ PIN في الرابط)
+            // 2. جلب بيانات البوابة الكاملة عبر جلسة البوابة الموثقة على الخادم (x-portal-session-token)
             const portal = await fetchPortalData();
             const portalJson = portal.data;
 
@@ -248,12 +369,8 @@ window.verifyAccess = async function(event) {
             }
 
             publicData = portalJson;
-            localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(portalJson));
-
-            const loadedCase = publicData.case || (publicData.cases && publicData.cases[0]) || {};
-            if (loadedCase.case_internal_id) {
-                localStorage.setItem(`moakkil_offline_pin_${loadedCase.case_internal_id}`, enteredPin);
-            }
+            // حفظ نسخة مشفرة (PBKDF2 + AES-GCM) صالحة لـ 24 ساعة فقط بدون تخزين الـ PIN نصياً
+            await saveEncryptedPortalCache(portalJson, enteredPin);
 
             unlockPortal();
         } else {
@@ -272,16 +389,33 @@ window.verifyAccess = async function(event) {
 window.logoutClient = function() {
     Swal.fire({
         title: 'تأكيد الخروج',
-        text: 'هل أنت متأكد من رغبتك في تسجيل الخروج من البوابة الآمنة؟',
+        text: 'هل أنت متأكد من رغبتك في تسجيل الخروج ومسح بيانات الجلسة من هذا الجهاز؟',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: 'var(--firm-primary)',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'نعم، خروج',
+        confirmButtonText: 'نعم، خروج آمن',
         cancelButtonText: 'إلغاء'
-    }).then((result) => {
+    }).then(async (result) => {
         if (result.isConfirmed) {
-            clearPortalSession();
+            const currentSessionToken = portalSessionToken;
+            clearPortalSession(true);
+            publicData = null;
+
+            if (currentSessionToken && navigator.onLine) {
+                try {
+                    await fetch(`${CONFIG.API_URL}/api/public/client/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-portal-session-token': currentSessionToken
+                        },
+                        body: JSON.stringify({ token: activeToken, portal_session_token: currentSessionToken }),
+                        keepalive: true
+                    });
+                } catch (e) {}
+            }
+
             document.getElementById('main-content').classList.add('d-none');
             document.getElementById('security-layer').classList.remove('d-none');
             document.getElementById('pin_input').value = '';
@@ -577,16 +711,17 @@ window.uploadMissingDoc = async function() {
 
     try {
         // رفع الملف كبيانات ثنائية مباشرة (Stream) إلى المسار الخادمي الجديد في الوركر
-        let uploadUrl = `${CONFIG.API_URL}/api/public/client/upload-missing-doc?token=${encodeURIComponent(activeToken)}`;
-        if (portalSessionToken) uploadUrl += `&portal_session_token=${encodeURIComponent(portalSessionToken)}`;
+        const uploadUrl = `${CONFIG.API_URL}/api/public/client/upload-missing-doc?token=${encodeURIComponent(activeToken)}`;
+        const uploadHeaders = {
+            'Content-Type': file.type || 'application/octet-stream',
+            'x-portal-token': activeToken,
+            'x-file-name': encodeURIComponent(file.name)
+        };
+        if (portalSessionToken) uploadHeaders['x-portal-session-token'] = portalSessionToken;
 
         const res = await fetch(uploadUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': file.type || 'application/octet-stream',
-                'x-portal-token': activeToken,
-                'x-file-name': encodeURIComponent(file.name)
-            },
+            headers: uploadHeaders,
             body: file
         });
 
@@ -624,7 +759,12 @@ window.downloadSecureFile = async function(r2Key, fileName) {
     if (!navigator.onLine) return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'تحتاج إنترنت للتحميل', showConfirmButton: false, timer: 3000 });
     try {
         Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'جاري فك التشفير والتحميل...', showConfirmButton: false });
-        const res = await fetch(`${CONFIG.API_URL}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(activeToken)}`);
+        const dlHeaders = {};
+        if (portalSessionToken) dlHeaders['x-portal-session-token'] = portalSessionToken;
+
+        const res = await fetch(`${CONFIG.API_URL}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(activeToken)}`, {
+            headers: dlHeaders
+        });
 
         if (res.status === 401) {
             const errData = await res.json().catch(() => ({}));
@@ -790,10 +930,13 @@ window.submitSignature = async function() {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const signatureHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // الإرسال للمسار الخادمي الجديد في الوركر
+        // الإرسال للمسار الخادمي الجديد في الوركر مع تمرير x-portal-session-token
+        const sigHeaders = { 'Content-Type': 'application/json' };
+        if (portalSessionToken) sigHeaders['x-portal-session-token'] = portalSessionToken;
+
         const res = await fetch(`${CONFIG.API_URL}/api/public/client/submit-signature`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: sigHeaders,
             body: JSON.stringify({
                 token: activeToken,
                 portal_session_token: portalSessionToken || undefined,

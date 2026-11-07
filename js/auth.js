@@ -93,7 +93,7 @@ const AUTH = {
     },
 
     /**
-     * تسجيل الخروج الآمن: إبطال الجلسة في الخادم (KV) + تدمير الطابور المحلي والبيانات الحساسة
+     * تسجيل الخروج الآمن: إجهاض أي مزامنة جارية + إبطال الجلسة في الخادم (KV) + تدمير الطابور المحلي والبيانات الحساسة
      */
     logout: async () => {
         const tokenKey = CONFIG?.TOKEN_KEY || 'moakkil_token';
@@ -101,9 +101,13 @@ const AUTH = {
         const firmKey = CONFIG?.FIRM_KEY || 'moakkil_firm_id';
         const token = localStorage.getItem(tokenKey);
 
-        // 1. إيقاف أي مزامنة خلفية جارية فوراً لمنع إرسال عمليات بعد الخروج
+        // 1. إجهاض أي طلب مزامنة خلفي جارٍ في الشبكة فوراً لمنع إرسال عمليات بعد الخروج
         if (typeof window !== 'undefined') {
-            window.isSyncing = false;
+            if (typeof window.abortOfflineSync === 'function') {
+                window.abortOfflineSync();
+            } else {
+                window.isSyncing = false;
+            }
         }
 
         // 2. مسح طابور العمليات الأوفلاين وبيانات الجلسة من المتصفح فوراً (Cross-Account Protection)
@@ -115,28 +119,38 @@ const AUTH = {
         localStorage.removeItem('firm_settings');
         sessionStorage.clear();
 
-        // 3. إبلاغ الخادم لإبطال الجلسة في Cloudflare KV (بمهلة قصوى 2.5 ثانية حتى لا يتعطل التوجيه)
-        if (token && navigator.onLine) {
-            try {
-                const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
-                const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown';
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2500);
+        // 3. إبلاغ الخادم لإبطال الجلسة في Cloudflare KV، أو جدولة الإبطال فور عودة الاتصال إذا كان الجهاز أوفلاين
+        if (token) {
+            if (navigator.onLine) {
+                try {
+                    const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+                    const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown';
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
-                await fetch(`${baseUrl}/api/auth/logout`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        'x-device-id': deviceId
-                    },
-                    signal: controller.signal,
-                    keepalive: true
-                }).catch(() => {});
+                    const res = await fetch(`${baseUrl}/api/auth/logout`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'x-device-id': deviceId
+                        },
+                        signal: controller.signal,
+                        keepalive: true
+                    });
 
-                clearTimeout(timeoutId);
-            } catch (e) {
-                console.warn("🛡️ [Logout Server Sync]: تم تدمير الجلسة محلياً وتعذر الاتصال بالخادم.");
+                    clearTimeout(timeoutId);
+                    if (!res.ok) {
+                        localStorage.setItem('moakkil_pending_logout_token', token);
+                    } else {
+                        localStorage.removeItem('moakkil_pending_logout_token');
+                    }
+                } catch (e) {
+                    localStorage.setItem('moakkil_pending_logout_token', token);
+                    console.warn("🛡️ [Logout Server Sync]: تم تدمير الجلسة محلياً وجدولة إبطال الجلسة السحابية فور عودة الاتصال.");
+                }
+            } else {
+                localStorage.setItem('moakkil_pending_logout_token', token);
             }
         }
 
@@ -144,6 +158,31 @@ const AUTH = {
         if (!window.location.pathname.includes('login.html')) {
             window.location.replace('login.html');
         }
+    },
+
+    /**
+     * إرسال طلب إبطال جلسة سابقة معلقة في حال تم تسجيل الخروج أثناء انقطاع الإنترنت
+     */
+    _flushPendingLogout: async () => {
+        if (!navigator.onLine) return;
+        const pendingToken = localStorage.getItem('moakkil_pending_logout_token');
+        if (!pendingToken) return;
+        try {
+            const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+            const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown';
+            const res = await fetch(`${baseUrl}/api/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${pendingToken}`,
+                    'x-device-id': deviceId
+                },
+                keepalive: true
+            });
+            if (res.ok || res.status === 401) {
+                localStorage.removeItem('moakkil_pending_logout_token');
+            }
+        } catch (e) {}
     },
 
     // ========================================================================
@@ -395,6 +434,7 @@ const AUTH = {
                 public_key: spkiBase64,
                 algorithm: algorithm,
                 challenge: serverChallengeB64,
+                clientDataJSON: credential.response?.clientDataJSON ? AUTH._bufferToBase64(credential.response.clientDataJSON) : '',
                 device_name: navigator.userAgent.includes('Mobi') ? 'هاتف ذكي (موبايل)' : 'جهاز كمبيوتر (مكتبي)'
             };
 
@@ -715,9 +755,19 @@ const AUTH = {
 };
 
 // ============================================================================
-// [5] سكريبت التشغيل التلقائي (Auto-Boot UX Enhancements)
+// [5] سكريبت التشغيل التلقائي ومزامنة تسجيل الخروج المعلق (Auto-Boot UX & Security)
 // ============================================================================
+window.addEventListener('online', () => {
+    if (typeof AUTH !== 'undefined' && typeof AUTH._flushPendingLogout === 'function') {
+        AUTH._flushPendingLogout();
+    }
+});
+
 window.addEventListener('DOMContentLoaded', async () => {
+    if (typeof AUTH !== 'undefined' && typeof AUTH._flushPendingLogout === 'function') {
+        await AUTH._flushPendingLogout();
+    }
+
     const isLoginPage = window.location.pathname.includes('login.html') || window.location.pathname.endsWith('/login');
     const hasBiometric = localStorage.getItem('moakkil_biometric_id');
 

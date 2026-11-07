@@ -209,8 +209,10 @@ window.AppSettings = {
             const fileInput = el('firm_setting_logo_file');
             if (fileInput && fileInput.files.length > 0) {
                 const file = fileInput.files[0];
+                const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'png';
+                const logoFile = new File([file], `firm_logo_${Date.now()}.${ext}`, { type: file.type || 'image/png' });
                 if (window.API && typeof window.API.uploadFileToR2 === 'function') {
-                    const uploadRes = await window.API.uploadFileToR2(file, 'logos', user.firm_id);
+                    const uploadRes = await window.API.uploadFileToR2(logoFile, 'logos', user.firm_id);
                     if (uploadRes && uploadRes.success && uploadRes.r2_key) {
                         logoUrl = `${baseUrl}/api/public/r2/download?key=${encodeURIComponent(uploadRes.r2_key)}`;
                     } else {
@@ -224,11 +226,11 @@ window.AppSettings = {
                         headers: { 
                             'Authorization': `Bearer ${token}`,
                             'x-device-id': deviceId,
-                            'x-file-name': encodeURIComponent(`logo_${Date.now()}_${file.name}`),
+                            'x-file-name': encodeURIComponent(logoFile.name),
                             'x-client-id': encodeURIComponent('logos'),
                             'x-case-id': encodeURIComponent(user.firm_id)
                         },
-                        body: file
+                        body: logoFile
                     });
                     if (uploadReq.ok) {
                         const upData = await uploadReq.json();

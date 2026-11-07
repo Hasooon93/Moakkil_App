@@ -1077,6 +1077,7 @@ window.saveFile = async function(event) {
                 file_type: file.type,
                 file_category: catInput,
                 file_url: r2Res.r2_key,
+                gdrive_file_id: r2Res.r2_key,
                 drive_file_id: r2Res.r2_key,
                 is_template: false,
                 is_visible_to_client: isVisibleToClient,
@@ -1092,6 +1093,9 @@ window.saveFile = async function(event) {
                 showAlert('تم الحفظ والتشفير السحابي بنجاح', 'success');
                 await loadCaseFullDetails();
             } else {
+                if (typeof API.cleanupOrphanR2File === 'function') {
+                    await API.cleanupOrphanR2File(r2Res.r2_key);
+                }
                 throw new Error(res?.error || 'خطأ أثناء تسجيل الملف');
             }
         } else {
@@ -1106,7 +1110,7 @@ window.saveFile = async function(event) {
 };
 
 /**
- * 🛡️ ترقية الحذف بالمصادقة الثنائية الحقيقية (Action-Based Server MFA)
+ * 🛡️ ترقية الحذف بالمصادقة الثنائية الحقيقية (Action-Based Server MFA) مع ربط التذكرة بالجدول والسجل
  */
 window.deleteRecord = async function(type, id) {
     const confirm = await Swal.fire({
@@ -1122,11 +1126,19 @@ window.deleteRecord = async function(type, id) {
     if (!confirm.isConfirmed) return;
 
     try {
+        const tableByType = {
+            update: 'mo_case_updates',
+            installment: 'mo_installments',
+            expense: 'mo_expenses',
+            file: 'mo_files'
+        };
+        const targetTable = tableByType[type] || '*';
+
         let actionToken = null;
         if (typeof AUTH !== 'undefined' && typeof AUTH.requireActionAuth === 'function') {
-            actionToken = await AUTH.requireActionAuth('تأكيد حذف السجل من القضية');
+            actionToken = await AUTH.requireActionAuth('تأكيد حذف السجل من القضية', targetTable, id);
         } else if (typeof API.ensureActionToken === 'function') {
-            actionToken = await API.ensureActionToken(null);
+            actionToken = await API.ensureActionToken(null, targetTable, id);
         }
 
         if (!actionToken) return;

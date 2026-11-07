@@ -623,6 +623,9 @@ window.uploadTemplate = async function(event) {
                 
                 await loadArchiveFiles();
             } else {
+                if (typeof API.cleanupOrphanR2File === 'function') {
+                    await API.cleanupOrphanR2File(uploadRes.r2_key);
+                }
                 throw new Error(dbRes?.error || 'فشل توثيق النموذج في قاعدة البيانات');
             }
         } else {
