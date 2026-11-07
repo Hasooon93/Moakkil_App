@@ -15,7 +15,79 @@
 let publicData = null;
 let activeToken = null;
 let verifiedSessionPin = '';
+// رمز جلسة البوابة الصادر من الوركر عند نجاح الدخول (POST /api/public/client/login)
+let portalSessionToken = '';
 const BOT_USERNAME = "Moakkil_bot";
+
+// مفاتيح التخزين المؤقت لجلسة البوابة (sessionStorage تُمسح بإغلاق التبويب)
+const portalSessionKey = () => `moakkil_portal_session_${activeToken}`;
+const legacyPortalPinKey = () => `moakkil_portal_pin_${activeToken}`;
+
+/**
+ * حفظ/مسح رمز جلسة البوابة
+ */
+function setPortalSession(sessionToken) {
+    portalSessionToken = sessionToken || '';
+    try {
+        if (portalSessionToken) sessionStorage.setItem(portalSessionKey(), portalSessionToken);
+        else sessionStorage.removeItem(portalSessionKey());
+        // إزالة الـ PIN النصي القديم من التخزين (لم يعد يُستخدم)
+        sessionStorage.removeItem(legacyPortalPinKey());
+    } catch (e) {}
+}
+
+function clearPortalSession() {
+    setPortalSession('');
+    verifiedSessionPin = '';
+}
+
+/**
+ * جلب بيانات البوابة من الخادم بالاعتماد على جلسة الـ PIN الموثقة في الوركر (بدون تمرير الـ PIN في الرابط)
+ * @returns {{ok:boolean, status:number, data:object}}
+ */
+async function fetchPortalData() {
+    let url = `${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}`;
+    if (portalSessionToken) url += `&portal_session_token=${encodeURIComponent(portalSessionToken)}`;
+    const res = await fetch(url);
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+}
+
+/**
+ * إعادة تحميل البيانات بعد عملية ناجحة (رفع/توقيع) وتحديث الواجهة
+ */
+async function refreshPortalData() {
+    try {
+        const { ok, status, data } = await fetchPortalData();
+        if (status === 401 && data.require_pin) {
+            clearPortalSession();
+            showSecurityLockScreen();
+            return;
+        }
+        if (ok && data && !data.error) {
+            publicData = data;
+            localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(data));
+            renderClientPortal();
+        }
+    } catch (e) {
+        console.warn('Portal refresh failed:', e);
+    }
+}
+
+/**
+ * معالجة انتهاء جلسة البوابة (401) أثناء الرفع أو التوقيع
+ */
+function handlePortalSessionExpired(message) {
+    clearPortalSession();
+    ['missingDocsModal', 'signatureModal'].forEach(id => {
+        const el = document.getElementById(id);
+        const ins = el ? bootstrap.Modal.getInstance(el) : null;
+        if (ins) ins.hide();
+    });
+    document.getElementById('main-content').classList.add('d-none');
+    showSecurityLockScreen();
+    Swal.fire('انتهت الجلسة', message || 'انتهت جلسة البوابة. يرجى إعادة إدخال رمز الـ PIN.', 'warning');
+}
 
 // متغيرات لوحة التوقيع (Canvas)
 let signaturePad = null;
@@ -47,15 +119,16 @@ window.onload = async () => {
     }
 
     try {
-        // استرجاع الـ PIN المحفوظ في الجلسة الحالية إن وجد لتجنب طلب 401
+        // استرجاع رمز جلسة البوابة الحالية إن وجد (بدلاً من تخزين الـ PIN نصياً)
         try {
-            verifiedSessionPin = sessionStorage.getItem(`moakkil_portal_pin_${activeToken}`) || '';
+            portalSessionToken = sessionStorage.getItem(portalSessionKey()) || '';
+            sessionStorage.removeItem(legacyPortalPinKey());
         } catch (e) {}
 
         let data = null;
         if (navigator.onLine) {
-            // إذا لم يُدخل الموكل الـ PIN بعد في هذه الجلسة، نظهر شاشة القفل مباشرة دون إطلاق طلب 401 في الكونسول
-            if (!verifiedSessionPin) {
+            // إذا لم تُفتح جلسة بوابة بعد، نظهر شاشة القفل مباشرة دون إطلاق طلب 401
+            if (!portalSessionToken) {
                 const cached = localStorage.getItem(`moakkil_client_cache_${activeToken}`);
                 if (cached) {
                     try { publicData = JSON.parse(cached); } catch (e) {}
@@ -64,19 +137,17 @@ window.onload = async () => {
                 return;
             }
 
-            const pinQuery = verifiedSessionPin ? `&pin=${encodeURIComponent(verifiedSessionPin)}` : '';
-            const res = await fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}${pinQuery}`);
-            data = await res.json().catch(() => ({}));
+            const portal = await fetchPortalData();
+            data = portal.data;
 
-            // إذا طلب الوركر رمز الـ PIN (حالة 401 require_pin)، نظهر شاشة إدخال الـ PIN بهدوء
-            if (res.status === 401 && data.require_pin) {
-                try { sessionStorage.removeItem(`moakkil_portal_pin_${activeToken}`); } catch (e) {}
-                verifiedSessionPin = '';
+            // إذا انتهت جلسة الـ PIN في الوركر (401 require_pin)، نعيد عرض شاشة القفل بهدوء
+            if (portal.status === 401 && data.require_pin) {
+                clearPortalSession();
                 showSecurityLockScreen();
                 return;
             }
 
-            if (!res.ok) {
+            if (!portal.ok) {
                 throw new Error(data.error || "الملف غير موجود أو تم إيقاف صلاحية الوصول من قبل الإدارة.");
             }
             localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(data));
@@ -92,7 +163,7 @@ window.onload = async () => {
 
         if (data && (data.case || (data.cases && data.cases.length > 0))) {
             publicData = data;
-            if (verifiedSessionPin && navigator.onLine) {
+            if (portalSessionToken && navigator.onLine) {
                 unlockPortal();
             } else {
                 showSecurityLockScreen();
@@ -162,14 +233,17 @@ window.verifyAccess = async function(event) {
 
         if (res.ok && resData.success) {
             verifiedSessionPin = enteredPin;
-            try { sessionStorage.setItem(`moakkil_portal_pin_${activeToken}`, enteredPin); } catch (e) {}
+            // الوركر يُعيد رابط القضية المعتمد ورمز جلسة البوابة (portal_session_token)
+            if (resData.token && resData.token !== activeToken) activeToken = resData.token;
+            setPortalSession(resData.portal_session_token || '');
             localStorage.setItem(`moakkil_offline_pin_${activeToken}`, enteredPin);
 
-            // 2. جلب بيانات البوابة الكاملة بعد توثيق الـ PIN على الخادم
-            const portalRes = await fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}&pin=${encodeURIComponent(enteredPin)}`);
-            const portalJson = await portalRes.json().catch(() => ({}));
+            // 2. جلب بيانات البوابة الكاملة عبر جلسة الـ PIN الموثقة على الخادم (بدون إعادة إرسال الـ PIN في الرابط)
+            const portal = await fetchPortalData();
+            const portalJson = portal.data;
 
-            if (!portalRes.ok || portalJson.error) {
+            if (!portal.ok || portalJson.error) {
+                if (portal.status === 401) clearPortalSession();
                 throw new Error(portalJson.error || "تعذر جلب بيانات القضية بعد التحقق.");
             }
 
@@ -207,8 +281,7 @@ window.logoutClient = function() {
         cancelButtonText: 'إلغاء'
     }).then((result) => {
         if (result.isConfirmed) {
-            try { sessionStorage.removeItem(`moakkil_portal_pin_${activeToken}`); } catch (e) {}
-            verifiedSessionPin = '';
+            clearPortalSession();
             document.getElementById('main-content').classList.add('d-none');
             document.getElementById('security-layer').classList.remove('d-none');
             document.getElementById('pin_input').value = '';
@@ -286,25 +359,48 @@ function renderClientPortal() {
     document.getElementById('ui-court-name').innerText = escapeHTML(caseData.current_court || '--');
     document.getElementById('ui-opponent').innerText = escapeHTML(caseData.opponent_name || '--');
 
-    // 3. النواقص (Missing Documents)
+    // 3. النواقص (Missing Documents) — الحقل المعتمد في قائمة السماح بالوركر: missing_docs_request
     let missingDocsList = [];
     try {
-        if (typeof caseData.missing_documents === 'string') missingDocsList = JSON.parse(caseData.missing_documents);
-        else if (Array.isArray(caseData.missing_documents)) missingDocsList = caseData.missing_documents;
+        const rawMissing = caseData.missing_docs_request ?? caseData.missing_documents;
+        if (Array.isArray(rawMissing)) {
+            missingDocsList = rawMissing;
+        } else if (typeof rawMissing === 'string' && rawMissing.trim()) {
+            const trimmed = rawMissing.trim();
+            if (trimmed.startsWith('[')) {
+                try { missingDocsList = JSON.parse(trimmed); } catch (e) { missingDocsList = [trimmed]; }
+            } else {
+                missingDocsList = [trimmed];
+            }
+        }
+        missingDocsList = (missingDocsList || []).map(x => String(x).trim()).filter(Boolean);
     } catch (e) {}
 
-    if (missingDocsList && missingDocsList.length > 0) {
+    if (missingDocsList.length > 0) {
         document.getElementById('missing-docs-banner').classList.remove('d-none');
         document.getElementById('missing-docs-text').innerText = `مطلوب تزويدنا بـ: ${missingDocsList.join('، ')}`;
+        const listDisplay = document.getElementById('missing-docs-list-display');
+        if (listDisplay) listDisplay.innerText = `المستند المطلوب: ${missingDocsList.join('، ')} — يرجى اختيار الملف (صورة أو PDF) ورفعه.`;
     } else {
         document.getElementById('missing-docs-banner').classList.add('d-none');
     }
 
-    // 4. التوقيع الإلكتروني (Signature Request)
-    pendingSignatureFile = files.find(f => f.requires_signature === true && !f.signature_hash);
+    // 4. التوقيع الإلكتروني (Signature Request) — الحقل المعتمد في الوركر: signature_request على مستوى القضية
+    pendingSignatureFile = null;
+    const sigReq = caseData.signature_request;
+    if (sigReq) {
+        let sigTitle = 'مستند قانوني';
+        if (typeof sigReq === 'string') {
+            sigTitle = sigReq.trim() || sigTitle;
+        } else if (typeof sigReq === 'object') {
+            sigTitle = sigReq.title || sigReq.file_name || sigReq.document_name || sigTitle;
+        }
+        pendingSignatureFile = { file_name: sigTitle, source: 'case_signature_request' };
+    }
+
     if (pendingSignatureFile) {
         document.getElementById('signature-request-banner').classList.remove('d-none');
-        document.getElementById('signature-request-text').innerText = `طلب المكتب توقيعك على: ${escapeHTML(pendingSignatureFile.file_name)}`;
+        document.getElementById('signature-request-text').innerText = `طلب المكتب توقيعك على: ${pendingSignatureFile.file_name}`;
     } else {
         document.getElementById('signature-request-banner').classList.add('d-none');
     }
@@ -451,59 +547,76 @@ window.openMissingDocsUpload = function() {
     modal.show();
 };
 
+// حدود الرفع المطابقة لإعدادات الوركر (MAX_R2_UPLOAD_BYTES و ALLOWED_R2_EXTENSIONS)
+const PORTAL_MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const PORTAL_ALLOWED_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'txt', 'xls', 'xlsx', 'csv']);
+
 window.uploadMissingDoc = async function() {
     const fileInput = document.getElementById('missing-doc-file');
     if (!fileInput.files.length) return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'يرجى اختيار ملف أولاً', showConfirmButton: false, timer: 3000 });
+    if (!navigator.onLine) return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'تحتاج اتصالاً بالإنترنت لرفع المستند', showConfirmButton: false, timer: 3000 });
 
     const file = fileInput.files[0];
-    const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
+    const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+
+    if (file.size > PORTAL_MAX_UPLOAD_BYTES) {
+        return Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'حجم الملف يتجاوز 25 ميجابايت', showConfirmButton: false, timer: 3500 });
+    }
+    if (!ext || !PORTAL_ALLOWED_EXTENSIONS.has(ext)) {
+        return Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'نوع الملف غير مسموح. المسموح: PDF، صور، Word، Excel', showConfirmButton: false, timer: 3500 });
+    }
+
+    const uploadBtn = document.querySelector('#missingDocsModal button[onclick="uploadMissingDoc()"]');
+    const originalBtnHtml = uploadBtn ? uploadBtn.innerHTML : '';
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الرفع...';
+    }
 
     Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'جاري الرفع والتشفير...', showConfirmButton: false });
 
     try {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const base64 = reader.result.split(',')[1];
-            const payload = {
-                token: activeToken,
-                pin: verifiedSessionPin || undefined,
-                case_id: caseData.id,
-                file_name: file.name,
-                file_type: file.type,
-                file_data: base64
-            };
+        // رفع الملف كبيانات ثنائية مباشرة (Stream) إلى المسار الخادمي الجديد في الوركر
+        let uploadUrl = `${CONFIG.API_URL}/api/public/client/upload-missing-doc?token=${encodeURIComponent(activeToken)}`;
+        if (portalSessionToken) uploadUrl += `&portal_session_token=${encodeURIComponent(portalSessionToken)}`;
 
-            const res = await fetch(`${CONFIG.API_URL}/api/public/upload-missing-doc`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+        const res = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': file.type || 'application/octet-stream',
+                'x-portal-token': activeToken,
+                'x-file-name': encodeURIComponent(file.name)
+            },
+            body: file
+        });
 
-            if (!res.ok) throw new Error("فشل الرفع السحابي، يرجى المحاولة لاحقاً.");
+        const resData = await res.json().catch(() => ({}));
 
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'تم إرسال المستند للمكتب بنجاح', showConfirmButton: false, timer: 4000 });
+        if (res.status === 401) {
+            handlePortalSessionExpired(resData.error);
+            return;
+        }
+        if (!res.ok || !resData.success) {
+            throw new Error(resData.error || "فشل الرفع السحابي، يرجى المحاولة لاحقاً.");
+        }
 
-            const modalEl = document.getElementById('missingDocsModal');
-            const modalIns = bootstrap.Modal.getInstance(modalEl);
-            if (modalIns) modalIns.hide();
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: resData.message || 'تم إرسال المستند للمكتب بنجاح', showConfirmButton: false, timer: 4000 });
 
-            document.getElementById('missing-docs-banner').classList.add('d-none');
-            fileInput.value = '';
+        const modalEl = document.getElementById('missingDocsModal');
+        const modalIns = bootstrap.Modal.getInstance(modalEl);
+        if (modalIns) modalIns.hide();
 
-            const pinParam = verifiedSessionPin ? `&pin=${encodeURIComponent(verifiedSessionPin)}` : '';
-            fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}${pinParam}`)
-                .then(r => r.json())
-                .then(d => {
-                    if (d && !d.error) {
-                        publicData = d;
-                        localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(d));
-                        renderClientPortal();
-                    }
-                });
-        };
+        document.getElementById('missing-docs-banner').classList.add('d-none');
+        fileInput.value = '';
+
+        await refreshPortalData();
     } catch (e) {
-        Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'خطأ: ' + e.message, showConfirmButton: false, timer: 3000 });
+        Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'خطأ: ' + e.message, showConfirmButton: false, timer: 3500 });
+    } finally {
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalBtnHtml;
+        }
     }
 };
 
@@ -513,7 +626,12 @@ window.downloadSecureFile = async function(r2Key, fileName) {
         Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'جاري فك التشفير والتحميل...', showConfirmButton: false });
         const res = await fetch(`${CONFIG.API_URL}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(activeToken)}`);
 
-        if (res.status === 401 || res.status === 403) throw new Error('صلاحية التحميل مرفوضة أمنياً.');
+        if (res.status === 401) {
+            const errData = await res.json().catch(() => ({}));
+            handlePortalSessionExpired(errData.error);
+            return;
+        }
+        if (res.status === 403) throw new Error('صلاحية التحميل مرفوضة أمنياً.');
         if (!res.ok) throw new Error('الملف غير متوفر حالياً في الأرشيف السحابي.');
 
         const blob = await res.blob();
@@ -623,53 +741,45 @@ window.submitSignature = async function() {
         return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'يرجى رسم توقيعك داخل الإطار أولاً.', showConfirmButton: false, timer: 3000 });
     }
 
-    // طلب التحقق عبر البصمة (WebAuthn) إن وجد، وإلا نطلب الـ PIN الخاص بالبوابة كبديل أمني
-    let authConfirmed = false;
-
-    if (window.PublicKeyCredential) {
-        try {
-            const challenge = new Uint8Array(32);
-            window.crypto.getRandomValues(challenge);
-            await navigator.credentials.get({
-                publicKey: {
-                    challenge: challenge,
-                    rpId: window.location.hostname,
-                    userVerification: "required",
-                    timeout: 60000
-                }
-            });
-            authConfirmed = true;
-        } catch (e) {
-            console.warn("Biometric verification failed or cancelled, falling back to PIN.", e);
-        }
+    if (!navigator.onLine) {
+        return Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'تحتاج اتصالاً بالإنترنت لاعتماد التوقيع', showConfirmButton: false, timer: 3000 });
     }
 
-    if (!authConfirmed) {
-        const pinCheck = await Swal.fire({
-            title: 'مصادقة التوقيع',
-            text: 'يرجى إدخال الرمز السري (PIN) الخاص بملفك لتأكيد التوقيع واعتماده قانونياً.',
-            input: 'password',
-            inputAttributes: { maxlength: 6, autocapitalize: 'off', autocorrect: 'off', inputmode: 'numeric' },
-            showCancelButton: true,
-            confirmButtonText: 'تأكيد التوقيع',
-            cancelButtonText: 'إلغاء',
-            confirmButtonColor: 'var(--firm-primary)'
-        });
+    // تأكيد هوية الموكل بإعادة إدخال الـ PIN والتحقق منه على الخادم (يجدد جلسة البوابة أيضاً)
+    const pinCheck = await Swal.fire({
+        title: 'مصادقة التوقيع',
+        text: 'يرجى إدخال الرمز السري (PIN) الخاص بملفك لتأكيد التوقيع واعتماده قانونياً.',
+        input: 'password',
+        inputAttributes: { maxlength: 6, autocapitalize: 'off', autocorrect: 'off', inputmode: 'numeric' },
+        showCancelButton: true,
+        confirmButtonText: 'تأكيد التوقيع',
+        cancelButtonText: 'إلغاء',
+        confirmButtonColor: 'var(--firm-primary)'
+    });
 
-        if (!pinCheck.isConfirmed || !pinCheck.value) return;
+    if (!pinCheck.isConfirmed || !pinCheck.value) return;
 
-        const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
-        const savedPin = verifiedSessionPin || localStorage.getItem(`moakkil_offline_pin_${activeToken}`) || localStorage.getItem(`moakkil_offline_pin_${caseData.case_internal_id}`);
-
-        if (pinCheck.value.trim() !== savedPin) {
-            return Swal.fire('فشل المصادقة', 'الرمز السري غير صحيح، تم إلغاء عملية التوقيع.', 'error');
-        }
-    }
-
-    // توليد الهاش التشفيري (Cryptographic Hash)
-    Swal.fire({ title: 'جاري التشفير والاعتماد...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'جاري التحقق والاعتماد...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
+        const caseData = publicData.case || (publicData.cases && publicData.cases[0]) || {};
+        const loginRes = await fetch(`${CONFIG.API_URL}/api/public/client/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: activeToken,
+                case_number: caseData.case_internal_id || undefined,
+                access_pin: pinCheck.value.trim()
+            })
+        });
+        const loginData = await loginRes.json().catch(() => ({}));
+        if (!loginRes.ok || !loginData.success) {
+            return Swal.fire('فشل المصادقة', loginData.error || 'الرمز السري غير صحيح، تم إلغاء عملية التوقيع.', 'error');
+        }
+        verifiedSessionPin = pinCheck.value.trim();
+        setPortalSession(loginData.portal_session_token || portalSessionToken);
+
+        // توليد الهاش التشفيري (Cryptographic Hash) كبصمة مرجعية للتوقيع
         const signatureBase64 = signaturePad.toDataURL('image/png');
         const timestamp = new Date().toISOString();
         const userAgent = navigator.userAgent;
@@ -680,22 +790,30 @@ window.submitSignature = async function() {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const signatureHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        const res = await fetch(`${CONFIG.API_URL}/api/public/submit-signature`, {
+        // الإرسال للمسار الخادمي الجديد في الوركر
+        const res = await fetch(`${CONFIG.API_URL}/api/public/client/submit-signature`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 token: activeToken,
-                pin: verifiedSessionPin || undefined,
-                file_id: pendingSignatureFile.id,
-                signature_base64: signatureBase64,
+                portal_session_token: portalSessionToken || undefined,
+                signature_data: signatureBase64,
                 signature_hash: signatureHash,
                 metadata: { timestamp, userAgent }
             })
         });
 
-        if (!res.ok) throw new Error("تعذر حفظ التوقيع في الخادم.");
+        const resData = await res.json().catch(() => ({}));
 
-        Swal.fire('تم الاعتماد', 'تم توثيق وتشفير توقيعك على المستند بنجاح.', 'success');
+        if (res.status === 401) {
+            handlePortalSessionExpired(resData.error);
+            return;
+        }
+        if (!res.ok || !resData.success) {
+            throw new Error(resData.error || "تعذر حفظ التوقيع في الخادم.");
+        }
+
+        Swal.fire('تم الاعتماد', resData.message || 'تم توثيق وتشفير توقيعك على المستند بنجاح.', 'success');
 
         const modalEl = document.getElementById('signatureModal');
         const modalIns = bootstrap.Modal.getInstance(modalEl);
@@ -704,16 +822,7 @@ window.submitSignature = async function() {
         document.getElementById('signature-request-banner').classList.add('d-none');
         pendingSignatureFile = null;
 
-        const pinParam = verifiedSessionPin ? `&pin=${encodeURIComponent(verifiedSessionPin)}` : '';
-        fetch(`${CONFIG.API_URL}/api/public/client?token=${encodeURIComponent(activeToken)}${pinParam}`)
-            .then(r => r.json())
-            .then(d => {
-                if (d && !d.error) {
-                    publicData = d;
-                    localStorage.setItem(`moakkil_client_cache_${activeToken}`, JSON.stringify(d));
-                    renderClientPortal();
-                }
-            });
+        await refreshPortalData();
 
     } catch (e) {
         Swal.fire('خطأ تقني', e.message, 'error');

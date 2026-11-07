@@ -132,7 +132,10 @@ self.addEventListener('fetch', (event) => {
                     console.warn(`[Service Worker] أنت Offline. جلب صفحة ${requestUrl.pathname} من الكاش.`);
                     return caches.match(event.request, { ignoreSearch: true }).then((cachedRes) => {
                         // إذا كانت الصفحة غير مخزنة، نعرض الصفحة الرئيسية كبديل آمن
-                        return cachedRes || caches.match('./app.html') || caches.match('./index.html');
+                        if (cachedRes) return cachedRes;
+                        return caches.match('./app.html', { ignoreSearch: true }).then((appRes) => {
+                            return appRes || caches.match('./index.html', { ignoreSearch: true });
+                        });
                     });
                 })
         );
@@ -190,21 +193,43 @@ self.addEventListener('fetch', (event) => {
 // [4] إشعارات الدفع (Web Push Notifications)
 // ============================================================================
 
+/**
+ * التحقق من أن رابط التوجيه ينتمي لنفس النطاق (Same-Origin) لمنع ثغرة التوجيه الخارجي (Open Redirect)
+ */
+function resolveSafeNotificationUrl(rawUrl, fallbackPath = './app.html') {
+    const safeFallback = new URL(fallbackPath, self.location.origin).href;
+    if (!rawUrl || typeof rawUrl !== 'string') return safeFallback;
+    try {
+        const parsed = new URL(rawUrl.trim(), self.location.origin);
+        if (
+            parsed.origin === self.location.origin &&
+            (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+        ) {
+            return parsed.href;
+        }
+        console.warn(`[Service Worker] تم حظر توجيه خارجي غير مصرح به في الإشعار: ${rawUrl}`);
+    } catch (e) {
+        console.warn(`[Service Worker] رابط إشعار غير صالح: ${rawUrl}`);
+    }
+    return safeFallback;
+}
+
 // استلام الإشعار من الباك إند (Cloudflare Worker)
 self.addEventListener('push', (event) => {
     if (!event.data) return;
 
     try {
         const payload = event.data.json();
+        const safeActionUrl = resolveSafeNotificationUrl(payload.action_url || payload.url, './app.html');
         const options = {
             body: payload.message || payload.body || 'يوجد تحديث جديد في النظام.',
-            icon: payload.icon || './icons/icon-192.png' || DEFAULT_ICON_URL,
-            badge: payload.badge || './icons/icon-192.png' || DEFAULT_ICON_URL,
+            icon: payload.icon || DEFAULT_ICON_URL,
+            badge: payload.badge || DEFAULT_ICON_URL,
             dir: 'rtl',
             lang: 'ar',
             vibrate: [200, 100, 200, 100, 200],
             requireInteraction: true,
-            data: { url: payload.action_url || payload.url || './app.html' }
+            data: { url: safeActionUrl }
         };
         event.waitUntil(self.registration.showNotification(payload.title || 'تنبيه من موكّل', options));
     } catch (e) {
@@ -215,17 +240,18 @@ self.addEventListener('push', (event) => {
                 dir: 'rtl',
                 lang: 'ar',
                 icon: DEFAULT_ICON_URL,
-                data: { url: './app.html' }
+                badge: DEFAULT_ICON_URL,
+                data: { url: resolveSafeNotificationUrl('./app.html') }
             })
         );
     }
 });
 
-// التفاعل مع الإشعار عند النقر عليه (تم إصلاح خطأ window غير المعرف واستبداله بـ self)
+// التفاعل مع الإشعار عند النقر عليه (تم إصلاح خطأ window غير المعرف واستبداله بـ self مع التحقق من النطاق)
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const rawTargetUrl = event.notification.data?.url || './app.html';
-    const targetUrl = new URL(rawTargetUrl, self.location.origin).href;
+    const targetUrl = resolveSafeNotificationUrl(rawTargetUrl, './app.html');
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

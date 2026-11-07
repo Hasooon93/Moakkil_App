@@ -2,14 +2,14 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/api.js
- * الوصف: المحرك الموحد للاتصال بالخادم (V5.2 Enterprise Zero-Trust & Sync Edition)
+ * الوصف: المحرك الموحد للاتصال بالخادم (V5.3 Enterprise True Zero-Trust & Sync Edition)
  * الميزات والتحصينات:
- * 1. نظام المزامنة الدفعي (Batch Queue) للعمل بكفاءة دون إنترنت مع حماية من التكرار اللانهائي.
- * 2. قفل منع التكرار (Idempotency Key) باستخدام UUID لمنع تكرار الإدخال.
- * 3. مصادقة ثنائية حقيقية لعمليات الحذف (MFA Action Token) موحدة في Live CRUD و Offline Sync.
- * 4. اعتراض الأخطاء وإدارة الجلسات الأحادية (401 Unauthorized Interceptor & 409 Conflict).
+ * 1. عزل طابور المزامنة (Offline Queue) عبر ربط كل عملية بـ (uid + firm_id) ورفض المزامنة عند اختلاف الهوية.
+ * 2. عدم تخزين تذاكر الحذف (action_token) في localStorage، واشتراط الاتصال المباشر للحذف الموثق.
+ * 3. إلغاء الإرسال التلقائي الصامت لـ bio_<credId> واستبداله بتذكرة خادمية لمرة واحدة (act_UUID).
+ * 4. تطهير الطابور المحلي تلقائياً في معالج 401 Unauthorized لمنع تسرب العمليات بين الحسابات.
  * 5. التشفير الآمن للحروف العربية في الـ Headers لخدمات الرفع السحابي (Cloudflare R2).
- * 6. تعقيم بيانات المستخدم وتأمين استعلامات العقل القانوني وبوابة الموكل بالـ PIN.
+ * 6. دعم المسارات الخادمية الجديدة لبوابة الموكل (رفع النواقص والتوقيع الإلكتروني الموثق).
  * ============================================================================
  */
 
@@ -26,8 +26,26 @@ const SYNCABLE_ENDPOINTS = new Set([
     '/api/clients', '/api/cases', '/api/users',
     '/api/installments', '/api/updates', '/api/appointments',
     '/api/hearings', '/api/tasks', '/api/files',
-    '/api/notifications', '/api/expenses', '/api/firms'
+    '/api/notifications', '/api/expenses', '/api/firms',
+    '/api/legal_brain'
 ]);
+
+// ربط المسارات بأسماء الجداول لتمريرها إلى فاحص تذاكر الحذف المربوطة بالسجل
+const ENDPOINT_TABLE_MAP = {
+    '/api/clients': 'mo_clients',
+    '/api/cases': 'mo_cases',
+    '/api/users': 'mo_users',
+    '/api/installments': 'mo_installments',
+    '/api/updates': 'mo_case_updates',
+    '/api/appointments': 'mo_appointments',
+    '/api/hearings': 'mo_appointments',
+    '/api/tasks': 'mo_appointments',
+    '/api/files': 'mo_files',
+    '/api/notifications': 'mo_notifications',
+    '/api/expenses': 'mo_expenses',
+    '/api/firms': 'mo_firms',
+    '/api/legal_brain': 'legal_brain'
+};
 
 /**
  * دالة تعقيم كائن المستخدم من أي حقول سرية أو حساسة
@@ -38,13 +56,44 @@ function sanitizeUserObject(userObj) {
     delete clean.password;
     delete clean.password_hash;
     delete clean.pin_code;
+    delete clean.salary;
+    delete clean.salary_details;
+    delete clean.base_salary;
+    delete clean.financial_notes;
     return clean;
 }
 
 /**
- * حفظ العمليات (POST, PATCH, DELETE) محلياً عند انقطاع الإنترنت
+ * جلب المستخدم الحالي من التخزين المحلي مع تعقيم الحقول الحساسة
  */
-function saveToOfflineQueue(endpoint, method, body, actionToken = null) {
+const getCurrentUser = () => {
+    try {
+        const raw = JSON.parse(localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user')) || {};
+        return sanitizeUserObject(raw);
+    } catch (e) {
+        return {};
+    }
+};
+
+/**
+ * حفظ العمليات (POST, PATCH) محلياً عند انقطاع الإنترنت مع ربطها بهوية المستخدم والمكتب
+ * ملاحظة أمنية: لا يتم تخزين عمليات DELETE أو تذاكر action_token في الطابور المحلي
+ */
+function saveToOfflineQueue(endpoint, method, body) {
+    if (method === 'DELETE') {
+        console.warn('🛡️ [Zero-Trust Guard] عمليات الحذف تتطلب اتصالاً مباشراً ومصادقة خادمية حية ولا تُخزن في الطابور المحلي.');
+        return false;
+    }
+
+    const currentUser = getCurrentUser();
+    const currentUid = currentUser.id || currentUser.uid || null;
+    const currentFirmId = currentUser.firm_id || localStorage.getItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id') || null;
+
+    if (!currentUid || !currentFirmId) {
+        console.warn('🛡️ [Offline Queue] تم رفض حفظ العملية لعدم توفر هوية جلسة صالحة (uid / firm_id).');
+        return false;
+    }
+
     let queue = [];
     try {
         queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
@@ -52,6 +101,9 @@ function saveToOfflineQueue(endpoint, method, body, actionToken = null) {
     } catch (e) {
         queue = [];
     }
+
+    // تطهير أي عناصر قديمة في الطابور لا تنتمي للمستخدم أو المكتب الحالي
+    queue = queue.filter(item => item && String(item.uid) === String(currentUid) && String(item.firm_id) === String(currentFirmId));
 
     // استخراج المعرف ومعالجة الطلبات
     let actionId = (body && body.id && String(body.id).startsWith('temp_'))
@@ -61,22 +113,35 @@ function saveToOfflineQueue(endpoint, method, body, actionToken = null) {
 
     if (method !== 'POST') {
         const match = endpoint.match(/id=(eq\.[a-zA-Z0-9_-]+)/);
-        if (match) actionId = match[1]; // استخراج eq.ID للتعديل أو الحذف
+        if (match) actionId = match[1]; // استخراج eq.ID للتعديل
     }
 
-    // في حال وجود تعديل سابق لنفس السجل ونفس العملية في الطابور، ندمجه لمنع تضخم الطابور
-    const existingIndex = queue.findIndex(item => item.id === actionId && item.endpoint === targetEndpoint && item.method === method && method === 'PATCH');
+    // تأمين نسخة نظيفة من الجسم خالية من أي رموز مصادقة
+    const safeBody = body && typeof body === 'object' ? { ...body } : {};
+    delete safeBody.action_token;
+
+    // في حال وجود تعديل سابق لنفس السجل ونفس العملية في الطابور لنفس المستخدم، ندمجه لمنع تضخم الطابور
+    const existingIndex = queue.findIndex(item =>
+        item.id === actionId &&
+        item.endpoint === targetEndpoint &&
+        item.method === method &&
+        method === 'PATCH' &&
+        String(item.uid) === String(currentUid) &&
+        String(item.firm_id) === String(currentFirmId)
+    );
+
     if (existingIndex !== -1) {
-        queue[existingIndex].body = { ...queue[existingIndex].body, ...(body || {}) };
+        queue[existingIndex].body = { ...queue[existingIndex].body, ...safeBody };
         queue[existingIndex].timestamp = Date.now();
     } else {
         queue.push({
             queue_uid: 'q_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
+            uid: currentUid,
+            firm_id: currentFirmId,
             id: actionId,
             endpoint: targetEndpoint,
             method: method,
-            body: body || {},
-            action_token: actionToken || null,
+            body: safeBody,
             timestamp: Date.now(),
             original_url: endpoint,
             retry_count: 0
@@ -89,13 +154,23 @@ function saveToOfflineQueue(endpoint, method, body, actionToken = null) {
     if (window.showToast) {
         window.showToast('أنت غير متصل بالإنترنت. تم حفظ العملية محلياً وستتم المزامنة تلقائياً عند عودة الاتصال.', 'warning');
     }
+    return true;
 }
 
 /**
- * معالجة الطابور ورفع البيانات للخادم دفعة واحدة عند عودة الاتصال
+ * معالجة الطابور ورفع البيانات للخادم دفعة واحدة عند عودة الاتصال بعد التحقق من مطابقة الهوية
  */
 async function processOfflineQueue() {
     if (isSyncing || !navigator.onLine) return;
+
+    const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+    const currentUser = getCurrentUser();
+    const currentUid = currentUser.id || currentUser.uid || null;
+    const currentFirmId = currentUser.firm_id || localStorage.getItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id') || null;
+
+    if (!token || !currentUid || !currentFirmId) {
+        return;
+    }
 
     let queue = [];
     try {
@@ -106,36 +181,41 @@ async function processOfflineQueue() {
     }
     if (queue.length === 0) return;
 
-    // فلترة أي عمليات لمسارات غير قابلة للمزامنة أصلاً حتى لا تعلق للأبد
-    queue = queue.filter(req => SYNCABLE_ENDPOINTS.has(req.endpoint));
-    if (queue.length === 0) {
+    // 🛡️ عزل صارم: استبعاد أي عملية في الطابور لا تطابق هوية المستخدم أو المكتب الحالي، أو مسارها غير مدعوم
+    const validIdentityQueue = queue.filter(req => {
+        if (!req || !SYNCABLE_ENDPOINTS.has(req.endpoint)) return false;
+        if (!req.uid || !req.firm_id) return false;
+        if (String(req.uid) !== String(currentUid) || String(req.firm_id) !== String(currentFirmId)) {
+            console.warn('🚫 [Sync Identity Firewall] تم حذف عملية طابور قديمة تنتمي لحساب/مكتب مختلف.');
+            return false;
+        }
+        // عدم السماح ببقاء أي action_token مخزن في عناصر قديمة
+        delete req.action_token;
+        return true;
+    });
+
+    if (validIdentityQueue.length === 0) {
         localStorage.removeItem(OFFLINE_QUEUE_KEY);
         return;
     }
 
+    queue = validIdentityQueue;
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+
     isSyncing = true;
+    window.isSyncing = true;
     console.log(`🔄 [Sync Engine] جاري مزامنة ${queue.length} طلبات محفوظة دفعة واحدة...`);
     if (window.showToast) window.showToast('عاد الاتصال. جاري مزامنة البيانات المحفوظة مع الخادم السحابي...', 'info');
 
     try {
-        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-        if (!token) {
-            isSyncing = false;
-            return;
-        }
         const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
-        const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
 
-        // استخراج أي توكن مصادقة ثنائية محفوظ مع عمليات الحذف لتمريره أيضاً في الـ Header
-        const firstDeleteWithToken = queue.find(q => q.method === 'DELETE' && q.action_token);
         const syncHeaders = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
             'x-device-id': deviceId
         };
-        if (firstDeleteWithToken && firstDeleteWithToken.action_token) {
-            syncHeaders['x-action-token'] = firstDeleteWithToken.action_token;
-        }
 
         const response = await fetch(`${baseUrl}/api/sync/offline`, {
             method: 'POST',
@@ -144,8 +224,16 @@ async function processOfflineQueue() {
         });
 
         if (response.status === 401) {
-            console.warn('⚠️ [Sync Engine] الجلسة منتهية أثناء المزامنة.');
+            console.warn('⚠️ [Sync Engine] الجلسة منتهية أثناء المزامنة. جاري تطهير الطابور والجلسة...');
+            localStorage.removeItem(OFFLINE_QUEUE_KEY);
+            localStorage.removeItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+            localStorage.removeItem(CONFIG?.USER_KEY || 'moakkil_user');
+            localStorage.removeItem('moakkil_full_user_backup');
             isSyncing = false;
+            window.isSyncing = false;
+            if (!window.location.pathname.includes('login.html')) {
+                window.location.replace('login.html');
+            }
             return;
         }
 
@@ -166,12 +254,13 @@ async function processOfflineQueue() {
                     syncedSuccessIds.add(rawKey);
                 } else if (item.status === 'failed') {
                     const reason = String(item.reason || '');
-                    // إذا كان الرفض أمنياً أو منطقياً دائماً (صلاحيات، سجل محمي، قضايا نشطة، رمز حذف مرفوض)، لا نعيد المحاولة للأبد
                     const isPermanentRejection = reason.includes('مرفوض') ||
                                                  reason.includes('صلاحية') ||
                                                  reason.includes('غير موجود') ||
                                                  reason.includes('معطل') ||
-                                                 reason.includes('مصادقة ثنائية');
+                                                 reason.includes('مصادقة ثنائية') ||
+                                                 reason.includes('لمستخدم آخر') ||
+                                                 reason.includes('لمكتب آخر');
                     if (isPermanentRejection) {
                         permanentFailedIds.add(itemKey);
                         permanentFailedIds.add(rawKey);
@@ -211,7 +300,11 @@ async function processOfflineQueue() {
                 }
             }
 
-            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+            if (remainingQueue.length > 0) {
+                localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+            } else {
+                localStorage.removeItem(OFFLINE_QUEUE_KEY);
+            }
 
             if (remainingQueue.length === 0 && droppedCount === 0) {
                 console.log('✅ [Sync Engine] تمت المزامنة الشاملة بنجاح.');
@@ -231,6 +324,7 @@ async function processOfflineQueue() {
         console.error(`❌ [Sync Error] فشل المزامنة الشاملة:`, e);
     } finally {
         isSyncing = false;
+        window.isSyncing = false;
     }
 }
 
@@ -263,37 +357,76 @@ function applyJordanTimeHack(isoString) {
 }
 
 /**
- * جلب المستخدم الحالي من التخزين المحلي مع تعقيم الحقول الحساسة
+ * استخراج اسم الجدول ومعرف السجل من رابط المسار لربط تذكرة الحذف بالسجل المحدد
  */
-const getCurrentUser = () => {
-    try {
-        const raw = JSON.parse(localStorage.getItem(CONFIG.USER_KEY || 'moakkil_user')) || {};
-        return sanitizeUserObject(raw);
-    } catch (e) {
-        return {};
+function resolveDeleteTargetFromEndpoint(endpoint = '') {
+    const basePath = String(endpoint || '').split('?')[0];
+    const targetTable = ENDPOINT_TABLE_MAP[basePath] || '*';
+    let targetId = '*';
+    const match = String(endpoint || '').match(/id=eq\.([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+        targetId = match[1];
     }
-};
+    return { targetTable, targetId };
+}
 
 /**
- * التأكد من توفر رمز مصادقة ثنائية صالح (x-action-token) قبل تنفيذ أي عملية حذف (DELETE)
+ * التأكد من توفر تذكرة مصادقة ثنائية خادمية صالحة لمرة واحدة (act_UUID) قبل تنفيذ أي عملية حذف (DELETE)
+ * تم إلغاء الإرسال التلقائي الصامت لـ bio_<credId> نهائياً
  */
-async function ensureValidActionToken(providedToken = null) {
-    if (providedToken && String(providedToken).trim().length >= 4) {
-        return String(providedToken).trim();
+async function ensureValidActionToken(providedToken = null, targetTable = '*', targetId = '*') {
+    const cleanProvided = providedToken ? String(providedToken).trim() : '';
+
+    // 1. إذا كانت التذكرة المقدمة هي تذكرة خادمية موقعة جاهزة (act_UUID)، نعتمدها مباشرة
+    if (cleanProvided.startsWith('act_') && cleanProvided.length > 10) {
+        return cleanProvided;
     }
 
-    // 1. إذا كان الجهاز يمتلك بصمة موثقة ومسجلة في النظام، نستخدم معرف البصمة الموثق
-    const bioCredId = localStorage.getItem('moakkil_biometric_id');
-    if (bioCredId && bioCredId.length >= 8) {
-        return `bio_${bioCredId}`;
+    const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+    const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
+    const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+
+    // 2. إذا مررت الواجهة كود PIN أو OTP نصي، نحوله عبر الخادم إلى تذكرة موقعة لمرة واحدة (act_UUID)
+    if (cleanProvided.length >= 4 && !cleanProvided.startsWith('bio_')) {
+        try {
+            const verifyRes = await fetch(`${baseUrl}/api/auth/verify-action-mfa`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'x-device-id': deviceId
+                },
+                body: JSON.stringify({
+                    method: 'code',
+                    code: cleanProvided,
+                    target_table: targetTable || '*',
+                    target_id: targetId || '*'
+                })
+            });
+            const verifyData = await verifyRes.json().catch(() => ({}));
+            if (verifyRes.ok && verifyData.action_token) {
+                return verifyData.action_token;
+            }
+        } catch (e) {
+            console.warn('🛡️ [Action Token Exchange Error]:', e);
+        }
     }
 
-    // 2. إذا كانت مكتبة SweetAlert2 متوفرة، نطلب من المستخدم إدخال رمز الحذف أو طلب رمز لتيليغرام
+    // 3. الاعتماد الأساسي على الحارس المركزي AUTH.requireActionAuth الذي يطلب البصمة الحية أو الكود ويصدر تذكرة الخادم
+    if (typeof AUTH !== 'undefined' && typeof AUTH.requireActionAuth === 'function') {
+        try {
+            return await AUTH.requireActionAuth('تأكيد عملية الحذف النهائي/الأرشفة', targetTable, targetId);
+        } catch (authErr) {
+            return null;
+        }
+    }
+
+    // 4. نافذة احتياطية عبر SweetAlert2 في حال عدم تحميل AUTH في السياق الحالي
     if (typeof Swal !== 'undefined') {
         const result = await Swal.fire({
             title: 'تأكيد أمني للحذف (MFA)',
             html: `
-                <p class="small text-muted fw-bold mb-3">هذا الإجراء حساس ويتطلب مصادقة ثنائية. أدخل رمز الأمان الخاص بك أو اطلب رمزاً فورياً عبر تيليغرام:</p>
+                <p class="small text-muted fw-bold mb-3">هذا الإجراء حساس ويتطلب مصادقة ثنائية. أدخل رمز الأمان (PIN) الخاص بك أو اطلب رمزاً فورياً عبر تيليغرام:</p>
                 <button type="button" id="swal-req-mfa-btn" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3 mb-2">
                     <i class="fab fa-telegram me-1"></i> إرسال رمز تأكيد إلى تيليغرام
                 </button>
@@ -310,6 +443,7 @@ async function ensureValidActionToken(providedToken = null) {
             confirmButtonText: 'تأكيد الحذف',
             cancelButtonText: 'إلغاء',
             confirmButtonColor: '#9e2a2b',
+            showLoaderOnConfirm: true,
             didOpen: () => {
                 const reqBtn = document.getElementById('swal-req-mfa-btn');
                 if (reqBtn) {
@@ -327,12 +461,37 @@ async function ensureValidActionToken(providedToken = null) {
                     });
                 }
             },
-            preConfirm: (val) => {
-                if (!val || val.trim().length < 4) {
+            preConfirm: async (val) => {
+                const cleanVal = String(val || '').trim();
+                if (cleanVal.length < 4) {
                     Swal.showValidationMessage('يرجى إدخال رمز تأكيد صالح (4 خانات على الأقل)');
                     return false;
                 }
-                return val.trim();
+                try {
+                    const r = await fetch(`${baseUrl}/api/auth/verify-action-mfa`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                            'x-device-id': deviceId
+                        },
+                        body: JSON.stringify({
+                            method: 'code',
+                            code: cleanVal,
+                            target_table: targetTable || '*',
+                            target_id: targetId || '*'
+                        })
+                    });
+                    const data = await r.json();
+                    if (!r.ok || !data.action_token) {
+                        Swal.showValidationMessage(data.error || 'رمز التأكيد غير صحيح');
+                        return false;
+                    }
+                    return data.action_token;
+                } catch (err) {
+                    Swal.showValidationMessage('تعذر الاتصال بالخادم للتحقق من الرمز');
+                    return false;
+                }
             }
         });
 
@@ -354,12 +513,32 @@ async function ensureValidActionToken(providedToken = null) {
  */
 async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false, actionToken = null) {
 
-    // 🛡️ إذا كانت العملية DELETE ولم يتم تمرير actionToken، نطلبه تلقائياً لضمان عدم رفض السيرفر
+    // 1. معالجة حالة انقطاع الإنترنت (Offline Handling) قبل طلب أي تذكرة حذف
+    if (!navigator.onLine && !isPublic) {
+        if (method === 'DELETE') {
+            if (window.showToast) {
+                window.showToast('لا يمكن تنفيذ عمليات الحذف في وضع عدم الاتصال (Offline). يرجى الاتصال بالإنترنت أولاً.', 'error');
+            }
+            return { error: 'لا يمكن تنفيذ عمليات الحذف دون اتصال بالإنترنت نظراً لاشتراط التحقق الأمني الفوري.' };
+        }
+        if (['POST', 'PATCH'].includes(method)) {
+            const saved = saveToOfflineQueue(endpoint, method, body);
+            if (!saved) {
+                return { error: 'تعذر حفظ العملية محلياً لعدم وجود جلسة مستخدم صالحة.' };
+            }
+            return { success: true, offline: true, temp_id: `temp_${Date.now()}`, message: "تم الحفظ محلياً لحين عودة الإنترنت" };
+        } else {
+            return { error: 'أنت غير متصل بالإنترنت، ولا يمكن جلب أحدث البيانات حالياً.' };
+        }
+    }
+
+    // 🛡️ إذا كانت العملية DELETE، نتأكد من استصدار تذكرة عملية موقعة لمرة واحدة ومربوطة بالجدول والسجل
     let resolvedActionToken = actionToken;
-    if (method === 'DELETE' && !isPublic && !resolvedActionToken) {
-        resolvedActionToken = await ensureValidActionToken(null);
+    if (method === 'DELETE' && !isPublic) {
+        const { targetTable, targetId } = resolveDeleteTargetFromEndpoint(endpoint);
+        resolvedActionToken = await ensureValidActionToken(actionToken, targetTable, targetId);
         if (!resolvedActionToken) {
-            return { error: 'تم إلغاء عملية الحذف لعدم إدخال رمز المصادقة الثنائية.' };
+            return { error: 'تم إلغاء عملية الحذف لعدم إتمام المصادقة الثنائية.' };
         }
     }
 
@@ -372,19 +551,9 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
         }
     }
 
-    // 1. معالجة حالة انقطاع الإنترنت (Offline Handling)
-    if (!navigator.onLine && !isPublic) {
-        if (['POST', 'PATCH', 'DELETE'].includes(method)) {
-            saveToOfflineQueue(endpoint, method, body, resolvedActionToken);
-            return { success: true, offline: true, temp_id: `temp_${Date.now()}`, message: "تم الحفظ محلياً لحين عودة الإنترنت" };
-        } else {
-            return { error: 'أنت غير متصل بالإنترنت، ولا يمكن جلب أحدث البيانات حالياً.' };
-        }
-    }
-
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+    const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
     const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
-    const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+    const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
 
     // 2. تجهيز الترويسات الأمنية (Headers)
     const headers = {
@@ -396,7 +565,7 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // 🛡️ إضافة ترويسة المصادقة الثنائية لعمليات الحذف (MFA)
+    // 🛡️ إضافة ترويسة المصادقة الثنائية لعمليات الحذف (One-Time Scoped Action Ticket)
     if (resolvedActionToken) {
         headers['x-action-token'] = resolvedActionToken;
     }
@@ -410,12 +579,19 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
 
         // 4. الحماية ضد الجلسات المنتهية أو اختطاف الجلسات (Single Session Firewall - خطأ 401)
         if (response.status === 401 && !isPublic && !endpoint.includes('/api/auth/')) {
-            console.warn("⚠️ [Security] تم رفض الجلسة (قد يكون الحساب موقوفاً أو تم تسجيل الدخول من جهاز آخر). جاري الطرد...");
-            localStorage.removeItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-            localStorage.removeItem(CONFIG.USER_KEY || 'moakkil_user');
+            console.warn("⚠️ [Security] تم رفض الجلسة (قد يكون الحساب موقوفاً أو تم تسجيل الدخول من جهاز آخر). جاري تطهير الطابور والطرد...");
+            isSyncing = false;
+            window.isSyncing = false;
+            localStorage.removeItem(OFFLINE_QUEUE_KEY);
+            localStorage.removeItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+            localStorage.removeItem(CONFIG?.USER_KEY || 'moakkil_user');
+            localStorage.removeItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id');
             localStorage.removeItem('moakkil_full_user_backup');
+            localStorage.removeItem('firm_settings');
+            sessionStorage.clear();
+
             if (window.showToast) window.showToast('تم إنهاء الجلسة لدواعٍ أمنية. يرجى تسجيل الدخول مجدداً.', 'error');
-            setTimeout(() => { window.location.href = 'login.html'; }, 1500);
+            setTimeout(() => { window.location.replace('login.html'); }, 1200);
             return null;
         }
 
@@ -444,9 +620,9 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
     } catch (error) {
         console.error(`❌ API Error [${endpoint}]:`, error.message);
 
-        // 7. التعامل مع فقدان الاتصال اللحظي أثناء الإرسال (Fallback)
-        if (error.message === 'Failed to fetch' && ['POST', 'PATCH', 'DELETE'].includes(method) && !isPublic) {
-            saveToOfflineQueue(endpoint, method, body, resolvedActionToken);
+        // 7. التعامل مع فقدان الاتصال اللحظي أثناء الإرسال (Fallback لعمليات POST و PATCH فقط)
+        if (error.message === 'Failed to fetch' && ['POST', 'PATCH'].includes(method) && !isPublic) {
+            saveToOfflineQueue(endpoint, method, body);
             return { success: true, offline: true, message: "تم الحفظ محلياً بسبب انقطاع الاتصال المفاجئ" };
         }
         return { error: error.message };
@@ -522,7 +698,7 @@ const API = {
     deleteExpense: (id, actionToken) => fetchAPI(`/api/expenses?id=eq.${id}`, 'DELETE', null, false, actionToken),
 
     // -------------------------------------------------------------
-    // 4.6 العقل الذكي والبحث (AI Integration Engine)
+    // 4.6 العقل الذكي والبحث والمكتبة (AI Integration & Legal Brain)
     // -------------------------------------------------------------
     askAI: (content) => fetchAPI('/api/ai/process', 'POST', { type: 'legal_advisor', content }),
     extractDataAI: (content, aiType = 'data_extractor') => fetchAPI('/api/ai/process', 'POST', { type: aiType, content }),
@@ -562,6 +738,9 @@ const API = {
         const safeQ = encodeURIComponent(query.trim());
         return fetchAPI(safeQ ? `/api/legal_brain?or=(title.ilike.*${safeQ}*,category.ilike.*${safeQ}*)` : '/api/legal_brain');
     },
+    addLegalBrainItem: (data) => fetchAPI('/api/legal_brain', 'POST', data),
+    updateLegalBrainItem: (id, data) => fetchAPI(`/api/legal_brain?id=eq.${id}`, 'PATCH', data),
+    deleteLegalBrainItem: (id, actionToken) => fetchAPI(`/api/legal_brain?id=eq.${id}`, 'DELETE', null, false, actionToken),
 
     // -------------------------------------------------------------
     // 4.7 الإشعارات والمصادقة وتاريخ النشاط (Security & Notifications)
@@ -571,7 +750,7 @@ const API = {
     subscribePush: (data) => fetchAPI('/api/notifications/subscribe', 'POST', data),
 
     requestActionToken: () => fetchAPI('/api/auth/request-action-token', 'POST', {}),
-    ensureActionToken: (token = null) => ensureValidActionToken(token),
+    ensureActionToken: (token = null, targetTable = '*', targetId = '*') => ensureValidActionToken(token, targetTable, targetId),
 
     registerBiometric: (data) => fetchAPI('/api/auth/biometric-register', 'POST', data),
     biometricLogin: async (data) => {
@@ -605,9 +784,9 @@ const API = {
             throw new Error('حجم الملف يتجاوز الحد الأقصى المسموح به (25 ميجابايت)');
         }
 
-        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
+        const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
         const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
-        const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
 
         // تشفير الحروف العربية في الـ Headers لمنع أخطاء (ISO-8859-1 HTTP Header encoding error)
         const headers = {
@@ -647,8 +826,8 @@ const API = {
      * التحميل الآمن للملفات المشفرة من R2 عبر الـ Worker (للمحامين)
      */
     downloadR2File: async (r2Key, fileName) => {
-        const token = localStorage.getItem(CONFIG.TOKEN_KEY || 'moakkil_token');
-        const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+        const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
 
         if (window.showToast) window.showToast('جاري جلب وتشفير الملف من التخزين السحابي...', 'info');
 
@@ -680,7 +859,7 @@ const API = {
      * التحميل الآمن للملفات المتاحة للموكل عبر بوابة الموكل (Public R2 Download)
      */
     downloadPublicR2File: async (r2Key, clientToken, fileName) => {
-        const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
         if (window.showToast) window.showToast('جاري تحميل المستند بشكل آمن...', 'info');
 
         try {
@@ -710,18 +889,51 @@ const API = {
     // -------------------------------------------------------------
     publicLogin: async (data) => {
         const res = await fetchAPI('/api/public/client/login', 'POST', data, true);
-        if (res && res.success && data && data.access_pin) {
-            try { sessionStorage.setItem(`moakkil_portal_pin_${res.token || data.token}`, data.access_pin); } catch (e) {}
+        if (res && res.success) {
+            const resolvedToken = res.token || data?.token || '';
+            try {
+                if (res.portal_session_token && resolvedToken) {
+                    sessionStorage.setItem(`moakkil_portal_session_${resolvedToken}`, res.portal_session_token);
+                }
+            } catch (e) {}
         }
         return res;
     },
 
     getPublicPortalData: (token, pin = '') => {
-        let effectivePin = pin;
-        if (!effectivePin && token) {
-            try { effectivePin = sessionStorage.getItem(`moakkil_portal_pin_${token}`) || ''; } catch (e) {}
+        return fetchAPI(`/api/public/client?token=${encodeURIComponent(token || '')}${pin ? `&pin=${encodeURIComponent(pin)}` : ''}`, 'GET', null, true);
+    },
+
+    /**
+     * رفع المستندات الناقصة من بوابة الموكل إلى R2 عبر المسار الخادمي الموثق
+     */
+    uploadMissingPortalDoc: async (token, file) => {
+        if (!file) throw new Error('يرجى اختيار المستند المطلوب أولاً');
+        if (file.size > MAX_R2_FILE_SIZE) {
+            throw new Error('حجم الملف يتجاوز الحد الأقصى المسموح به (25 ميجابايت)');
         }
-        return fetchAPI(`/api/public/client?token=${encodeURIComponent(token || '')}${effectivePin ? `&pin=${encodeURIComponent(effectivePin)}` : ''}`, 'GET', null, true);
+        const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
+        const res = await fetch(`${baseUrl}/api/public/client/upload-missing-doc?token=${encodeURIComponent(token || '')}`, {
+            method: 'POST',
+            headers: {
+                'x-portal-token': token || '',
+                'x-file-name': encodeURIComponent(file.name)
+            },
+            body: file
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'فشل رفع المستند المطلوب');
+        return data;
+    },
+
+    /**
+     * إرسال التوقيع الإلكتروني الموثق من بوابة الموكل إلى الخادم
+     */
+    submitPortalSignature: (token, signatureDataUrl) => {
+        return fetchAPI('/api/public/client/submit-signature', 'POST', {
+            token: token,
+            signature_data: signatureDataUrl
+        }, true);
     },
 
     verifyReceipt: (id) => fetchAPI(id && id !== 'undefined' ? `/api/public/verify-receipt?id=${encodeURIComponent(id)}` : '/api/public/verify-receipt', 'GET', null, true),

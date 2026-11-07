@@ -2,13 +2,13 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/client-details.js
- * الوصف: المحرك البرمجي لصفحة تفاصيل الموكل (Enterprise Offline & R2 Edition)
- * الميزات:
- * 1. جلب متوازٍ (Parallel Fetch) لبيانات الموكل، قضاياه، ملفاته، ومواعيده.
- * 2. محرك طلب النواقص (Missing Docs) وربطها التلقائي ببوابة الموكل.
- * 3. حماية ضد الحذف الخاطئ وتفعيل المصادقة الثنائية (MFA / WebAuthn) لحذف الموكل والملفات.
- * 4. دعم كامل للعمل بلا إنترنت والمزامنة التلقائية.
- * 5. التوليد الآلي لتقارير الإنجاز الشهرية الذكية (AI Monthly Reports).
+ * الوصف: المحرك البرمجي لصفحة تفاصيل الموكل (Enterprise V5.3 True Zero-Trust & R2 Edition)
+ * الميزات والتحصينات:
+ * 1. حارس جلسة إلزامي (AUTH.checkSession) وجلب متوازٍ لبيانات الموكل، قضاياه، ملفاته، ومواعيده.
+ * 2. استبدال نوافذ الـ PIN اليدوية بالحارس الموحد (AUTH.requireActionAuth) لإصدار تذاكر حذف لمرة واحدة (act_UUID).
+ * 3. محرك طلب النواقص (Missing Docs) المتوافق مع قائمة السماح (missing_docs_request) في بوابة الموكل.
+ * 4. أرشفة وتحميل مشفر للمستندات عبر Cloudflare R2 مع منع الرفع أو الحذف أثناء انقطاع الاتصال.
+ * 5. التوليد الآلي لتقارير الإنجاز الشهرية الذكية (AI Monthly Reports) ومشاركتها عبر واتساب.
  * ============================================================================
  */
 
@@ -36,25 +36,41 @@ const escapeHTML = (str) => {
 // [2] التهيئة وبدء التشغيل (Initialization)
 // ============================================================================
 window.onload = async () => {
-    // 1. تطبيق هوية المكتب البصرية (White-Labeling)
+    // 1. التحقق الأمني الإلزامي من صلاحية الجلسة
+    if (typeof AUTH !== 'undefined' && typeof AUTH.checkSession === 'function') {
+        const currentUser = AUTH.checkSession();
+        if (!currentUser) return;
+    }
+
+    // 2. تطبيق هوية المكتب البصرية (White-Labeling)
     applyFirmSettings();
     
-    // 2. التحقق من وجود معرف الموكل
+    // 3. التحقق من وجود معرف الموكل
     if (!currentClientId) { 
         window.location.href = 'app.html'; 
         return; 
     }
     
-    // 3. جلب وتعبئة البيانات
+    // 4. جلب وتعبئة البيانات
     await loadClientData();
 };
 
 function applyFirmSettings() {
-    const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
-    if (!settings) return;
-    const root = document.documentElement;
-    if (settings.primary_color) root.style.setProperty('--navy', settings.primary_color);
-    if (settings.accent_color) root.style.setProperty('--accent', settings.accent_color);
+    try {
+        const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
+        if (!settings) return;
+        const root = document.documentElement;
+        if (settings.primary_color) {
+            root.style.setProperty('--primary-dark', settings.primary_color);
+            root.style.setProperty('--navy', settings.primary_color);
+        }
+        if (settings.accent_color) {
+            root.style.setProperty('--gold-luxury', settings.accent_color);
+            root.style.setProperty('--accent', settings.accent_color);
+        }
+    } catch (e) {
+        console.error("Firm Settings Apply Error:", e);
+    }
 }
 
 // العودة للوحة التحكم
@@ -65,10 +81,10 @@ window.goBack = function() {
 // طلب مزامنة يدوية للبيانات
 window.manualSync = async () => {
     const btn = document.getElementById('btn_sync');
-    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-sync fa-spin"></i>'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-sync fa-spin"></i>'; }
     await loadClientData();
     window.showAlert('تمت المزامنة بنجاح وتحديث بيانات الموكل', 'success');
-    if(btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
 };
 
 // ============================================================================
@@ -84,26 +100,26 @@ async function loadClientData() {
             typeof API.getAppointments === 'function' ? API.getAppointments() : Promise.resolve([])
         ]);
 
-        if (!clientsRes || clientsRes.length === 0) { 
+        if (!clientsRes || !Array.isArray(clientsRes) || clientsRes.length === 0) { 
             window.location.href = 'app.html'; 
             return; 
         }
         
-        clientObj = clientsRes.find(c => c.id === currentClientId);
+        clientObj = clientsRes.find(c => String(c.id) === String(currentClientId));
         if (!clientObj) { 
             window.location.href = 'app.html'; 
             return; 
         }
 
-        // تصفية القضايا، الملفات، والمواعيد المرتبطة بهذا الموكل فقط
-        clientCases = Array.isArray(casesRes) ? casesRes.filter(c => c.client_id === currentClientId) : [];
-        clientFiles = Array.isArray(filesRes) ? filesRes.filter(f => f.client_id === currentClientId) : [];
-        clientAppointments = Array.isArray(apptsRes) ? apptsRes.filter(a => a.client_id === currentClientId) : [];
+        // تصفية القضايا، الملفات، والمواعيد المرتبطة بهذا الموكل فقط (مع استبعاد السجلات المؤرشفة/المحذوفة)
+        clientCases = Array.isArray(casesRes) ? casesRes.filter(c => String(c.client_id) === String(currentClientId) && !c.is_deleted) : [];
+        clientFiles = Array.isArray(filesRes) ? filesRes.filter(f => String(f.client_id) === String(currentClientId) && !f.is_deleted) : [];
+        clientAppointments = Array.isArray(apptsRes) ? apptsRes.filter(a => String(a.client_id) === String(currentClientId) && !a.is_deleted) : [];
 
         // الحسابات المالية (تجميع من القضايا المرتبطة)
         let totalAgreed = 0, totalPaid = 0;
         clientCases.forEach(c => {
-            totalAgreed += Number(c.total_agreed_fees) || 0;
+            totalAgreed += Number(c.total_agreed_fees || c.agreed_fees) || 0;
             totalPaid += Number(c.total_paid) || 0;
         });
 
@@ -128,15 +144,24 @@ async function loadClientData() {
  * 4.1 تحديث الترويسة والملخص المالي
  */
 function renderHeaderAndSummary(totalAgreed, totalPaid) {
-    document.getElementById('header-client-name').innerText = escapeHTML(clientObj.full_name);
-    document.getElementById('det-full-name').innerText = escapeHTML(clientObj.full_name);
-    document.getElementById('det-phone').innerText = escapeHTML(clientObj.phone || 'لا يوجد رقم هاتف');
+    const headerNameEl = document.getElementById('header-client-name');
+    const detFullNameEl = document.getElementById('det-full-name');
+    const detPhoneEl = document.getElementById('det-phone');
+
+    if (headerNameEl) headerNameEl.innerText = clientObj.full_name || 'تفاصيل الموكل';
+    if (detFullNameEl) detFullNameEl.innerText = clientObj.full_name || '--';
+    if (detPhoneEl) detPhoneEl.innerText = clientObj.phone || 'لا يوجد رقم هاتف';
 
     // الشارات (Badges) بنمط Soft UI
     let badgesHtml = '';
-    if (clientObj.client_type === 'شركة') badgesHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm px-3 py-2 rounded-pill"><i class="fas fa-building me-1"></i> شركة / اعتباري</span>`;
-    if (clientObj.confidentiality_level === 'سري') badgesHtml += `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 shadow-sm px-3 py-2 rounded-pill ms-2"><i class="fas fa-user-secret me-1"></i> سري جداً</span>`;
-    document.getElementById('client-badges').innerHTML = badgesHtml;
+    if (clientObj.client_type === 'شركة') {
+        badgesHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm px-3 py-2 rounded-pill"><i class="fas fa-building me-1"></i> شركة / اعتباري</span>`;
+    }
+    if (clientObj.confidentiality_level === 'سري') {
+        badgesHtml += `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 shadow-sm px-3 py-2 rounded-pill ms-2"><i class="fas fa-user-secret me-1"></i> سري جداً</span>`;
+    }
+    const badgesContainer = document.getElementById('client-badges');
+    if (badgesContainer) badgesContainer.innerHTML = badgesHtml;
 
     // حالة بوابة الموكل الإلكترونية (Client Portal)
     const portalBadge = document.getElementById('portal_status_badge');
@@ -171,24 +196,31 @@ function renderHeaderAndSummary(totalAgreed, totalPaid) {
     }
 
     // المؤشرات المالية
-    document.getElementById('fin-total-agreed').innerText = totalAgreed.toLocaleString('en-US');
-    document.getElementById('fin-total-paid').innerText = totalPaid.toLocaleString('en-US');
-    document.getElementById('fin-remaining').innerText = (totalAgreed - totalPaid).toLocaleString('en-US');
+    const elAgreed = document.getElementById('fin-total-agreed');
+    const elPaid = document.getElementById('fin-total-paid');
+    const elRem = document.getElementById('fin-remaining');
+    if (elAgreed) elAgreed.innerText = totalAgreed.toLocaleString('en-US');
+    if (elPaid) elPaid.innerText = totalPaid.toLocaleString('en-US');
+    if (elRem) elRem.innerText = (totalAgreed - totalPaid).toLocaleString('en-US');
 }
 
 /**
  * 4.2 تعبئة البيانات الشخصية (KYC Data)
  */
 function renderClientInfo() {
-    document.getElementById('det-national-id').innerText = escapeHTML(clientObj.national_id || '--');
-    document.getElementById('det-email').innerText = escapeHTML(clientObj.email || '--');
-    document.getElementById('det-address').innerText = escapeHTML(clientObj.address || '--');
-    document.getElementById('det-mother').innerText = escapeHTML(clientObj.mother_name || '--');
-    document.getElementById('det-dob').innerText = escapeHTML(clientObj.date_of_birth || '--');
-    document.getElementById('det-pob').innerText = escapeHTML(clientObj.place_of_birth || '--');
-    document.getElementById('det-nationality').innerText = escapeHTML(clientObj.nationality || '--');
-    document.getElementById('det-marital').innerText = escapeHTML(clientObj.marital_status || '--');
-    document.getElementById('det-profession').innerText = escapeHTML(clientObj.profession || '--');
+    const setFieldText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val || '--';
+    };
+    setFieldText('det-national-id', clientObj.national_id);
+    setFieldText('det-email', clientObj.email);
+    setFieldText('det-address', clientObj.address);
+    setFieldText('det-mother', clientObj.mother_name);
+    setFieldText('det-dob', clientObj.date_of_birth);
+    setFieldText('det-pob', clientObj.place_of_birth);
+    setFieldText('det-nationality', clientObj.nationality);
+    setFieldText('det-marital', clientObj.marital_status);
+    setFieldText('det-profession', clientObj.profession || clientObj.occupation);
 }
 
 /**
@@ -196,21 +228,23 @@ function renderClientInfo() {
  */
 function renderCasesList() {
     const list = document.getElementById('client-cases-list');
-    document.getElementById('cases-count').innerText = clientCases.length;
+    const countEl = document.getElementById('cases-count');
+    if (countEl) countEl.innerText = clientCases.length;
+    if (!list) return;
     
     if (clientCases.length === 0) { 
         list.innerHTML = '<div class="col-12 text-center p-5 text-muted fw-bold bg-white rounded-4 border shadow-sm"><i class="fas fa-folder-open fa-3x mb-3 opacity-25"></i><br>لا توجد قضايا مسجلة لهذا الموكل حالياً.</div>'; 
         return; 
     }
     
-    list.innerHTML = clientCases.map(c => {
+    list.innerHTML = '<div class="row g-3">' + clientCases.map(c => {
         let statusColor = c.status === 'نشطة' ? 'success' : (c.status === 'مكتملة' || c.status === 'مغلقة' ? 'dark' : 'warning');
         return `
-        <div class="col-md-6 col-lg-4 fade-in mb-3">
-            <div class="compact-card case-card p-3 d-flex flex-column justify-content-between bg-white transition-hover h-100" onclick="goToCase('${c.id}')" style="cursor: pointer;">
+        <div class="col-md-6 col-lg-4 fade-in">
+            <div class="compact-card case-card p-3 d-flex flex-column justify-content-between bg-white transition-hover h-100" onclick="goToCase('${escapeHTML(c.id)}')" style="cursor: pointer;">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <b class="text-navy lh-base fs-5 mb-0">${escapeHTML(c.case_internal_id || 'ملف بلا رقم')}</b>
-                    <span class="badge bg-${statusColor} bg-opacity-10 text-${statusColor} border border-${statusColor} border-opacity-25 shadow-sm px-2 py-1 rounded-pill">${escapeHTML(c.status)}</span>
+                    <span class="badge bg-${statusColor} bg-opacity-10 text-${statusColor} border border-${statusColor} border-opacity-25 shadow-sm px-2 py-1 rounded-pill">${escapeHTML(c.status || 'نشطة')}</span>
                 </div>
                 <div class="card-data-grid mt-2">
                     <div class="data-item full-width text-truncate mb-1" title="${escapeHTML(c.current_court || 'المحكمة غير محددة')}">
@@ -222,7 +256,7 @@ function renderCasesList() {
                 </div>
             </div>
         </div>`;
-    }).join('');
+    }).join('') + '</div>';
 }
 
 /**
@@ -230,6 +264,7 @@ function renderCasesList() {
  */
 function renderAppointmentsList() {
     const list = document.getElementById('client-appointments-list');
+    if (!list) return;
     
     if (clientAppointments.length === 0) {
         list.innerHTML = '<div class="text-center p-5 text-muted fw-bold bg-white rounded-4 border shadow-sm"><i class="fas fa-calendar-times fa-3x mb-3 opacity-50" style="color: var(--gold-luxury);"></i><br>لا توجد مواعيد أو اجتماعات مجدولة لهذا الموكل.</div>';
@@ -262,14 +297,19 @@ function renderAppointmentsList() {
  */
 function renderFilesList() {
     const container = document.getElementById('client-files-list');
+    if (!container) return;
+
     if (clientFiles.length === 0) { 
         container.innerHTML = '<div class="col-12 text-center p-5 text-muted fw-bold border bg-white rounded-4 shadow-sm w-100"><i class="fas fa-archive fa-3x mb-3 opacity-25"></i><br>لا يوجد مستندات مؤرشفة لهذا الموكل.</div>'; 
         return; 
     }
     
     container.innerHTML = clientFiles.map(f => {
-        const isImage = f.file_extension && ['jpg','jpeg','png'].includes(f.file_extension);
-        const iconHtml = isImage ? `<i class="fas fa-image fa-3x text-primary mb-3 mt-2 opacity-75 mx-auto"></i>` : `<i class="fas fa-file-pdf fa-3x text-danger mb-3 mt-2 opacity-75 mx-auto"></i>`;
+        const ext = (f.file_extension || (f.file_name && f.file_name.includes('.') ? f.file_name.split('.').pop() : '') || '').toLowerCase();
+        const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) || (f.file_type && f.file_type.includes('image'));
+        const iconHtml = isImage
+            ? `<i class="fas fa-image fa-3x text-primary mb-3 mt-2 opacity-75 mx-auto"></i>`
+            : `<i class="fas fa-file-pdf fa-3x text-danger mb-3 mt-2 opacity-75 mx-auto"></i>`;
         
         // تنبيه لانتهاء الصلاحية إن وجد
         let expiryBadge = '';
@@ -279,15 +319,19 @@ function renderFilesList() {
         }
         
         // فحص نوع الرابط وتفعيل التحميل المشفر (R2)
-        const isR2 = f.file_url && !f.file_url.startsWith('http');
+        const fileKey = f.file_url || f.gdrive_file_id || f.drive_file_id || '';
+        const isR2 = fileKey && !fileKey.startsWith('http');
+        const safeJsKey = escapeHTML(fileKey).replace(/'/g, "\\'");
+        const safeJsName = escapeHTML(f.file_name || 'document').replace(/'/g, "\\'");
+
         const viewBtn = isR2 
-            ? `<button class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm py-2" onclick="API.downloadR2File('${escapeHTML(f.file_url)}', '${escapeHTML(f.file_name)}')"><i class="fas fa-lock me-1 text-success"></i> تحميل مشفر</button>`
-            : `<a href="${escapeHTML(f.file_url || f.drive_file_id || '#')}" target="_blank" class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm py-2"><i class="fas fa-external-link-alt me-1"></i> عرض</a>`;
+            ? `<button class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm py-2" onclick="API.downloadR2File('${safeJsKey}', '${safeJsName}')"><i class="fas fa-lock me-1 text-success"></i> تحميل مشفر</button>`
+            : `<a href="${escapeHTML(fileKey || '#')}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm py-2"><i class="fas fa-external-link-alt me-1"></i> عرض</a>`;
 
         return `
         <div class="col-6 col-md-4 mb-2 fade-in">
-            <div class="compact-card appt-card p-3 text-center border shadow-sm h-100 bg-white position-relative d-flex flex-column transition-hover">
-                <button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm border border-danger border-opacity-25" onclick="deleteClientFile('${f.id}')" title="حذف المستند"><i class="fas fa-trash"></i></button>
+            <div class="compact-card doc-item appt-card p-3 text-center border shadow-sm h-100 bg-white position-relative d-flex flex-column transition-hover">
+                <button class="btn btn-sm text-danger position-absolute top-0 start-0 m-2 bg-light rounded-circle shadow-sm border border-danger border-opacity-25" onclick="deleteClientFile('${escapeHTML(f.id)}')" title="حذف المستند"><i class="fas fa-trash"></i></button>
                 <span class="badge bg-light text-dark border mb-2 mx-auto text-truncate px-3 py-1" style="max-width:80%;">${escapeHTML(f.file_category || 'مستند')}</span>
                 ${iconHtml} 
                 <h6 class="small fw-bold text-truncate mt-1 mb-0 text-navy px-1" title="${escapeHTML(f.file_name)}">${escapeHTML(f.file_name)}</h6>
@@ -313,61 +357,74 @@ window.openRequestDocsModal = function() {
         return;
     }
 
-    select.innerHTML = '<option value="">-- اختر القضية المرتبطة بالطلب --</option>' + 
-        clientCases.map(c => `<option value="${c.id}">${escapeHTML(c.case_internal_id)} - ${escapeHTML(c.opponent_name || 'بدون خصم')}</option>`).join('');
+    if (select) {
+        select.innerHTML = '<option value="">-- اختر القضية المرتبطة بالطلب --</option>' + 
+            clientCases.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.case_internal_id || 'ملف')} - ${escapeHTML(c.opponent_name || 'بدون خصم')}</option>`).join('');
+    }
     
-    document.getElementById('req_docs_name').value = '';
+    const nameInput = document.getElementById('req_docs_name');
+    if (nameInput) nameInput.value = '';
     window.openModal('requestDocsModal');
 };
 
-// معالجة وإرسال طلب النواقص
+// معالجة وإرسال طلب النواقص (متوافق مع missing_docs_request في بوابة الموكل و missing_documents)
 window.submitMissingDocsRequest = async function(event) {
     event.preventDefault();
-    const caseId = document.getElementById('req_docs_case_id').value;
-    const docName = document.getElementById('req_docs_name').value.trim();
+    const caseId = document.getElementById('req_docs_case_id')?.value;
+    const docName = document.getElementById('req_docs_name')?.value?.trim();
 
-    if(!caseId || !docName) return window.showAlert('يرجى تعبئة كافة الحقول المطلوبة', 'warning');
+    if (!caseId || !docName) return window.showAlert('يرجى تعبئة كافة الحقول المطلوبة', 'warning');
 
-    const caseData = clientCases.find(c => c.id === caseId);
+    const caseData = clientCases.find(c => String(c.id) === String(caseId)) || {};
     let currentMissing = [];
     
-    // محاولة قراءة الحقل بأمان
     try {
         if (typeof caseData.missing_documents === 'string') currentMissing = JSON.parse(caseData.missing_documents);
-        else if (Array.isArray(caseData.missing_documents)) currentMissing = caseData.missing_documents;
-    } catch(e) { console.error("Error parsing missing_documents", e); }
+        else if (Array.isArray(caseData.missing_documents)) currentMissing = [...caseData.missing_documents];
+    } catch (e) { console.error("Error parsing missing_documents", e); }
 
     currentMissing.push(docName);
 
+    // دمج النواقص كنص واضح في حقل missing_docs_request المعتمد في قائمة السماح (Whitelist) لبوابة الموكل
+    const existingReqText = caseData.missing_docs_request ? String(caseData.missing_docs_request).trim() : '';
+    const updatedReqText = existingReqText ? `${existingReqText} ، ${docName}` : docName;
+
     const btn = event.target.querySelector('button[type="submit"]');
-    const oldText = btn.innerHTML;
-    btn.disabled = true; 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الإرسال...';
+    const oldText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true; 
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الإرسال...';
+    }
 
     try {
-        const res = await API.updateCase(caseId, { missing_documents: currentMissing });
+        const res = await API.updateCase(caseId, {
+            missing_docs_request: updatedReqText,
+            missing_documents: currentMissing
+        });
         if (res && !res.error) {
-            window.showAlert('تم إرسال الطلب، وسيظهر كإشعار في بوابة الموكل فوراً.', 'success');
+            window.showAlert('تم إرسال الطلب، وسيظهر كإشعار عاجل في بوابة الموكل فوراً.', 'success');
             window.closeModal('requestDocsModal');
-            await loadClientData(); // تحديث صامت
+            await loadClientData();
         } else { 
-            throw new Error(res.error || 'حدث خطأ أثناء تحديث بيانات القضية.'); 
+            throw new Error(res?.error || 'حدث خطأ أثناء تحديث بيانات القضية.'); 
         }
-    } catch(e) {
+    } catch (e) {
         window.showAlert('خطأ: ' + e.message, 'error');
     } finally {
-        btn.disabled = false; 
-        btn.innerHTML = oldText;
+        if (btn) {
+            btn.disabled = false; 
+            btn.innerHTML = oldText;
+        }
     }
 };
 
 // ============================================================================
-// [6] إدارة عمليات الموكلين (Client Operations - CRUD)
+// [6] إدارة عمليات الموكلين (Client Operations - CRUD & Action MFA)
 // ============================================================================
 
 window.goToCase = function(caseId) {
     localStorage.setItem('current_case_id', caseId);
-    window.location.href = 'case-details.html';
+    window.location.href = `case-details.html?id=${encodeURIComponent(caseId)}`;
 };
 
 // الاتصال الهاتفي السريع
@@ -379,10 +436,9 @@ window.callClient = function() {
 // المراسلة الفورية عبر واتساب
 window.whatsappClient = function() {
     if (clientObj && clientObj.phone) {
-        let p = String(clientObj.phone);
-        // تحويل الرقم للصيغة الدولية (الأردن كمثال افتراضي)
+        let p = String(clientObj.phone).replace(/[^0-9+]/g, '');
         if (p.startsWith('0')) p = '962' + p.substring(1);
-        window.open(`https://wa.me/${p}`, '_blank');
+        window.open(`https://wa.me/${p}`, '_blank', 'noopener,noreferrer');
     } else {
         window.showAlert('لا يوجد رقم هاتف مسجل', 'warning');
     }
@@ -390,6 +446,7 @@ window.whatsappClient = function() {
 
 // فتح نافذة التعديل وتعبئة البيانات
 window.openEditModal = function() {
+    if (!clientObj) return;
     document.getElementById('edit_full_name').value = clientObj.full_name || '';
     document.getElementById('edit_phone').value = clientObj.phone || '';
     document.getElementById('edit_national_id').value = clientObj.national_id || '';
@@ -398,7 +455,7 @@ window.openEditModal = function() {
     document.getElementById('edit_pob').value = clientObj.place_of_birth || '';
     document.getElementById('edit_nationality').value = clientObj.nationality || 'أردني';
     document.getElementById('edit_marital').value = clientObj.marital_status || '';
-    document.getElementById('edit_profession').value = clientObj.profession || '';
+    document.getElementById('edit_profession').value = clientObj.profession || clientObj.occupation || '';
     document.getElementById('edit_email').value = clientObj.email || '';
     document.getElementById('edit_address').value = clientObj.address || '';
     document.getElementById('edit_client_type').value = clientObj.client_type || 'فرد';
@@ -423,9 +480,11 @@ window.updateClient = async function(event) {
     }
 
     const btn = document.getElementById('btn_save_client');
-    if (btn.disabled) return;
-    btn.disabled = true; 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الحفظ...';
+    if (btn && btn.disabled) return;
+    if (btn) {
+        btn.disabled = true; 
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الحفظ...';
+    }
 
     const data = {
         full_name: fullNameVal,
@@ -456,16 +515,23 @@ window.updateClient = async function(event) {
     } catch (err) {
         window.showAlert(err.message, 'error');
     } finally {
-        btn.disabled = false; 
-        btn.innerHTML = '<i class="fas fa-save me-2"></i> حفظ وتحديث البيانات';
+        if (btn) {
+            btn.disabled = false; 
+            btn.innerHTML = '<i class="fas fa-save me-2"></i> حفظ وتحديث البيانات';
+        }
     }
 };
 
 /**
- * الحذف الآمن للموكل مع المصادقة الثنائية (Action-Based MFA)
- * الشرط الأهم: منع الحذف إذا كانت هناك قضايا مرتبطة لمنع انهيار قاعدة البيانات (Referential Integrity)
+ * 🛡️ الحذف الآمن للموكل باستخدام الحارس الموحد (AUTH.requireActionAuth)
+ * يستصدر تذكرة خادمية لمرة واحدة (act_UUID) مربوطة بجدول mo_clients ومعرف الموكل
  */
 window.deleteClient = async function() {
+    if (!navigator.onLine) {
+        window.showAlert('لا يمكن تنفيذ عمليات الحذف الحساسة في وضع عدم الاتصال (Offline).', 'error');
+        return;
+    }
+
     if (clientCases.length > 0) {
         Swal.fire({
             icon: 'error',
@@ -477,49 +543,39 @@ window.deleteClient = async function() {
     }
 
     const confirm = await Swal.fire({ 
-        title: 'حذف الموكل نهائياً؟', 
-        text: "هذا الإجراء نهائي ولا يمكن التراجع عنه. سيتم إتلاف بيانات الموكل من الخوادم السحابية.", 
+        title: 'حذف/أرشفة الموكل؟', 
+        text: "سيتم أرشفة أو حذف سجل الموكل من العرض النشط وتوثيق العملية في سجل الرقابة الأمنية.", 
         icon: 'warning', 
         showCancelButton: true, 
         confirmButtonColor: '#d33', 
         cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-trash"></i> نعم، احذف', 
+        confirmButtonText: '<i class="fas fa-trash"></i> نعم، متابعة للتحقق الأمني', 
         cancelButtonText: 'إلغاء' 
     });
 
-    if(!confirm.isConfirmed) return;
+    if (!confirm.isConfirmed) return;
 
-    // 🛡️ WebAuthn / PIN Security Check (Action-Based MFA)
-    const secCheck = await Swal.fire({
-        title: 'مصادقة أمنية مطلوبة',
-        text: 'يرجى إدخال الرمز السري الخاص بك (PIN) لتأكيد الحذف الجذري.',
-        input: 'password',
-        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-fingerprint"></i> تأكيد الهوية',
-        cancelButtonText: 'إلغاء',
-        confirmButtonColor: '#0B132B',
-        preConfirm: (pin) => {
-            if (!pin) Swal.showValidationMessage('يجب إدخال الرمز السري أو المصادقة لتأكيد العملية');
-            return pin;
-        }
-    });
-
-    if(!secCheck.isConfirmed) return;
-    const actionToken = secCheck.value; // التقاط التوكن/الرقم السري
-
-    // هنا يتم إرسال طلب الحذف للـ API مع التوكن
     try {
+        // استدعاء الحارس الموحد لاستصدار تذكرة حذف لمرة واحدة مربوطة بالسجل
+        const actionToken = await AUTH.requireActionAuth(
+            `حذف سجل الموكل (${clientObj?.full_name || ''})`,
+            'mo_clients',
+            currentClientId
+        );
+
+        if (!actionToken) return;
+
         const res = await API.deleteClient(currentClientId, actionToken);
         
         if (res && !res.error) {
-            await Swal.fire('تم الحذف', res.offline ? 'تم حفظ طلب الحذف محلياً.' : 'تم حذف الموكل وتدمير بياناته بنجاح.', 'success');
+            await Swal.fire('تم التنفيذ بنجاح', 'تم حذف/أرشفة ملف الموكل وتوثيق العملية أمنياً.', 'success');
             window.location.href = 'app.html';
         } else {
-            throw new Error(res?.error || 'خطأ أثناء الحذف يرجى مراجعة الصلاحيات.');
+            throw new Error(res?.error || 'خطأ أثناء الحذف، يرجى مراجعة الصلاحيات.');
         }
-    } catch(e) {
-        Swal.fire('خطأ أمني', e.message, 'error');
+    } catch (e) {
+        if (e.message && e.message.includes('إلغاء')) return;
+        Swal.fire('مرفوض أمنياً', e.message || 'تعذر إتمام عملية الحذف.', 'error');
     }
 };
 
@@ -533,12 +589,12 @@ window.deleteClient = async function() {
 window.saveClientFile = async function(event) {
     event.preventDefault();
     const fileInput = document.getElementById('file_input');
-    const titleInput = document.getElementById('file_title_input').value.trim();
-    const catInput = document.getElementById('file_category_input').value;
-    const expiryInput = document.getElementById('file_expiry_date').value;
+    const titleInput = document.getElementById('file_title_input')?.value?.trim() || '';
+    const catInput = document.getElementById('file_category_input')?.value || 'مستند';
+    const expiryInput = document.getElementById('file_expiry_date')?.value || '';
     const btn = document.getElementById('btn_upload');
     
-    if (!fileInput.files.length) return;
+    if (!fileInput || !fileInput.files.length) return;
     
     // منع الرفع في وضع عدم الاتصال لتجنب تلف الملفات
     if (!navigator.onLine) { 
@@ -546,35 +602,38 @@ window.saveClientFile = async function(event) {
         return; 
     }
     
-    if (btn.disabled) return;
-    btn.disabled = true; 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التشفير والأرشفة...';
+    if (btn && btn.disabled) return;
+    if (btn) {
+        btn.disabled = true; 
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التشفير والأرشفة...';
+    }
     
     try {
         const file = fileInput.files[0];
         
         // 1. الرفع المباشر إلى Cloudflare R2
-        const r2Res = await API.uploadFileToR2(file, currentClientId, 'General');
+        const r2Res = await API.uploadFileToR2(file, currentClientId, 'general');
         
         if (r2Res && r2Res.r2_key) {
-            // 2. توثيق الملف في قاعدة البيانات
+            // 2. توثيق الملف في قاعدة البيانات (mo_files)
             const payload = { 
                 client_id: currentClientId, 
                 file_name: titleInput || file.name, 
-                file_type: file.type, 
-                file_extension: file.name.split('.').pop().toLowerCase(),
+                file_type: file.type || 'application/octet-stream', 
+                file_extension: file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '',
                 file_category: catInput, 
-                file_url: r2Res.r2_key, // حفظ المفتاح المشفر بدل الرابط المباشر لضمان الأمان
-                drive_file_id: r2Res.r2_key, 
+                file_url: r2Res.r2_key,
+                gdrive_file_id: r2Res.r2_key,
+                drive_file_id: r2Res.r2_key,
                 is_template: false, 
                 expiry_date: expiryInput || null 
             };
 
             const res = await API.addFileRecord(payload);
             
-            if(res && !res.error) { 
+            if (res && !res.error) { 
                 window.closeModal('fileModal'); 
-                document.getElementById('fileForm').reset(); 
+                document.getElementById('fileForm')?.reset(); 
                 window.showAlert('تم أرشفة وتشفير المستند بنجاح', 'success'); 
                 await loadClientData(); 
             } else {
@@ -584,56 +643,55 @@ window.saveClientFile = async function(event) {
     } catch (err) { 
         window.showAlert("فشل الرفع السحابي: " + err.message, 'error'); 
     } finally { 
-        btn.disabled = false; 
-        btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i> تشفير ورفع للأرشيف'; 
+        if (btn) {
+            btn.disabled = false; 
+            btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i> تشفير ورفع للأرشيف'; 
+        }
     }
 };
 
 /**
- * الحذف الآمن للمستند السحابي مع المصادقة الثنائية (MFA) - تم إصلاح الثغرة
+ * 🛡️ الحذف الآمن للمستند السحابي باستخدام الحارس الموحد (AUTH.requireActionAuth)
+ * يستصدر تذكرة خادمية لمرة واحدة (act_UUID) مربوطة بجدول mo_files ومعرف المستند
  */
 window.deleteClientFile = async function(id) {
+    if (!navigator.onLine) {
+        window.showAlert('لا يمكن حذف المستندات السحابية في وضع عدم الاتصال (Offline).', 'error');
+        return;
+    }
+
     const res = await Swal.fire({ 
-        title: 'تأكيد الحذف؟', 
-        text: "سيتم إزالة المستند بشكل نهائي من الأرشيف السحابي للموكل!", 
+        title: 'تأكيد حذف المستند؟', 
+        text: "سيتم إزالة المستند من الأرشيف السحابي للموكل وتوثيق الحذف في سجل الرقابة!", 
         icon: 'warning', 
         showCancelButton: true, 
         confirmButtonColor: '#d33', 
-        confirmButtonText: 'نعم، احذف', 
+        confirmButtonText: 'نعم، متابعة للتحقق الأمني', 
         cancelButtonText: 'إلغاء' 
     });
     
-    if(!res.isConfirmed) return;
+    if (!res.isConfirmed) return;
     
-    // 🛡️ WebAuthn / PIN Security Check لحذف الملفات
-    const secCheck = await Swal.fire({
-        title: 'مصادقة أمنية مطلوبة',
-        text: 'يرجى إدخال الرمز السري الخاص بك (PIN) لتأكيد حذف المستند الحساس.',
-        input: 'password',
-        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-fingerprint"></i> تأكيد',
-        cancelButtonText: 'إلغاء',
-        confirmButtonColor: '#0B132B',
-        preConfirm: (pin) => {
-            if (!pin) Swal.showValidationMessage('يجب إدخال الرمز السري لتأكيد العملية');
-            return pin;
-        }
-    });
-
-    if(!secCheck.isConfirmed) return;
-    const actionToken = secCheck.value;
-
     try {
-        const delRes = await API.deleteFile(id, actionToken); // تمرير الـ actionToken بنجاح
-        if(delRes && !delRes.error) {
-            window.showAlert(delRes.offline ? 'تم الحفظ محلياً (سيحذف عند عودة الإنترنت)' : 'تم الحذف من الأرشيف بنجاح', delRes.offline ? 'warning' : 'success'); 
+        const targetFile = clientFiles.find(f => String(f.id) === String(id));
+        const actionToken = await AUTH.requireActionAuth(
+            `حذف المستند (${targetFile?.file_name || 'مستند مؤرشف'})`,
+            'mo_files',
+            id
+        );
+
+        if (!actionToken) return;
+
+        const delRes = await API.deleteFile(id, actionToken);
+        if (delRes && !delRes.error) {
+            window.showAlert('تم حذف المستند من الأرشيف وتوثيقه أمنياً بنجاح', 'success'); 
             await loadClientData();
         } else {
-            throw new Error(delRes?.error || 'حدث خطأ');
+            throw new Error(delRes?.error || 'حدث خطأ أثناء حذف المستند');
         }
-    } catch(e) { 
-        window.showAlert('فشل الاتصال بالخادم أثناء محاولة الحذف: ' + e.message, 'error'); 
+    } catch (e) { 
+        if (e.message && e.message.includes('إلغاء')) return;
+        window.showAlert('فشل حذف المستند: ' + e.message, 'error'); 
     }
 };
 
@@ -646,7 +704,7 @@ window.openModal = function(id) {
         window.AppCore.openModal(id);
     } else {
         const el = document.getElementById(id); 
-        if(el) { const m = new bootstrap.Modal(el); m.show(); } 
+        if (el) { const m = new bootstrap.Modal(el); m.show(); } 
     }
 };
 
@@ -655,9 +713,9 @@ window.closeModal = function(id) {
         window.AppCore.closeModal(id);
     } else {
         const el = document.getElementById(id); 
-        if(el) { 
+        if (el) { 
             const m = bootstrap.Modal.getInstance(el); 
-            if(m) m.hide(); 
+            if (m) m.hide(); 
             document.querySelectorAll('.modal-backdrop').forEach(b => b.remove()); 
             document.body.classList.remove('modal-open'); 
             document.body.style.overflow = ''; 
@@ -681,8 +739,17 @@ window.copyToClipboard = function(elementId) {
     if (!el) return;
     el.select();
     el.setSelectionRange(0, 99999);
-    document.execCommand("copy");
-    window.showAlert("تم نسخ النص بنجاح!", "success");
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(el.value).then(() => {
+            window.showAlert("تم نسخ النص بنجاح!", "success");
+        }).catch(() => {
+            document.execCommand("copy");
+            window.showAlert("تم نسخ النص بنجاح!", "success");
+        });
+    } else {
+        document.execCommand("copy");
+        window.showAlert("تم نسخ النص بنجاح!", "success");
+    }
 };
 
 // ============================================================================
@@ -761,14 +828,14 @@ ${recentAppts || 'لا توجد إجراءات مسجلة هذا الشهر، ج
                 showCloseButton: true
             });
         } else {
-            throw new Error(res?.error || 'حدث خطأ في توليد التقرير من محرك Llama-3.2.');
+            throw new Error(res?.error || 'حدث خطأ في توليد التقرير من محرك الذكاء الاصطناعي.');
         }
     } catch (e) {
         Swal.fire('خطأ تقني', e.message, 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-magic me-2"></i> توليد تقرير الإنجاز الشهري';
+            btn.innerHTML = '<i class="fas fa-magic me-2"></i> تقرير الإنجاز الشهري';
         }
     }
 };
@@ -781,10 +848,9 @@ window.sendReportWhatsApp = function() {
     if (!textEl || !textEl.value) return;
     
     if (clientObj && clientObj.phone) {
-        let p = String(clientObj.phone);
-        // التنسيق الدولي (الأردن كمثال)
+        let p = String(clientObj.phone).replace(/[^0-9+]/g, '');
         if (p.startsWith('0')) p = '962' + p.substring(1);
-        window.open(`https://wa.me/${p}?text=${encodeURIComponent(textEl.value)}`, '_blank');
+        window.open(`https://wa.me/${p}?text=${encodeURIComponent(textEl.value)}`, '_blank', 'noopener,noreferrer');
     } else {
         window.showAlert('لا يوجد رقم هاتف مسجل لهذا الموكل للمراسلة عبر واتساب', 'warning');
     }
