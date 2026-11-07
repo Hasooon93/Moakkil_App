@@ -608,7 +608,6 @@ window.uploadTemplate = async function(event) {
                 file_extension: file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '',
                 file_category: category,
                 file_url: uploadRes.r2_key,
-                gdrive_file_id: uploadRes.r2_key,
                 drive_file_id: uploadRes.r2_key,
                 is_template: true,
                 description: smartDescription

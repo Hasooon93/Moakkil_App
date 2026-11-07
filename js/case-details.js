@@ -1077,7 +1077,6 @@ window.saveFile = async function(event) {
                 file_type: file.type,
                 file_category: catInput,
                 file_url: r2Res.r2_key,
-                gdrive_file_id: r2Res.r2_key,
                 drive_file_id: r2Res.r2_key,
                 is_template: false,
                 is_visible_to_client: isVisibleToClient,

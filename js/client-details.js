@@ -623,7 +623,6 @@ window.saveClientFile = async function(event) {
                 file_extension: file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '',
                 file_category: catInput, 
                 file_url: r2Res.r2_key,
-                gdrive_file_id: r2Res.r2_key,
                 drive_file_id: r2Res.r2_key,
                 is_template: false, 
                 expiry_date: expiryInput || null 
