@@ -53,7 +53,7 @@ const CONFIG = {
     
     // --- مفاتيح الأمان وإشعارات الدفع (Web Push API) ---
     // 🔔 مفتاح VAPID العام (Public Key) للتواصل المشفر مع خوادم الإشعارات
-    VAPID_PUBLIC_KEY: "BLIcKo4UvEQjyuUJUcBHXM6xgVTGUdzjgIX3m83eDHpHOgg1pK0_0VIC8_HalanoFjsRjtGcSLbBiYu8vCYPZNw"
+    VAPID_PUBLIC_KEY: "BEl62vp95h4An3Wp7K8nS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYvS8zYv" 
 };
 
 // ============================================================================

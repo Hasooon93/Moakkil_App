@@ -225,12 +225,19 @@ window.renderDashboardStats = () => {
 // [2] محرك البحث الذكي ومعالجة الـ QR Code (Smart Search & QR Parser)
 // ============================================================================
 
-window.handleSmartSearch = async (query) => {
+let smartSearchDebounceTimer = null;
+
+window.handleSmartSearch = (query) => {
     const drop = document.getElementById('search-results-dropdown');
     if (!drop) return;
     const safeQuery = (query || '').trim();
+
+    if (smartSearchDebounceTimer) clearTimeout(smartSearchDebounceTimer);
+
     if (safeQuery.length < 2) {
         drop.classList.add('d-none');
+        drop.classList.remove('show');
+        drop.style.display = 'none';
         return;
     }
 
@@ -239,48 +246,61 @@ window.handleSmartSearch = async (query) => {
         window.showToast('تم التقاط رابط الملف، جاري التوجيه...', 'success');
         setTimeout(() => { window.location.href = safeQuery; }, 400);
         drop.classList.add('d-none');
+        drop.classList.remove('show');
+        drop.style.display = 'none';
         return;
     }
 
-    try {
-        const res = await API.smartSearch(safeQuery);
-        let html = '';
+    // إظهار مؤشر البحث اللحظي
+    drop.innerHTML = '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-spinner fa-spin fa-2x mb-2 d-block text-gold"></i>جاري البحث الذكي في القضايا والموكلين...</div>';
+    drop.classList.remove('d-none');
+    drop.classList.add('show');
+    drop.style.display = 'block';
 
-        if (res.cases?.length) {
-            html += '<h6 class="dropdown-header fw-bold px-3 pt-2" style="color: var(--gold-luxury);"><i class="fas fa-gavel me-1"></i> القضايا المطابقة</h6>';
-            html += res.cases.map(c => `
-                <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_case_id','${c.id}'); window.location.href='case-details.html?id=${encodeURIComponent(c.id)}'">
-                    <span>${window.escapeHTML(c.case_internal_id)} - ${window.escapeHTML(c.opponent_name || '')}</span>
-                    <span class="badge bg-light text-dark border font-monospace">${window.escapeHTML(c.status || 'نشطة')}</span>
-                </button>
-            `).join('');
+    smartSearchDebounceTimer = setTimeout(async () => {
+        try {
+            const res = await API.smartSearch(safeQuery);
+            let html = '';
+
+            if (res && res.cases?.length) {
+                html += '<h6 class="dropdown-header fw-bold px-3 pt-2" style="color: var(--gold-luxury);"><i class="fas fa-gavel me-1"></i> القضايا المطابقة</h6>';
+                html += res.cases.map(c => `
+                    <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_case_id','${c.id}'); window.location.href='case-details.html?id=${encodeURIComponent(c.id)}'">
+                        <span>${window.escapeHTML(c.case_internal_id)} - ${window.escapeHTML(c.opponent_name || '')}</span>
+                        <span class="badge bg-light text-dark border font-monospace">${window.escapeHTML(c.status || 'نشطة')}</span>
+                    </button>
+                `).join('');
+            }
+
+            if (res && res.clients?.length) {
+                html += '<h6 class="dropdown-header text-success fw-bold px-3 pt-2"><i class="fas fa-users me-1"></i> الموكلين</h6>';
+                html += res.clients.map(c => `
+                    <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_client_id','${c.id}'); window.location.href='client-details.html?id=${encodeURIComponent(c.id)}'">
+                        <span>${window.escapeHTML(c.full_name)}</span>
+                        <small class="text-muted font-monospace" dir="ltr">${window.escapeHTML(c.phone || '')}</small>
+                    </button>
+                `).join('');
+            }
+
+            if (res && res.brain?.length) {
+                html += '<h6 class="dropdown-header text-primary fw-bold px-3 pt-2"><i class="fas fa-brain me-1"></i> التشريعات والعقل القانوني (بحث بالمعنى)</h6>';
+                html += res.brain.map(b => `
+                    <button type="button" class="dropdown-item py-2 border-bottom text-start" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title || b.category || '')}'">
+                        <div class="fw-bold text-navy small">${window.escapeHTML(b.category || 'تشريع')} - المادة (${window.escapeHTML(b.article_number || '--')})</div>
+                        <small class="text-muted d-block text-truncate" style="max-width: 100%;">${window.escapeHTML((b.original_text || b.title || '').substring(0, 85))}...</small>
+                    </button>
+                `).join('');
+            }
+
+            drop.innerHTML = html || '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-search-minus fa-2x mb-2 d-block opacity-50"></i>لا توجد ملفات أو تشريعات مطابقة</div>';
+            drop.classList.remove('d-none');
+            drop.classList.add('show');
+            drop.style.display = 'block';
+        } catch (e) {
+            console.error("Smart Search Error:", e);
+            drop.innerHTML = '<div class="p-3 text-center text-danger fw-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>تعذر استرجاع نتائج البحث حالياً</div>';
         }
-
-        if (res.clients?.length) {
-            html += '<h6 class="dropdown-header text-success fw-bold px-3 pt-2"><i class="fas fa-users me-1"></i> الموكلين</h6>';
-            html += res.clients.map(c => `
-                <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_client_id','${c.id}'); window.location.href='client-details.html?id=${encodeURIComponent(c.id)}'">
-                    <span>${window.escapeHTML(c.full_name)}</span>
-                    <small class="text-muted font-monospace" dir="ltr">${window.escapeHTML(c.phone || '')}</small>
-                </button>
-            `).join('');
-        }
-
-        if (res.brain?.length) {
-            html += '<h6 class="dropdown-header text-primary fw-bold px-3 pt-2"><i class="fas fa-brain me-1"></i> التشريعات والعقل القانوني (بحث بالمعنى)</h6>';
-            html += res.brain.map(b => `
-                <button type="button" class="dropdown-item py-2 border-bottom text-start" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title || b.category || '')}'">
-                    <div class="fw-bold text-navy small">${window.escapeHTML(b.category || 'تشريع')} - المادة (${window.escapeHTML(b.article_number || '--')})</div>
-                    <small class="text-muted d-block text-truncate" style="max-width: 100%;">${window.escapeHTML((b.original_text || b.title || '').substring(0, 85))}...</small>
-                </button>
-            `).join('');
-        }
-
-        drop.innerHTML = html || '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-search-minus fa-2x mb-2 d-block opacity-50"></i>لا توجد ملفات أو تشريعات مطابقة</div>';
-        drop.classList.remove('d-none');
-    } catch (e) {
-        console.error("Smart Search Error:", e);
-    }
+    }, 280);
 };
 
 // إغلاق قائمة البحث عند النقر خارجها
@@ -289,6 +309,8 @@ document.addEventListener('click', function(event) {
     const dropdown = document.getElementById('search-results-dropdown');
     if (searchWrapper && dropdown && !searchWrapper.contains(event.target)) {
         dropdown.classList.add('d-none');
+        dropdown.classList.remove('show');
+        dropdown.style.display = 'none';
     }
 });
 
