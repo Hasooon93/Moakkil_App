@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>الشروط والأحكام | نظام موكّل ERP</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- 2.1 المتغيرات اللونية: فخامة الأزرق الملكي والذهبي --- */
+        :root { 
+            --primary-dark: #0B132B; 
+            --primary-light: #1C2541;
+            --gold-luxury: #D4AF37;
+            --gold-hover: #b5952f;
+            --light-bg: #F8F9FA;
+            --text-dark: #2B2D42;
+            --text-muted: #6C757D;
+            --border-color: rgba(0,0,0,0.05);
+        }
+        
+        /* --- 2.2 إعدادات الهيكل العام والتجاوب --- */
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-dark);
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* --- 2.3 قسم الترويسة الملكي (Header Hero) --- */
+        .header-hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 80px 20px 120px; /* مساحة سفلية أكبر لاحتضان البطاقة */
+            text-align: center;
+            border-bottom: 4px solid var(--gold-luxury);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(11, 19, 43, 0.2);
+        }
+
+        /* أشكال هندسية لتجميل الخلفية */
+        .header-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -10%;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .header-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -20%; left: -5%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header-hero h1 {
+            font-weight: 900;
+            font-size: clamp(2rem, 5vw, 3rem);
+            position: relative;
+            z-index: 2;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .header-hero p {
+            color: #E2E8F0;
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            position: relative;
+            z-index: 2;
+            opacity: 0.9;
+        }
+
+        /* --- 2.4 البطاقة القانونية (Document Card) --- */
+        .document-card {
+            background: white;
+            border-radius: 24px;
+            padding: clamp(30px, 5vw, 60px) clamp(20px, 5vw, 50px);
+            box-shadow: 0 20px 50px rgba(11, 19, 43, 0.06);
+            margin-top: -70px;
+            margin-bottom: 60px;
+            position: relative;
+            z-index: 10;
+            border: 1px solid var(--border-color);
+            /* حركة الدخول الناعمة */
+            opacity: 0;
+            transform: translateY(40px);
+            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUpFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 2.5 تنسيق النصوص والبنود القانونية --- */
+        .document-card p { 
+            font-size: 1.1rem; 
+            color: var(--text-dark);
+            margin-bottom: 1.8rem;
+            text-align: justify;
+        }
+        
+        @media (max-width: 768px) {
+            .document-card p { text-align: right; } /* إلغاء التبرير في الموبايل لسهولة القراءة */
+        }
+
+        .clause-title { 
+            color: var(--primary-dark); 
+            font-weight: 900; 
+            margin-top: 45px; 
+            margin-bottom: 20px;
+            padding-right: 15px;
+            border-right: 4px solid var(--gold-luxury);
+            font-size: 1.4rem;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.05) 0%, transparent 100%);
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 6px 0 0 6px;
+        }
+        
+        .document-card ul { 
+            margin-bottom: 35px; 
+            padding-right: 25px;
+        }
+
+        .document-card li { 
+            font-size: 1.05rem; 
+            margin-bottom: 15px;
+            color: var(--text-muted);
+            position: relative;
+        }
+
+        .document-card li strong {
+            color: var(--primary-dark);
+        }
+
+        .highlight-text {
+            color: var(--primary-dark);
+            font-weight: 800;
+            background: rgba(212, 175, 55, 0.15);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        /* --- 2.6 زر العودة الفاخر --- */
+        .btn-back { 
+            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
+            color: var(--primary-dark); 
+            font-weight: 800; 
+            border-radius: 14px; 
+            padding: 14px 40px; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: inline-flex;
+            align-items: center;
+            border: none;
+            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
+            font-size: 1.1rem;
+            text-decoration: none;
+        }
+
+        .btn-back:hover { 
+            background: linear-gradient(135deg, var(--gold-hover), var(--gold-luxury));
+            color: white;
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(212, 175, 55, 0.35);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-hero">
+        <div class="container">
+            <h1 class="mb-3"><i class="fas fa-gavel me-3" style="color: var(--gold-luxury);"></i>شروط وأحكام الاستخدام</h1>
+            <p>الاتفاقية القانونية الملزمة لاستخدام منصة موكّل السحابية</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="document-card">
+            
+            <section>
+                <p>أهلاً بك في نظام <span class="highlight-text">موكّل ERP</span> ("النظام"). تحدد هذه الاتفاقية الشروط والأحكام القانونية الملزمة لاستخدامك للنظام السحابي الخاص بنا كـ (مكتب محاماة / مستخدم).</p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">1. طبيعة الخدمة والترخيص</h5>
+                <p>نظام "موكّل" هو برنامج كخدمة (SaaS) يُقدم لمكاتب المحاماة لتسهيل إدارة أعمالهم، قضاياهم، وعملائهم. نمنحك بموجب هذه الاتفاقية ترخيصاً غير حصري، وغير قابل للتحويل، وقابل للإلغاء لاستخدام النظام بناءً على الباقة التي قمت بالاشتراك بها. النظام يُقدم "كما هو" (As Is) ولا نضمن خلوه التام من الأخطاء البرمجية المعتادة في قطاع التقنية، رغم سعينا الدائم لتقديم أعلى معايير الجودة.</p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">2. التزامات المشترك (المكتب)</h5>
+                <p>يلتزم المشترك بالآتي:</p>
+                <ul>
+                    <li><strong>المحافظة التامة على سرية بيانات الدخول</strong> (اسم المستخدم وكلمة المرور) الخاصة بالمدير والموظفين.</li>
+                    <li>يُحظر استخدام النظام لرفع أي ملفات ضارة، فيروسات، أو محتوى يخالف القوانين المحلية والدولية.</li>
+                    <li>يُحظر محاولة التحايل على القيود البرمجية للنظام (مثل حد المستخدمين الفعالين) بأي طرق ملتوية.</li>
+                    <li>أنت المسؤول الأول والأخير عن <strong>صحة البيانات</strong> والأرقام والمواعيد المُدخلة في النظام.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h5 class="clause-title">3. ملكية البيانات (Data Ownership)</h5>
+                <p>جميع البيانات، الملفات، معلومات الموكلين، الوقائع، والقضايا التي تقوم بإدخالها في النظام هي <span class="highlight-text">ملكية حصرية لك ولمكتبك</span>. نحن كمطورين ومُلاك للنظام لا نمتلك هذه البيانات، ولا نقوم باستخدامها، أو تحليلها، أو بيعها لأي أطراف خارجية بأي شكل من الأشكال. دورنا يقتصر على توفير البنية التحتية لحفظها وعرضها لك بطريقة آمنة وموثوقة.</p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">4. إخلاء المسؤولية وحدود التعويض</h5>
+                <p>بأقصى حد يسمح به القانون، لا نتحمل نحن (مُلاك النظام ومطوروه) أي مسؤولية قانونية أو مالية عن أي أضرار مباشرة، غير مباشرة، عرضية، أو تبعية (بما في ذلك على سبيل المثال لا الحصر: فقدان الأرباح، ضياع البيانات نتيجة خطأ بشري من طرفكم، أو تعطل الأعمال) تنتج عن استخدام النظام أو عدم القدرة على استخدامه. <strong>تقع مسؤولية أخذ نسخ احتياطية للملفات الورقية والمستندات الحساسة على عاتق المكتب بالدرجة الأولى.</strong></p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">5. الاشتراكات والدفع</h5>
+                <p>الاستمرار في استخدام النظام يتطلب تسديد رسوم الاشتراك المتفق عليها في موعدها. في حال التأخر عن السداد، يحق لإدارة النظام تعليق الوصول إلى الحساب بعد توجيه إنذار مسبق، مع الاحتفاظ ببياناتك لفترة السماح المحددة قبل الإيقاف النهائي.</p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">6. التعديل والإنهاء</h5>
+                <p>نحتفظ بالحق في تعديل هذه الشروط في أي وقت، وسيتم إشعارك بأي تحديث جوهري. كما نحتفظ بالحق في تعليق أو إنهاء حسابك فوراً وبدون تعويض في حال ثبوت انتهاكك الصارخ لهذه الشروط أو محاولة التلاعب بالبنية التحتية للنظام.</p>
+            </section>
+
+            <div class="text-center mt-5 pt-4 border-top">
+                <a href="index.html" class="btn btn-back">
+                    <i class="fas fa-arrow-right me-3"></i> العودة للصفحة الرئيسية
+                </a>
+            </div>
+            
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

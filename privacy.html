@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0B132B">
+    <title>سياسة الخصوصية وأمن البيانات | نظام موكّل ERP</title>
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- 2.1 المتغيرات اللونية: فخامة الأزرق الملكي والذهبي --- */
+        :root { 
+            --primary-dark: #0B132B; 
+            --primary-light: #1C2541;
+            --gold-luxury: #D4AF37;
+            --gold-hover: #b5952f;
+            --light-bg: #F8F9FA;
+            --text-dark: #2B2D42;
+            --text-muted: #6C757D;
+            --border-color: rgba(0,0,0,0.05);
+        }
+        
+        /* --- 2.2 إعدادات الهيكل العام --- */
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--light-bg); 
+            color: var(--text-dark);
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* --- 2.3 قسم الترويسة الملكي والأمني (Header Hero) --- */
+        .header-hero {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 80px 20px 120px; /* مساحة سفلية لاحتضان البطاقة */
+            text-align: center;
+            border-bottom: 4px solid var(--gold-luxury);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(11, 19, 43, 0.2);
+        }
+
+        /* أشكال هندسية توحي بالتشفير والأمان (Cyber Security Feel) */
+        .header-hero::before {
+            content: '';
+            position: absolute;
+            top: -30%; left: -5%;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .header-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -20%; right: -5%;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header-hero h1 {
+            font-weight: 900;
+            font-size: clamp(2rem, 5vw, 3rem);
+            position: relative;
+            z-index: 2;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .header-hero p {
+            color: #E2E8F0;
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            position: relative;
+            z-index: 2;
+            opacity: 0.9;
+        }
+
+        /* --- 2.4 البطاقة القانونية (Document Card) --- */
+        .document-card {
+            background: white;
+            border-radius: 24px;
+            padding: clamp(30px, 5vw, 60px) clamp(20px, 5vw, 50px);
+            box-shadow: 0 20px 50px rgba(11, 19, 43, 0.06);
+            margin-top: -70px;
+            margin-bottom: 60px;
+            position: relative;
+            z-index: 10;
+            border: 1px solid var(--border-color);
+            /* حركة الدخول الناعمة */
+            opacity: 0;
+            transform: translateY(40px);
+            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUpFade {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- 2.5 تنسيق النصوص والبنود الأمنية --- */
+        .document-card p { 
+            font-size: 1.1rem; 
+            color: var(--text-dark);
+            margin-bottom: 1.8rem;
+            text-align: justify;
+        }
+        
+        @media (max-width: 768px) {
+            .document-card p { text-align: right; } /* إلغاء التبرير في الموبايل لسهولة القراءة السريعة */
+        }
+
+        .clause-title { 
+            color: var(--primary-dark); 
+            font-weight: 900; 
+            margin-top: 45px; 
+            margin-bottom: 20px;
+            padding-right: 15px;
+            border-right: 4px solid var(--gold-luxury);
+            font-size: 1.4rem;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.05) 0%, transparent 100%);
+            padding-top: 8px;
+            padding-bottom: 8px;
+            border-radius: 6px 0 0 6px;
+        }
+        
+        .document-card ul { 
+            margin-bottom: 35px; 
+            padding-right: 25px;
+        }
+
+        .document-card li { 
+            font-size: 1.05rem; 
+            margin-bottom: 15px;
+            color: var(--text-muted);
+            position: relative;
+        }
+
+        .document-card li strong {
+            color: var(--primary-dark);
+        }
+
+        .highlight-text {
+            color: var(--primary-dark);
+            font-weight: 800;
+            background: rgba(212, 175, 55, 0.15);
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+
+        /* --- 2.6 زر العودة الفاخر --- */
+        .btn-back { 
+            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
+            color: var(--primary-dark); 
+            font-weight: 800; 
+            border-radius: 14px; 
+            padding: 14px 40px; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            display: inline-flex;
+            align-items: center;
+            border: none;
+            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
+            font-size: 1.1rem;
+            text-decoration: none;
+        }
+
+        .btn-back:hover { 
+            background: linear-gradient(135deg, var(--gold-hover), var(--gold-luxury));
+            color: white;
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px rgba(212, 175, 55, 0.35);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-hero">
+        <div class="container">
+            <h1 class="mb-3"><i class="fas fa-shield-alt me-3" style="color: var(--gold-luxury);"></i>سياسة الخصوصية وأمن البيانات</h1>
+            <p>كيف نحمي بياناتك وبيانات موكليك بأعلى معايير التشفير العالمية</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <article class="document-card">
+            
+            <section>
+                <p>نحن في منصة <span class="highlight-text">موكّل ERP</span> ندرك تماماً حساسية وسرية العمل القانوني. لذا، فإن حماية خصوصيتك وبيانات قضاياك وموكليك هي أولويتنا القصوى وغير القابلة للمساومة. توضح هذه السياسة بدقة كيفية تعاملنا مع البيانات من الناحية التقنية والأمنية.</p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">1. طبيعة البيانات التي يتم استضافتها</h5>
+                <p>نقوم باستضافة وتخزين البيانات التي تقوم أنت أو فريق عملك بإدخالها طواعية في النظام السحابي، وتشمل:</p>
+                <ul>
+                    <li><strong>بيانات الموارد البشرية:</strong> بيانات الموظفين (الأسماء، أرقام الهواتف، الهويات، والأدوار الوظيفية).</li>
+                    <li><strong>قاعدة العملاء:</strong> بيانات الموكلين والخصوم (الأسماء، الأرقام الوطنية، تفاصيل التواصل).</li>
+                    <li><strong>السجل الإجرائي والمالي:</strong> تفاصيل القضايا، الوقائع القانونية، المواعيد، والسجلات المالية الدقيقة.</li>
+                    <li><strong>الأرشيف السحابي:</strong> المستندات والملفات المرفوعة (PDF، الصور، الوثائق، العقود).</li>
+                </ul>
+            </section>
+
+            <section>
+                <h5 class="clause-title">2. أين وكيف تُحفظ البيانات؟ (بروتوكولات التشفير والأمان)</h5>
+                <p>يعتمد نظامنا على بنية تحتية سحابية متطورة ومعزولة تقنياً:</p>
+                <ul>
+                    <li><strong>قواعد البيانات المركزية:</strong> تُحفظ البيانات النصية في خوادم <span dir="ltr">Supabase</span> العالمية، وهي مشفرة أثناء النقل (In Transit) عبر بروتوكولات <span dir="ltr">TLS/SSL</span>، وأثناء الحفظ (At Rest) باستخدام معايير التشفير العسكري <span dir="ltr">AES-256</span>.</li>
+                    <li><strong>جدار الحماية الفعال (Firewall):</strong> تتم إدارة وتصفية جميع الاتصالات عبر شبكة <span dir="ltr">Cloudflare</span> العالمية لحماية النظام من هجمات الحرمان من الخدمة الموزعة (DDoS) ومحاولات الاختراق.</li>
+                    <li><strong>أرشيف الملفات (R2 Storage):</strong> يتم تشفير الملفات المرفوعة وتخزينها في بيئة سحابية معزولة <span dir="ltr">(Cloudflare R2)</span>، ولا يمكن الوصول إليها أو تحميلها إلا من خلال روابط مؤقتة مشفرة ومصادق عليها برمز دخول خاص بكل موظف.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h5 class="clause-title">3. صلاحيات الوصول (مبدأ العزل التام)</h5>
+                <p><span class="highlight-text">أنت فقط وفريق عملك المصرح له</span> يمكنكم الوصول للبيانات. نحن نطبق نظام صلاحيات هرمي وصارم (Role-Based Access Control):</p>
+                <ul>
+                    <li><strong>إدارة المكتب (Admin):</strong> يمتلكون الصلاحية المطلقة لرؤية وإدارة بيانات مكتبهم حصرياً، بفضل نظام العزل (Multi-Tenancy) الذي يمنع تداخل بيانات مكتب مع مكتب آخر حتى على مستوى الأكواد البرمجية.</li>
+                    <li><strong>المحامي / الموظف:</strong> يرى فقط القضايا والموكلين المسندين إليه من قِبل الإدارة.</li>
+                    <li><strong>إدارة نظام "موكّل" العليا:</strong> لا تقوم بالدخول إلى بيانات الموكلين أو الاطلاع على تفاصيل القضايا والمستندات بأي شكل من الأشكال، إلا في حالات الدعم الفني الطارئة جداً، وبناءً على طلب كتابي صريح من مالك المكتب المعتمد.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h5 class="clause-title">4. حظر المشاركة مع الأطراف الثالثة</h5>
+                <p>نحن نلتزم التزاماً قاطعاً وقانونياً <span class="highlight-text">بعدم بيع، أو تأجير، أو مشاركة</span> أي من بياناتك التشغيلية أو بيانات عملائك مع أي وكالات إعلانية، شركات تحليل، أو أطراف ثالثة. البيانات تُستخدم حصرياً وداخلياً لتشغيل وتسيير النظام الخاص بك.</p>
+            </section>
+
+            <section>
+                <h5 class="clause-title">5. حق الإزالة والحذف النهائي (حق النسيان)</h5>
+                <p>عند إنهاء اشتراكك معنا، يحق لك طلب حذف بياناتك بالكامل. تلتزم إدارة النظام بمسح وحذف وإتلاف جميع بيانات مكتبك، قضاياك، موكليك، ومستنداتك من خوادمنا بشكل نهائي وغير قابل للاسترجاع (Zero-Trace Deletion).</p>
+            </section>
+
+            <div class="text-center mt-5 pt-4 border-top">
+                <a href="index.html" class="btn btn-back">
+                    <i class="fas fa-arrow-right me-3"></i> العودة للصفحة الرئيسية
+                </a>
+            </div>
+            
+        </article>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
