@@ -21,15 +21,22 @@ const MAX_SYNC_RETRIES = 3;
 const MAX_R2_FILE_SIZE = 25 * 1024 * 1024; // 25MB مطابق للحد الأقصى في الوركر
 let isSyncing = false; // قفل أمني لمنع التزامن المزدوج وطوفان الإشعارات (Mutex Lock)
 let syncAbortController = null; // 🛡️ متحكم إجهاض طلبات المزامنة الفورية عند تسجيل الخروج (AbortController)
+let appAbortController = typeof AbortController !== 'undefined' ? new AbortController() : null; // 🛡️ متحكم إجهاض كافة طلبات الشبكة الحية فور الخروج
 
 /**
- * إجهاض أي عملية مزامنة جارية في الشبكة فوراً وتطهير حالة المزامنة عند تسجيل الخروج
+ * إجهاض أي عملية مزامنة أو طلبات شبكة جارية فوراً وتطهير الحالة عند تسجيل الخروج
  */
 window.abortOfflineSync = function () {
     try {
         if (syncAbortController) {
             syncAbortController.abort();
             syncAbortController = null;
+        }
+    } catch (e) {}
+    try {
+        if (appAbortController) {
+            appAbortController.abort();
+            appAbortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
         }
     } catch (e) {}
     isSyncing = false;
@@ -541,7 +548,7 @@ async function ensureValidActionToken(providedToken = null, targetTable = '*', t
 /**
  * دالة التغليف الذكية للاتصال بالـ API (تعالج الـ Tokens والأخطاء والأوفلاين والمصادقة الثنائية)
  */
-async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false, actionToken = null) {
+async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false, actionToken = null, customSignal = null) {
 
     // 1. معالجة حالة انقطاع الإنترنت (Offline Handling) قبل طلب أي تذكرة حذف
     if (!navigator.onLine && !isPublic) {
@@ -600,7 +607,11 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
         headers['x-action-token'] = resolvedActionToken;
     }
 
-    const options = { method, headers };
+    const options = {
+        method,
+        headers,
+        signal: customSignal || (appAbortController ? appAbortController.signal : undefined)
+    };
     if (body) options.body = JSON.stringify(body);
 
     try {
@@ -647,6 +658,10 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
         }
 
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.warn(`🛑 [Network Aborted] تم إلغاء طلب [${endpoint}] فوراً استجابة لإشارة خروج أو مقاطعة متعمدة.`);
+            return null;
+        }
         console.error(`❌ API Error [${endpoint}]:`, error.message);
 
         // 7. التعامل مع فقدان الاتصال اللحظي أثناء الإرسال (Fallback لعمليات POST و PATCH فقط)
@@ -830,7 +845,8 @@ const API = {
             const response = await fetch(`${baseUrl}/api/r2/upload`, {
                 method: 'POST',
                 headers: headers,
-                body: file
+                body: file,
+                signal: appAbortController?.signal
             });
 
             if (!response.ok) {
@@ -858,7 +874,8 @@ const API = {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'x-device-id': deviceId
-                }
+                },
+                signal: appAbortController?.signal
             });
         } catch (e) {
             console.warn('⚠️ [R2 Orphan Cleanup]:', e);
@@ -883,7 +900,8 @@ const API = {
 
         try {
             const res = await fetch(`${baseUrl}/api/r2/download?key=${encodeURIComponent(r2Key)}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal: appAbortController?.signal
             });
 
             if (!res.ok) {
@@ -918,7 +936,8 @@ const API = {
             if (resolvedSess) headers['x-portal-session-token'] = resolvedSess;
 
             const res = await fetch(`${baseUrl}/api/public/r2/download?key=${encodeURIComponent(r2Key)}&client_token=${encodeURIComponent(clientToken)}`, {
-                headers
+                headers,
+                signal: appAbortController?.signal
             });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -982,7 +1001,8 @@ const API = {
 
         const res = await fetch(`${baseUrl}/api/public/client?token=${encodeURIComponent(token || '')}`, {
             method: 'GET',
-            headers
+            headers,
+            signal: appAbortController?.signal
         });
         return await res.json().catch(() => ({ error: 'تعذر قراءة استجابة البوابة' }));
     },
@@ -1006,7 +1026,8 @@ const API = {
         const res = await fetch(`${baseUrl}/api/public/client/upload-missing-doc?token=${encodeURIComponent(token || '')}`, {
             method: 'POST',
             headers,
-            body: file
+            body: file,
+            signal: appAbortController?.signal
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'فشل رفع المستند المطلوب');
@@ -1028,7 +1049,8 @@ const API = {
             body: JSON.stringify({
                 token: token,
                 signature_data: signatureDataUrl
-            })
+            }),
+            signal: appAbortController?.signal
         });
         return await res.json().catch(() => ({ error: 'تعذر حفظ التوقيع الإلكتروني' }));
     },
