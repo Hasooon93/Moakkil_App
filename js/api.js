@@ -774,7 +774,7 @@ const API = {
     },
 
     readOCR: (imageBase64, isIdCard = false) => fetchAPI('/api/ai/ocr', 'POST', { image_base_64: imageBase64, is_id_card: isIdCard }),
-    smartSearch: (query) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}`),
+    smartSearch: (query, signal = null, withAi = false) => fetchAPI(`/api/search?q=${encodeURIComponent(query)}${withAi ? '&ai=true' : ''}`, 'GET', null, false, null, signal),
 
     checkConflict: (name) => fetchAPI(`/api/conflict-check?name=${encodeURIComponent(name)}`),
     generateSmartContract: (data) => fetchAPI('/api/contracts/generate', 'POST', data),

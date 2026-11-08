@@ -15,7 +15,7 @@
 // ============================================================================
 // [1] إعدادات الكاش والملفات الأساسية (Cache Configuration)
 // ============================================================================
-const CACHE_NAME = 'moakkil-cache-v5.1-enterprise';
+const CACHE_NAME = 'moakkil-cache-v5.6-enterprise';
 
 // الأيقونة الرسمية المعتمدة في manifest.json وملفات الواجهة
 const DEFAULT_ICON_URL = 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png';

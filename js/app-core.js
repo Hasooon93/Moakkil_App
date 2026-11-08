@@ -226,8 +226,9 @@ window.renderDashboardStats = () => {
 // ============================================================================
 
 let smartSearchDebounceTimer = null;
+let currentSearchAbortController = null;
 
-window.handleSmartSearch = (query) => {
+window.handleSmartSearch = (query, forceAi = false) => {
     const drop = document.getElementById('search-results-dropdown');
     if (!drop) return;
     const safeQuery = (query || '').trim();
@@ -235,6 +236,10 @@ window.handleSmartSearch = (query) => {
     if (smartSearchDebounceTimer) clearTimeout(smartSearchDebounceTimer);
 
     if (safeQuery.length < 2) {
+        if (currentSearchAbortController) {
+            currentSearchAbortController.abort();
+            currentSearchAbortController = null;
+        }
         drop.classList.add('d-none');
         drop.classList.remove('show');
         drop.style.display = 'none';
@@ -252,17 +257,31 @@ window.handleSmartSearch = (query) => {
     }
 
     // إظهار مؤشر البحث اللحظي
-    drop.innerHTML = '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-spinner fa-spin fa-2x mb-2 d-block text-gold"></i>جاري البحث الذكي في القضايا والموكلين...</div>';
+    drop.innerHTML = '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-spinner fa-spin fa-2x mb-2 d-block text-gold"></i>جاري البحث الذكي في القضايا والموكلين والمستندات...</div>';
     drop.classList.remove('d-none');
     drop.classList.add('show');
     drop.style.display = 'block';
 
     smartSearchDebounceTimer = setTimeout(async () => {
+        // إجهاض أي طلب بحث سابق ما زال معلقاً في الشبكة لمنع تضارب النتائج (Race Conditions)
+        if (currentSearchAbortController) {
+            currentSearchAbortController.abort();
+        }
+        currentSearchAbortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+
         try {
-            const res = await API.smartSearch(safeQuery);
+            const res = await API.smartSearch(safeQuery, currentSearchAbortController?.signal, forceAi);
+            if (!res) return; // تم إلغاء الطلب
+
+            // 🛡️ معالجة أخطاء الـ API الصريحة بدلاً من إظهار "لا توجد نتائج"
+            if (res.error) {
+                drop.innerHTML = `<div class="p-3 text-center text-danger fw-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>${window.escapeHTML(res.error || 'تعذر استرجاع نتائج البحث')}</div>`;
+                return;
+            }
+
             let html = '';
 
-            if (res && res.cases?.length) {
+            if (res.cases?.length) {
                 html += '<h6 class="dropdown-header fw-bold px-3 pt-2" style="color: var(--gold-luxury);"><i class="fas fa-gavel me-1"></i> القضايا المطابقة</h6>';
                 html += res.cases.map(c => `
                     <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_case_id','${c.id}'); window.location.href='case-details.html?id=${encodeURIComponent(c.id)}'">
@@ -272,7 +291,7 @@ window.handleSmartSearch = (query) => {
                 `).join('');
             }
 
-            if (res && res.clients?.length) {
+            if (res.clients?.length) {
                 html += '<h6 class="dropdown-header text-success fw-bold px-3 pt-2"><i class="fas fa-users me-1"></i> الموكلين</h6>';
                 html += res.clients.map(c => `
                     <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_client_id','${c.id}'); window.location.href='client-details.html?id=${encodeURIComponent(c.id)}'">
@@ -282,8 +301,19 @@ window.handleSmartSearch = (query) => {
                 `).join('');
             }
 
-            if (res && res.brain?.length) {
-                html += '<h6 class="dropdown-header text-primary fw-bold px-3 pt-2"><i class="fas fa-brain me-1"></i> التشريعات والعقل القانوني (بحث بالمعنى)</h6>';
+            // 📄 عرض المستندات والملفات المطابقة
+            if (res.files?.length) {
+                html += '<h6 class="dropdown-header text-warning fw-bold px-3 pt-2"><i class="fas fa-file-alt me-1"></i> المستندات والأرشيف</h6>';
+                html += res.files.map(f => `
+                    <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="if(API.downloadR2File) API.downloadR2File('${f.file_url}', '${window.escapeHTML(f.file_name)}')">
+                        <span><i class="fas fa-paperclip me-1 text-muted"></i> ${window.escapeHTML(f.file_name)}</span>
+                        <small class="badge bg-light text-secondary border font-monospace">${window.escapeHTML(f.display_desc || 'ملف')}</small>
+                    </button>
+                `).join('');
+            }
+
+            if (res.brain?.length) {
+                html += '<h6 class="dropdown-header text-primary fw-bold px-3 pt-2"><i class="fas fa-brain me-1"></i> التشريعات والعقل القانوني</h6>';
                 html += res.brain.map(b => `
                     <button type="button" class="dropdown-item py-2 border-bottom text-start" onclick="window.location.href='ai-chat.html?q=${encodeURIComponent(b.title || b.category || '')}'">
                         <div class="fw-bold text-navy small">${window.escapeHTML(b.category || 'تشريع')} - المادة (${window.escapeHTML(b.article_number || '--')})</div>
@@ -292,13 +322,26 @@ window.handleSmartSearch = (query) => {
                 `).join('');
             }
 
-            drop.innerHTML = html || '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-search-minus fa-2x mb-2 d-block opacity-50"></i>لا توجد ملفات أو تشريعات مطابقة</div>';
+            // زر طلب البحث الدلالي المعمق بالذكاء الاصطناعي عند الحاجة
+            if (!forceAi) {
+                html += `
+                    <div class="p-2 border-top bg-light text-center">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" onclick="window.handleSmartSearch('${window.escapeHTML(safeQuery)}', true)">
+                            <i class="fas fa-brain me-1"></i> تفعيل البحث الدلالي بالمعنى (AI Deep Search)
+                        </button>
+                    </div>
+                `;
+            }
+
+            drop.innerHTML = html || '<div class="p-3 text-center text-muted fw-bold"><i class="fas fa-search-minus fa-2x mb-2 d-block opacity-50"></i>لا توجد ملفات أو قضايا أو مستندات مطابقة</div>';
             drop.classList.remove('d-none');
             drop.classList.add('show');
             drop.style.display = 'block';
         } catch (e) {
-            console.error("Smart Search Error:", e);
-            drop.innerHTML = '<div class="p-3 text-center text-danger fw-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>تعذر استرجاع نتائج البحث حالياً</div>';
+            if (e.name !== 'AbortError') {
+                console.error("Smart Search Error:", e);
+                drop.innerHTML = `<div class="p-3 text-center text-danger fw-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>${window.escapeHTML(e.message || 'تعذر استرجاع نتائج البحث حالياً')}</div>`;
+            }
         }
     }, 280);
 };
@@ -360,8 +403,10 @@ window.runConflictCheck = async () => {
                 });
             }
         } else {
-            html = `<div class="alert alert-success fw-bold border-success border-2 shadow-sm text-center p-4 rounded-4">
-                <i class="fas fa-shield-alt fa-3x mb-3 d-block text-success"></i> النتيجة سليمة 100%! لا يوجد أي تعارض مصالح مسجل لهذا الاسم. يمكنك قبول القضية بأمان.
+            html = `<div class="alert alert-success border-success border-2 shadow-sm p-4 rounded-4 text-center">
+                <i class="fas fa-shield-alt fa-3x mb-3 d-block text-success"></i>
+                <div class="fw-bold fs-5 text-success mb-2">لم تظهر أي مطابقات في سجلات المكتب وفق البيانات المدخلة.</div>
+                <small class="text-muted d-block">يُرجى مراجعة الأسماء والبيانات المرتبطة قبل اتخاذ قرار قبول القضية. لا تُعد هذه النتيجة ضماناً قانونياً قاطعاً لعدم وجود تعارض مصالح.</small>
             </div>`;
         }
         resContainer.innerHTML = html;
@@ -422,10 +467,14 @@ window.startHeartbeat = () => {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const staffRes = await API.getStaff();
-                window.AppCore.globalData.staff = Array.isArray(staffRes) ? staffRes : [];
+                // جلب الموظفين فقط للمدير إذا كانت شاشة الحضور مفتوحة لتوفير استهلاك قاعدة البيانات
                 if (['admin', 'super_admin'].includes(window.AppCore.currentUser.role)) {
-                    window.renderOnlineStaff();
+                    const onlineContainer = document.getElementById('online-staff-container');
+                    if (onlineContainer && !onlineContainer.classList.contains('d-none')) {
+                        const staffRes = await API.getStaff();
+                        window.AppCore.globalData.staff = Array.isArray(staffRes) ? staffRes : [];
+                        window.renderOnlineStaff();
+                    }
                 }
             } catch (e) {}
         }
