@@ -1,14 +1,16 @@
 /**
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
- * الملف: sw.js (Service Worker - Enterprise Offline & Sync Edition V5.1)
+ * الملف: sw.js (Service Worker - Enterprise Offline & Sync Edition V5.6)
  * الوصف: المحرك السحابي المحلي لضمان عمل النظام كـ (PWA) وتوفير تجربة
- * الموبايل الأصلية (Native App) حتى عند انقطاع الإنترنت.
+ * الموبايل الأصلية (Native App) بأعلى معايير الأمان (Zero-Trust) والعمل دون إنترنت.
+ * 
  * الميزات:
- * 1. استراتيجيات كاش ذكية (Network-First للبيانات، Stale-While-Revalidate للملفات).
- * 2. اعتراض الأخطاء القاتلة (TypeError Fallback) لتجنب انهيار المتصفح.
- * 3. نظام الإشعارات الفورية (Push Notifications) المتوافق مع بيئة Worker (self).
- * 4. المزامنة في الخلفية (Background Sync) عند عودة الإنترنت.
+ * 1. استراتيجيات كاش ذكية (Network-First للبيانات والصفحات، Stale-While-Revalidate للملفات الساكنة).
+ * 2. عزل وحماية البيانات الحساسة: تجاوز الكاش تلقائياً لأي مسار API أو اتصالات Supabase أو روابط تحتوي على رموز مصادقة (Tokens/PINs).
+ * 3. حماية الانهيار (TypeError Fallback) لضمان عدم توقف المتصفح عند انقطاع الشبكة.
+ * 4. نظام الإشعارات الفورية (Web Push Notifications) المرتبط بأيقونات PWA المحلية وبوابات التوجيه الآمنة (Same-Origin Safe Routing).
+ * 5. المزامنة في الخلفية (Background Sync API) لرفع التغييرات عند استعادة الاتصال.
  * ============================================================================
  */
 
@@ -17,15 +19,16 @@
 // ============================================================================
 const CACHE_NAME = 'moakkil-cache-v5.6-enterprise';
 
-// الأيقونة الرسمية المعتمدة في manifest.json وملفات الواجهة
-const DEFAULT_ICON_URL = 'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png';
+// الأيقونة الرسمية المعتمدة محلياً لدعم الـ PWA دون الاعتماد على خوادم خارجية
+const DEFAULT_ICON_URL = './icons/icon-512.png';
 
-// قائمة الملفات الثابتة التي يجب تخزينها ليعمل النظام دون إنترنت.
-// ملاحظة: استخدام المسارات النسبية (./) يمنع أخطاء الـ Live Server والاستضافات الفرعية.
+// قائمة الملفات الثابتة الكاملة التي يجب تخزينها مسبقاً لضمان عمل النظام دون إنترنت.
+// تشمل جميع صفحات HTML والأنظمة الفرعية (الحاسبات، التقارير، المكتبة القانونية، المصادقة)
 const STATIC_ASSETS = [
     './',
     './index.html',
     './login.html',
+    './register.html',
     './app.html',
     './case-details.html',
     './client-details.html',
@@ -36,6 +39,8 @@ const STATIC_ASSETS = [
     './calculators.html',
     './ai-chat.html',
     './privacy.html',
+    './terms.html',
+    './verify.html',
     './css/style.css',
     './js/config.js',
     './js/api.js',
@@ -50,8 +55,18 @@ const STATIC_ASSETS = [
     './js/client.js',
     './js/staff.js',
     './js/library.js',
+    './js/reports.js',
+    './js/register.js',
+    './js/share.js',
+    './js/breakeven.js',
+    './js/compound.js',
+    './js/discount.js',
+    './js/inheritance.js',
+    './js/loan.js',
     './js/ai-handler.js',
     './js/ai-chat.js',
+    './icons/icon-192.png',
+    './icons/icon-512.png',
     './manifest.json'
 ];
 
@@ -59,17 +74,17 @@ const STATIC_ASSETS = [
 // [2] دورة حياة السيرفس وركر (Install & Activate Events)
 // ============================================================================
 
-// حدث التثبيت: يتم فيه تخزين الملفات الأساسية مسبقاً (Pre-caching) بشكل مرن وآمن
+// حدث التثبيت: تخزين الأصول الأساسية مسبقاً (Pre-caching) بمرونة وأمان عالي
 self.addEventListener('install', (event) => {
-    self.skipWaiting(); // فرض تفعيل النسخة الجديدة فوراً دون انتظار إغلاق التبويبات
+    self.skipWaiting(); // فرض تفعيل الإصدار الجديد فوراً دون انتظار إغلاق النوافذ
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
-            console.log('[Service Worker] جاري تخزين ملفات النظام للعمل دون اتصال...');
-            // تخزين كل ملف على حدة لضمان عدم فشل الكاش بالكامل إذا كان أحد الملفات الفرعية غير موجود
+            console.log('[Service Worker V5.6] جاري تخزين حزمة النظام الأساسية للعمل دون اتصال...');
+            // تخزين كل ملف على حدة لضمان عدم توقف الكاش بالكامل إذا تأخر أو تعذر أحد الملفات
             await Promise.allSettled(
                 STATIC_ASSETS.map((assetUrl) =>
                     cache.add(assetUrl).catch((err) => {
-                        console.warn(`[Service Worker] تعذر تخزين الملف (${assetUrl})، تم تجاوزه:`, err);
+                        console.warn(`[Service Worker] تعذر تخزين الأصل (${assetUrl})، تم تجاوزه بأمان:`, err);
                     })
                 )
             );
@@ -77,48 +92,54 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// حدث التفعيل: يتم فيه تنظيف مخلفات النسخ القديمة لتوفير مساحة في جهاز المستخدم
+// حدث التفعيل: تنظيف مخلفات الإصدارات السابقة وتأمين تحرير الذاكرة
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log(`[Service Worker] تنظيف الكاش القديم: ${cacheName}`);
+                        console.log(`[Service Worker V5.6] حذف الكاش القديم: ${cacheName}`);
                         return caches.delete(cacheName);
                     }
                 })
             );
-        }).then(() => self.clients.claim()) // السيطرة الفورية على جميع الصفحات المفتوحة
+        }).then(() => self.clients.claim()) // السيطرة الفورية على كل التبويبات المفتوحة
     );
 });
 
 // ============================================================================
-// [3] محرك اعتراض الطلبات (Fetch Interceptor & Offline Strategies)
+// [3] محرك اعتراض وتوجيه الطلبات (Fetch Interceptor & Security Firewall)
 // ============================================================================
 self.addEventListener('fetch', (event) => {
-    // تجاهل الطلبات غير الـ GET، وتجاهل إضافات المتصفح (chrome-extension://)
+    // تجاهل الطلبات غير الـ GET وتجاهل بروتوكولات الإضافات مثل chrome-extension://
     if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
     const requestUrl = new URL(event.request.url);
 
-    // 🛡️ الجدار الناري: تجاهل مسارات الـ API والخدمات الخارجية (يجب أن تكون حية دائماً)
+    // 🛡️ الجدار الناري الصارم (Zero-Trust Security Filter):
+    // تجاوز الكاش تماماً لمسارات الـ API الحساسة، وقاعدة بيانات Supabase، وتحليلات الشبكة،
+    // وأي طلب يحتوي على معاملات أمان حساسة (Tokens / PINs) لعدم تسريبها في الذاكرة التخزينية.
     if (
         requestUrl.pathname.startsWith('/api/') ||
+        requestUrl.hostname.includes('supabase.co') ||
         requestUrl.hostname.includes('cloudflareinsights.com') ||
         requestUrl.hostname.includes('googleapis.com') ||
-        requestUrl.hostname.includes('fbcdn.net')
+        requestUrl.hostname.includes('fbcdn.net') ||
+        requestUrl.searchParams.has('token') ||
+        requestUrl.searchParams.has('pin') ||
+        requestUrl.searchParams.has('auth')
     ) {
-        return;
+        return; // ترك الطلب يمر مباشرة إلى الشبكة دون أي تدخل أو تخزين مؤقت
     }
 
-    // تحديد ما إذا كان الطلب لصفحة HTML أم لملف ساكن (صورة، CSS، JS) بأمان
+    // تحديد نوع الطلب بأمان (صفحة تنقل HTML أم أصل ساكن)
     const acceptHeader = event.request.headers.get('accept') || '';
     const isHtml = event.request.mode === 'navigate' || acceptHeader.includes('text/html');
 
     if (isHtml) {
-        // 🧠 خوارزمية الصفحات (Network-First, Fallback to Cache)
-        // نحاول جلب أحدث نسخة من السيرفر أولاً، وإذا انقطع الإنترنت نعرض النسخة المخزنة.
+        // 🧠 استراتيجية الصفحات (Network-First مع التراجع للكاش المحلي)
+        // نحاول جلب أحدث نسخة من السيرفر، وإن تعذر الاتصال يتم تقديم النسخة المحلية المخزنة
         event.respondWith(
             fetch(event.request)
                 .then((networkResponse) => {
@@ -129,10 +150,10 @@ self.addEventListener('fetch', (event) => {
                     return networkResponse;
                 })
                 .catch(() => {
-                    console.warn(`[Service Worker] أنت Offline. جلب صفحة ${requestUrl.pathname} من الكاش.`);
+                    console.warn(`[Service Worker] أنت في وضع Offline. جلب الصفحة (${requestUrl.pathname}) من الكاش المحلي.`);
                     return caches.match(event.request, { ignoreSearch: true }).then((cachedRes) => {
-                        // إذا كانت الصفحة غير مخزنة، نعرض الصفحة الرئيسية كبديل آمن
                         if (cachedRes) return cachedRes;
+                        // إن لم تكن الصفحة مخزنة، يتم التراجع إلى لوحة التحكم أو الصفحة الرئيسية
                         return caches.match('./app.html', { ignoreSearch: true }).then((appRes) => {
                             return appRes || caches.match('./index.html', { ignoreSearch: true });
                         });
@@ -140,13 +161,13 @@ self.addEventListener('fetch', (event) => {
                 })
         );
     } else {
-        // 🧠 خوارزمية الملفات الساكنة (Stale-While-Revalidate)
-        // نعرض الملف المخزن فوراً لسرعة البرق، وفي الخلفية نحدث الكاش للزيارة القادمة.
+        // 🧠 استراتيجية الأصول الساكنة (Stale-While-Revalidate)
+        // الاستجابة الفورية من الكاش لتجربة فائقة السرعة، ثم تحديث النسخة في الخلفية
         event.respondWith(
             caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
                 const networkFetchPromise = fetch(event.request)
                     .then((networkResponse) => {
-                        // فلترة الاستجابات غير الصالحة لحماية الكاش ومنع خطأ Redirected في Safari
+                        // فلترة الاستجابات غير الصالحة لحماية الكاش ومنع مشاكل التوجيه
                         if (
                             !networkResponse ||
                             networkResponse.status !== 200 ||
@@ -155,27 +176,27 @@ self.addEventListener('fetch', (event) => {
                         ) {
                             return networkResponse;
                         }
-                        // استنساخ متزامن فوري قبل استهلاك الـ Body لمنع خطأ Response body is already used
+                        // استنساخ متزامن فوري قبل قراءة جسم الاستجابة
                         const responseToCache = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
                         return networkResponse;
                     })
                     .catch(() => {
-                        // 🔥 الإصلاح الجذري (TypeError Fallback) عند انقطاع الإنترنت تماماً
+                        // معالجة انقطاع الاتصال الجذري دون التسبب في TypeError
                         if (cachedResponse) return cachedResponse;
 
-                        // إذا كان الطلب لصورة، نعرض صورة SVG بديلة توضح الانقطاع
+                        // إذا كان الطلب لصورة مفقودة، يتم إرجاع SVG خفيف يوضح حالة عدم الاتصال
                         if (event.request.destination === 'image') {
                             const fallbackSvg = `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="200" height="200" fill="#e2e8f0"/>
-                                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="16" fill="#94a3b8">أنت Offline</text>
+                                <rect width="200" height="200" fill="#0B132B"/>
+                                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" fill="#D4AF37">موكّل - دون اتصال</text>
                             </svg>`;
                             return new Response(fallbackSvg, {
                                 headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' }
                             });
                         }
 
-                        // إرجاع استجابة فارغة وآمنة لأي ملف آخر حتى لا ينهار المتصفح بـ TypeError
+                        // إرجاع استجابة 503 آمنة للملفات الأخرى لتفادي تعليق المتصفح
                         return new Response('', {
                             status: 503,
                             statusText: 'Service Unavailable (Offline)',
@@ -190,11 +211,12 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ============================================================================
-// [4] إشعارات الدفع (Web Push Notifications)
+// [4] نظام إشعارات الويب الفورية (Web Push Notifications)
 // ============================================================================
 
 /**
- * التحقق من أن رابط التوجيه ينتمي لنفس النطاق (Same-Origin) لمنع ثغرة التوجيه الخارجي (Open Redirect)
+ * التحقق الأمني من مسار التوجيه عند النقر على الإشعار لضمان انتمائه لنفس النطاق (Same-Origin)
+ * ومنع ثغرات إعادة التوجيه الخبيثة (Open Redirect Protection)
  */
 function resolveSafeNotificationUrl(rawUrl, fallbackPath = './app.html') {
     const safeFallback = new URL(fallbackPath, self.location.origin).href;
@@ -207,14 +229,14 @@ function resolveSafeNotificationUrl(rawUrl, fallbackPath = './app.html') {
         ) {
             return parsed.href;
         }
-        console.warn(`[Service Worker] تم حظر توجيه خارجي غير مصرح به في الإشعار: ${rawUrl}`);
+        console.warn(`[Service Worker] تم حظر توجيه خارجي مشبوه من الإشعار: ${rawUrl}`);
     } catch (e) {
-        console.warn(`[Service Worker] رابط إشعار غير صالح: ${rawUrl}`);
+        console.warn(`[Service Worker] مسار إشعار غير صالح: ${rawUrl}`);
     }
     return safeFallback;
 }
 
-// استلام الإشعار من الباك إند (Cloudflare Worker)
+// استلام ومعالجة إشعار الدفع المشفر من الخادم (Push Event)
 self.addEventListener('push', (event) => {
     if (!event.data) return;
 
@@ -222,7 +244,7 @@ self.addEventListener('push', (event) => {
         const payload = event.data.json();
         const safeActionUrl = resolveSafeNotificationUrl(payload.action_url || payload.url, './app.html');
         const options = {
-            body: payload.message || payload.body || 'يوجد تحديث جديد في النظام.',
+            body: payload.message || payload.body || 'يوجد تنبيه جديد في نظام موكّل.',
             icon: payload.icon || DEFAULT_ICON_URL,
             badge: payload.badge || DEFAULT_ICON_URL,
             dir: 'rtl',
@@ -231,11 +253,11 @@ self.addEventListener('push', (event) => {
             requireInteraction: true,
             data: { url: safeActionUrl }
         };
-        event.waitUntil(self.registration.showNotification(payload.title || 'تنبيه من موكّل', options));
+        event.waitUntil(self.registration.showNotification(payload.title || 'موكّل ERP', options));
     } catch (e) {
-        // في حال كان الـ Payload نصاً عادياً وليس JSON
+        // في حال كان المحتوى نصاً غير مشفر كـ JSON
         event.waitUntil(
-            self.registration.showNotification('تنبيه من موكّل', {
+            self.registration.showNotification('موكّل ERP', {
                 body: event.data.text(),
                 dir: 'rtl',
                 lang: 'ar',
@@ -247,7 +269,7 @@ self.addEventListener('push', (event) => {
     }
 });
 
-// التفاعل مع الإشعار عند النقر عليه (تم إصلاح خطأ window غير المعرف واستبداله بـ self مع التحقق من النطاق)
+// التعامل الآمن مع حدث النقر على الإشعار (Notification Click)
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const rawTargetUrl = event.notification.data?.url || './app.html';
@@ -255,7 +277,7 @@ self.addEventListener('notificationclick', (event) => {
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // إذا كان النظام مفتوحاً مسبقاً في إحدى النوافذ، قم بتنشيطه وتوجيهه للرابط
+            // إذا كان التطبيق مفتوحاً في نافذة سابقة، تنشيطه وتوجيهه للمسار المطلوب
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
                 if (client.url.startsWith(self.location.origin) && 'focus' in client) {
@@ -265,7 +287,7 @@ self.addEventListener('notificationclick', (event) => {
                     return client.focus();
                 }
             }
-            // إذا لم يكن مفتوحاً، افتح نافذة جديدة
+            // فتح نافذة جديدة إذا لم تكن هناك نافذة مفتوحة
             if (self.clients.openWindow) {
                 return self.clients.openWindow(targetUrl);
             }
@@ -274,15 +296,14 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ============================================================================
-// [5] التزامن في الخلفية (Background Sync API)
+// [5] المزامنة في الخلفية (Background Sync API)
 // ============================================================================
-// يتم تفعيل هذا الحدث تلقائياً بواسطة المتصفح فور عودة الاتصال بالإنترنت
+// إشعار التطبيق تلقائياً فور عودة الاتصال لمعالجة طابور العمليات غير المتزامنة (Offline Queue)
 self.addEventListener('sync', (event) => {
     if (event.tag === 'moakkil-offline-sync') {
-        console.log('[Service Worker] تم رصد عودة الإنترنت، جاري بدء المزامنة الخلفية...');
+        console.log('[Service Worker] رصد عودة الاتصال بالإنترنت - إطلاق المزامنة الخلفية...');
         event.waitUntil(
             self.clients.matchAll({ includeUncontrolled: true }).then((clientsList) => {
-                // نرسل إشارة لملف api.js لكي يبدأ برفع البيانات المتراكمة في الطابور المحلي
                 clientsList.forEach((client) => client.postMessage({ type: 'START_OFFLINE_SYNC' }));
             })
         );

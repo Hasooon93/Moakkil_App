@@ -2,14 +2,16 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/api.js
- * الوصف: المحرك الموحد للاتصال بالخادم (V5.3 Enterprise True Zero-Trust & Sync Edition)
+ * الوصف: المحرك الموحد للاتصال بالخادم (V5.6 Enterprise True Zero-Trust & Sync Edition)
  * الميزات والتحصينات:
  * 1. عزل طابور المزامنة (Offline Queue) عبر ربط كل عملية بـ (uid + firm_id) ورفض المزامنة عند اختلاف الهوية.
  * 2. عدم تخزين تذاكر الحذف (action_token) في localStorage، واشتراط الاتصال المباشر للحذف الموثق.
  * 3. إلغاء الإرسال التلقائي الصامت لـ bio_<credId> واستبداله بتذكرة خادمية لمرة واحدة (act_UUID).
  * 4. تطهير الطابور المحلي تلقائياً في معالج 401 Unauthorized لمنع تسرب العمليات بين الحسابات.
  * 5. التشفير الآمن للحروف العربية في الـ Headers لخدمات الرفع السحابي (Cloudflare R2).
- * 6. دعم المسارات الخادمية الجديدة لبوابة الموكل (رفع النواقص والتوقيع الإلكتروني الموثق).
+ * 6. ربط كافة طلبات الشبكة بـ AbortController موحد لإلغائها فورياً عند تسجيل الخروج لمنع Race Conditions.
+ * 7. دعم جلب مفتاح VAPID العام خادمياً (/api/vapid-public-key) دون أي أسرار ثابتة في الكود.
+ * 8. دعم مسارات بوابة الموكل الموثقة (رفع النواقص، التوقيع الإلكتروني، وتنزيل المستندات المحمية بـ PIN).
  * ============================================================================
  */
 
@@ -211,7 +213,6 @@ async function processOfflineQueue() {
             console.warn('🚫 [Sync Identity Firewall] تم حذف عملية طابور قديمة تنتمي لحساب/مكتب مختلف.');
             return false;
         }
-        // عدم السماح ببقاء أي action_token مخزن في عناصر قديمة
         delete req.action_token;
         return true;
     });
@@ -311,18 +312,15 @@ async function processOfflineQueue() {
                 const reqCleanId = String(req.id || '').replace(/^eq\./, '');
                 const reqRawId = String(req.id || '');
 
-                // 1. إذا نجحت العملية نحذفها من الطابور
                 if (syncedSuccessIds.has(reqCleanId) || syncedSuccessIds.has(reqRawId)) {
                     continue;
                 }
 
-                // 2. إذا رُفضت العملية أمنياً/منطقياً بشكل دائم نحذفها وننبه المستخدم
                 if (permanentFailedIds.has(reqCleanId) || permanentFailedIds.has(reqRawId)) {
                     droppedCount++;
                     continue;
                 }
 
-                // 3. إذا فشلت لسبب عابر أو لم ترجع في الرد، نزيد عداد المحاولات
                 req.retry_count = (req.retry_count || 0) + 1;
                 if (req.retry_count < MAX_SYNC_RETRIES) {
                     remainingQueue.push(req);
@@ -409,12 +407,10 @@ function resolveDeleteTargetFromEndpoint(endpoint = '') {
 
 /**
  * التأكد من توفر تذكرة مصادقة ثنائية خادمية صالحة لمرة واحدة (act_UUID) قبل تنفيذ أي عملية حذف (DELETE)
- * تم إلغاء الإرسال التلقائي الصامت لـ bio_<credId> نهائياً
  */
 async function ensureValidActionToken(providedToken = null, targetTable = '*', targetId = '*') {
     const cleanProvided = providedToken ? String(providedToken).trim() : '';
 
-    // 1. إذا كانت التذكرة المقدمة هي تذكرة خادمية موقعة جاهزة (act_UUID)، نعتمدها مباشرة
     if (cleanProvided.startsWith('act_') && cleanProvided.length > 10) {
         return cleanProvided;
     }
@@ -423,7 +419,6 @@ async function ensureValidActionToken(providedToken = null, targetTable = '*', t
     const deviceId = localStorage.getItem('moakkil_device_id') || 'unknown-device';
     const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
 
-    // 2. إذا مررت الواجهة كود PIN أو OTP نصي، نحوله عبر الخادم إلى تذكرة موقعة لمرة واحدة (act_UUID)
     if (cleanProvided.length >= 4 && !cleanProvided.startsWith('bio_')) {
         try {
             const verifyRes = await fetch(`${baseUrl}/api/auth/verify-action-mfa`, {
@@ -449,7 +444,6 @@ async function ensureValidActionToken(providedToken = null, targetTable = '*', t
         }
     }
 
-    // 3. الاعتماد الأساسي على الحارس المركزي AUTH.requireActionAuth الذي يطلب البصمة الحية أو الكود ويصدر تذكرة الخادم
     if (typeof AUTH !== 'undefined' && typeof AUTH.requireActionAuth === 'function') {
         try {
             return await AUTH.requireActionAuth('تأكيد عملية الحذف النهائي/الأرشفة', targetTable, targetId);
@@ -458,7 +452,6 @@ async function ensureValidActionToken(providedToken = null, targetTable = '*', t
         }
     }
 
-    // 4. نافذة احتياطية عبر SweetAlert2 في حال عدم تحميل AUTH في السياق الحالي
     if (typeof Swal !== 'undefined') {
         const result = await Swal.fire({
             title: 'تأكيد أمني للحذف (MFA)',
@@ -678,11 +671,12 @@ async function fetchAPI(endpoint, method = 'GET', body = null, isPublic = false,
 // ============================================================================
 const API = {
     // -------------------------------------------------------------
-    // 4.1 إدارة النظام والمكتب (Firm & Settings)
+    // 4.1 إدارة النظام والمكتب (Firm & Settings & Quotas)
     // -------------------------------------------------------------
     getFirmSettings: () => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`),
     updateFirmSettings: (data) => fetchAPI(`/api/firms?id=eq.${getCurrentUser().firm_id || ''}`, 'PATCH', data),
     getSubscriptions: () => fetchAPI('/api/subscriptions'),
+    getVapidPublicKey: () => fetchAPI('/api/vapid-public-key', 'GET', null, true),
 
     // -------------------------------------------------------------
     // 4.2 إدارة الموكلين والوكالات (Clients & POAs)
@@ -691,6 +685,7 @@ const API = {
     addClient: (data) => fetchAPI('/api/clients', 'POST', data),
     updateClient: (id, data) => fetchAPI(`/api/clients?id=eq.${id}`, 'PATCH', data),
     deleteClient: (id, actionToken) => fetchAPI(`/api/clients?id=eq.${id}`, 'DELETE', null, false, actionToken),
+    toggleClientPortal: (clientId, active) => fetchAPI(`/api/clients?id=eq.${clientId}`, 'PATCH', { client_portal_active: active }),
 
     getPOAs: (clientId) => fetchAPI(clientId ? `/api/poas?client_id=eq.${clientId}` : '/api/poas'),
     addPOA: (data) => fetchAPI('/api/poas', 'POST', data),
@@ -703,6 +698,7 @@ const API = {
     addCase: (data) => fetchAPI('/api/cases', 'POST', data),
     updateCase: (id, data) => fetchAPI(`/api/cases?id=eq.${id}`, 'PATCH', data),
     deleteCase: (id, actionToken) => fetchAPI(`/api/cases?id=eq.${id}`, 'DELETE', null, false, actionToken),
+    toggleCasePortal: (caseId, active) => fetchAPI(`/api/cases?id=eq.${caseId}`, 'PATCH', { client_portal_active: active }),
 
     getUpdates: (param) => fetchAPI(param ? (String(param).includes('=') ? `/api/updates?${param}` : `/api/updates?case_id=eq.${param}`) : '/api/updates'),
     addUpdate: (data) => fetchAPI('/api/updates', 'POST', data),

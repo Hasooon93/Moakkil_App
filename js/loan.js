@@ -2,34 +2,32 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/loan.js
- * الوصف: محرك حاسبة القروض المصرفية (Bank Loan & Amortization Calculator)
- * المهام:
- * 1. حساب القسط الشهري الثابت بناءً على الفائدة المتناقصة (Amortization Formula).
- * 2. احتساب إجمالي الفوائد والمبلغ النهائي المسدد للبنك.
- * 3. عرض النتيجة في لوحة معلومات (Dashboard) مصغرة واحترافية.
+ * الإصدار: V5.6 Enterprise Edition (Bank Loan & Amortization Legal Engine)
+ * ============================================================================
+ * الميزات والمهام:
+ * 1. حساب القسط الشهري الثابت وفق معادلة الاستهلاك المصرفي (Amortization Formula).
+ * 2. احتساب إجمالي الفوائد والمبلغ النهائي المسدد للبنك مع دعم القرض الحسن (0%).
+ * 3. توليد جدول الاستهلاك السنوي (Amortization Schedule) لدعم دعاوى محاسبة البنوك.
+ * 4. إمكانية نسخ التقرير المالي المنسق بنقرة واحدة لإرفاقه بالمذكرات واللوائح القضائية.
+ * 5. دعم الهوية البصرية الملكية V5.6 والوضع الليلي عالي التباين (WCAG AAA).
  * ============================================================================
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-    // ========================================================================
-    // [1] ربط العناصر (DOM Elements)
-    // ========================================================================
     const btnCalc = document.getElementById("calcLoanBtn");
     
     if (btnCalc) {
         btnCalc.addEventListener("click", (e) => {
-            e.preventDefault(); // منع تحديث الصفحة عند الضغط
+            e.preventDefault();
 
-            // ========================================================================
-            // [2] جلب القيم من واجهة المستخدم والتحقق من وجود الحقول
-            // ========================================================================
+            // 1. جلب العناصر والمدخلات
             const amountInput = document.getElementById("loanAmount");
             const rateInput = document.getElementById("loanRate");
             const yearsInput = document.getElementById("loanYears");
             const resDiv = document.getElementById("loanResult");
 
             if (!amountInput || !rateInput || !yearsInput || !resDiv) {
-                if (typeof showAlert === 'function') showAlert("خطأ في الواجهة: الحقول المطلوبة غير موجودة.", "error");
+                showAlert("خطأ في الواجهة: الحقول المطلوبة غير موجودة.", "error");
                 return;
             }
 
@@ -37,107 +35,240 @@ document.addEventListener("DOMContentLoaded", () => {
             const rate = parseFloat(rateInput.value);
             const years = parseFloat(yearsInput.value);
 
-            // ========================================================================
-            // [3] جدار الحماية والتحقق المنطقي (Validation Firewall)
-            // ========================================================================
+            // 2. التحقق من صحة المدخلات
             if (isNaN(amount) || isNaN(rate) || isNaN(years) || amount <= 0 || rate < 0 || years <= 0) {
-                if (typeof showAlert === 'function') showAlert("يرجى إدخال قيم رقمية صحيحة وموجبة للقرض.", "warning");
+                showAlert("يرجى إدخال قيم رقمية موجبة وصحيحة لجميع حقول القرض.", "warning");
                 resDiv.classList.add("d-none");
                 return;
             }
 
-            // إعطاء تأثير حركي للزر للإيحاء بالمعالجة
+            if (years > 40) {
+                showAlert("مدة سداد القرض تتجاوز الحد الأقصى المعمول به مصرفياً (40 سنة).", "warning");
+                return;
+            }
+
+            // تأثير التحميل المؤقت
             const originalBtnText = btnCalc.innerHTML;
-            btnCalc.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التحليل المالي...';
+            btnCalc.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري التدقيق والتحليل المصرفي...';
             btnCalc.disabled = true;
 
-            // ========================================================================
-            // [4] تنفيذ العمليات الحسابية (Amortization Math Logic)
-            // ========================================================================
             setTimeout(() => {
-                const monthlyRate = (rate / 100) / 12; // نسبة الفائدة الشهرية
-                const totalPayments = years * 12;      // إجمالي عدد الأقساط
+                // 3. المعادلات المصرفية الرسمية
+                const monthlyRate = (rate / 100) / 12;
+                const totalPayments = Math.round(years * 12);
 
                 let monthlyPayment = 0;
                 let totalAmount = 0;
                 let totalInterest = 0;
 
                 if (rate === 0) {
-                    // القرض الحسن (بدون فائدة)
+                    // قرض حسن (بدون فوائد)
                     monthlyPayment = amount / totalPayments;
                     totalAmount = amount;
                     totalInterest = 0;
                 } else {
-                    // معادلة القسط الثابت المعتمدة في البنوك
-                    monthlyPayment = amount * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) / (Math.pow(1 + monthlyRate, totalPayments) - 1);
+                    // معادلة القسط الثابت (Annuity Formula) المعتمدة لدى البنوك المركزية
+                    const factor = Math.pow(1 + monthlyRate, totalPayments);
+                    monthlyPayment = amount * (monthlyRate * factor) / (factor - 1);
                     totalAmount = monthlyPayment * totalPayments;
                     totalInterest = totalAmount - amount;
                 }
 
-                // ========================================================================
-                // [5] عرض النتيجة النهائية (Rendering Dashboard)
-                // ========================================================================
-                
-                // دالة مساعدة لتنسيق الأرقام بأسلوب مالي
-                const fmt = (num) => num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                if (!isFinite(monthlyPayment) || isNaN(monthlyPayment)) {
+                    showAlert("تعذر احتساب القسط بدقة للقيم المدخلة، يرجى التحقق من المدخلات.", "error");
+                    btnCalc.innerHTML = originalBtnText;
+                    btnCalc.disabled = false;
+                    return;
+                }
 
+                // 4. بناء جدول الاستهلاك السنوي (Amortization Schedule)
+                let amortizationRows = [];
+                let balance = amount;
+                const maxDisplayYears = Math.min(Math.ceil(years), 30);
+
+                for (let y = 1; y <= maxDisplayYears; y++) {
+                    let yearInterest = 0;
+                    let yearPrincipal = 0;
+                    const monthsInThisYear = (y === Math.ceil(years) && totalPayments % 12 !== 0) ? (totalPayments % 12) : 12;
+
+                    for (let m = 1; m <= monthsInThisYear; m++) {
+                        let mInterest = rate === 0 ? 0 : (balance * monthlyRate);
+                        let mPrincipal = monthlyPayment - mInterest;
+                        if (balance < mPrincipal) {
+                            mPrincipal = balance;
+                        }
+                        balance -= mPrincipal;
+                        yearInterest += mInterest;
+                        yearPrincipal += mPrincipal;
+                        if (balance <= 0.001) {
+                            balance = 0;
+                            break;
+                        }
+                    }
+
+                    amortizationRows.push({
+                        year: y,
+                        principalPaid: yearPrincipal,
+                        interestPaid: yearInterest,
+                        totalPaid: yearPrincipal + yearInterest,
+                        remainingBalance: Math.max(0, balance)
+                    });
+
+                    if (balance <= 0) break;
+                }
+
+                // 5. استخراج العملة المعتمدة
+                let currency = 'د.أ';
+                try {
+                    const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
+                    currency = settings.currency || settings.currency_code || 'د.أ';
+                } catch (e) {}
+
+                // دالة تنسيق الأرقام
+                const fmt = (num) => Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                // نص ملخص القرض الجاهز للنسخ
+                const legalSummaryText = `[تقرير الحسبة المصرفية للقرض - نظام موكّل]\n` +
+                    `• قيمة القرض الأصلية: ${fmt(amount)} ${currency}\n` +
+                    `• نسبة الفائدة السنوية: ${rate}%\n` +
+                    `• مدة التمويل: ${years} سنة (${totalPayments} قسطاً شهرياً)\n` +
+                    `• القسط الشهري الثابت: ${fmt(monthlyPayment)} ${currency}\n` +
+                    `• إجمالي الفوائد البنكية: ${fmt(totalInterest)} ${currency}\n` +
+                    `• إجمالي المبلغ الواجب سداده: ${fmt(totalAmount)} ${currency}`;
+
+                // 6. حقن واجهة النتيجة التفاعلية المحدثة
                 resDiv.innerHTML = `
-                    <h5 class="fw-bold mb-4 text-success border-bottom border-success border-opacity-25 pb-3 text-start">
-                        <i class="fas fa-file-invoice-dollar me-2"></i> التقرير المالي المفصل للقرض:
-                    </h5>
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <div class="p-3 bg-white border border-success border-opacity-25 rounded-4 shadow-sm text-center h-100 transition-hover">
+                    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                        <h5 class="fw-bold mb-0 text-success d-flex align-items-center">
+                            <i class="fas fa-file-invoice-dollar me-2 fs-4"></i> التقرير المالي المفصل للقرض
+                        </h5>
+                        <button class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3 shadow-sm" onclick="copyLoanSummary(${JSON.stringify(legalSummaryText)})" title="نسخ التقرير المالي للاستخدام في المذكرات القانونية">
+                            <i class="fas fa-copy me-1 text-primary"></i> نسخ الملخص القضائي
+                        </button>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light border border-success border-opacity-25 rounded-4 shadow-sm text-center h-100">
                                 <span class="d-block text-muted small fw-bold mb-2">القسط الشهري المتوقع</span>
-                                <b class="text-success fs-4 font-monospace">${fmt(monthlyPayment)} <small class="fs-6 text-muted fw-normal">د.أ</small></b>
+                                <b class="text-success fs-4 font-monospace">${fmt(monthlyPayment)}</b>
+                                <small class="text-muted d-block mt-1 font-monospace" style="font-size: 0.75rem;">${currency}</small>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="p-3 bg-white border border-danger border-opacity-25 rounded-4 shadow-sm text-center h-100 transition-hover">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light border border-danger border-opacity-25 rounded-4 shadow-sm text-center h-100">
                                 <span class="d-block text-muted small fw-bold mb-2">إجمالي الفوائد البنكية</span>
-                                <b class="text-danger fs-4 font-monospace">${fmt(totalInterest)} <small class="fs-6 text-muted fw-normal">د.أ</small></b>
+                                <b class="text-danger fs-4 font-monospace">${fmt(totalInterest)}</b>
+                                <small class="text-danger d-block mt-1 font-monospace" style="font-size: 0.75rem;">${currency}</small>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="p-3 bg-white border border-primary border-opacity-25 rounded-4 shadow-sm text-center h-100 transition-hover">
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light border border-primary border-opacity-25 rounded-4 shadow-sm text-center h-100">
                                 <span class="d-block text-muted small fw-bold mb-2">المبلغ النهائي المسدد</span>
-                                <b class="text-primary fs-4 font-monospace">${fmt(totalAmount)} <small class="fs-6 text-muted fw-normal">د.أ</small></b>
+                                <b class="text-primary fs-4 font-monospace">${fmt(totalAmount)}</b>
+                                <small class="text-primary d-block mt-1 font-monospace" style="font-size: 0.75rem;">${currency}</small>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="p-3 bg-white border border-secondary border-opacity-25 rounded-4 shadow-sm text-center h-100 transition-hover">
-                                <span class="d-block text-muted small fw-bold mb-2">إجمالي الدفعات</span>
-                                <b class="text-secondary fs-4 font-monospace">${totalPayments} <small class="fs-6 text-muted fw-normal">شهر</small></b>
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 bg-light border border-secondary border-opacity-25 rounded-4 shadow-sm text-center h-100">
+                                <span class="d-block text-muted small fw-bold mb-2">إجمالي عدد الأقساط</span>
+                                <b class="text-dark fs-4 font-monospace">${totalPayments}</b>
+                                <small class="text-muted d-block mt-1 font-monospace" style="font-size: 0.75rem;">شهراً</small>
                             </div>
                         </div>
                     </div>
-                    <div class="alert alert-light border border-info border-opacity-50 small text-muted mt-4 mb-0 fw-bold rounded-3 text-start lh-lg shadow-sm">
-                        <i class="fas fa-info-circle me-1 text-info fs-5 align-middle"></i> 
-                        تم الحساب بناءً على نظام القسط الثابت (الفائدة المتناقصة) المعتمد رسمياً في معظم البنوك المركزية. الأرقام تقريبية وقد تختلف بشكل طفيف جداً حسب سياسة عمولات التأمين المحددة للبنك.
+
+                    <!-- Amortization Schedule Accordion -->
+                    <div class="accordion border-0 shadow-sm rounded-4 overflow-hidden mb-3" id="amortizationAccordion">
+                        <div class="accordion-item border-0">
+                            <h2 class="accordion-header" id="headingAmort">
+                                <button class="accordion-button collapsed fw-bold bg-light text-dark py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAmort" aria-expanded="false" aria-controls="collapseAmort">
+                                    <i class="fas fa-table-list me-2 text-warning"></i> عرض جدول استهلاك أصل الدين والفوائد سنوياً (Amortization Schedule)
+                                </button>
+                            </h2>
+                            <div id="collapseAmort" class="accordion-collapse collapse" aria-labelledby="headingAmort" data-bs-parent="#amortizationAccordion">
+                                <div class="accordion-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-striped mb-0 text-center" style="font-size: 0.9rem;">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th class="py-2">السنة</th>
+                                                    <th class="py-2">أصل الدين المسدد</th>
+                                                    <th class="py-2">الفوائد المسددة</th>
+                                                    <th class="py-2">إجمالي المسدد سنوياً</th>
+                                                    <th class="py-2">الرصيد المتبقي</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${amortizationRows.map(r => `
+                                                    <tr>
+                                                        <td class="fw-bold align-middle">السنة ${r.year}</td>
+                                                        <td class="text-success fw-bold font-monospace align-middle">${fmt(r.principalPaid)} ${currency}</td>
+                                                        <td class="text-danger fw-bold font-monospace align-middle">${fmt(r.interestPaid)} ${currency}</td>
+                                                        <td class="text-primary fw-bold font-monospace align-middle">${fmt(r.totalPaid)} ${currency}</td>
+                                                        <td class="text-dark fw-bold font-monospace align-middle">${fmt(r.remainingBalance)} ${currency}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border border-info border-opacity-50 small text-muted mt-3 mb-0 fw-bold rounded-4 text-start lh-lg shadow-sm">
+                        <i class="fas fa-shield-alt me-1 text-info fs-5 align-middle"></i> 
+                        تم الاحتساب وفق نظام الاستهلاك الثابت بالفوائد المتناقصة المعتمد في البنوك المركزية (قانون المعاملات المالية). الأرقام قطعية رياضياً وتستثني أي رسوم تأمين حياة أو عمولات فتح ملف قد تفرضها البنوك التجارية.
                     </div>
                 `;
-                
-                // إظهار النتيجة مع الحركات
-                resDiv.className = "mt-4 p-4 bg-white border border-2 border-success shadow-lg rounded-4 fade-in";
+
+                resDiv.className = "mt-4 p-4 card-custom border-2 border-success shadow-lg rounded-4 fade-in";
                 resDiv.classList.remove("d-none");
 
                 // استعادة الزر
                 btnCalc.innerHTML = originalBtnText;
                 btnCalc.disabled = false;
-            }, 300);
+            }, 250);
         });
     }
+});
 
-    // دالة الإشعارات السريعة المضمنة
-    function showAlert(message, type = 'success') {
+/**
+ * نسخ الملخص المالي للقرض إلى الحافظة لاستخدامه في اللوائح
+ */
+window.copyLoanSummary = function(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
         if (typeof Swal !== 'undefined') {
             Swal.fire({
-                toast: true, position: 'top-end',
-                icon: type === 'danger' ? 'error' : (type === 'warning' ? 'warning' : 'success'),
-                title: message, showConfirmButton: false, timer: 3000
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'تم نسخ تقرير القرض للحافظة بنجاح!',
+                showConfirmButton: false,
+                timer: 2500
             });
-        } else {
-            alert(message);
         }
+    }).catch(() => {
+        showAlert("تعذر النسخ التلقائي للحافظة.", "warning");
+    });
+};
+
+/**
+ * دالة التنبيهات الموحدة
+ */
+function showAlert(message, type = 'info') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type === 'danger' ? 'error' : (type === 'warning' ? 'warning' : (type === 'success' ? 'success' : 'info')),
+            title: message,
+            showConfirmButton: false,
+            timer: 3000
+        });
+    } else {
+        alert(message);
     }
-});
+}

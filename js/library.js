@@ -2,35 +2,42 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/library.js
- * الوصف: المحرك الشامل للمكتبة (Smart Editor + Cloud Archive + Canvas Signature + Drafts Engine)
- * الإصدار: Enterprise V5.3 True Zero-Trust & R2 Edition
- * التحديثات والتحصينات:
- * 1. تفعيل الحارس الأمني الموحد (AUTH.checkSession) عند إقلاع الصفحة.
- * 2. استبدال نافذة الـ PIN اليدوية في حذف النماذج السحابية بالحارس الموحد (AUTH.requireActionAuth)
- *    لإصدار تذكرة حذف خادمية لمرة واحدة (act_UUID) مربوطة بجدول mo_files والسجل المحدد.
- * 3. عزل المسودات المحلية بحسب المكتب والمستخدم مع دعم الترقية التلقائية للمسودات السابقة.
- * 4. توافق كامل مع فاحص ملكية ملفات Cloudflare R2 في الوركر (file_url & gdrive_file_id) وتعقيم XSS.
+ * الإصدار: V5.6 Enterprise Edition (Legal Library, Smart Editor & R2 Vault)
+ * ============================================================================
+ * الميزات والمهام:
+ * 1. محرر العقود والمستندات القانونية الذكي (Quill.js) مع السحب والدمج الآلي لبيانات الموكلين والقضايا.
+ * 2. التوقيع الإلكتروني الحي عالي الدقة (High-DPI Retina Touch Canvas) للشاشات الذكية والأجهزة اللوحية.
+ * 3. الأرشيف السحابي الموحد للمكتب على Cloudflare R2 للأرشفة المباشرة وتصنيف المراجع (عقود، وكالات، لوائح، قوانين).
+ * 4. نظام المسودات المحلية المعزول أمنياً بحسب المكتب والمستخدم (Multi-Tenant Local Scoped Drafts).
+ * 5. الحذف المؤمن بمبدأ الإذن لمرة واحدة (Zero-Trust Scoped Action Token) عبر الحارس الأمني المركزي.
+ * 6. التوافق الكامل مع معايير الويب الحديثة، الوضع الليلي عالي التباين (WCAG AAA)، والطباعة القضائية النظيفة.
  * ============================================================================
  */
 
-// متغيرات المحرر الذكي والتوقيع
-let quillEditor;
+// ============================================================================
+// [1] المتغيرات العامة وإدارة الحالة (Global State)
+// ============================================================================
+let quillEditor = null;
 let rawTemplateText = "";
 let clientsList = [];
 let casesList = [];
-let signatureModalInstance;
+let signatureModalInstance = null;
 
-// متغيرات لوحة الرسم
+// متغيرات لوحة التوقيع
 const canvas = document.getElementById('signaturePad');
 const ctx = canvas ? canvas.getContext('2d') : null;
 let isDrawing = false;
 
 // متغيرات الأرشيف السحابي والمسودات
 let archiveFiles = []; 
-let currentCategory = 'عقود'; // التصنيف الافتراضي (يتغير إلى 'مسودات' عند التبديل)
+let currentCategory = 'عقود'; // التصنيف الافتراضي (عقود، وكالات، لوائح، قوانين، مسودات)
+
+// ============================================================================
+// [2] دوال الحماية والمساعدة (Security & Helpers)
+// ============================================================================
 
 /**
- * دالة الحماية من ثغرات الحقن (XSS Sanitizer)
+ * تعقيم النصوص لمنع ثغرات الحقن (XSS Sanitizer)
  */
 const escapeHTML = (str) => {
     if (str === null || str === undefined) return '';
@@ -40,15 +47,16 @@ const escapeHTML = (str) => {
 };
 
 /**
- * توليد مفتاح تخزين المسودات المعزول بحسب المكتب والمستخدم مع دمج المسودات القديمة إن وجدت
+ * توليد مفتاح تخزين المسودات المعزول بحسب المكتب والمستخدم مع ترحيل المسودات السابقة تلقائياً
  */
 function getDraftsStorageKey() {
     try {
         const user = JSON.parse(localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user') || '{}');
-        const uid = user.id || user.uid || 'default';
-        const firmId = user.firm_id || localStorage.getItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id') || 'firm';
+        const uid = user.id || user.uid || 'default_user';
+        const firmId = user.firm_id || localStorage.getItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id') || 'default_firm';
         const scopedKey = `moakkil_drafts_${firmId}_${uid}`;
 
+        // ترحيل المسودات القديمة إن وجدت لضمان عدم ضياع أي عمل سابق للمحامي
         const legacyDrafts = localStorage.getItem('moakkil_drafts');
         if (legacyDrafts && !localStorage.getItem(scopedKey)) {
             localStorage.setItem(scopedKey, legacyDrafts);
@@ -60,8 +68,11 @@ function getDraftsStorageKey() {
     }
 }
 
+// ============================================================================
+// [3] دورة حياة الصفحة والتهيئة المركزية (Lifecycle & Initialization)
+// ============================================================================
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. التأكد الصارم من صلاحية الجلسة عبر الحارس المركزي
+    // 1. التحقق الصارم من الجلسة عبر الحارس المركزي
     if (typeof AUTH !== 'undefined' && typeof AUTH.checkSession === 'function') {
         const currentUser = AUTH.checkSession();
         if (!currentUser) return;
@@ -77,12 +88,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (document.getElementById('editor-container') && typeof Quill !== 'undefined') {
         quillEditor = new Quill('#editor-container', {
             theme: 'snow',
-            placeholder: 'ابدأ بكتابة المستند القانوني هنا...',
+            placeholder: 'ابدأ بصياغة أو استيراد المستند القانوني هنا...',
             modules: {
                 toolbar: [
                     [{ 'header': [1, 2, 3, false] }],
                     [{ 'align': [] }],
-                    ['bold', 'italic', 'underline'],
+                    ['bold', 'italic', 'underline', 'strike'],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                     [{ 'color': [] }, { 'background': [] }],
                     ['clean']
@@ -91,7 +102,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // 3. تهيئة نافذة التوقيع (Canvas)
+    // 3. تهيئة نافذة التوقيع الإلكتروني (Canvas)
     if (document.getElementById('signatureModal')) {
         signatureModalInstance = new bootstrap.Modal(document.getElementById('signatureModal'));
         setupCanvasEvents();
@@ -101,12 +112,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadSmartDropdownData();
     setupSmartEventListeners();
 
-    // 5. جلب بيانات الأرشيف السحابي للمكتبة
+    // 5. جلب ملفات الأرشيف السحابي للمكتبة
     await loadArchiveFiles();
 });
 
 // ============================================================================
-// [القسم الأول]: المحرر الذكي والسحب الآلي (Smart Editor & Auto-Fill)
+// [4] المحرر الذكي وقوالب العقود (Smart Editor & Auto-Fill Engine)
 // ============================================================================
 
 async function loadSmartDropdownData() {
@@ -121,7 +132,7 @@ async function loadSmartDropdownData() {
             const clientSelect = document.getElementById('clientSelector');
             if (clientSelect) {
                 clientsList.forEach(c => {
-                    clientSelect.innerHTML += `<option value="${escapeHTML(c.id)}">${escapeHTML(c.full_name)} (${escapeHTML(c.national_id || 'بدون رقم')})</option>`;
+                    clientSelect.innerHTML += `<option value="${escapeHTML(c.id)}">${escapeHTML(c.full_name)} (${escapeHTML(c.national_id || 'بدون رقم وطني')})</option>`;
                 });
             }
         }
@@ -131,12 +142,13 @@ async function loadSmartDropdownData() {
             const caseSelect = document.getElementById('caseSelector');
             if (caseSelect) {
                 casesList.forEach(c => {
-                    caseSelect.innerHTML += `<option value="${escapeHTML(c.id)}">${escapeHTML(c.case_internal_id || 'ملف')} - ${escapeHTML(c.opponent_name || 'بدون خصم')}</option>`;
+                    const identifier = c.case_internal_id || c.case_number || 'ملف رقم ' + c.id;
+                    caseSelect.innerHTML += `<option value="${escapeHTML(c.id)}">${escapeHTML(identifier)} - ${escapeHTML(c.opponent_name || 'بدون خصم')}</option>`;
                 });
             }
         }
     } catch (e) {
-        console.error("خطأ في جلب بيانات السحب الآلي:", e);
+        console.error("خطأ أثناء جلب بيانات السحب الآلي:", e);
     }
 }
 
@@ -150,6 +162,9 @@ function setupSmartEventListeners() {
     if (caSel) caSel.addEventListener('change', applyVariablesToEditor);
 }
 
+/**
+ * تحميل نموذج قياسي محقون بوسوم الاستبدال التلقائي
+ */
 function loadTemplate(type) {
     if (!quillEditor) return;
     if (!type) {
@@ -158,17 +173,69 @@ function loadTemplate(type) {
         return;
     }
 
-    // قوالب افتراضية محقونة بالمتغيرات
     const templates = {
-        'contract': `<h2 class="ql-align-center">عقد أتعاب محاماة</h2><p><br></p><p>تم الاتفاق في هذا اليوم الموافق {{date}} بين كل من:</p><p>الطرف الأول (المحامي): مكتب {{firm_name}}.</p><p>الطرف الثاني (الموكل): السيد/ة {{client_name}}، يحمل رقم وطني: {{national_id}}، ورقم هاتف: {{client_phone}}.</p><p><br></p><p><strong>موضوع العقد:</strong></p><p>وكل الطرف الثاني الطرف الأول بتمثيله في القضية المرفوعة ضد {{opponent_name}} لدى محكمة {{court_name}}.</p><p><br></p><p><strong>توقيع الموكل:</strong></p><p><br></p>`,
-        'notice': `<h2 class="ql-align-center">إنذار عدلي</h2><p><br></p><p>بواسطة كاتب عدل محكمة {{court_name}} الأكرم.</p><p><strong>المنذر:</strong> {{client_name}} - الرقم الوطني: {{national_id}}.</p><p><strong>المنذر إليه:</strong> {{opponent_name}}.</p><p><br></p><p><strong>وقائع الإنذار:</strong></p><p>...</p>`,
-        'plea': `<h2 class="ql-align-center">لائحة دعوى</h2><p><br></p><p>لدى محكمة {{court_name}} الموقرة.</p><p><strong>المدعي:</strong> {{client_name}}.</p><p><strong>المدعى عليه:</strong> {{opponent_name}}.</p><p><br></p><p><strong>الوقائع:</strong></p><p>...</p><p><br></p><p><strong>الطلبات:</strong></p><p>...</p>`
+        'contract': `
+            <h2 class="ql-align-center">عقد اتفاق على أتعاب محاماة وتوكيل قضائي</h2>
+            <p><br></p>
+            <p>بعون الله وتوفيقه، تم الاتفاق والتعاقد في هذا اليوم الموافق <strong>{{date}}</strong> بين كل من:</p>
+            <p><strong>الطرف الأول (المحامي الوكيل):</strong> {{firm_name}} - هاتف: {{firm_phone}} - البريد: {{firm_email}}.</p>
+            <p><strong>الطرف الثاني (الموكل):</strong> السيد/ة <strong>{{client_name}}</strong>، يحمل الرقم الوطني/الهوية: <strong>{{national_id}}</strong>، هاتف: <strong>{{client_phone}}</strong>، وعنوانه: <strong>{{client_address}}</strong>.</p>
+            <p><br></p>
+            <p><strong>مقدمة العقد:</strong></p>
+            <p>لما كان الطرف الثاني بحاجة لتوكيل الطرف الأول لتمثيله والترافع عنه في الدعوى القضائية / موضوع النزاع المقيد برقم: <strong>{{case_internal_id}}</strong> ضد الخصم: <strong>{{opponent_name}}</strong> أمام محكمة: <strong>{{court_name}}</strong> الموقرة، فقد اتفق الطرفان على ما يلي:</p>
+            <ol>
+                <li>تعتبر مقدمة هذا العقد جزءاً لا يتجزأ منه وتُقرأ معه كوحدة واحدة.</li>
+                <li>يلتزم الطرف الأول ببذل العناية القانونية اللازمة والمهنية في المتابعة والترافع وتقديم اللوائح والدفوع أصولاً.</li>
+                <li>يلتزم الطرف الثاني بأداء الأتعاب المتفق عليها والرسوم والمصاريف القضائية وفق جدول الدفعات المعتمد.</li>
+            </ol>
+            <p><br></p>
+            <p><strong>توقيع الطرف الأول:</strong> ________________________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>توقيع الطرف الثاني:</strong> ________________________</p>
+            <p><br></p>
+        `,
+        'notice': `
+            <h2 class="ql-align-center">إنذار عدلي رسمي على يد محضر / كاتب عدل</h2>
+            <p><br></p>
+            <p>لدى كاتب عدل محكمة <strong>{{court_name}}</strong> الأكرم،</p>
+            <p><strong>المنذر:</strong> السيد/ة <strong>{{client_name}}</strong>، رقمه الوطني: <strong>{{national_id}}</strong>، وكيله المحامي: <strong>{{firm_name}}</strong>.</p>
+            <p><strong>المنذر إليه:</strong> السيد/ة <strong>{{opponent_name}}</strong>.</p>
+            <p><br></p>
+            <p><strong>وقائع الإنذار:</strong></p>
+            <ol>
+                <li>حيث إن المنذر يطالب المنذر إليه بالالتزامات المستحقة والمترتبة بذمته بخصوص موضوع ملف رقم: <strong>{{case_internal_id}}</strong>.</li>
+                <li>وحيث إن المنذر إليه قد تخلف عن الوفاء بالتزاماته رغم المراجعات الودية المتكررة.</li>
+            </ol>
+            <p><strong>الطلب:</strong> ينذر المنذر المنذر إليه بوجوب تسوية الالتزام خلال المدة القانونية وإلا سيصار إلى إقامة الملاحقة القضائية وتحميله كامل النفقات والأتعاب.</p>
+            <p><br></p>
+            <p class="ql-align-left"><strong>وكيل المنذر:</strong> {{firm_name}}</p>
+        `,
+        'plea': `
+            <h2 class="ql-align-center">لائحة دعوى حقوقية / جزائية</h2>
+            <p><br></p>
+            <p>لدى محكمة <strong>{{court_name}}</strong> الموقرة،</p>
+            <p><strong>المدعي:</strong> <strong>{{client_name}}</strong>، رقمه الوطني: <strong>{{national_id}}</strong>، وكيله: <strong>{{firm_name}}</strong>.</p>
+            <p><strong>المدعى عليه:</strong> <strong>{{opponent_name}}</strong>.</p>
+            <p><strong>موضوع الدعوى:</strong> <strong>{{case_subject}}</strong> (رقم الملف الداخلي: <strong>{{case_internal_id}}</strong>).</p>
+            <p><br></p>
+            <p><strong>الوقائع والأسباب:</strong></p>
+            <ol>
+                <li>...</li>
+                <li>...</li>
+            </ol>
+            <p><br></p>
+            <p><strong>الطلبات:</strong></p>
+            <p>يلتمس المدعي بكل احترام قيد الدعوى ومحاكمة المدعى عليه وإلزامه بالطلبات وتضمينه الرسوم والمصاريف وأتعاب المحاماة.</p>
+            <p><br></p>
+            <p class="ql-align-left"><strong>و/ المدعي:</strong> {{firm_name}}</p>
+        `
     };
 
     rawTemplateText = templates[type] || '';
     applyVariablesToEditor();
 }
 
+/**
+ * تطبيق الاستبدال الآلي للوسوم والمتغيرات
+ */
 function applyVariablesToEditor() {
     if (!rawTemplateText || !quillEditor) return;
 
@@ -183,46 +250,87 @@ function applyVariablesToEditor() {
     const currentUser = JSON.parse(localStorage.getItem(CONFIG?.USER_KEY || 'moakkil_user') || '{}');
     const firmSettings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
 
-    // قاموس الاستبدال الذكي (Auto-Fill Tags)
+    // تاريخ اليوم بتنسيق محلي أنيق
+    const todayFormatted = new Date().toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    // قاموس الاستبدال الذكي الموسع (Smart Auto-Fill Dictionary)
     const dict = {
-        '{{date}}': new Date().toLocaleDateString('ar-JO'),
-        '{{firm_name}}': escapeHTML(firmSettings.firm_name || currentUser.firm_name || 'مكتب المحاماة'),
-        '{{client_name}}': escapeHTML(clientData.full_name || '________________'),
+        '{{date}}': todayFormatted,
+        '{{firm_name}}': escapeHTML(firmSettings.firm_name || currentUser.firm_name || 'مكتب المحاماة والاستشارات القانونية'),
+        '{{firm_phone}}': escapeHTML(firmSettings.phone || firmSettings.contact_phone || '___________'),
+        '{{firm_email}}': escapeHTML(firmSettings.email || currentUser.email || '___________'),
+        '{{client_name}}': escapeHTML(clientData.full_name || '________________________'),
         '{{national_id}}': escapeHTML(clientData.national_id || '________________'),
         '{{client_phone}}': escapeHTML(clientData.phone || '________________'),
-        '{{opponent_name}}': escapeHTML(caseData.opponent_name || '________________'),
-        '{{court_name}}': escapeHTML(caseData.current_court || '________________')
+        '{{client_address}}': escapeHTML(clientData.address || '________________'),
+        '{{case_internal_id}}': escapeHTML(caseData.case_internal_id || caseData.case_number || 'ملف غير محدد'),
+        '{{opponent_name}}': escapeHTML(caseData.opponent_name || '________________________'),
+        '{{court_name}}': escapeHTML(caseData.current_court || caseData.court_name || 'المحكمة المختصة'),
+        '{{case_subject}}': escapeHTML(caseData.subject || caseData.case_title || 'مطالبة وحقوق قانونية')
     };
 
-    for (let key in dict) {
+    for (const key in dict) {
         processedText = processedText.replace(new RegExp(key, 'g'), dict[key]);
     }
 
-    // حقن النص النهائي في المحرر
     quillEditor.clipboard.dangerouslyPasteHTML(processedText);
 }
 
 // ============================================================================
-// [القسم الثاني]: التوقيع الرقمي المزدوج (Canvas Signature) والطباعة
+// [5] التوقيع الإلكتروني عالي الدقة (High-DPI Retina Touch Canvas)
 // ============================================================================
 
 window.openSignatureModal = function() {
     if (signatureModalInstance && canvas) {
         signatureModalInstance.show();
         setTimeout(() => {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width - 30;
-            clearSignature();
-        }, 250);
+            initSignatureCanvas();
+        }, 220);
     }
 };
 
+/**
+ * ضبط مقياس اللوحة عالي الدقة (Retina DPI) لمنع التشويش وانحراف اللمس
+ */
+function initSignatureCanvas() {
+    if (!canvas || !ctx) return;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = Math.max(280, rect.width - 24);
+    const displayHeight = 240;
+
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    window.clearSignature();
+}
+
 function getPointerPos(e) {
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
+    let clientX = 0;
+    let clientY = 0;
+
     if (e.touches && e.touches.length > 0) {
-        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
     }
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
 }
 
 function setupCanvasEvents() {
@@ -233,78 +341,108 @@ function setupCanvasEvents() {
         const pos = getPointerPos(e);
         ctx.beginPath();
         ctx.moveTo(pos.x, pos.y);
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
     };
 
     const draw = (e) => {
         if (!isDrawing) return;
         const pos = getPointerPos(e);
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = '#000080'; // حبر أزرق قانوني
+        ctx.lineJoin = 'round';
+        // حبر أزرق قانوني ملكي داكن على الشاشات الفاتحة، وذهبي/أزرق سماوي واضح على الشاشات الداكنة
+        ctx.strokeStyle = isDark ? '#38BDF8' : '#0B132B';
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
     };
 
-    const stopDrawing = () => { isDrawing = false; ctx.closePath(); };
+    const stopDrawing = () => { 
+        if (isDrawing) {
+            isDrawing = false; 
+            ctx.closePath(); 
+        }
+    };
 
     // دعم الماوس
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
 
-    // دعم اللمس للموبايل
+    // دعم شاشات اللمس للهواتف والآيباد
     canvas.addEventListener('touchstart', startDrawing, { passive: false });
     canvas.addEventListener('touchmove', draw, { passive: false });
     canvas.addEventListener('touchend', stopDrawing);
 }
 
 window.clearSignature = function() {
-    if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (ctx && canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    }
 };
 
 window.insertSignature = function() {
     if (!canvas || !quillEditor) return;
+    
+    // التحقق من أن لوحة الرسم ليست فارغة
     const blank = document.createElement('canvas');
     blank.width = canvas.width;
     blank.height = canvas.height;
     if (canvas.toDataURL() === blank.toDataURL()) {
-        Swal.fire('تنبيه', 'يرجى التوقيع في المربع أولاً', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'يرجى رسم التوقيع أولاً قبل الإدراج.',
+                showConfirmButton: false,
+                timer: 2500
+            });
+        }
         return;
     }
 
     const dataUrl = canvas.toDataURL('image/png');
     
-    // إدراج التوقيع كصورة في المحرر
+    // إدراج التوقيع في موضع المؤشر بالمحرر
     const range = quillEditor.getSelection(true);
     const insertIdx = range ? range.index : quillEditor.getLength();
     quillEditor.insertText(insertIdx, '\n', Quill.sources.USER);
     quillEditor.insertEmbed(insertIdx + 1, 'image', dataUrl, Quill.sources.USER);
     
-    if (signatureModalInstance) signatureModalInstance.hide();
-    Swal.fire({
-        icon: 'success',
-        title: 'تم الإدراج',
-        text: 'تم إدراج التوقيع الرقمي بنجاح في المستند.',
-        timer: 1500,
-        showConfirmButton: false
-    });
+    if (signatureModalInstance) {
+        signatureModalInstance.hide();
+    }
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'تم اعتماد التوقيع',
+            text: 'تم إدراج التوقيع الإلكتروني بنجاح في المستند.',
+            timer: 1800,
+            showConfirmButton: false
+        });
+    }
 };
 
 window.printDocument = function() {
     if (!quillEditor) return;
     const text = quillEditor.getText().trim();
     if (text.length === 0) {
-        Swal.fire('تنبيه', 'المستند فارغ، يرجى كتابة أو اختيار نموذج أولاً.', 'info');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('تنبيه', 'المستند فارغ، يرجى كتابة أو اختيار نموذج أولاً.', 'info');
+        }
         return;
     }
     window.print();
 };
 
 // ============================================================================
-// [القسم الثالث]: محرك المسودات المعزول (Scoped Drafts Engine - LocalStorage)
+// [6] محرك المسودات المعزول محلياً (Scoped Drafts Engine)
 // ============================================================================
 
 window.saveDraft = function() {
@@ -313,11 +451,13 @@ window.saveDraft = function() {
     const plainText = quillEditor.getText().trim();
     
     if (plainText.length === 0) {
-        Swal.fire('تنبيه', 'المحرر فارغ، لا يوجد شيء لحفظه.', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('تنبيه', 'المحرر فارغ، لا يوجد محتوى لحفظه كمسودة.', 'warning');
+        }
         return;
     }
 
-    let previewTitle = plainText.split('\n')[0].substring(0, 30);
+    let previewTitle = plainText.split('\n')[0].substring(0, 35);
     if (previewTitle.length < 3) previewTitle = "مسودة مستند قانوني";
 
     const storageKey = getDraftsStorageKey();
@@ -333,13 +473,15 @@ window.saveDraft = function() {
 
     localStorage.setItem(storageKey, JSON.stringify(drafts));
     
-    Swal.fire({
-        icon: 'success', 
-        title: 'تم حفظ المسودة', 
-        text: 'تم الحفظ محلياً بأمان. يمكنك استكمال التحرير لاحقاً من تبويب (مسوداتي).', 
-        timer: 2500, 
-        showConfirmButton: false
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success', 
+            title: 'تم حفظ المسودة', 
+            text: 'تم الحفظ محلياً بأمان. يمكنك استكمال تحريرها لاحقاً من تبويب (مسوداتي).', 
+            timer: 2500, 
+            showConfirmButton: false
+        });
+    }
 
     if (currentCategory === 'مسودات') {
         renderDrafts();
@@ -358,24 +500,37 @@ window.loadDraft = function(id) {
             window.scrollTo({ top: editorSec.offsetTop - 20, behavior: 'smooth' });
         }
         
-        Swal.fire({
-            icon: 'success', 
-            title: 'تم جلب المسودة', 
-            text: 'المسودة الآن جاهزة لإكمال التحرير.', 
-            timer: 1500, 
-            showConfirmButton: false
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success', 
+                title: 'تم استرجاع المسودة', 
+                text: 'المستند الآن في المحرر وجاهز للاستكمال أو التصدير.', 
+                timer: 1500, 
+                showConfirmButton: false
+            });
+        }
     }
 };
 
 window.deleteDraft = function(id) {
+    if (typeof Swal === 'undefined') {
+        if (confirm("هل تريد حذف هذه المسودة نهائياً؟")) {
+            const storageKey = getDraftsStorageKey();
+            let drafts = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            drafts = drafts.filter(d => d.id !== id);
+            localStorage.setItem(storageKey, JSON.stringify(drafts));
+            renderDrafts();
+        }
+        return;
+    }
+
     Swal.fire({
         title: 'هل أنت متأكد؟',
-        text: 'سيتم حذف هذه المسودة المحلية نهائياً.',
+        text: 'سيتم حذف هذه المسودة المحلية نهائياً ولا يمكن التراجع عنها.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        confirmButtonColor: '#B3372F',
+        cancelButtonColor: '#1C2541',
         confirmButtonText: 'نعم، احذف',
         cancelButtonText: 'تراجع'
     }).then((result) => {
@@ -385,7 +540,7 @@ window.deleteDraft = function(id) {
             drafts = drafts.filter(d => d.id !== id);
             localStorage.setItem(storageKey, JSON.stringify(drafts));
             renderDrafts();
-            Swal.fire({ icon: 'success', title: 'تم الحذف بنجاح', timer: 1500, showConfirmButton: false });
+            Swal.fire({ icon: 'success', title: 'تم حذف المسودة بنجاح', timer: 1500, showConfirmButton: false });
         }
     });
 };
@@ -404,7 +559,7 @@ function renderDrafts() {
             <div class="col-12 text-center py-5">
                 <i class="fas fa-edit fa-4x text-muted mb-3 opacity-50"></i>
                 <h5 class="text-muted fw-bold">لا توجد مسودات محلية محفوظة.</h5>
-                <p class="text-muted small">ابدأ بكتابة مستند واضغط على (مسودة) لحفظه هنا.</p>
+                <p class="text-muted small">ابدأ بكتابة مستند واضغط على زر (مسودة) لتخزينه هنا.</p>
             </div>`;
         return;
     }
@@ -416,19 +571,19 @@ function renderDrafts() {
         
         html += `
         <div class="col-md-6 col-lg-4">
-            <div class="template-card border-primary" style="border-right-color: var(--primary-light) !important;">
+            <div class="template-card border-primary" style="border-right-color: var(--secondary-navy) !important;">
                 <div class="d-flex align-items-start mb-3">
                     <div class="p-3 bg-light rounded-3 me-3 text-primary">
                         <i class="fas fa-file-signature fa-2x"></i>
                     </div>
                     <div>
-                        <h6 class="fw-bold mb-1" style="color: var(--primary-dark); line-height:1.4;">${escapeHTML(d.title)}</h6>
+                        <h6 class="fw-bold mb-1" style="color: var(--primary-navy); line-height: 1.4;">${escapeHTML(d.title)}</h6>
                         <small class="text-muted fw-bold"><i class="fas fa-clock me-1"></i> ${escapeHTML(dateStr)}</small>
                     </div>
                 </div>
                 <div class="mt-auto pt-3 border-top d-flex gap-2">
-                    <button class="btn flex-grow-1 text-white fw-bold shadow-sm" style="background: var(--primary-dark);" onclick="loadDraft('${escapeHTML(d.id)}')">
-                        <i class="fas fa-edit me-1"></i> إكمال التحرير
+                    <button class="btn flex-grow-1 text-white fw-bold shadow-sm" style="background: var(--primary-navy);" onclick="loadDraft('${escapeHTML(d.id)}')">
+                        <i class="fas fa-edit me-1"></i> استكمال التحرير
                     </button>
                     <button class="btn btn-outline-danger px-3 shadow-sm" onclick="deleteDraft('${escapeHTML(d.id)}')">
                         <i class="fas fa-trash"></i>
@@ -442,7 +597,7 @@ function renderDrafts() {
 }
 
 // ============================================================================
-// [القسم الرابع]: أرشيف المكتبة السحابي (Cloud Archive)
+// [7] أرشيف المكتبة السحابي والبحث (Cloud Archive & Filtering)
 // ============================================================================
 
 async function loadArchiveFiles() {
@@ -457,11 +612,11 @@ async function loadArchiveFiles() {
         } else {
             const container = document.getElementById('templates-container');
             if (container) {
-                container.innerHTML = `<div class="col-12 text-center text-danger fw-bold">فشل في جلب الأرشيف.</div>`;
+                container.innerHTML = `<div class="col-12 text-center text-danger fw-bold py-5">فشل جلب ملفات الأرشيف السحابي من الخادم.</div>`;
             }
         }
     } catch (e) {
-        console.error(e);
+        console.error("خطأ جلب ملفات الأرشيف:", e);
     }
 }
 
@@ -488,7 +643,7 @@ function renderTemplates() {
     
     if (!container) return;
 
-    // فك تشفير حقل الـ Description لاستخراج الـ Category المدمج
+    // معالجة الوصف واستخراج التصنيف المدمج
     const processedFiles = archiveFiles.map(f => {
         let cat = f.file_category || 'عقود';
         let desc = f.description || f.file_name || '';
@@ -513,6 +668,7 @@ function renderTemplates() {
             <div class="col-12 text-center py-5">
                 <i class="fas fa-folder-open fa-4x text-muted mb-3 opacity-50"></i>
                 <h5 class="text-muted fw-bold">لا توجد ملفات سحابية في قسم (${escapeHTML(currentCategory)}) مطابقة للبحث.</h5>
+                <p class="text-muted small">يمكنك إضافة ملفات أو نماذج جديدة لهذا القسم بالضغط على (أرشفة نموذج).</p>
             </div>`;
         return;
     }
@@ -541,7 +697,7 @@ function renderTemplates() {
                         <i class="fas ${icon} fa-2x"></i>
                     </div>
                     <div>
-                        <h6 class="fw-bold mb-1" style="color: var(--primary-dark); line-height:1.4;">${escapeHTML(f.display_desc)}</h6>
+                        <h6 class="fw-bold mb-1" style="color: var(--primary-navy); line-height: 1.4;">${escapeHTML(f.display_desc)}</h6>
                         <small class="text-muted fw-bold"><i class="fas fa-clock me-1"></i> أضيف في: ${escapeHTML(dateStr)}</small>
                     </div>
                 </div>
@@ -562,14 +718,16 @@ function renderTemplates() {
 }
 
 // ============================================================================
-// [القسم الخامس]: الرفع والحذف السحابي الموثق للأرشيف (R2 Upload & Scoped MFA Delete)
+// [8] الرفع والحذف السحابي المؤمن على R2 (R2 Upload & Scoped Deletion)
 // ============================================================================
 
 window.uploadTemplate = async function(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     
     if (!navigator.onLine) {
-        Swal.fire('تنبيه', 'لا يمكن رفع النماذج السحابية أثناء انقطاع الإنترنت.', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('تنبيه', 'لا يمكن رفع النماذج السحابية أثناء انقطاع الإنترنت.', 'warning');
+        }
         return;
     }
 
@@ -578,7 +736,9 @@ window.uploadTemplate = async function(event) {
     const category = document.getElementById('tpl_category')?.value || 'عقود';
     
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        Swal.fire('تنبيه', 'الرجاء اختيار ملف', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('تنبيه', 'الرجاء اختيار ملف من جهازك أولاً.', 'warning');
+        }
         return;
     }
     
@@ -588,18 +748,17 @@ window.uploadTemplate = async function(event) {
     
     try {
         if (btn) {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الرفع للسحابة...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري الرفع إلى مستودع R2 السحابي...';
             btn.disabled = true;
         }
 
-        // 1. الرفع لـ Cloudflare R2 تحت مسار عام (general) لتجنب اعتباره معرف قضية
+        // 1. الرفع المباشر لـ Cloudflare R2
         const uploadRes = await API.uploadFileToR2(file, 'general', 'general');
         
         if (uploadRes && uploadRes.success && uploadRes.r2_key) {
-            // دمج التصنيف مع الوصف
             const smartDescription = `${category}:::${title || file.name}`;
 
-            // 2. تسجيل الملف في قاعدة البيانات (mo_files) مع حفظ gdrive_file_id لتوافق فاحص الوركر
+            // 2. توثيق السجل في جدول mo_files
             const recordData = {
                 case_id: null,
                 client_id: null,
@@ -616,7 +775,9 @@ window.uploadTemplate = async function(event) {
             const dbRes = await API.addFileRecord(recordData);
             
             if (dbRes && !dbRes.error) {
-                Swal.fire('تم بنجاح', 'تم أرشفة النموذج السحابي بنجاح', 'success');
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire('تم بنجاح', 'تمت أرشفة النموذج السحابي في المكتبة بنجاح.', 'success');
+                }
                 document.getElementById('uploadForm')?.reset();
                 bootstrap.Modal.getInstance(document.getElementById('uploadModal'))?.hide();
                 
@@ -625,14 +786,16 @@ window.uploadTemplate = async function(event) {
                 if (typeof API.cleanupOrphanR2File === 'function') {
                     await API.cleanupOrphanR2File(uploadRes.r2_key);
                 }
-                throw new Error(dbRes?.error || 'فشل توثيق النموذج في قاعدة البيانات');
+                throw new Error(dbRes?.error || 'فشل توثيق النموذج في قاعدة البيانات.');
             }
         } else {
-            throw new Error(uploadRes?.error || 'فشل الرفع السحابي');
+            throw new Error(uploadRes?.error || 'فشل الرفع السحابي.');
         }
 
     } catch (error) {
-        Swal.fire('خطأ', error.message, 'error');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('خطأ', error.message, 'error');
+        }
     } finally {
         if (btn) {
             btn.innerHTML = originalText;
@@ -646,22 +809,31 @@ window.downloadArchiveFile = async function(r2Key, fileName) {
 };
 
 /**
- * 🛡️ الحذف الآمن لنماذج المكتبة السحابية باستخدام الحارس الموحد (AUTH.requireActionAuth)
- * يستصدر تذكرة خادمية لمرة واحدة (act_UUID) مربوطة بجدول mo_files ومعرف النموذج
+ * الحذف المؤمن لنماذج المكتبة السحابية بتذكرة خادمية لمرة واحدة (AUTH.requireActionAuth)
  */
 window.deleteArchiveFile = async function(id) {
     if (!navigator.onLine) {
-        Swal.fire('تنبيه', 'لا يمكن حذف النماذج السحابية في وضع عدم الاتصال (Offline).', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('تنبيه', 'لا يمكن حذف النماذج السحابية في وضع عدم الاتصال (Offline).', 'warning');
+        }
+        return;
+    }
+
+    if (typeof Swal === 'undefined') {
+        if (confirm("هل تريد حذف هذا النموذج السحابي نهائياً؟")) {
+            await API.deleteFile(id);
+            await loadArchiveFiles();
+        }
         return;
     }
 
     const result = await Swal.fire({
         title: 'هل أنت متأكد؟',
-        text: 'سيتم حذف هذا النموذج من المكتبة المشتركة وتوثيق العملية في سجل الرقابة.',
+        text: 'سيتم حذف هذا النموذج من المكتبة السحابية المشتركة وتوثيق العملية في سجل الرقابة.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
+        confirmButtonColor: '#B3372F',
+        cancelButtonColor: '#1C2541',
         confirmButtonText: 'نعم، متابعة للتحقق الأمني',
         cancelButtonText: 'تراجع'
     });
@@ -672,24 +844,26 @@ window.deleteArchiveFile = async function(id) {
         const targetTpl = archiveFiles.find(f => String(f.id) === String(id));
         const tplName = targetTpl ? (targetTpl.description?.split(':::')[1] || targetTpl.file_name) : 'نموذج سحابي';
 
-        // استدعاء الحارس الموحد لاستصدار تذكرة حذف لمرة واحدة مربوطة بالسجل
-        const actionToken = await AUTH.requireActionAuth(
-            `حذف النموذج السحابي (${tplName})`,
-            'mo_files',
-            id
-        );
+        // استدعاء الحارس الأمني الموحد لاستصدار تذكرة حذف لمرة واحدة
+        let actionToken = null;
+        if (typeof AUTH !== 'undefined' && typeof AUTH.requireActionAuth === 'function') {
+            actionToken = await AUTH.requireActionAuth(
+                `حذف النموذج السحابي (${tplName})`,
+                'mo_files',
+                id
+            );
+            if (!actionToken) return;
+        }
 
-        if (!actionToken) return;
-
-        Swal.fire({ title: 'جاري الحذف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Swal.fire({ title: 'جاري الحذف وتحديث الأرشيف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
         const res = await API.deleteFile(id, actionToken);
         
         if (res && !res.error) {
-            Swal.fire('تم الحذف', 'تم حذف النموذج من الأرشيف بنجاح وتسجيل حركتك في السجل الأمني.', 'success');
+            Swal.fire('تم الحذف', 'تم حذف النموذج من الأرشيف بنجاح وتوثيقه في السجل الأمني.', 'success');
             await loadArchiveFiles();
         } else {
-            throw new Error(res?.error || 'خطأ أثناء حذف النموذج');
+            throw new Error(res?.error || 'خطأ أثناء حذف النموذج من السحابة.');
         }
     } catch (err) {
         if (err.message && err.message.includes('إلغاء')) return;

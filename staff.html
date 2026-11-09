@@ -4,48 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0B132B">
-    <title>إدارة الموظفين (HR) | نظام موكّل ERP</title>
+    <title>إدارة الكوادر والموارد البشرية (HR) | نظام موكّل ERP V5.6</title>
     
-    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
-    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <!-- PWA & Mobile WebApp Capabilities -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="موكّل">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+    <link rel="apple-touch-icon" href="./icon-192.png">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Stylesheets & Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" crossorigin="anonymous">
     <link href="./css/style.css" rel="stylesheet">
     
     <style>
-        /* --- 2.1 المتغيرات اللونية: الهوية الملكية الفاخرة --- */
         :root { 
+            /* V5.6 Luxury Brand Tokens */
             --primary-dark: #0B132B; 
             --primary-light: #1C2541;
             --gold-luxury: #D4AF37;
-            --gold-hover: #b5952f;
-            --light-bg: #F4F6F9;
-            --text-dark: #1A1A1A;
-            --text-muted: #6C757D;
-            --danger-luxury: #9e2a2b;
-            --success-luxury: #2d6a4f;
-            --info-luxury: #0284c7;
+            --gold-hover: #B5952F;
+            --gold-border: #8A6A12;
+            --light-bg: #FAF8F3;
+            --card-bg: #FFFFFF;
+            --text-dark: #0B132B;
+            --text-muted: #5A6578;
+            --danger-luxury: #B3372F;
+            --success-luxury: #1F7A5C;
+            --info-luxury: #0284C7;
+            --shadow-subtle: 0 8px 25px rgba(11, 19, 43, 0.04);
+            --shadow-elevation: 0 16px 36px rgba(11, 19, 43, 0.09);
         }
         
-        /* --- 2.2 الهيكل الأساسي --- */
         body { 
             font-family: 'Cairo', sans-serif; 
             background-color: var(--light-bg); 
             color: var(--text-dark);
             -webkit-font-smoothing: antialiased;
-            padding-bottom: 90px; /* لترك مساحة للشريط السفلي */
+            -moz-osx-font-smoothing: grayscale;
+            padding-bottom: 95px;
             transition: background-color 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
         }
 
-        /* --- 2.3 الترويسة العلوية --- */
+        /* Top Bar */
         .top-nav {
             background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
-            padding: 15px 20px;
+            padding: 16px 20px;
             color: white;
-            box-shadow: 0 4px 15px rgba(11, 19, 43, 0.15);
+            box-shadow: 0 4px 20px rgba(11, 19, 43, 0.18);
             border-bottom: 3px solid var(--gold-luxury);
             position: sticky;
             top: 0;
@@ -53,172 +64,325 @@
             transition: all 0.3s ease;
         }
 
-        /* --- 2.4 مكونات البحث (Search UI) --- */
+        /* Search Bar */
         .search-wrapper { position: relative; }
         .search-wrapper .form-control {
-            border-radius: 16px;
-            padding: 16px 20px;
+            border-radius: 18px;
+            padding: 16px 22px;
             padding-right: 55px;
-            border: 2px solid #E2E8F0;
+            border: 2px solid rgba(212, 175, 55, 0.25);
             font-weight: 700;
-            background: white;
+            background: var(--card-bg);
             transition: all 0.3s ease;
             color: var(--primary-dark);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            box-shadow: var(--shadow-subtle);
         }
         .search-wrapper .form-control:focus {
             border-color: var(--gold-luxury);
-            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15);
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.18);
             outline: none;
         }
         .search-wrapper i {
             position: absolute;
-            top: 50%; right: 22px;
+            top: 50%; 
+            right: 22px;
             transform: translateY(-50%);
             color: var(--gold-luxury);
             font-size: 1.3rem;
         }
 
-        /* --- 2.5 بطاقات الموظفين (Staff Cards) --- */
-        .staff-card {
-            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-            border-radius: 20px;
+        /* Staff Cards */
+        .compact-card {
+            border-radius: 22px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow-subtle);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
             overflow: hidden;
-            border: 1px solid rgba(0,0,0,0.03);
-            background: white;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.03);
-            border-top: 5px solid var(--primary-dark);
-            cursor: pointer;
         }
-        .staff-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(11, 19, 43, 0.08);
-            border-top-color: var(--gold-luxury);
+        .compact-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-elevation);
+            border-color: var(--gold-luxury);
         }
         
-        .staff-avatar {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid white;
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
-            color: var(--gold-luxury);
+        .card-data-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .data-item {
+            font-size: 0.9rem;
+            color: var(--text-muted);
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            font-weight: 900;
-            margin: -45px auto 15px;
-            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.35);
-        }
-        
-        .staff-card-header {
-            height: 70px;
-            background: rgba(11, 19, 43, 0.03);
-            border-bottom: 1px solid rgba(0,0,0,0.02);
+            gap: 8px;
         }
 
-        /* --- 2.6 النوافذ والتبويبات (Modals & Tabs) --- */
-        .modal-content { border-radius: 24px; border: none; box-shadow: 0 30px 60px rgba(11, 19, 43, 0.3); overflow: hidden;}
-        .modal-header { background: var(--primary-dark); color: white; border-bottom: 4px solid var(--gold-luxury); padding: 20px 25px; }
+        /* Modals & Sub-tabs */
+        .modal-content { 
+            border-radius: 26px; 
+            border: 1px solid rgba(212, 175, 55, 0.3); 
+            box-shadow: 0 30px 70px rgba(11, 19, 43, 0.35); 
+            overflow: hidden;
+            background: var(--card-bg);
+        }
+        .modal-header { 
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%); 
+            color: white; 
+            border-bottom: 3px solid var(--gold-luxury); 
+            padding: 20px 26px; 
+        }
         .modal-title { font-weight: 900; font-size: 1.25rem; display: flex; align-items: center; }
-        .modal-body { background: #F8F9FA; }
+        .modal-body { background: var(--light-bg); }
         
-        .nav-pills { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .nav-pills::-webkit-scrollbar { display: none; }
-        .nav-pills .nav-item { margin-left: 5px; }
-        .nav-pills .nav-link {
-            border-radius: 12px; color: var(--text-muted); font-weight: 800; padding: 12px 20px; transition: 0.3s; white-space: nowrap;
+        .nav-pills { 
+            flex-wrap: nowrap; 
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; 
+            scrollbar-width: none;
         }
-        .nav-pills .nav-link:hover { color: var(--primary-dark); background: rgba(0,0,0,0.03); }
+        .nav-pills::-webkit-scrollbar { display: none; }
+        .nav-pills .nav-item { margin-left: 6px; }
+        .nav-pills .nav-link {
+            border-radius: 14px; 
+            color: var(--text-muted); 
+            font-weight: 800; 
+            padding: 12px 20px; 
+            transition: 0.25s ease; 
+            white-space: nowrap; 
+            border: 1px solid transparent;
+        }
+        .nav-pills .nav-link:hover { color: var(--primary-dark); background: rgba(212, 175, 55, 0.1); }
         .nav-pills .nav-link.active {
-            background-color: var(--primary-dark); color: var(--gold-luxury); box-shadow: 0 6px 15px rgba(11, 19, 43, 0.2);
+            background-color: var(--primary-dark); 
+            color: var(--gold-luxury) !important; 
+            box-shadow: 0 6px 16px rgba(11, 19, 43, 0.22);
+            border-color: var(--gold-luxury);
         }
 
-        /* حاويات البيانات الداخلية */
+        /* Inner View Sections */
         .card-inner, .view-section { 
-            background: white; border-radius: 16px; padding: 20px; margin-bottom: 20px; 
-            border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 5px 15px rgba(0,0,0,0.02); 
+            background: var(--card-bg); 
+            border-radius: 18px; 
+            padding: 22px; 
+            margin-bottom: 20px; 
+            border: 1px solid rgba(212, 175, 55, 0.18); 
+            box-shadow: var(--shadow-subtle); 
         }
         .view-section h6, .card-inner h6 { 
-            color: var(--primary-dark); border-bottom: 2px solid #F4F6F9; padding-bottom: 12px; margin-bottom: 18px; font-weight: 900; 
+            color: var(--primary-dark); 
+            border-bottom: 2px solid rgba(0, 0, 0, 0.05); 
+            padding-bottom: 12px; 
+            margin-bottom: 18px; 
+            font-weight: 900; 
         }
         
         .data-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 800; margin-bottom: 4px; display: block; }
         .data-value { font-size: 1.05rem; color: var(--text-dark); font-weight: 700; }
 
-        /* --- 2.7 الحقول والأزرار --- */
+        /* Form Controls */
         .form-control, .form-select {
-            border-radius: 12px; border: 2px solid #E2E8F0; padding: 12px 15px; font-weight: 600; transition: 0.3s; color: var(--text-dark); background: white;
+            border-radius: 14px; 
+            border: 2px solid #E2E8F0; 
+            padding: 12px 16px; 
+            font-weight: 600; 
+            transition: all 0.25s ease; 
+            color: var(--text-dark); 
+            background: #FFFFFF;
         }
-        .form-control:focus, .form-select:focus { border-color: var(--gold-luxury); box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1); outline: none;}
+        .form-control:focus, .form-select:focus { 
+            border-color: var(--gold-luxury); 
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.15); 
+            outline: none;
+        }
         .form-label { font-weight: 800; color: var(--primary-dark); font-size: 0.9rem; margin-bottom: 8px;}
 
         .btn-gold {
             background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
-            color: var(--primary-dark); border: none; font-weight: 800; border-radius: 14px; padding: 12px 24px; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2); transition: 0.3s;
+            color: var(--primary-dark) !important; 
+            border: 1px solid var(--gold-border); 
+            font-weight: 800; 
+            border-radius: 14px; 
+            padding: 12px 24px; 
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25); 
+            transition: all 0.25s ease;
         }
-        .btn-gold:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(212, 175, 55, 0.4); color: var(--primary-dark); }
+        .btn-gold:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 22px rgba(212, 175, 55, 0.4); 
+            color: var(--primary-dark) !important; 
+        }
         
         .btn-outline-navy {
-            border: 2px solid var(--primary-dark); color: var(--primary-dark); background: transparent; font-weight: 800; border-radius: 14px; padding: 10px 20px; transition: 0.3s;
+            border: 2px solid var(--primary-dark); 
+            color: var(--primary-dark); 
+            background: transparent; 
+            font-weight: 800; 
+            border-radius: 14px; 
+            padding: 10px 22px; 
+            transition: 0.25s ease;
         }
-        .btn-outline-navy:hover { background: var(--primary-dark); color: var(--gold-luxury); }
+        .btn-outline-navy:hover { 
+            background: var(--primary-dark); 
+            color: var(--gold-luxury); 
+        }
 
-        /* --- 2.8 شريط التنقل السفلي --- */
+        /* Bottom Nav */
         .bottom-nav { 
-            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            box-shadow: 0 -10px 30px rgba(11, 19, 43, 0.05); border-radius: 30px 30px 0 0; 
-            padding: 12px 10px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); 
-            position: fixed; bottom: 0; width: 100%; z-index: 1030; border-top: 1px solid rgba(212, 175, 55, 0.2);
-            display: flex; justify-content: space-around;
+            background: rgba(255, 255, 255, 0.96); 
+            backdrop-filter: blur(15px); 
+            -webkit-backdrop-filter: blur(15px);
+            box-shadow: 0 -8px 25px rgba(11, 19, 43, 0.06); 
+            border-radius: 28px 28px 0 0; 
+            padding: 10px 8px; 
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)); 
+            position: fixed; 
+            bottom: 0; 
+            width: 100%; 
+            z-index: 1030; 
+            border-top: 2px solid rgba(212, 175, 55, 0.25);
+            display: flex; 
+            justify-content: space-around;
             transition: all 0.3s ease;
         }
-        .nav-item { flex: 1; text-align: center; color: #94A3B8; font-size: 0.8rem; font-weight: 800; transition: all 0.3s ease; border-radius: 15px; padding: 10px 0; cursor: pointer; }
-        .nav-item.active { color: var(--primary-dark); background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); transform: translateY(-4px); }
-        .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 5px; transition: transform 0.3s; }
+        .nav-item { 
+            flex: 1; 
+            text-align: center; 
+            color: #94A3B8; 
+            font-size: 0.8rem; 
+            font-weight: 800; 
+            transition: all 0.25s ease; 
+            border-radius: 16px; 
+            padding: 8px 0; 
+            cursor: pointer; 
+        }
+        .nav-item.active { 
+            color: var(--primary-dark); 
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), transparent); 
+            transform: translateY(-2px); 
+        }
+        .nav-item i { font-size: 1.4rem; display: block; margin-bottom: 4px; transition: transform 0.25s; }
         .nav-item.active i { color: var(--gold-luxury); transform: scale(1.15); }
 
-        /* =========================================
-           🌙 الوضع الليلي (Dark Mode)
-           ========================================= */
-        [data-theme="dark"] body { background-color: #0f172a; color: #f8fafc; }
-        [data-theme="dark"] .top-nav { background: linear-gradient(135deg, #020617 0%, #0f172a 100%); border-bottom-color: var(--accent); }
-        [data-theme="dark"] .bottom-nav { background: #1e293b; border-top-color: rgba(212, 175, 55, 0.2); }
-        [data-theme="dark"] .staff-card, [data-theme="dark"] .card-inner, [data-theme="dark"] .view-section, [data-theme="dark"] .modal-content { background-color: #1e293b; border-color: #334155; }
-        [data-theme="dark"] .staff-card-header { background: rgba(255,255,255,0.02); border-bottom-color: #334155; }
-        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select, [data-theme="dark"] textarea { background-color: #0f172a; color: #f8fafc; border-color: #334155; }
-        [data-theme="dark"] .form-control:focus, [data-theme="dark"] .form-select:focus { border-color: var(--accent); }
-        [data-theme="dark"] .text-dark, [data-theme="dark"] .text-navy, [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 { color: #f8fafc !important; }
-        [data-theme="dark"] .text-muted { color: #94a3b8 !important; }
-        [data-theme="dark"] .bg-white { background-color: #1e293b !important; }
-        [data-theme="dark"] .bg-light { background-color: #0f172a !important; }
-        [data-theme="dark"] .modal-header { background: linear-gradient(135deg, #020617 0%, #0f172a 100%); border-bottom-color: var(--accent); }
-        [data-theme="dark"] .modal-body { background-color: #0f172a; }
-        [data-theme="dark"] .nav-pills .nav-link { color: #94a3b8; }
-        [data-theme="dark"] .nav-pills .nav-link:hover { background-color: #334155; color: #f8fafc; }
-        [data-theme="dark"] .nav-pills .nav-link.active { background-color: var(--accent); color: var(--navy); }
-        [data-theme="dark"] .search-wrapper .form-control { background-color: #1e293b; border-color: #334155; color: #f8fafc; }
-        [data-theme="dark"] .staff-avatar { border-color: #1e293b; }
+        /* WCAG AAA High-Contrast Dark Mode */
+        [data-theme="dark"] body { 
+            background-color: #070C1B; 
+            color: #F8FAFC; 
+        }
+        [data-theme="dark"] .top-nav { 
+            background: linear-gradient(135deg, #020617 0%, #0B132B 100%); 
+            border-bottom-color: var(--gold-luxury); 
+        }
+        [data-theme="dark"] .bottom-nav { 
+            background: rgba(17, 26, 51, 0.98); 
+            border-top-color: rgba(212, 175, 55, 0.3); 
+        }
+        [data-theme="dark"] .bottom-nav .nav-item.active { 
+            color: #F8FAFC; 
+        }
+        [data-theme="dark"] .compact-card, 
+        [data-theme="dark"] .card-inner, 
+        [data-theme="dark"] .view-section, 
+        [data-theme="dark"] .modal-content { 
+            background-color: #111A33 !important; 
+            color: #F8FAFC !important;
+            border-color: #1E293B !important; 
+        }
+        [data-theme="dark"] .form-control, 
+        [data-theme="dark"] .form-select, 
+        [data-theme="dark"] textarea { 
+            background-color: #070C1B !important; 
+            color: #F8FAFC !important; 
+            border-color: #2A3B5C !important; 
+        }
+        [data-theme="dark"] .form-control:focus, 
+        [data-theme="dark"] .form-select:focus { 
+            border-color: var(--gold-luxury) !important; 
+            box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.25) !important;
+        }
+        [data-theme="dark"] .text-dark, 
+        [data-theme="dark"] .text-navy, 
+        [data-theme="dark"] h4, 
+        [data-theme="dark"] h5, 
+        [data-theme="dark"] h6,
+        [data-theme="dark"] .modal-title { 
+            color: #F8FAFC !important; 
+        }
+        [data-theme="dark"] .text-muted { 
+            color: #94A3B8 !important; 
+        }
+        [data-theme="dark"] .bg-white { 
+            background-color: #111A33 !important; 
+            color: #F8FAFC !important;
+        }
+        [data-theme="dark"] .bg-light { 
+            background-color: #070C1B !important; 
+            color: #F8FAFC !important;
+        }
+        [data-theme="dark"] .modal-body { 
+            background-color: #070C1B; 
+        }
+        [data-theme="dark"] .modal-footer {
+            background-color: #111A33 !important;
+            border-top: 1px solid #1E293B !important;
+        }
+        [data-theme="dark"] .nav-pills .nav-link { 
+            color: #94A3B8; 
+        }
+        [data-theme="dark"] .nav-pills .nav-link:hover { 
+            background-color: #1E293B; 
+            color: #F8FAFC; 
+        }
+        [data-theme="dark"] .nav-pills .nav-link.active { 
+            background-color: var(--gold-luxury); 
+            color: #0B132B !important; 
+        }
+        [data-theme="dark"] .search-wrapper .form-control { 
+            background-color: #111A33; 
+            border-color: #2A3B5C; 
+            color: #F8FAFC; 
+        }
+        [data-theme="dark"] .btn-outline-navy {
+            border-color: var(--gold-luxury);
+            color: var(--gold-luxury);
+        }
+        [data-theme="dark"] .btn-outline-navy:hover {
+            background: var(--gold-luxury);
+            color: #0B132B;
+        }
+        [data-theme="dark"] .border {
+            border-color: #1E293B !important;
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
     </style>
     
+    <!-- Theme Bootstrapper -->
     <script>
-        const isStaffDark = localStorage.getItem('moakkil_dark_mode') === 'true';
-        if (isStaffDark) {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-        const fwSettings = JSON.parse(localStorage.getItem('firm_settings'));
-        if (fwSettings) {
-            if (fwSettings.primary_color && !isStaffDark) {
-                document.documentElement.style.setProperty('--primary-dark', fwSettings.primary_color);
-                document.documentElement.style.setProperty('--navy', fwSettings.primary_color);
-            }
-            if (fwSettings.accent_color) {
-                document.documentElement.style.setProperty('--gold-luxury', fwSettings.accent_color);
-                document.documentElement.style.setProperty('--gold', fwSettings.accent_color);
-            }
-        }
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('moakkil_dark_mode');
+                const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'true' || (savedTheme === null && systemPrefersDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+                const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
+                if (settings) {
+                    if (settings.primary_color && savedTheme !== 'true') {
+                        document.documentElement.style.setProperty('--primary-dark', settings.primary_color);
+                        document.documentElement.style.setProperty('--navy', settings.primary_color);
+                    }
+                    if (settings.accent_color) {
+                        document.documentElement.style.setProperty('--gold-luxury', settings.accent_color);
+                        document.documentElement.style.setProperty('--gold', settings.accent_color);
+                    }
+                }
+            } catch (e) {}
+        })();
+
         function toggleStaffDarkMode() {
             const html = document.documentElement;
             const settings = JSON.parse(localStorage.getItem('firm_settings') || '{}');
@@ -236,135 +400,155 @@
                 html.style.removeProperty('--navy');
             }
         }
+
+        function triggerIdOcrUpload() {
+            const fileInput = document.getElementById('id_ocr_file');
+            if (fileInput) fileInput.click();
+        }
     </script>
 </head>
 <body>
 
-    <div class="top-nav d-flex align-items-center justify-content-between">
-        <button class="btn btn-link text-white p-0 text-decoration-none" onclick="window.location.href='app.html'">
+    <!-- Offline Alert Banner -->
+    <div id="offline-banner" class="bg-warning text-dark text-center py-2 fw-bold d-none shadow-sm" style="font-size: 0.88rem; z-index: 10000; position: sticky; top: 0; border-bottom: 2px solid #B45309;">
+        <i class="fas fa-wifi-slash me-2"></i> وضع عدم الاتصال نشط - سيتم حفظ تعديلات الكادر في طابور المزامنة المحلي التلقائي.
+    </div>
+
+    <!-- Top Navigation -->
+    <header class="top-nav d-flex align-items-center justify-content-between">
+        <button class="btn btn-link text-white p-0 text-decoration-none" onclick="window.location.href='app.html'" title="العودة للوحة التحكم الرئيسية" aria-label="العودة للوحة التحكم">
             <i class="fas fa-arrow-right fs-4"></i>
         </button>
         <h5 class="mb-0 fw-bold text-white text-truncate mx-2 d-flex align-items-center">
-            <i class="fas fa-users-tie me-2" style="color: var(--gold-luxury);"></i> الموارد البشرية
+            <i class="fas fa-users-tie me-2" style="color: var(--gold-luxury);"></i> إدارة الكوادر والموارد البشرية
         </h5>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-light text-white fw-bold rounded-3 px-3 shadow-sm" onclick="toggleStaffDarkMode()" title="تبديل الوضع الليلي">
+            <button class="btn btn-sm btn-outline-light text-white fw-bold rounded-pill px-3 shadow-sm" onclick="toggleStaffDarkMode()" title="تبديل الوضع الليلي (Dark Mode)" aria-label="تبديل الوضع الليلي">
                 <i class="fas fa-moon"></i>
             </button>
-            <button class="btn btn-sm btn-outline-light fw-bold rounded-3 px-3 shadow-sm" onclick="window.registerDeviceBiometric()" title="تفعيل الدخول بالبصمة لجهازي الحالي">
+            <button class="btn btn-sm btn-outline-light fw-bold rounded-pill px-3 shadow-sm" onclick="registerDeviceBiometric()" title="تفعيل الدخول بالبصمة البيومترية لجهازي">
                 <i class="fas fa-fingerprint" style="color: var(--gold-luxury);"></i> <span class="d-none d-sm-inline">بصمتي</span>
             </button>
-            <button class="btn btn-sm btn-light text-navy fw-bold shadow-sm rounded-3 px-3" onclick="loadStaff()" title="تحديث البيانات">
+            <button class="btn btn-sm btn-light text-dark fw-bold shadow-sm rounded-pill px-3" onclick="loadStaff()" title="تحديث قائمة الفريق" aria-label="تحديث البيانات">
                 <i class="fas fa-sync-alt"></i>
             </button>
         </div>
-    </div>
+    </header>
 
     <div id="alertBox"></div>
 
-    <div class="container mt-4">
+    <main class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold mb-0" style="color: var(--primary-dark);">
-                <i class="fas fa-sitemap me-2" style="color: var(--gold-luxury);"></i> دليل الكوادر
-            </h5>
-            <button class="btn btn-gold shadow-sm" onclick="openStaffModal()">
-                <i class="fas fa-user-plus me-1"></i> إضافة كادر جديد
+            <div>
+                <h4 class="fw-bold mb-1" style="color: var(--primary-dark);">
+                    <i class="fas fa-sitemap me-2" style="color: var(--gold-luxury);"></i> دليل الكوادر والمحامين
+                </h4>
+                <small class="text-muted fw-bold">إدارة الهيكل الوظيفي، الرواتب، الصلاحيات، وتوثيق الأرشيف</small>
+            </div>
+            <button class="btn btn-gold shadow-sm px-4 py-2" onclick="openStaffModal()">
+                <i class="fas fa-user-plus me-1"></i> تعيين كادر جديد
             </button>
         </div>
 
         <div class="mb-4 search-wrapper">
-            <input type="text" class="form-control form-control-lg shadow-sm" id="search_staff" placeholder="ابحث باسم الموظف، التخصص، أو الهاتف..." onkeyup="filterStaffList()">
+            <input type="text" class="form-control form-control-lg shadow-sm" id="search_staff" placeholder="ابحث باسم الموظف، المسمى الوظيفي، أو الهاتف..." onkeyup="filterStaffList()" aria-label="البحث عن موظف">
             <i class="fas fa-search"></i>
         </div>
 
+        <!-- Staff List Grid -->
         <div class="row g-4" id="staff-container">
             <div class="col-12 text-center p-5 bg-white rounded-4 border shadow-sm">
                 <i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: var(--gold-luxury);"></i>
-                <h5 class="fw-bold" style="color: var(--primary-dark);">جاري تحميل بيانات الفريق...</h5>
+                <h5 class="fw-bold" style="color: var(--primary-dark);">جاري تحميل وتأمين بيانات الكوادر...</h5>
             </div>
         </div>
-    </div>
+    </main>
 
-    <div class="modal fade" id="viewStaffModal" tabindex="-1">
+    <!-- View Staff Profile Modal (Read-Only) -->
+    <div class="modal fade" id="viewStaffModal" tabindex="-1" aria-labelledby="viewStaffModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title text-white"><i class="fas fa-id-card me-2" style="color: var(--gold-luxury);"></i> الملف الشخصي والوظيفي</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title text-white" id="viewStaffModalLabel">
+                        <i class="fas fa-id-card me-2" style="color: var(--gold-luxury);"></i> الملف الشخصي والوظيفي الموحد
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <div class="modal-body p-0">
                     
-                    <div class="text-center bg-white pb-4 position-relative">
-                        <div class="staff-card-header mb-4"></div>
-                        <div id="v_avatar_container" class="position-relative z-1"></div>
-                        <h4 class="fw-bold mb-1" style="color: var(--primary-dark);" id="v_full_name">--</h4>
+                    <div class="text-center bg-white pb-4 pt-4 border-bottom position-relative">
+                        <div id="v_avatar_container" class="mb-3 d-flex justify-content-center"></div>
+                        <h4 class="fw-bold mb-1 text-dark" id="v_full_name">--</h4>
                         <span class="badge px-3 py-2 mt-1 rounded-pill" style="background: rgba(212, 175, 55, 0.15); color: var(--primary-dark); font-weight: 800; border: 1px solid var(--gold-luxury);" id="v_role_badge">--</span>
                         <div class="mt-3 d-flex justify-content-center gap-2" id="v_status_badges"></div>
                     </div>
 
                     <ul class="nav nav-pills bg-white p-3 border-bottom overflow-auto flex-nowrap" id="viewStaffTabs" role="tablist">
-                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#v-tab-personal" type="button"><i class="fas fa-user me-1"></i> الشخصية</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-tab-professional" type="button"><i class="fas fa-briefcase me-1"></i> المهنية</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-tab-financial" type="button"><i class="fas fa-money-check-alt me-1"></i> المالية</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-tab-documents" type="button"><i class="fas fa-folder-open me-1"></i> الوثائق</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#v-tab-personal" type="button" role="tab"><i class="fas fa-user me-1"></i> الشخصية</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-tab-professional" type="button" role="tab"><i class="fas fa-briefcase me-1"></i> المهنية والصلاحيات</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-tab-financial" type="button" role="tab"><i class="fas fa-money-check-alt me-1"></i> المالية والبنكية</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-tab-documents" type="button" role="tab"><i class="fas fa-folder-open me-1"></i> الوثائق والأرشيف</button></li>
                     </ul>
 
                     <div class="tab-content p-4">
-                        <div class="tab-pane fade show active" id="v-tab-personal">
+                        <!-- Tab 1: Personal & Emergency -->
+                        <div class="tab-pane fade show active" id="v-tab-personal" role="tabpanel">
                             <div class="view-section">
-                                <h6><i class="fas fa-address-card me-2" style="color: var(--gold-luxury);"></i> البيانات الأساسية</h6>
+                                <h6><i class="fas fa-address-card me-2" style="color: var(--gold-luxury);"></i> البيانات الشخصية الأساسية</h6>
                                 <div class="row g-4">
-                                    <div class="col-md-6"><span class="data-label">رقم الهاتف</span><span class="data-value" id="v_phone" dir="ltr">--</span></div>
-                                    <div class="col-md-6"><span class="data-label">الرقم الوطني</span><span class="data-value" id="v_national_id">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">رقم الهاتف</span><span class="data-value font-monospace" id="v_phone" dir="ltr">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">الرقم الوطني</span><span class="data-value font-monospace" id="v_national_id">--</span></div>
                                     <div class="col-md-6"><span class="data-label">الجنس</span><span class="data-value" id="v_gender">--</span></div>
                                     <div class="col-md-6"><span class="data-label">تاريخ الميلاد</span><span class="data-value" id="v_dob">--</span></div>
-                                    <div class="col-12"><span class="data-label">العنوان</span><span class="data-value" id="v_address">--</span></div>
+                                    <div class="col-12"><span class="data-label">عنوان السكن</span><span class="data-value" id="v_address">--</span></div>
                                 </div>
                             </div>
                             <div class="view-section" style="border-top: 4px solid var(--danger-luxury);">
-                                <h6 style="color: var(--danger-luxury);"><i class="fas fa-ambulance me-2"></i> جهة اتصال الطوارئ</h6>
+                                <h6 style="color: var(--danger-luxury);"><i class="fas fa-ambulance me-2"></i> جهة اتصال الطوارئ (Emergency Contact)</h6>
                                 <div class="row g-4">
                                     <div class="col-md-4"><span class="data-label">الاسم</span><span class="data-value" id="v_em_name">--</span></div>
-                                    <div class="col-md-4"><span class="data-label">رقم الهاتف</span><span class="data-value" id="v_em_phone" dir="ltr">--</span></div>
+                                    <div class="col-md-4"><span class="data-label">رقم الهاتف</span><span class="data-value font-monospace" id="v_em_phone" dir="ltr">--</span></div>
                                     <div class="col-md-4"><span class="data-label">صلة القرابة</span><span class="data-value" id="v_em_relation">--</span></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="tab-pane fade" id="v-tab-professional">
-                            <div class="view-section border-start border-4" style="border-color: var(--gold-luxury) !important;">
-                                <h6><i class="fas fa-user-tie me-2" style="color: var(--gold-luxury);"></i> المعلومات الوظيفية</h6>
+                        <!-- Tab 2: Professional, Syndicate & Permissions -->
+                        <div class="tab-pane fade" id="v-tab-professional" role="tabpanel">
+                            <div class="view-section" style="border-right: 4px solid var(--gold-luxury) !important;">
+                                <h6><i class="fas fa-user-tie me-2" style="color: var(--gold-luxury);"></i> المعلومات والمسار الوظيفي</h6>
                                 <div class="row g-4">
-                                    <div class="col-md-6"><span class="data-label">المسمى / التخصص</span><span class="data-value" id="v_specialization">--</span></div>
-                                    <div class="col-md-6"><span class="data-label">تاريخ الانضمام</span><span class="data-value" id="v_join_date">--</span></div>
-                                    <div class="col-md-6"><span class="data-label">سنوات الخبرة</span><span class="data-value" id="v_experience">--</span></div>
-                                    <div class="col-md-6"><span class="data-label">حساب التيليغرام</span><span class="data-value font-monospace" id="v_telegram_id" dir="ltr">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">المسمى / التخصص القانوني</span><span class="data-value" id="v_specialization">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">تاريخ الانضمام للمكتب</span><span class="data-value" id="v_join_date">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">سنوات الخبرة العملية</span><span class="data-value" id="v_experience">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">معرف تيليغرام المعتمد</span><span class="data-value font-monospace" id="v_telegram_id" dir="ltr">--</span></div>
                                 </div>
                             </div>
                             <div class="view-section">
-                                <h6><i class="fas fa-id-badge me-2 text-info"></i> السجل النقابي (للمحامين)</h6>
+                                <h6><i class="fas fa-id-badge me-2 text-info"></i> السجل النقابي (للمحامين والمستشارين)</h6>
                                 <div class="row g-4">
-                                    <div class="col-md-6"><span class="data-label">رقم النقابة</span><span class="data-value" id="v_syndicate_num">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">رقم الهوية النقابية</span><span class="data-value font-monospace" id="v_syndicate_num">--</span></div>
                                     <div class="col-md-6"><span class="data-label">تاريخ انتهاء الهوية النقابية</span><span class="data-value" id="v_syndicate_expiry">--</span></div>
                                 </div>
                             </div>
                             <div class="view-section">
-                                <h6><i class="fas fa-shield-alt me-2 text-success"></i> الصلاحيات في النظام</h6>
+                                <h6><i class="fas fa-shield-alt me-2 text-success"></i> الصلاحيات الممنوحة في النظام</h6>
                                 <div class="d-flex flex-wrap gap-2 mt-3" id="v_permissions">--</div>
                             </div>
                         </div>
 
-                        <div class="tab-pane fade" id="v-tab-financial">
+                        <!-- Tab 3: Financial & Bank Details -->
+                        <div class="tab-pane fade" id="v-tab-financial" role="tabpanel">
                             <div class="view-section text-center" style="border-top: 4px solid var(--success-luxury);">
-                                <h6 style="color: var(--success-luxury);"><i class="fas fa-money-bill-wave me-2"></i> الراتب والبدلات</h6>
+                                <h6 style="color: var(--success-luxury);"><i class="fas fa-money-bill-wave me-2"></i> الراتب والبدلات والعمولات</h6>
                                 <div class="row g-3 mt-3">
                                     <div class="col-4">
                                         <span class="data-label">الراتب الأساسي</span>
                                         <h3 class="fw-bold mb-0" style="color: var(--success-luxury);"><span id="v_salary">0</span> <small class="fs-6 text-muted">د.أ</small></h3>
                                     </div>
                                     <div class="col-4 border-start border-end">
-                                        <span class="data-label">بدل تنقلات</span>
-                                        <h4 class="fw-bold mb-0" style="color: var(--primary-dark);"><span id="v_allowance">0</span> <small class="fs-6 text-muted">د.أ</small></h4>
+                                        <span class="data-label">بدل التنقلات</span>
+                                        <h4 class="fw-bold mb-0 text-dark"><span id="v_allowance">0</span> <small class="fs-6 text-muted">د.أ</small></h4>
                                     </div>
                                     <div class="col-4">
                                         <span class="data-label">نسبة العمولة</span>
@@ -373,66 +557,83 @@
                                 </div>
                             </div>
                             <div class="view-section">
-                                <h6><i class="fas fa-university me-2" style="color: var(--primary-dark);"></i> الحساب البنكي</h6>
+                                <h6><i class="fas fa-university me-2" style="color: var(--primary-dark);"></i> الحساب البنكي المعتمد للتحويل</h6>
                                 <div class="row g-4">
                                     <div class="col-md-6"><span class="data-label">اسم البنك</span><span class="data-value" id="v_bank_name">--</span></div>
-                                    <div class="col-md-6"><span class="data-label">رقم الآيبان (IBAN)</span><span class="data-value font-monospace text-break" id="v_bank_iban" dir="ltr">--</span></div>
+                                    <div class="col-md-6"><span class="data-label">رقم الآيبان الدولي (IBAN)</span><span class="data-value font-monospace text-break" id="v_bank_iban" dir="ltr">--</span></div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="tab-pane fade" id="v-tab-documents">
+                        <!-- Tab 4: Archive Documents -->
+                        <div class="tab-pane fade" id="v-tab-documents" role="tabpanel">
                             <div class="view-section">
-                                <h6><i class="fas fa-file-pdf me-2 text-danger"></i> أرشيف الموظف (R2)</h6>
+                                <h6><i class="fas fa-file-pdf me-2 text-danger"></i> أرشيف الوثائق والعقود المشفرة (Cloudflare R2)</h6>
                                 <div id="v_documents_list">
-                                    <div class="text-center p-4 text-muted fw-bold border rounded-3 bg-light">جاري التحميل...</div>
+                                    <div class="text-center p-4 text-muted fw-bold border rounded-3 bg-light">جاري فحص الأرشيف...</div>
                                 </div>
                             </div>
                         </div>
 
                     </div>
                 </div>
-                <div class="modal-footer border-0 bg-white" style="border-radius: 0 0 24px 24px;">
-                    <button type="button" class="btn btn-outline-navy px-4" data-bs-dismiss="modal">إغلاق</button>
+                <div class="modal-footer border-0 bg-white" style="border-radius: 0 0 26px 26px;">
+                    <button type="button" class="btn btn-outline-navy px-4" data-bs-dismiss="modal">إغلاق النافذة</button>
                     <button type="button" class="btn btn-gold px-4" id="btn_open_edit"><i class="fas fa-edit me-1"></i> تحرير البيانات</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="modal fade" id="staffModal" tabindex="-1">
+    <!-- Staff Add / Edit Modal -->
+    <div class="modal fade" id="staffModal" tabindex="-1" aria-labelledby="staffModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="staffModalLabel"><i class="fas fa-user-edit me-2" style="color: var(--gold-luxury);"></i> نموذج بيانات الكادر</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="staffModalLabel">
+                        <i class="fas fa-user-edit me-2" style="color: var(--gold-luxury);"></i> نموذج إدارة وتعيين الكادر
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <div class="modal-body p-0">
                     
                     <ul class="nav nav-pills bg-white p-3 border-bottom overflow-auto flex-nowrap" id="staffTabs" role="tablist">
-                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-personal" type="button">الشخصية</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-professional" type="button">المهنية والأمان</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-financial" type="button">المالية والطوارئ</button></li>
-                        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-documents" type="button">الأرشيف</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-personal" type="button" role="tab">الشخصية</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-professional" type="button" role="tab">المهنية والأمان</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-financial" type="button" role="tab">المالية والطوارئ</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-documents" type="button" role="tab">الأرشيف</button></li>
                     </ul>
 
                     <form id="staffForm" onsubmit="saveStaff(event)" class="p-4">
                         <input type="hidden" id="staff_id">
                         
                         <div class="tab-content">
-                            <div class="tab-pane fade show active" id="tab-personal">
-                                <div class="alert border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-right: 4px solid var(--gold-luxury) !important;">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div style="color: var(--primary-dark); font-weight: 700;"><i class="fas fa-magic me-2" style="color: var(--gold-luxury);"></i> <b>التعبئة الذكية:</b> انسخ نص الهوية (OCR) للذكاء الاصطناعي لملء الحقول.</div>
-                                        <button type="button" class="btn btn-sm btn-gold fw-bold px-3 shadow-sm" onclick="openAiIdModal()">استخراج <i class="fas fa-robot ms-1"></i></button>
+                            <!-- Personal Tab -->
+                            <div class="tab-pane fade show active" id="tab-personal" role="tabpanel">
+                                <!-- Smart AI OCR Assistant Bar -->
+                                <div class="alert border-0 shadow-sm mb-4 rounded-4" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.12), rgba(212, 175, 55, 0.04)); border-right: 4px solid var(--gold-luxury) !important;">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div style="color: var(--primary-dark); font-weight: 700;">
+                                            <i class="fas fa-magic me-2" style="color: var(--gold-luxury);"></i> 
+                                            <b>التعبئة الذكية:</b> مسح الهوية بالكاميرا أو لصق النص المستخرج لملء الحقول تلقائياً.
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <input type="file" id="id_ocr_file" class="d-none" accept="image/*" onchange="processIdImage(event)">
+                                            <button type="button" class="btn btn-sm btn-outline-dark fw-bold px-3 shadow-sm rounded-pill" onclick="triggerIdOcrUpload()">
+                                                <i class="fas fa-camera me-1 text-primary"></i> مسح صورة
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-gold fw-bold px-3 shadow-sm rounded-pill" onclick="openAiIdModal()">
+                                                <i class="fas fa-robot me-1"></i> لصق نص OCR
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="card-inner">
                                     <div class="row g-3">
-                                        <div class="col-12"><label class="form-label">الاسم الرباعي <span class="text-danger">*</span></label><input type="text" class="form-control" id="s_full_name" required></div>
-                                        <div class="col-md-6"><label class="form-label">رقم الهاتف <span class="text-danger">*</span></label><input type="tel" class="form-control text-start font-monospace" id="s_phone" dir="ltr" required placeholder="07..."></div>
-                                        <div class="col-md-6"><label class="form-label">الرقم الوطني</label><input type="text" class="form-control font-monospace text-start" id="s_national_id" dir="ltr"></div>
+                                        <div class="col-12"><label class="form-label">الاسم الرباعي <span class="text-danger">*</span></label><input type="text" class="form-control" id="s_full_name" required placeholder="الاسم الكامل كما في الهوية"></div>
+                                        <div class="col-md-6"><label class="form-label">رقم الهاتف <span class="text-danger">*</span></label><input type="tel" class="form-control text-start font-monospace" id="s_phone" dir="ltr" required placeholder="079xxxxxxx"></div>
+                                        <div class="col-md-6"><label class="form-label">الرقم الوطني</label><input type="text" class="form-control font-monospace text-start" id="s_national_id" dir="ltr" placeholder="الرقم الوطني"></div>
                                         <div class="col-md-6">
                                             <label class="form-label">الجنس</label>
                                             <select class="form-select" id="s_gender">
@@ -440,100 +641,104 @@
                                             </select>
                                         </div>
                                         <div class="col-md-6"><label class="form-label">تاريخ الميلاد</label><input type="date" class="form-control" id="s_dob"></div>
-                                        <div class="col-md-6"><label class="form-label">رابط صورة شخصية</label><input type="url" class="form-control text-start" id="s_avatar" dir="ltr" placeholder="https://..."></div>
+                                        <div class="col-md-6"><label class="form-label">رابط صورة شخصية (أو اترك فارغاً)</label><input type="url" class="form-control text-start font-monospace" id="s_avatar" dir="ltr" placeholder="https://..."></div>
                                         <div class="col-md-6">
                                             <label class="form-label text-primary">معرف تيليغرام (Telegram ID) <span class="text-danger">*</span></label>
-                                            <input type="number" class="form-control text-start font-monospace border-primary" id="s_telegram_id" dir="ltr" placeholder="لاستلام كود الـ OTP والإشعارات">
+                                            <input type="number" class="form-control text-start font-monospace border-primary" id="s_telegram_id" dir="ltr" placeholder="لاستلام كود الـ OTP والإشعارات القضائية">
                                         </div>
                                         <div class="col-12"><label class="form-label">عنوان السكن</label><input type="text" class="form-control" id="s_address" placeholder="المدينة، المنطقة، الشارع..."></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="tab-pane fade" id="tab-professional">
+                            <!-- Professional Tab -->
+                            <div class="tab-pane fade" id="tab-professional" role="tabpanel">
                                 <div class="card-inner mb-3">
-                                    <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">النظام والصلاحيات</h6>
+                                    <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">النظام والمسمى الوظيفي</h6>
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label">الدور الوظيفي <span class="text-danger">*</span></label>
+                                            <label class="form-label">الدور الوظيفي في النظام <span class="text-danger">*</span></label>
                                             <select class="form-select" id="s_role" required>
-                                                <option value="lawyer">محامي مزاول</option>
-                                                <option value="secretary">سكرتير تنفيذي</option>
-                                                <option value="admin">مدير / شريك</option>
+                                                <option value="lawyer">محامي مزاول / مستشار</option>
+                                                <option value="secretary">سكرتاريا وإداري</option>
+                                                <option value="admin">مدير / شريك مسؤول</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-6"><label class="form-label">المسمى / التخصص</label><input type="text" class="form-control" id="s_specialization" placeholder="محامي شركات، متدرب..."></div>
-                                        <div class="col-md-6"><label class="form-label">تاريخ الانضمام</label><input type="date" class="form-control" id="s_join_date"></div>
-                                        <div class="col-md-6"><label class="form-label">سنوات الخبرة</label><input type="number" class="form-control" id="s_experience" min="0" value="0"></div>
+                                        <div class="col-md-6"><label class="form-label">المسمى / التخصص الدقيق</label><input type="text" class="form-control" id="s_specialization" placeholder="محامي شركات، قضايا شرعية، متدرب..."></div>
+                                        <div class="col-md-6"><label class="form-label">تاريخ الانضمام للمكتب</label><input type="date" class="form-control" id="s_join_date"></div>
+                                        <div class="col-md-6"><label class="form-label">سنوات الخبرة العملية</label><input type="number" class="form-control" id="s_experience" min="0" value="0"></div>
                                     </div>
 
                                     <h6 class="text-navy fw-bold mt-4 mb-3 border-bottom pb-2">الصلاحيات المخصصة للنظام</h6>
-                                    <div class="d-flex flex-wrap gap-3 p-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                    <div class="d-flex flex-wrap gap-3 p-3 rounded-3" style="background: rgba(212, 175, 55, 0.05); border: 1px solid rgba(212, 175, 55, 0.2);">
                                         <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="perm_delete"><label class="form-check-label fw-bold small text-danger" for="perm_delete">حذف الملفات نهائياً</label></div>
-                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="perm_finance"><label class="form-check-label fw-bold small text-success" for="perm_finance">الوصول للمالية والفواتير</label></div>
-                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="perm_reports"><label class="form-check-label fw-bold small text-primary" for="perm_reports">استخراج التقارير الشاملة</label></div>
+                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="perm_finance"><label class="form-check-label fw-bold small text-success" for="perm_finance">الوصول للمالية وسندات القبض</label></div>
+                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="perm_reports"><label class="form-check-label fw-bold small text-primary" for="perm_reports">استخراج التقارير والتحليلات</label></div>
                                     </div>
                                 </div>
 
+                                <!-- Security Switches -->
                                 <div class="card-inner mt-4 border-danger border-2">
-                                    <h6 class="text-danger fw-bold mb-3 border-bottom pb-2"><i class="fas fa-user-shield me-2"></i> حالة الحساب (Security Status)</h6>
+                                    <h6 class="text-danger fw-bold mb-3 border-bottom pb-2"><i class="fas fa-user-shield me-2"></i> ضوابط الأمان والوصول (Security Controls)</h6>
                                     <div class="form-check form-switch bg-light p-3 rounded-3 border d-flex justify-content-between align-items-center shadow-sm mb-2">
                                         <div>
-                                            <label class="form-check-label fw-bold text-navy mb-1" for="s_is_active">حساب نشط (Active)</label>
-                                            <small class="text-muted d-block fw-bold">إيقاف هذا الخيار سيخفي الموظف من القوائم ويعلقه تماماً.</small>
+                                            <label class="form-check-label fw-bold text-navy mb-1" for="s_is_active">حساب نشط (Active Status)</label>
+                                            <small class="text-muted d-block fw-bold">إيقاف هذا الخيار سيعلق الموظف ويخفيه من القوائم النشطة.</small>
                                         </div>
-                                        <input class="form-check-input ms-0 me-3" type="checkbox" id="s_is_active" checked style="width: 3.5rem; height: 1.8rem; cursor: pointer;">
+                                        <input class="form-check-input ms-0 me-3" type="checkbox" id="s_is_active" checked style="width: 3.2rem; height: 1.7rem; cursor: pointer;">
                                     </div>
                                     <div class="form-check form-switch bg-light p-3 rounded-3 border d-flex justify-content-between align-items-center shadow-sm">
                                         <div>
                                             <label class="form-check-label fw-bold text-danger mb-1" for="s_can_login">صلاحية الدخول للنظام (Login Access)</label>
-                                            <small class="text-muted d-block fw-bold">إيقاف هذا الخيار سيمنع الموظف من تسجيل الدخول فوراً.</small>
+                                            <small class="text-muted d-block fw-bold">إيقاف هذا الخيار سيمنع تسجيل الدخول تماماً فور حفظ التعديل.</small>
                                         </div>
-                                        <input class="form-check-input ms-0 me-3 border-danger" type="checkbox" id="s_can_login" checked style="width: 3.5rem; height: 1.8rem; cursor: pointer;">
+                                        <input class="form-check-input ms-0 me-3 border-danger" type="checkbox" id="s_can_login" checked style="width: 3.2rem; height: 1.7rem; cursor: pointer;">
                                     </div>
                                 </div>
 
                                 <div class="card-inner mt-4">
-                                    <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">النقابة (للمحامين فقط)</h6>
+                                    <h6 class="fw-bold mb-3 border-bottom pb-2" style="color: var(--primary-dark);">بيانات نقابة المحامين</h6>
                                     <div class="row g-3">
-                                        <div class="col-md-6"><label class="form-label">رقم الهوية النقابية</label><input type="text" class="form-control font-monospace text-start" id="s_syndicate_num" dir="ltr"></div>
+                                        <div class="col-md-6"><label class="form-label">رقم الهوية النقابية</label><input type="text" class="form-control font-monospace text-start" id="s_syndicate_num" dir="ltr" placeholder="رقم التسجيل بالنقابة"></div>
                                         <div class="col-md-6"><label class="form-label text-danger">تاريخ الانتهاء (للتنبيه التلقائي)</label><input type="date" class="form-control border-danger" id="s_syndicate_expiry"></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="tab-pane fade" id="tab-financial">
+                            <!-- Financial Tab -->
+                            <div class="tab-pane fade" id="tab-financial" role="tabpanel">
                                 <div class="card-inner mb-3">
                                     <h6 class="text-navy fw-bold border-bottom pb-2">التفاصيل المالية والبنكية</h6>
                                     <div class="row g-3">
-                                        <div class="col-md-4"><label class="form-label text-success">الراتب الأساسي (د.أ)</label><input type="number" class="form-control border-success fw-bold" id="s_salary" min="0"></div>
-                                        <div class="col-md-4"><label class="form-label">بدل تنقلات (د.أ)</label><input type="number" class="form-control" id="s_allowance" min="0"></div>
+                                        <div class="col-md-4"><label class="form-label text-success">الراتب الأساسي (د.أ)</label><input type="number" class="form-control border-success fw-bold" id="s_salary" min="0" placeholder="0"></div>
+                                        <div class="col-md-4"><label class="form-label">بدل تنقلات (د.أ)</label><input type="number" class="form-control" id="s_allowance" min="0" placeholder="0"></div>
                                         <div class="col-md-4"><label class="form-label text-danger">نسبة العمولة (%)</label><input type="number" class="form-control border-danger fw-bold text-danger" id="s_commission" min="0" max="100" placeholder="مثال: 10"></div>
-                                        <div class="col-md-6 mt-3"><label class="form-label">البنك المعتمد</label><input type="text" class="form-control" id="s_bank_name" placeholder="بنك..."></div>
-                                        <div class="col-md-6 mt-3"><label class="form-label">رقم الآيبان (IBAN)</label><input type="text" class="form-control font-monospace text-start" id="s_bank_iban" dir="ltr" placeholder="JO..."></div>
+                                        <div class="col-md-6 mt-3"><label class="form-label">اسم البنك المعتمد</label><input type="text" class="form-control" id="s_bank_name" placeholder="بنك الإسكان، البنك العربي..."></div>
+                                        <div class="col-md-6 mt-3"><label class="form-label">رقم الآيبان الدولي (IBAN)</label><input type="text" class="form-control font-monospace text-start" id="s_bank_iban" dir="ltr" placeholder="JO00AAAA0000000000000000000000"></div>
                                     </div>
                                 </div>
                                 <div class="card-inner">
-                                    <h6 class="text-danger fw-bold border-bottom pb-2">جهة اتصال للطوارئ (Emergency)</h6>
+                                    <h6 class="text-danger fw-bold border-bottom pb-2">جهة اتصال للطوارئ (Emergency Contact)</h6>
                                     <div class="row g-3">
-                                        <div class="col-md-4"><label class="form-label">الاسم</label><input type="text" class="form-control" id="s_em_name" placeholder="اسم جهة الاتصال"></div>
-                                        <div class="col-md-4"><label class="form-label">الهاتف</label><input type="tel" class="form-control text-start font-monospace" id="s_em_phone" dir="ltr" placeholder="07..."></div>
-                                        <div class="col-md-4"><label class="form-label">صلة القرابة</label><input type="text" class="form-control" id="s_em_relation" placeholder="أخ، زوجة..."></div>
+                                        <div class="col-md-4"><label class="form-label">الاسم الكامل</label><input type="text" class="form-control" id="s_em_name" placeholder="اسم جهة الاتصال"></div>
+                                        <div class="col-md-4"><label class="form-label">رقم الهاتف</label><input type="tel" class="form-control text-start font-monospace" id="s_em_phone" dir="ltr" placeholder="079xxxxxxx"></div>
+                                        <div class="col-md-4"><label class="form-label">صلة القرابة</label><input type="text" class="form-control" id="s_em_relation" placeholder="أخ، والد، زوجة..."></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="tab-pane fade" id="tab-documents">
+                            <!-- Documents Tab -->
+                            <div class="tab-pane fade" id="tab-documents" role="tabpanel">
                                 <div class="alert alert-warning border-0 shadow-sm fw-bold rounded-3">
-                                    <i class="fas fa-exclamation-circle me-2"></i> يرجى حفظ بيانات الكادر (الأساسية) أولاً لتفعيل خاصية رفع وتوثيق الملفات.
+                                    <i class="fas fa-exclamation-circle me-2"></i> يجب حفظ بيانات الكادر أولاً لتفعيل خاصية رفع وتوثيق الوثائق في الأرشيف السحابي R2.
                                 </div>
                                 <div id="documents-area" class="d-none">
                                     <div class="mb-4 p-4 bg-white border rounded-4 shadow-sm" style="border-color: rgba(212, 175, 55, 0.4) !important;">
-                                        <label class="form-label fw-bold" style="color: var(--primary-dark);"><i class="fas fa-cloud-upload-alt me-1 text-info"></i> رفع مستند (هوية، شهادة، عقد...)</label>
+                                        <label class="form-label fw-bold" style="color: var(--primary-dark);"><i class="fas fa-cloud-upload-alt me-1 text-info"></i> رفع مستند جديد (عقد عمل، هوية، شهادة مزاولة...)</label>
                                         <div class="row g-2 align-items-center">
                                             <div class="col-md-4"><input type="text" id="doc_name" class="form-control" placeholder="اسم الوثيقة..."></div>
-                                            <div class="col-md-5"><input type="file" id="doc_file" class="form-control bg-light"></div>
-                                            <div class="col-md-3"><button type="button" class="btn btn-gold w-100" id="btnUploadDoc" onclick="uploadStaffDoc()"><i class="fas fa-upload"></i> رفع للأرشيف</button></div>
+                                            <div class="col-md-5"><input type="file" id="doc_file" class="form-control bg-light" accept=".pdf,image/*,.doc,.docx"></div>
+                                            <div class="col-md-3"><button type="button" class="btn btn-gold w-100" id="btnUploadDoc" onclick="uploadStaffDoc()"><i class="fas fa-upload me-1"></i> رفع للأرشيف</button></div>
                                         </div>
                                     </div>
                                     <h6 class="fw-bold text-muted border-bottom pb-2 mb-3">سجل الوثائق المحفوظة سحابياً</h6>
@@ -543,7 +748,7 @@
 
                         </div>
                         <button type="submit" class="btn btn-gold w-100 py-3 mt-4 fs-5 shadow-sm" id="btn_save_staff">
-                            <i class="fas fa-save me-2"></i> حفظ واعتماد الكادر
+                            <i class="fas fa-save me-2"></i> حفظ واعتماد بيانات الكادر
                         </button>
                     </form>
                 </div>
@@ -551,24 +756,28 @@
         </div>
     </div>
 
-    <div class="modal fade" id="aiIdModal" tabindex="-1">
+    <!-- AI ID Text Analysis Modal -->
+    <div class="modal fade" id="aiIdModal" tabindex="-1" aria-labelledby="aiIdModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #1e3a8a, #1e40af);">
-                    <h5 class="modal-title text-white"><i class="fas fa-robot me-2" style="color: var(--gold-luxury);"></i> المحلل الذكي للبيانات</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <div class="modal-header" style="background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));">
+                    <h5 class="modal-title text-white" id="aiIdModalLabel">
+                        <i class="fas fa-robot me-2" style="color: var(--gold-luxury);"></i> المحلل الذكي لبيانات الهوية (Llama 3.2)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
                 </div>
                 <div class="modal-body p-4 text-center">
-                    <p class="fw-bold mb-3" style="color: var(--primary-dark);">قم بنسخ ولصق النص المستخرج من صورة الهوية، وسيقوم الذكاء الاصطناعي بملء الحقول تلقائياً.</p>
+                    <p class="fw-bold mb-3" style="color: var(--primary-dark);">قم بلصق النص المستخرج من صورة الهوية أو المستند، وسيقوم الذكاء الاصطناعي بتحليله وتوزيع الحقول تلقائياً.</p>
                     <textarea class="form-control shadow-sm mb-4" id="ai_id_text" rows="5" placeholder="الصق نص الهوية هنا..." style="border-radius: 16px; border: 2px solid var(--primary-dark); font-weight: 700;"></textarea>
                     <button class="btn btn-gold w-100 py-3 fs-5" id="btn_process_id" onclick="processIdAI()">
-                        <i class="fas fa-magic me-2"></i> تحليل وملء الحقول
+                        <i class="fas fa-magic me-2"></i> تحليل وملء الحقول الذكية
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav d-print-none">
         <a href="app.html" class="nav-item text-decoration-none" onclick="localStorage.setItem('last_active_view', 'dashboard');">
             <i class="fas fa-home"></i> الرئيسية
@@ -587,12 +796,19 @@
         </a>
     </nav>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Dependencies & Engine Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" crossorigin="anonymous"></script>
     
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/auth.js"></script>
     <script src="./js/staff.js"></script>
+    <script>
+        // Offline / Online Connectivity Listeners
+        window.addEventListener('offline', () => document.getElementById('offline-banner')?.classList.remove('d-none'));
+        window.addEventListener('online', () => document.getElementById('offline-banner')?.classList.add('d-none'));
+        if (!navigator.onLine) document.getElementById('offline-banner')?.classList.remove('d-none');
+    </script>
 </body>
 </html>

@@ -1,15 +1,17 @@
 /**
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
- * الملف: js/app-core.js
- * الوصف: المحرك الأساسي، المزامنة، الإشعارات، العقود الذكية، الـ QR Scanner،
- * وإدارة السجل الأمني ومؤشر التواجد (Heartbeat) وتطبيقات الويب التقدمية (PWA).
- * التحديثات المعمارية (V5.2 Enterprise Edition):
- * 1. ربط بطاقة العمل (vCard) برابط صفحة التحقق الموحدة (verify.html?type=cv) لتفادي طفحان الـ QR.
- * 2. تطبيق مانع الطوفان الجذري (Boot Muter & State Manager) للإشعارات لمنع التكرار والإزعاج المطلق.
- * 3. تحسين بطاقة (Online Staff) لتشمل الصور الرمزية (Avatars) والأسماء بشكل متقدم مع حماية الصور المكسورة.
- * 4. ربط مباشر مع بوصلة اليوم (Urgent Briefing) والبحث الدلالي في التشريعات (legal_brain).
- * 5. عرض الوصف البشري العربي (_human_log) في سجل الرقابة الأمنية وآلة الزمن (Time Machine).
+ * الملف: js/app-core.js (App Core Engine V5.6 - Enterprise Luxury Edition)
+ * الوصف: المحرك الأساسي، المزامنة السحابية، الإشعارات، إدارة السجل الأمني (Audit Logs)
+ * بنمط Git-Diff التفاعلي، مؤشر التواجد ونبض الموظفين (Heartbeat)،
+ * والبحث الدلالي المتقدم وتطبيقات الويب التقدمية (PWA).
+ * 
+ * الميزات المحدثة (V5.6 Enterprise):
+ * 1. عرض تفاصيل التعديلات بنمط Git-Diff عالي التباين (شارات الإضافة والحذف والتعديل).
+ * 2. إخفاء كافة الحقول الحساسة (access_pin_hash, access_pin_salt, portal_session_token) من سجلات التدقيق.
+ * 3. قراءة مفتاح VAPID العام ديناميكياً عبر مسار API /api/vapid-public-key.
+ * 4. استخدام API.request الآمن في دورة الـ Heartbeat مع إدارة الإلغاء التلقائي.
+ * 5. كبح طوفان الإشعارات (Anti-Spam State Muter) لمنع التكرار والإزعاج.
  * ============================================================================
  */
 
@@ -24,7 +26,7 @@ window.AppCore = {
 
     // 🛡️ مانع طوفان الإشعارات (Anti-Spam State Manager)
     displayedNotifications: new Set(),
-    isInitialNotifLoad: true, // كابح الطوفان عند أول عملية جلب للبيانات
+    isInitialNotifLoad: true, // كابح التنبيهات المفاجئة عند أول تحميل
 
     escapeHTML: function(str) {
         if (str === null || str === undefined) return '';
@@ -58,8 +60,9 @@ window.AppCore = {
         if (el) {
             const modalIns = bootstrap.Modal.getOrCreateInstance(el);
             modalIns.show();
-            if (id === 'caseModal' && typeof window.generateStrongPIN === 'function') {
-                window.generateStrongPIN();
+            if (id === 'caseModal') {
+                if (typeof window.goToCaseStep === 'function') window.goToCaseStep(1);
+                if (typeof window.generateStrongPIN === 'function') window.generateStrongPIN();
             }
             if (id === 'apptModal' && typeof window.populateApptRelations === 'function') {
                 window.populateApptRelations();
@@ -103,7 +106,7 @@ window.switchView = (viewId) => {
         activeView.offsetHeight;
         activeView.style.animation = null;
     }
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.bottom-nav .nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(`nav-icon-${cleanView}`)?.classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -263,7 +266,6 @@ window.handleSmartSearch = (query, forceAi = false) => {
     drop.style.display = 'block';
 
     smartSearchDebounceTimer = setTimeout(async () => {
-        // إجهاض أي طلب بحث سابق ما زال معلقاً في الشبكة لمنع تضارب النتائج (Race Conditions)
         if (currentSearchAbortController) {
             currentSearchAbortController.abort();
         }
@@ -271,9 +273,8 @@ window.handleSmartSearch = (query, forceAi = false) => {
 
         try {
             const res = await API.smartSearch(safeQuery, currentSearchAbortController?.signal, forceAi);
-            if (!res) return; // تم إلغاء الطلب
+            if (!res) return;
 
-            // 🛡️ معالجة أخطاء الـ API الصريحة بدلاً من إظهار "لا توجد نتائج"
             if (res.error) {
                 drop.innerHTML = `<div class="p-3 text-center text-danger fw-bold"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>${window.escapeHTML(res.error || 'تعذر استرجاع نتائج البحث')}</div>`;
                 return;
@@ -282,7 +283,7 @@ window.handleSmartSearch = (query, forceAi = false) => {
             let html = '';
 
             if (res.cases?.length) {
-                html += '<h6 class="dropdown-header fw-bold px-3 pt-2" style="color: var(--gold-luxury);"><i class="fas fa-gavel me-1"></i> القضايا المطابقة</h6>';
+                html += '<h6 class="dropdown-header fw-bold px-3 pt-2" style="color: var(--accent);"><i class="fas fa-gavel me-1"></i> القضايا المطابقة</h6>';
                 html += res.cases.map(c => `
                     <button type="button" class="dropdown-item py-2 border-bottom fw-bold text-navy d-flex justify-content-between align-items-center" onclick="localStorage.setItem('current_case_id','${c.id}'); window.location.href='case-details.html?id=${encodeURIComponent(c.id)}'">
                         <span>${window.escapeHTML(c.case_internal_id)} - ${window.escapeHTML(c.opponent_name || '')}</span>
@@ -301,7 +302,6 @@ window.handleSmartSearch = (query, forceAi = false) => {
                 `).join('');
             }
 
-            // 📄 عرض المستندات والملفات المطابقة
             if (res.files?.length) {
                 html += '<h6 class="dropdown-header text-warning fw-bold px-3 pt-2"><i class="fas fa-file-alt me-1"></i> المستندات والأرشيف</h6>';
                 html += res.files.map(f => `
@@ -322,7 +322,6 @@ window.handleSmartSearch = (query, forceAi = false) => {
                 `).join('');
             }
 
-            // زر طلب البحث الدلالي المعمق بالذكاء الاصطناعي عند الحاجة
             if (!forceAi) {
                 html += `
                     <div class="p-2 border-top bg-light text-center">
@@ -427,7 +426,7 @@ window.renderOnlineStaff = () => {
     const staff = window.AppCore.globalData.staff || [];
     const now = new Date();
 
-    // نعتبر الموظف "متصلاً" إذا كان نشطاً خلال آخر 15 دقيقة (900,000 مللي ثانية)
+    // نعتبر الموظف متصلاً إذا كان نشطاً خلال آخر 15 دقيقة
     const onlineStaff = staff.filter(s => {
         const lastActivity = s.last_status_change || s.last_login;
         if (!lastActivity) return false;
@@ -442,14 +441,14 @@ window.renderOnlineStaff = () => {
             const initial = window.escapeHTML(name.charAt(0));
 
             const avatarHtml = s.avatar_url
-                ? `<img src="${window.escapeHTML(s.avatar_url)}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 2px solid var(--gold-luxury); flex-shrink: 0;" onerror="this.onerror=null; this.outerHTML='<div style=\\'width:28px; height:28px; border-radius:50%; background:var(--primary-dark); color:var(--gold-luxury); display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:900; flex-shrink:0;\\'>${initial}</div>';">`
-                : `<div style="width:28px; height:28px; border-radius:50%; background:var(--primary-dark); color:var(--gold-luxury); display:flex; align-items:center; justify-content:center; font-size:0.85rem; font-weight:900; flex-shrink: 0;">${initial}</div>`;
+                ? `<img src="${window.escapeHTML(s.avatar_url)}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; border: 2px solid var(--accent); flex-shrink: 0;" onerror="this.onerror=null; this.outerHTML='<div class=\\'lawyer-avatar\\' style=\\'width:28px; height:28px; font-size:0.8rem;\\'>${initial}</div>';">`
+                : `<div class="lawyer-avatar" style="width:28px; height:28px; font-size:0.8rem;">${initial}</div>`;
 
             return `
             <div class="bg-white border shadow-sm px-3 py-2 rounded-pill d-flex align-items-center gap-2" style="display: inline-flex; margin: 3px;">
                 <span class="online-dot"></span>
                 ${avatarHtml}
-                <span class="text-navy" style="font-size: 0.92rem; font-weight: 800; white-space: nowrap; margin-right: 2px;">${window.escapeHTML(name)}</span>
+                <span class="text-navy" style="font-size: 0.9rem; font-weight: 800; white-space: nowrap; margin-right: 2px;">${window.escapeHTML(name)}</span>
             </div>`;
         }).join('');
     } else {
@@ -459,26 +458,19 @@ window.renderOnlineStaff = () => {
 
 window.startHeartbeat = () => {
     setInterval(async () => {
-        if (navigator.onLine && window.AppCore.currentUser) {
-            try {
-                const token = localStorage.getItem(CONFIG?.TOKEN_KEY || 'moakkil_token');
-                const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
-                await fetch(`${baseUrl}/api/auth/heartbeat`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                // جلب الموظفين فقط للمدير إذا كانت شاشة الحضور مفتوحة لتوفير استهلاك قاعدة البيانات
-                if (['admin', 'super_admin'].includes(window.AppCore.currentUser.role)) {
-                    const onlineContainer = document.getElementById('online-staff-container');
-                    if (onlineContainer && !onlineContainer.classList.contains('d-none')) {
-                        const staffRes = await API.getStaff();
-                        window.AppCore.globalData.staff = Array.isArray(staffRes) ? staffRes : [];
-                        window.renderOnlineStaff();
-                    }
+        if (!navigator.onLine || !window.AppCore.currentUser) return;
+        try {
+            await API.request('/api/auth/heartbeat', 'POST');
+            if (['admin', 'super_admin'].includes(window.AppCore.currentUser.role)) {
+                const onlineContainer = document.getElementById('online-staff-container');
+                if (onlineContainer && !onlineContainer.classList.contains('d-none')) {
+                    const staffRes = await API.getStaff();
+                    window.AppCore.globalData.staff = Array.isArray(staffRes) ? staffRes : [];
+                    window.renderOnlineStaff();
                 }
-            } catch (e) {}
-        }
-    }, 180000);
+            }
+        } catch (e) {}
+    }, 180000); // كل 3 دقائق لتوفير الموارد
 };
 
 // ============================================================================
@@ -490,16 +482,13 @@ window.renderNotifications = () => {
     const badge = document.getElementById('notification-badge');
     const notifs = window.AppCore.globalData.notifications || [];
 
-    // 1. في أول تحميل للنظام، نعتبر الإشعارات الحالية مسجلة في الذاكرة لمنع القفز المفاجئ
     if (window.AppCore.isInitialNotifLoad) {
         notifs.forEach(n => window.AppCore.displayedNotifications.add(n.id));
         window.AppCore.isInitialNotifLoad = false;
     }
 
-    // 2. فرز الإشعارات الجديدة فعلياً فقط التي لم تنبه المستخدم بعد
     const newUnreadNotifs = notifs.filter(n => !n.is_read && !window.AppCore.displayedNotifications.has(n.id));
 
-    // 3. معالجة التنبيهات المزعجة (Anti-Spam Logic)
     if (newUnreadNotifs.length > 0) {
         if (newUnreadNotifs.length > 3) {
             window.showToast(`لديك ${newUnreadNotifs.length} إشعارات جديدة بانتظارك.`, 'info');
@@ -509,7 +498,6 @@ window.renderNotifications = () => {
         newUnreadNotifs.forEach(n => window.AppCore.displayedNotifications.add(n.id));
     }
 
-    // 4. تحديث الشارة الحمراء (Badge) وقائمة الإشعارات المنسدلة
     const totalUnread = notifs.filter(n => !n.is_read).length;
     if (totalUnread > 0 && badge) {
         badge.innerText = totalUnread > 99 ? '+99' : totalUnread;
@@ -526,7 +514,7 @@ window.renderNotifications = () => {
     if (list) {
         list.innerHTML = notifs.slice(0, 12).map(n => `
             <li><a class="dropdown-item py-3 border-bottom ${n.is_read ? 'text-muted' : 'fw-bold text-navy bg-light'}" href="${window.escapeHTML(n.action_url || '#')}">
-                <small class="d-block mb-1" style="color: var(--gold-luxury);">${window.escapeHTML(n.title)}</small>
+                <small class="d-block mb-1" style="color: var(--accent);">${window.escapeHTML(n.title)}</small>
                 <span style="font-size:0.85rem; white-space: normal;">${window.escapeHTML(n.message)}</span>
             </a></li>
         `).join('');
@@ -614,10 +602,10 @@ window.copyToClipboard = (elementId) => {
 };
 
 // ============================================================================
-// [7] آلة الزمن الأمني وترجمة سجل الرقابة (Audit Trail & Time Machine)
+// [7] آلة الزمن الأمني وترجمة سجل الرقابة بنمط Git-Diff (Audit Trail V5.6)
 // ============================================================================
 
-// قاموس الترجمة الشامل للحقول (لجعل الـ Audit Log مقروءاً للبشر)
+// قاموس الترجمة الشامل للحقول القانونية
 const fieldDict = {
     'status': 'الحالة', 'case_internal_id': 'رقم الملف الداخلي', 'opponent_name': 'اسم الخصم',
     'opponent_lawyer': 'وكيل الخصم', 'total_agreed_fees': 'الأتعاب المتفق عليها', 'agreed_fees': 'الأتعاب المتفق عليها',
@@ -693,33 +681,42 @@ window.renderAuditTrail = () => {
         'mo_expenses': 'مصروف مالي', 'mo_case_updates': 'إجراء قضية',
         'mo_files': 'مستند أرشيف', 'mo_users': 'ملف موظف'
     };
-    const colorVar = { 'CREATE': 'success', 'UPDATE': 'info', 'DELETE': 'danger' };
+    const badgeDiffClass = {
+        'CREATE': 'diff-badge-add',
+        'UPDATE': 'diff-badge-change',
+        'DELETE': 'diff-badge-remove'
+    };
 
     let html = '';
     logs.slice(0, 100).forEach(log => {
-        const staff = window.AppCore.globalData.staff.find(s => String(s.id) === String(log.user_id))?.full_name || 'إدارة النظام';
+        const staffObj = window.AppCore.globalData.staff.find(s => String(s.id) === String(log.user_id));
+        const staff = staffObj?.full_name || 'إدارة النظام';
+        const staffInitial = window.escapeHTML(staff.charAt(0));
         const target = log.new_data?.case_internal_id || log.new_data?.full_name || log.new_data?.title || log.new_data?.update_title || log.old_data?.case_internal_id || log.old_data?.full_name || (log.entity_id ? String(log.entity_id).split('-')[0] : '--');
-        const cVar = colorVar[log.action_type] || 'secondary';
+        const diffClass = badgeDiffClass[log.action_type] || 'diff-badge-change';
         const humanDesc = cleanAuditHumanText(log.new_data?._human_log || '');
         const logDate = new Date(log.created_at);
         const fullDayStr = logDate.toLocaleDateString('ar-JO', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
         const timeStr = logDate.toLocaleTimeString('ar-JO', { hour: '2-digit', minute: '2-digit' });
 
-        let desc = `<span class="badge bg-${cVar} bg-opacity-10 text-${cVar} border border-${cVar} border-opacity-25 me-1">${actLabel[log.action_type] || log.action_type}</span> ${entLabel[log.entity_type] || log.entity_type} <b class="text-navy">(${window.escapeHTML(target)})</b>`;
+        let desc = `<span class="${diffClass}">${actLabel[log.action_type] || log.action_type}</span> ${entLabel[log.entity_type] || log.entity_type} <b class="text-navy">(${window.escapeHTML(target)})</b>`;
 
         html += `
-        <div class="compact-card mb-3 transition-hover" style="border-right: 4px solid var(--bs-${cVar});">
+        <div class="compact-card mb-3 transition-hover">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                 <div class="pe-2 flex-grow-1">
-                    <h6 class="fw-bold mb-1 text-navy lh-base">${desc}</h6>
-                    ${humanDesc ? `<p class="small text-muted fw-bold mb-2 lh-base" style="white-space: pre-wrap;">${window.escapeHTML(humanDesc)}</p>` : ''}
-                    <div class="d-flex flex-wrap align-items-center gap-3 mt-1">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="lawyer-avatar" style="width: 32px; height: 32px; font-size: 0.8rem;">${staffInitial}</div>
+                        <h6 class="fw-bold mb-0 text-navy lh-base">${desc}</h6>
+                    </div>
+                    ${humanDesc ? `<p class="small text-muted fw-bold mb-2 lh-base" style="white-space: pre-wrap; margin-right: 40px;">${window.escapeHTML(humanDesc)}</p>` : ''}
+                    <div class="d-flex flex-wrap align-items-center gap-3 mt-1" style="margin-right: 40px;">
                         <small class="text-muted fw-bold"><i class="fas fa-user-tie text-info me-1"></i> بواسطة: <b class="text-navy">${window.escapeHTML(staff)}</b></small>
                         <small class="text-muted fw-bold"><i class="far fa-calendar-alt text-warning me-1"></i> ${window.escapeHTML(fullDayStr)} - الساعة ${window.escapeHTML(timeStr)}</small>
                     </div>
                 </div>
                 <div class="text-end flex-shrink-0">
-                    <button type="button" class="btn btn-sm btn-light border text-navy rounded-pill px-3 fw-bold shadow-sm" style="font-size: 0.78rem;" onclick="window.showAuditDiff('${log.id}')"><i class="fas fa-eye me-1" style="color: var(--gold-luxury);"></i> مقارنة التعديلات</button>
+                    <button type="button" class="btn btn-sm btn-outline-navy rounded-pill px-3 fw-bold shadow-sm" style="font-size: 0.78rem;" onclick="window.showAuditDiff('${log.id}')"><i class="fas fa-eye me-1" style="color: var(--accent);"></i> مقارنة التعديلات</button>
                 </div>
             </div>
         </div>`;
@@ -733,28 +730,39 @@ window.showAuditDiff = (logId) => {
     const modalBody = document.getElementById('auditDiffModalBody');
     if (!modalBody) return;
 
-    const staff = window.AppCore.globalData.staff.find(s => String(s.id) === String(log.user_id))?.full_name || 'إدارة النظام';
+    const staffObj = window.AppCore.globalData.staff.find(s => String(s.id) === String(log.user_id));
+    const staff = staffObj?.full_name || 'إدارة النظام';
+    const staffInitial = window.escapeHTML(staff.charAt(0));
     const logDate = new Date(log.created_at);
     const fullDateTime = logDate.toLocaleString('ar-JO', { dateStyle: 'full', timeStyle: 'short' });
 
     let html = `
-    <div class="d-flex flex-wrap justify-content-between align-items-center bg-light p-3 rounded-3 mb-3 border">
-        <div><i class="fas fa-user-shield text-primary me-1"></i> <b>المنفذ:</b> ${window.escapeHTML(staff)}</div>
-        <div><i class="far fa-clock text-warning me-1"></i> <b>اليوم والساعة:</b> ${window.escapeHTML(fullDateTime)}</div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center bg-white p-3 rounded-3 mb-3 border shadow-sm">
+        <div class="d-flex align-items-center gap-2">
+            <div class="lawyer-avatar">${staffInitial}</div>
+            <div>
+                <b class="text-navy d-block">${window.escapeHTML(staff)}</b>
+                <small class="text-muted font-monospace">${window.escapeHTML(staffObj?.role || 'عضو معتمد')}</small>
+            </div>
+        </div>
+        <div><i class="far fa-clock text-warning me-1"></i> <b>التاريخ والوقت:</b> ${window.escapeHTML(fullDateTime)}</div>
     </div>`;
 
     const cleanedHuman = cleanAuditHumanText(log.new_data?._human_log || '');
     if (cleanedHuman) {
-        html += `<div class="alert alert-info border-0 shadow-sm fw-bold small mb-3 rounded-3" style="white-space: pre-wrap;"><i class="fas fa-robot me-1"></i> <b>توضيح الذكاء الاصطناعي:</b>\n${window.escapeHTML(cleanedHuman)}</div>`;
+        html += `<div class="alert alert-info border-0 shadow-sm fw-bold small mb-3 rounded-3" style="white-space: pre-wrap;"><i class="fas fa-robot me-1"></i> <b>توضيح النظام الذكي:</b>\n${window.escapeHTML(cleanedHuman)}</div>`;
     }
 
     if (log.action_type === 'UPDATE' && log.new_data) {
-        html += '<h6 class="fw-bold mb-3 text-navy">الحقول التي تم تعديلها فعلياً فقط (قبل ⬅️ بعد):</h6><ul class="list-group shadow-sm border-0">';
+        html += '<h6 class="fw-bold mb-3 text-navy">الحقول التي تم تعديلها فعلياً (سجل مقارنة Git-Diff):</h6><ul class="list-group shadow-sm border-0">';
         let changesFound = false;
         const oldData = log.old_data || {};
+        
+        // استبعاد المفاتيح الداخلية وتأمين البيانات الحساسة من الظهور في الـ Audit Log
         const skipKeys = new Set([
             'updated_at', 'last_login', 'client_last_seen', '_human_log', '_changes_list',
-            'id', 'firm_id', 'created_at', 'public_token', 'case_embedding', 'embedding'
+            'id', 'firm_id', 'created_at', 'public_token', 'case_embedding', 'embedding',
+            'access_pin', 'access_pin_hash', 'access_pin_salt', 'portal_session_token'
         ]);
         const zeroNumKeys = new Set(['court_fees_paid', 'court_deposits', 'claim_amount', 'agreed_fees', 'total_agreed_fees', 'amount', 'paid_amount', 'remaining_amount']);
 
@@ -782,12 +790,19 @@ window.showAuditDiff = (logId) => {
 
                 html += `
                 <li class="list-group-item p-3 border-0 mb-2 rounded bg-white shadow-sm">
-                    <b class="text-navy d-block mb-2"><i class="fas fa-pen-nib text-warning me-1"></i> حقل (${window.escapeHTML(fName)})</b>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <b class="text-navy"><i class="fas fa-pen-nib text-warning me-1"></i> ${window.escapeHTML(fName)}</b>
+                        <span class="diff-badge-change">تعديل قيمة</span>
+                    </div>
                     <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
-                        <div class="p-2 bg-danger bg-opacity-10 text-danger rounded w-100 w-md-50 text-center text-decoration-line-through font-monospace" style="word-break: break-word;">قبل: ${window.escapeHTML(oldDisplay)}</div>
+                        <div class="p-2 diff-badge-remove rounded w-100 w-md-50 text-center font-monospace" style="word-break: break-word;">
+                            - ${window.escapeHTML(oldDisplay)}
+                        </div>
                         <i class="fas fa-arrow-left text-muted d-none d-md-block"></i>
                         <i class="fas fa-arrow-down text-muted d-md-none text-center"></i>
-                        <div class="p-2 bg-success bg-opacity-10 text-success rounded w-100 w-md-50 text-center fw-bold font-monospace" style="word-break: break-word;">بعد: ${window.escapeHTML(newDisplay)}</div>
+                        <div class="p-2 diff-badge-add rounded w-100 w-md-50 text-center fw-bold font-monospace" style="word-break: break-word;">
+                            + ${window.escapeHTML(newDisplay)}
+                        </div>
                     </div>
                 </li>`;
             }
@@ -845,7 +860,6 @@ window.generateVCard = () => {
 };
 window.showVCard = window.generateVCard;
 
-// تحويل مفتاح VAPID Base64 إلى Uint8Array قياسي لمتصفحات الموبايل
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -883,7 +897,18 @@ window.requestPushPermission = async () => {
             const permission = await Notification.requestPermission();
             if (permission === 'granted') {
                 const registration = await navigator.serviceWorker.ready;
-                const vapidKey = CONFIG?.VAPID_PUBLIC_KEY || "";
+                
+                // قراءة مفتاح VAPID العام ديناميكياً من الباك إند
+                let vapidKey = "";
+                if (typeof API.getVapidPublicKey === 'function') {
+                    try {
+                        vapidKey = await API.getVapidPublicKey();
+                    } catch (e) {}
+                }
+                if (!vapidKey && typeof CONFIG !== 'undefined') {
+                    vapidKey = CONFIG.VAPID_PUBLIC_KEY || "";
+                }
+
                 const subOptions = { userVisibleOnly: true };
                 if (vapidKey && vapidKey !== "BE_YOUR_VAPID_KEY_HERE") {
                     subOptions.applicationServerKey = urlBase64ToUint8Array(vapidKey);
@@ -911,7 +936,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // إخفاء الـ Splash Screen بسلاسة
     setTimeout(() => {
         const sp = document.getElementById('splash-screen');
         if (sp) {
@@ -935,7 +959,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (document.getElementById('top-user-avatar')) document.getElementById('top-user-avatar').innerText = uName.charAt(0);
     if (document.getElementById('welcome-role')) document.getElementById('welcome-role').innerText = `المنصب: ${isAdmin ? 'مدير النظام / الشريك الإداري' : 'محامي ومستشار قانوني'}`;
 
-    // قراءة التبويب المطلوب من الرابط (#cases, #clients, #agenda, #tools) أو من آخر تبويب نشط
     const hashView = window.location.hash ? window.location.hash.replace('#', '') : '';
     const targetInitialView = ['dashboard', 'cases', 'clients', 'agenda', 'tools', 'audit'].includes(hashView)
         ? hashView

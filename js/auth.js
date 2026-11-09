@@ -2,13 +2,14 @@
  * ============================================================================
  * نظام موكّل (Moakkil System) - 2026
  * الملف: js/auth.js
- * الوصف: محرك المصادقة وإدارة الهوية الرقمية (V5.3 Enterprise True Zero-Trust & WebAuthn Edition)
+ * الوصف: محرك المصادقة وإدارة الهوية الرقمية (V5.6 Enterprise True Zero-Trust & WebAuthn Edition)
  * الميزات الأمنية المطبقة:
- * 1. الجلسة الأحادية (Single Session) لمنع الدخول المتعدد عبر x-device-id.
- * 2. تسجيل خروج خادمي (/api/auth/logout) يبطل جلسة KV ويمسح طابور الأوفلاين (moakkil_offline_queue).
+ * 1. الجلسة الأحادية (Single Session) لمنع الدخول المتعدد وتثبيت بصمة الجهاز عبر x-device-id.
+ * 2. تسجيل خروج خادمي (/api/auth/logout) يبطل جلسة KV ويمسح طابور الأوفلاين وبيانات الجلسة.
  * 3. مصادقة بيومترية تشفيرية حقيقية (Server Challenge + SPKI Public Key + Assertion Signature).
- * 4. مصادقة إجرائية للعمليات الحساسة والحذف تصدر تذكرة خادمية لمرة واحدة (act_UUID).
- * 5. إلغاء البدائل الضعيفة (آخر 4 أرقام الهاتف ومعرف البصمة المجرد) وفصل رمز الحذف عن OTP الدخول.
+ * 4. توحيد دوال Base64URL القياسية عالمياً (RFC 4648) بين العميل والخادم.
+ * 5. مصادقة إجرائية للعمليات الحساسة والحذف تصدر تذكرة خادمية لمرة واحدة (act_UUID).
+ * 6. حماية صفحات البوابة والصفحات العامة من التوجيه الخاطئ عند فحص الجلسة.
  * ============================================================================
  */
 
@@ -154,8 +155,10 @@ const AUTH = {
             }
         }
 
-        // نبقي فقط على (moakkil_biometric_id و moakkil_saved_phone) لتمكين طلب البصمة لاحقاً
-        if (!window.location.pathname.includes('login.html')) {
+        // 4. التوجيه لصفحة تسجيل الدخول مع استثناء الصفحات العامة وبوابة الموكل
+        const publicPages = ['login.html', 'register.html', 'verify.html', 'terms.html', 'privacy.html', 'client.html'];
+        const isPublic = publicPages.some(page => window.location.pathname.includes(page));
+        if (!isPublic) {
             window.location.replace('login.html');
         }
     },
@@ -264,7 +267,7 @@ const AUTH = {
                 localStorage.setItem(CONFIG?.FIRM_KEY || 'moakkil_firm_id', safeUser.firm_id);
             }
 
-            // 4. التوجيه الذكي (Routing) بناءً على صلاحيات المستخدم (مدير أعلى أم موظف مكتب)
+            // 4. التوجيه الذكي (Routing) بناءً على صلاحيات المستخدم
             const userRole = safeUser.role || safeUser.user_type;
 
             setTimeout(() => {
@@ -314,30 +317,47 @@ const AUTH = {
     // [4] المصادقة البيومترية والمصادقة الإجرائية (WebAuthn / Action MFA)
     // ========================================================================
 
-    _bufferToBase64: (buffer) => {
+    /**
+     * تحويل مصفوفة بايتات (ArrayBuffer/Uint8Array) إلى نص Base64URL قياسي (RFC 4648)
+     */
+    bufferToBase64Url: (buffer) => {
         if (!buffer) return '';
         const bytes = new Uint8Array(buffer);
         let str = '';
-        for (let charCode of bytes) str += String.fromCharCode(charCode);
-        return window.btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+        for (let i = 0; i < bytes.length; i++) {
+            str += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
     },
 
-    _base64ToBuffer: (base64) => {
+    /**
+     * تحويل نص Base64 أو Base64URL إلى ArrayBuffer
+     */
+    base64UrlToBuffer: (base64UrlStr) => {
         try {
-            let b64 = String(base64 || '').replace(/-/g, "+").replace(/_/g, "/");
-            while (b64.length % 4 !== 0) {
-                b64 += "=";
-            }
-            const str = window.atob(b64);
-            const bytes = new Uint8Array(str.length);
-            for (let i = 0; i < str.length; i++) {
-                bytes[i] = str.charCodeAt(i);
+            if (!base64UrlStr || typeof base64UrlStr !== 'string') return new ArrayBuffer(0);
+            let b64 = base64UrlStr.replace(/-/g, '+').replace(/_/g, '/');
+            const padLen = (4 - (b64.length % 4)) % 4;
+            b64 += '='.repeat(padLen);
+            const binary = window.atob(b64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
             }
             return bytes.buffer;
         } catch (e) {
             console.error("🛡️ [Base64 Decode Error]:", e);
             throw new Error("بيانات البصمة غير صالحة. يرجى تسجيل الدخول عبر الرمز السري (OTP) لتحديث مفاتيح الأمان.");
         }
+    },
+
+    // توافقية كاملة مع الاستدعاءات السابقة
+    _bufferToBase64: function(buffer) {
+        return AUTH.bufferToBase64Url(buffer);
+    },
+
+    _base64ToBuffer: function(base64) {
+        return AUTH.base64UrlToBuffer(base64);
     },
 
     _stringToBuffer: (str) => {
@@ -391,7 +411,7 @@ const AUTH = {
         try {
             // 1. جلب التحدي الأمني من الخادم
             const serverChallengeB64 = await AUTH._requestServerChallenge(user.phone);
-            const challengeBuffer = AUTH._base64ToBuffer(serverChallengeB64);
+            const challengeBuffer = AUTH.base64UrlToBuffer(serverChallengeB64);
 
             const publicKey = {
                 challenge: challengeBuffer,
@@ -417,7 +437,7 @@ const AUTH = {
             if (credential.response && typeof credential.response.getPublicKey === 'function') {
                 const spkiBuffer = credential.response.getPublicKey();
                 if (spkiBuffer) {
-                    spkiBase64 = AUTH._bufferToBase64(spkiBuffer);
+                    spkiBase64 = AUTH.bufferToBase64Url(spkiBuffer);
                 }
             }
             if (!spkiBase64) {
@@ -434,7 +454,7 @@ const AUTH = {
                 public_key: spkiBase64,
                 algorithm: algorithm,
                 challenge: serverChallengeB64,
-                clientDataJSON: credential.response?.clientDataJSON ? AUTH._bufferToBase64(credential.response.clientDataJSON) : '',
+                clientDataJSON: credential.response?.clientDataJSON ? AUTH.bufferToBase64Url(credential.response.clientDataJSON) : '',
                 device_name: navigator.userAgent.includes('Mobi') ? 'هاتف ذكي (موبايل)' : 'جهاز كمبيوتر (مكتبي)'
             };
 
@@ -480,14 +500,14 @@ const AUTH = {
         try {
             // 1. طلب Challenge خادمي مربوط برقم الهاتف
             const serverChallengeB64 = await AUTH._requestServerChallenge(savedPhone);
-            const challengeBuffer = AUTH._base64ToBuffer(serverChallengeB64);
+            const challengeBuffer = AUTH.base64UrlToBuffer(serverChallengeB64);
 
             const publicKey = {
                 challenge: challengeBuffer,
                 rpId: window.location.hostname,
                 allowCredentials: [{
                     type: "public-key",
-                    id: AUTH._base64ToBuffer(savedCredId),
+                    id: AUTH.base64UrlToBuffer(savedCredId),
                     transports: ["internal"]
                 }],
                 userVerification: "required",
@@ -501,9 +521,9 @@ const AUTH = {
                 credential_id: assertion.id,
                 phone: savedPhone,
                 deviceId: deviceId,
-                authenticatorData: assertion.response?.authenticatorData ? AUTH._bufferToBase64(assertion.response.authenticatorData) : '',
-                clientDataJSON: assertion.response?.clientDataJSON ? AUTH._bufferToBase64(assertion.response.clientDataJSON) : '',
-                signature: assertion.response?.signature ? AUTH._bufferToBase64(assertion.response.signature) : ''
+                authenticatorData: assertion.response?.authenticatorData ? AUTH.bufferToBase64Url(assertion.response.authenticatorData) : '',
+                clientDataJSON: assertion.response?.clientDataJSON ? AUTH.bufferToBase64Url(assertion.response.clientDataJSON) : '',
+                signature: assertion.response?.signature ? AUTH.bufferToBase64Url(assertion.response.signature) : ''
             };
 
             const baseUrl = window.API_BASE_URL || CONFIG?.API_URL || '';
@@ -587,14 +607,14 @@ const AUTH = {
             try {
                 console.log(`🔒 جاري طلب مصادقة إجرائية بالبصمة: ${actionDescription}`);
                 const serverChallengeB64 = await AUTH._requestServerChallenge();
-                const challengeBuffer = AUTH._base64ToBuffer(serverChallengeB64);
+                const challengeBuffer = AUTH.base64UrlToBuffer(serverChallengeB64);
 
                 const publicKey = {
                     challenge: challengeBuffer,
                     rpId: window.location.hostname,
                     allowCredentials: [{
                         type: "public-key",
-                        id: AUTH._base64ToBuffer(savedCredId),
+                        id: AUTH.base64UrlToBuffer(savedCredId),
                         transports: ["internal"]
                     }],
                     userVerification: "required",
@@ -613,9 +633,9 @@ const AUTH = {
                     body: JSON.stringify({
                         method: 'biometric',
                         credential_id: assertion.id,
-                        authenticatorData: assertion.response?.authenticatorData ? AUTH._bufferToBase64(assertion.response.authenticatorData) : '',
-                        clientDataJSON: assertion.response?.clientDataJSON ? AUTH._bufferToBase64(assertion.response.clientDataJSON) : '',
-                        signature: assertion.response?.signature ? AUTH._bufferToBase64(assertion.response.signature) : '',
+                        authenticatorData: assertion.response?.authenticatorData ? AUTH.bufferToBase64Url(assertion.response.authenticatorData) : '',
+                        clientDataJSON: assertion.response?.clientDataJSON ? AUTH.bufferToBase64Url(assertion.response.clientDataJSON) : '',
+                        signature: assertion.response?.signature ? AUTH.bufferToBase64Url(assertion.response.signature) : '',
                         target_table: targetTable || '*',
                         target_id: targetId || '*'
                     })

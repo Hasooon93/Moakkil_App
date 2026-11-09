@@ -4,246 +4,460 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0B132B">
-    <title>سياسة الخصوصية وأمن البيانات | نظام موكّل ERP</title>
+    <meta name="description" content="سياسة الخصوصية وحوكمة أمن البيانات لنظام موكّل لإدارة المحاماة V5.6 - المعايير السحابية والتشفير المتقدم والعزل التام للمكاتب">
+    <title>سياسة الخصوصية وأمن البيانات | نظام موكّل V5.6</title>
     
-    <link rel="icon" type="image/png" sizes="192x192" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
-    <link rel="apple-touch-icon" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png">
+    <!-- PWA Integration -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
+    <!-- Fonts & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 2.1 المتغيرات اللونية: فخامة الأزرق الملكي والذهبي --- */
+        /* ==========================================================================
+           [1] المتغيرات اللونية وهوية V5.6 الملكية (Brand Tokens & Dark Mode)
+           ========================================================================== */
         :root { 
-            --primary-dark: #0B132B; 
-            --primary-light: #1C2541;
-            --gold-luxury: #D4AF37;
-            --gold-hover: #b5952f;
-            --light-bg: #F8F9FA;
-            --text-dark: #2B2D42;
-            --text-muted: #6C757D;
-            --border-color: rgba(0,0,0,0.05);
+            --primary-navy: #0B132B; 
+            --secondary-navy: #1C2541;
+            --royal-gold: #D4AF37;
+            --dark-gold: #8A6A12;
+            --emerald: #1F7A5C;
+            --ruby: #B3372F;
+            
+            /* Light Theme Defaults */
+            --bg-body: #FAF8F3;
+            --card-bg: #FFFFFF;
+            --text-main: #0B132B;
+            --text-muted: #64748B;
+            --border-color: rgba(11, 19, 43, 0.08);
+            --clause-bg: rgba(212, 175, 55, 0.06);
+            --header-gradient: linear-gradient(135deg, #0B132B 0%, #1C2541 100%);
+            --highlight-bg: rgba(212, 175, 55, 0.16);
+            --card-shadow: 0 20px 50px rgba(11, 19, 43, 0.06);
+        }
+
+        [data-theme="dark"] {
+            /* WCAG AAA High Contrast Dark Theme */
+            --bg-body: #070C1B;
+            --card-bg: #111A33;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border-color: #1E293B;
+            --clause-bg: rgba(212, 175, 55, 0.1);
+            --header-gradient: linear-gradient(135deg, #070C1B 0%, #111A33 100%);
+            --highlight-bg: rgba(212, 175, 55, 0.22);
+            --card-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
         }
         
-        /* --- 2.2 إعدادات الهيكل العام --- */
+        /* ==========================================================================
+           [2] الهيكل والتجاوب العام (Global Layout)
+           ========================================================================== */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: var(--light-bg); 
-            color: var(--text-dark);
-            line-height: 1.8;
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif; 
+            background-color: var(--bg-body); 
+            color: var(--text-main);
+            line-height: 1.85;
             -webkit-font-smoothing: antialiased;
             margin: 0;
             padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         
-        /* --- 2.3 قسم الترويسة الملكي والأمني (Header Hero) --- */
+        /* ==========================================================================
+           [3] الترويسة الملكية والأمان (Header Hero)
+           ========================================================================== */
         .header-hero {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-light) 100%);
-            color: white;
-            padding: 80px 20px 120px; /* مساحة سفلية لاحتضان البطاقة */
+            background: var(--header-gradient);
+            color: #FFFFFF;
+            padding: 85px 20px 130px;
             text-align: center;
-            border-bottom: 4px solid var(--gold-luxury);
+            border-bottom: 4px solid var(--royal-gold);
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(11, 19, 43, 0.2);
+            box-shadow: 0 12px 35px rgba(11, 19, 43, 0.25);
         }
 
-        /* أشكال هندسية توحي بالتشفير والأمان (Cyber Security Feel) */
         .header-hero::before {
             content: '';
             position: absolute;
-            top: -30%; left: -5%;
-            width: 350px; height: 350px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 70%);
+            top: -30%; 
+            left: -5%;
+            width: 380px; 
+            height: 380px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
             border-radius: 50%;
         }
+
         .header-hero::after {
             content: '';
             position: absolute;
-            bottom: -20%; right: -5%;
-            width: 300px; height: 300px;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+            bottom: -20%; 
+            right: -5%;
+            width: 320px; 
+            height: 320px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, transparent 70%);
             border-radius: 50%;
         }
 
         .header-hero h1 {
             font-weight: 900;
-            font-size: clamp(2rem, 5vw, 3rem);
+            font-size: clamp(1.9rem, 4.5vw, 2.9rem);
             position: relative;
             z-index: 2;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            letter-spacing: -0.5px;
+            text-shadow: 0 4px 14px rgba(0,0,0,0.35);
         }
 
         .header-hero p {
             color: #E2E8F0;
-            font-size: clamp(1rem, 2vw, 1.2rem);
+            font-size: clamp(0.98rem, 1.8vw, 1.2rem);
             position: relative;
             z-index: 2;
-            opacity: 0.9;
+            opacity: 0.95;
+            max-width: 720px;
+            margin: 0 auto;
         }
 
-        /* --- 2.4 البطاقة القانونية (Document Card) --- */
+        /* زر تبديل الوضع الليلي العائم في الترويسة */
+        .theme-toggle-btn {
+            position: absolute;
+            top: 22px;
+            left: 22px;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            border-color: var(--royal-gold);
+            transform: scale(1.08);
+        }
+
+        /* ==========================================================================
+           [4] بطاقة الوثيقة القانونية (Document Card)
+           ========================================================================== */
         .document-card {
-            background: white;
-            border-radius: 24px;
-            padding: clamp(30px, 5vw, 60px) clamp(20px, 5vw, 50px);
-            box-shadow: 0 20px 50px rgba(11, 19, 43, 0.06);
-            margin-top: -70px;
+            background: var(--card-bg);
+            border-radius: 28px;
+            padding: clamp(32px, 5vw, 64px) clamp(22px, 5vw, 54px);
+            box-shadow: var(--card-shadow);
+            margin-top: -75px;
             margin-bottom: 60px;
             position: relative;
             z-index: 10;
             border: 1px solid var(--border-color);
-            /* حركة الدخول الناعمة */
             opacity: 0;
-            transform: translateY(40px);
-            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transform: translateY(30px);
+            animation: slideUpFade 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         @keyframes slideUpFade {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- 2.5 تنسيق النصوص والبنود الأمنية --- */
         .document-card p { 
-            font-size: 1.1rem; 
-            color: var(--text-dark);
+            font-size: 1.08rem; 
+            color: var(--text-main);
             margin-bottom: 1.8rem;
             text-align: justify;
         }
         
         @media (max-width: 768px) {
-            .document-card p { text-align: right; } /* إلغاء التبرير في الموبايل لسهولة القراءة السريعة */
+            .document-card p { text-align: right; }
         }
 
+        /* عناوين البنود والفقرات */
         .clause-title { 
-            color: var(--primary-dark); 
-            font-weight: 900; 
+            color: var(--text-main); 
+            font-weight: 800; 
             margin-top: 45px; 
             margin-bottom: 20px;
-            padding-right: 15px;
-            border-right: 4px solid var(--gold-luxury);
-            font-size: 1.4rem;
-            background: linear-gradient(90deg, rgba(212, 175, 55, 0.05) 0%, transparent 100%);
-            padding-top: 8px;
-            padding-bottom: 8px;
-            border-radius: 6px 0 0 6px;
+            padding: 10px 18px 10px 12px;
+            border-right: 5px solid var(--royal-gold);
+            font-size: 1.35rem;
+            background: var(--clause-bg);
+            border-radius: 8px 0 0 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
         
+        .clause-title i {
+            color: var(--royal-gold);
+            font-size: 1.25rem;
+        }
+
         .document-card ul { 
-            margin-bottom: 35px; 
+            margin-bottom: 30px; 
             padding-right: 25px;
         }
 
         .document-card li { 
-            font-size: 1.05rem; 
-            margin-bottom: 15px;
+            font-size: 1.02rem; 
+            margin-bottom: 14px;
             color: var(--text-muted);
             position: relative;
         }
 
         .document-card li strong {
-            color: var(--primary-dark);
+            color: var(--text-main);
+            font-weight: 700;
         }
 
         .highlight-text {
-            color: var(--primary-dark);
+            color: var(--text-main);
             font-weight: 800;
-            background: rgba(212, 175, 55, 0.15);
-            padding: 2px 8px;
+            background: var(--highlight-bg);
+            padding: 3px 9px;
             border-radius: 6px;
+            display: inline-block;
         }
 
-        /* --- 2.6 زر العودة الفاخر --- */
-        .btn-back { 
-            background: linear-gradient(135deg, var(--gold-luxury), var(--gold-hover));
-            color: var(--primary-dark); 
-            font-weight: 800; 
+        /* صندوق الميثاق الأمني المميز */
+        .security-charter-box {
+            background: linear-gradient(135deg, rgba(31, 122, 92, 0.08) 0%, rgba(212, 175, 55, 0.08) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 35px;
+            position: relative;
+        }
+
+        /* ==========================================================================
+           [5] أزرار التنقل والتحكم (Navigation Buttons)
+           ========================================================================== */
+        .btn-action-primary { 
+            background: linear-gradient(135deg, var(--primary-navy) 0%, var(--secondary-navy) 100%);
+            color: #FFFFFF !important; 
+            font-weight: 700; 
             border-radius: 14px; 
-            padding: 14px 40px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            padding: 13px 32px; 
+            transition: all 0.3s ease; 
             display: inline-flex;
             align-items: center;
-            border: none;
-            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
-            font-size: 1.1rem;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            box-shadow: 0 8px 20px rgba(11, 19, 43, 0.18);
+            font-size: 1.05rem;
             text-decoration: none;
         }
 
-        .btn-back:hover { 
-            background: linear-gradient(135deg, var(--gold-hover), var(--gold-luxury));
-            color: white;
-            transform: translateY(-4px);
-            box-shadow: 0 15px 30px rgba(212, 175, 55, 0.35);
+        .btn-action-primary:hover { 
+            background: linear-gradient(135deg, var(--royal-gold) 0%, var(--dark-gold) 100%);
+            color: #0B132B !important;
+            transform: translateY(-3px);
+            box-shadow: 0 12px 26px rgba(212, 175, 55, 0.35);
+            border-color: var(--royal-gold);
+        }
+
+        .btn-action-outline {
+            background: transparent;
+            color: var(--text-main) !important;
+            font-weight: 700;
+            border-radius: 14px;
+            padding: 13px 28px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            font-size: 1.05rem;
+            text-decoration: none;
+        }
+
+        .btn-action-outline:hover {
+            background: var(--clause-bg);
+            border-color: var(--royal-gold);
+            transform: translateY(-3px);
+        }
+
+        /* أسلوب الطباعة النظيف */
+        @media print {
+            body { background: #FFFFFF; color: #000000; }
+            .header-hero { background: none; color: #000000; padding: 20px 0; border: none; }
+            .document-card { box-shadow: none; border: none; margin-top: 0; padding: 0; }
+            .theme-toggle-btn, .btn-action-primary, .btn-action-outline { display: none; }
         }
     </style>
 </head>
 <body>
 
+    <!-- الترويسة الرئيسية -->
     <header class="header-hero">
+        <button id="themeToggleBtn" class="theme-toggle-btn" title="تبديل الوضع الليلي / النهاري">
+            <i class="fas fa-moon"></i>
+        </button>
         <div class="container">
-            <h1 class="mb-3"><i class="fas fa-shield-alt me-3" style="color: var(--gold-luxury);"></i>سياسة الخصوصية وأمن البيانات</h1>
-            <p>كيف نحمي بياناتك وبيانات موكليك بأعلى معايير التشفير العالمية</p>
+            <h1 class="mb-3">
+                <i class="fas fa-shield-halved me-2" style="color: var(--royal-gold);"></i>
+                سياسة الخصوصية وأمن البيانات
+            </h1>
+            <p>الميثاق السحابي لحماية أسرار الموكلين، حوكمة البيانات القانونية، وبروتوكولات التشفير المتقدم لنظام موكّل V5.6</p>
         </div>
     </header>
 
+    <!-- جسم الوثيقة -->
     <main class="container">
         <article class="document-card">
             
-            <section>
-                <p>نحن في منصة <span class="highlight-text">موكّل ERP</span> ندرك تماماً حساسية وسرية العمل القانوني. لذا، فإن حماية خصوصيتك وبيانات قضاياك وموكليك هي أولويتنا القصوى وغير القابلة للمساومة. توضح هذه السياسة بدقة كيفية تعاملنا مع البيانات من الناحية التقنية والأمنية.</p>
+            <!-- مقدمة الميثاق -->
+            <section class="security-charter-box">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--royal-gold); color: #0B132B; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h4 class="fw-bold mb-0" style="color: var(--text-main);">ميثاق السرية المهنية والسيادة الرقمية</h4>
+                </div>
+                <p class="mb-0 mt-3" style="font-size: 1.05rem; line-height: 1.9;">
+                    نحن في منصة <span class="highlight-text">موكّل ERP (إصدار 2026 V5.6)</span> ندرك تمام الإدراك أن السرية هي جوهر مهنة المحاماة وقدسية العمل القضائي. لذا، فإن سيادتك على بياناتك، وسرية ملفات قضاياك وموكليك، ليست مجرد خيار بل التزام هندسي وقانوني غير قابل للمساومة. تبيّن هذه الوثيقة الضمانات التقنية والتشفيرية المعتمدة لحماية بيئة عملك السحابية.
+                </p>
             </section>
 
+            <!-- البند الأول -->
             <section>
-                <h5 class="clause-title">1. طبيعة البيانات التي يتم استضافتها</h5>
-                <p>نقوم باستضافة وتخزين البيانات التي تقوم أنت أو فريق عملك بإدخالها طواعية في النظام السحابي، وتشمل:</p>
+                <h5 class="clause-title">
+                    <i class="fas fa-folder-tree"></i>
+                    1. تصنيف وطبيعة البيانات المستضافة
+                </h5>
+                <p>يقوم النظام بحفظ واستضافة البيانات التي يتم إدخالها حصرياً ومباشرة من قِبل المشرفين والمحامين المصرح لهم داخل مكتبك، وتنقسم إلى:</p>
                 <ul>
-                    <li><strong>بيانات الموارد البشرية:</strong> بيانات الموظفين (الأسماء، أرقام الهواتف، الهويات، والأدوار الوظيفية).</li>
-                    <li><strong>قاعدة العملاء:</strong> بيانات الموكلين والخصوم (الأسماء، الأرقام الوطنية، تفاصيل التواصل).</li>
-                    <li><strong>السجل الإجرائي والمالي:</strong> تفاصيل القضايا، الوقائع القانونية، المواعيد، والسجلات المالية الدقيقة.</li>
-                    <li><strong>الأرشيف السحابي:</strong> المستندات والملفات المرفوعة (PDF، الصور، الوثائق، العقود).</li>
+                    <li><strong>الهيكل الإداري والكوادر (HR):</strong> أسماء المحامين والمستشارين، أرقام الهواتف، البريد الإلكتروني، أرقام القيد في نقابة المحامين، وأدوار الصلاحيات (RBAC).</li>
+                    <li><strong>سجلات الموكلين والخصوم:</strong> الأسماء الكاملة، الأرقام الوطنية، بيانات التواصل، وعناوين التبليغ الرسمية.</li>
+                    <li><strong>الملفات القضائية والإجرائية:</strong> أرقام الدعاوى، المحاكم، وقائع النزاع، الاستشارات السرية، والمذكرات واللوائح الجوابية.</li>
+                    <li><strong>السجلات المالية وحسابات الأتعاب:</strong> الدفعات المقبوضة، السندات المالية الإلكترونية الموثقة برمز QR، الأقساط، والمصروفات القضائية.</li>
+                    <li><strong>الخزينة الرقمية للمستندات (Cloud Vault):</strong> اللوائح، البينات الخطية، التوكيلات، والعقود المرفوعة كملفات إلكترونية (PDF، صور، وثائق).</li>
                 </ul>
             </section>
 
+            <!-- البند الثاني -->
             <section>
-                <h5 class="clause-title">2. أين وكيف تُحفظ البيانات؟ (بروتوكولات التشفير والأمان)</h5>
-                <p>يعتمد نظامنا على بنية تحتية سحابية متطورة ومعزولة تقنياً:</p>
+                <h5 class="clause-title">
+                    <i class="fas fa-server"></i>
+                    2. أين وكيف تُحفظ البيانات؟ (بروتوكولات الأمان السحابي)
+                </h5>
+                <p>تعتمد منصة "موكّل" على بنية سحابية متطورة مصممة وفق نموذج انعدام الثقة (Zero-Trust Architecture):</p>
                 <ul>
-                    <li><strong>قواعد البيانات المركزية:</strong> تُحفظ البيانات النصية في خوادم <span dir="ltr">Supabase</span> العالمية، وهي مشفرة أثناء النقل (In Transit) عبر بروتوكولات <span dir="ltr">TLS/SSL</span>، وأثناء الحفظ (At Rest) باستخدام معايير التشفير العسكري <span dir="ltr">AES-256</span>.</li>
-                    <li><strong>جدار الحماية الفعال (Firewall):</strong> تتم إدارة وتصفية جميع الاتصالات عبر شبكة <span dir="ltr">Cloudflare</span> العالمية لحماية النظام من هجمات الحرمان من الخدمة الموزعة (DDoS) ومحاولات الاختراق.</li>
-                    <li><strong>أرشيف الملفات (R2 Storage):</strong> يتم تشفير الملفات المرفوعة وتخزينها في بيئة سحابية معزولة <span dir="ltr">(Cloudflare R2)</span>، ولا يمكن الوصول إليها أو تحميلها إلا من خلال روابط مؤقتة مشفرة ومصادق عليها برمز دخول خاص بكل موظف.</li>
+                    <li><strong>قواعد البيانات المركزية (Postgres on Supabase):</strong> تُحفظ البيانات النصية في بيئة مشفرة في حالة السكون (At Rest) بمعايير التشفير العسكري <span dir="ltr">AES-256</span>، وتُحمى أثناء الانتقال (In Transit) عبر أحدث بروتوكولات الأمان <span dir="ltr">TLS 1.3 / SSL</span>.</li>
+                    <li><strong>جدار حماية السحابة الطرفية (Cloudflare Edge Network):</strong> تتم تصفية ومعالجة كافة الطلبات عبر شبكة خوادم Cloudflare العالمية لحجب هجمات حجب الخدمة (DDoS) والتصدي لأي محاولات اختراق أو مسح خبيث.</li>
+                    <li><strong>خزينة المستندات المعزولة (Cloudflare R2 Vault):</strong> يتم تشفير الملفات والمستندات المرفوعة وتخزينها في بيئة سحابية معزولة تماماً لا تتيح الوصول إلا عبر روابط توقيع رقمية مؤقتة (Presigned URLs) ذات صلاحية قصيرة ومحصورة بجلسة المحامي المصادق عليه.</li>
                 </ul>
             </section>
 
+            <!-- البند الثالث -->
             <section>
-                <h5 class="clause-title">3. صلاحيات الوصول (مبدأ العزل التام)</h5>
-                <p><span class="highlight-text">أنت فقط وفريق عملك المصرح له</span> يمكنكم الوصول للبيانات. نحن نطبق نظام صلاحيات هرمي وصارم (Role-Based Access Control):</p>
+                <h5 class="clause-title">
+                    <i class="fas fa-fingerprint"></i>
+                    3. المصادقة التشفيرية والبصمة البيومترية (WebAuthn / FIDO2)
+                </h5>
+                <p>
+                    يدعم نظام موكّل أحدث معايير المصادقة العالمية دون كلمات مرور (Passwordless FIDO2). عند تفعيل البصمة البيومترية:
+                </p>
                 <ul>
-                    <li><strong>إدارة المكتب (Admin):</strong> يمتلكون الصلاحية المطلقة لرؤية وإدارة بيانات مكتبهم حصرياً، بفضل نظام العزل (Multi-Tenancy) الذي يمنع تداخل بيانات مكتب مع مكتب آخر حتى على مستوى الأكواد البرمجية.</li>
-                    <li><strong>المحامي / الموظف:</strong> يرى فقط القضايا والموكلين المسندين إليه من قِبل الإدارة.</li>
-                    <li><strong>إدارة نظام "موكّل" العليا:</strong> لا تقوم بالدخول إلى بيانات الموكلين أو الاطلاع على تفاصيل القضايا والمستندات بأي شكل من الأشكال، إلا في حالات الدعم الفني الطارئة جداً، وبناءً على طلب كتابي صريح من مالك المكتب المعتمد.</li>
+                    <li><strong>حفظ المفاتيح الخاصة:</strong> لا يتم إرسال أو تخزين بصمة إصبعك أو وجهك أو مفتاحك التشفيري الخاص (Private Key) على خوادمنا نهائياً؛ بل تظل مشفرة داخل معالج الأمان العتادي الخاص بجهازك (Secure Enclave / TPM).</li>
+                    <li><strong>المفتاح العام فقط:</strong> يتم فقط التحقق من التوقيع الرقمي للمفتاح العام المشفر (SPKI Public Key) عبر تحدي مشفر (Server Challenge)، مما يضمن استحالة اعتراض أو سرقة جلسات الدخول.</li>
                 </ul>
             </section>
 
+            <!-- البند الرابع -->
             <section>
-                <h5 class="clause-title">4. حظر المشاركة مع الأطراف الثالثة</h5>
-                <p>نحن نلتزم التزاماً قاطعاً وقانونياً <span class="highlight-text">بعدم بيع، أو تأجير، أو مشاركة</span> أي من بياناتك التشغيلية أو بيانات عملائك مع أي وكالات إعلانية، شركات تحليل، أو أطراف ثالثة. البيانات تُستخدم حصرياً وداخلياً لتشغيل وتسيير النظام الخاص بك.</p>
+                <h5 class="clause-title">
+                    <i class="fas fa-layer-group"></i>
+                    4. مبدأ العزل البرمجي التام (Multi-Tenancy Zero-Trust)
+                </h5>
+                <p>
+                    نحن نطبق نموذج الفصل التام بين الكيانات المشتركة، حيث ترتبط كل عملية قراءة أو كتابة بمحدد الهوية البرمجية للمكتب <span class="highlight-text" dir="ltr">firm_id</span> عبر آليات وسياسات الأمان على مستوى الصف (Row-Level Security - RLS):
+                </p>
+                <ul>
+                    <li><strong>استحالة تسريب البيانات:</strong> يستحيل برمجياً على أي مستخدم من مكتب محاماة رؤية أو تعديل أو تتبع أي سجل عائد لمكتب آخر حتى لو تم التلاعب بالمعرفات.</li>
+                    <li><strong>تدرج الصلاحيات الداخلي:</strong> يرى المحامي فقط القضايا والموكلين المسندين إليه رسمياً، بينما يحتفظ الشريك الإداري بصلاحيات الرقابة الشاملة على مكتبه.</li>
+                    <li><strong>استقلالية الإدارة العليا:</strong> فريق التطوير والإدارة العليا لمنصة "موكّل" لا يطّلع على محتوى الملفات أو تفاصيل الدعاوى، ويقتصر دوره على متابعة كفاءة واستقرار البنية التحتية فقط.</li>
+                </ul>
             </section>
 
+            <!-- البند الخامس -->
             <section>
-                <h5 class="clause-title">5. حق الإزالة والحذف النهائي (حق النسيان)</h5>
-                <p>عند إنهاء اشتراكك معنا، يحق لك طلب حذف بياناتك بالكامل. تلتزم إدارة النظام بمسح وحذف وإتلاف جميع بيانات مكتبك، قضاياك، موكليك، ومستنداتك من خوادمنا بشكل نهائي وغير قابل للاسترجاع (Zero-Trace Deletion).</p>
+                <h5 class="clause-title">
+                    <i class="fas fa-handshake-slash"></i>
+                    5. حظر المشاركة والبيع لطرف ثالث
+                </h5>
+                <p>
+                    نحن نلتزم التزاماً قانونياً مطلقاً بعدم بيع، تأجير، مقايضة، أو مشاركة أي جزء من بيانات مكتبك أو موكليك مع أي طرف ثالث أو شبكات إعلانية أو محركات جمع البيانات. البيانات ملك خالص لك وتُستخدم تقنياً لتشغيل نظامك وخدمة قضاياك حصراً.
+                </p>
             </section>
 
-            <div class="text-center mt-5 pt-4 border-top">
-                <a href="index.html" class="btn btn-back">
-                    <i class="fas fa-arrow-right me-3"></i> العودة للصفحة الرئيسية
-                </a>
+            <!-- البند السادس -->
+            <section>
+                <h5 class="clause-title">
+                    <i class="fas fa-trash-can"></i>
+                    6. حق الإزالة والحذف النهائي (حق النسيان الرقمي)
+                </h5>
+                <p>
+                    عند رغبتك في إيقاف الخدمة أو إنهاء الاشتراك، يحق لك تصدير كامل بياناتك وسجلاتك. وبمجرد طلب الحذف، تلتزم منصة موكّل بمسح كافة السجلات والمستندات والنسخ السحابية المؤقتة الخاصة بكيانك مسحاً تاماً غير قابل للاسترجاع (Zero-Trace Deletion) وفق أصول الإتلاف الرقمي المعتمدة.
+                </p>
+            </section>
+
+            <!-- أزرار التنقل والعودة -->
+            <div class="text-center mt-5 pt-4 border-top" style="border-color: var(--border-color) !important;">
+                <div class="d-flex flex-wrap justify-content-center gap-3">
+                    <a href="login.html" class="btn btn-action-primary">
+                        <i class="fas fa-arrow-right me-2"></i> العودة لبوابة الدخول
+                    </a>
+                    <a href="app.html" class="btn btn-action-outline">
+                        <i class="fas fa-gauge me-2"></i> لوحة التحكم الرئيسية
+                    </a>
+                </div>
+                <p class="text-muted small mt-4 mb-0">
+                    آخر تحديث للوثيقة: نوفمبر 2026 | متوافقة مع معايير نقابات المحامين والقوانين الإقليمية لحماية البيانات
+                </p>
             </div>
             
         </article>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- التهيئة التلقائية للوضع الليلي -->
+    <script>
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('moakkil_theme');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
+            
+            if (isDark) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+            
+            // تحديث أيقونة الزر
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) {
+                btn.innerHTML = isDark ? '<i class="fas fa-sun" style="color: #D4AF37;"></i>' : '<i class="fas fa-moon"></i>';
+                btn.addEventListener('click', () => {
+                    const current = document.documentElement.getAttribute('data-theme');
+                    const next = current === 'dark' ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', next);
+                    localStorage.setItem('moakkil_theme', next);
+                    btn.innerHTML = next === 'dark' ? '<i class="fas fa-sun" style="color: #D4AF37;"></i>' : '<i class="fas fa-moon"></i>';
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

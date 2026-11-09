@@ -2,20 +2,24 @@
   "name": "موكّل ERP - نظام إدارة المحاماة",
   "short_name": "موكّل",
   "description": "نظام SaaS متكامل لإدارة مكاتب المحاماة والقضايا والموكلين بذكاء اصطناعي.",
+  "id": "/?source=pwa",
   "start_url": "./login.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0a192f",
-  "theme_color": "#0a192f",
   "orientation": "portrait",
+  "background_color": "#0B132B",
+  "theme_color": "#0B132B",
+  "lang": "ar",
+  "dir": "rtl",
   "icons": [
     {
-      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -27,8 +31,9 @@
       "url": "./app.html?action=add-case",
       "icons": [
         {
-          "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png",
-          "sizes": "192x192"
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -37,8 +42,9 @@
       "url": "./app.html#agenda",
       "icons": [
         {
-          "src": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg4PE-keniz_4Af49kFkt6o_JmNj4K1yDZpdoDpXtzZcw6Zylh6l3MKyG186d2NmFov_1xIZ8qhXY136PeE5OpQlWQgR45YFvKo9MdMlL6K0rE-IqIyiMINdIrAynb44a2V_177s_xcULbLfMWgLuXJP4-uQ8zx3V-Cl3HNwXucegTli7-sDlUnAIGS__M/s320/icon-512.png.png",
-          "sizes": "192x192"
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }

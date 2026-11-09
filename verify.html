@@ -3,121 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#10b981">
-    <title>التحقق من صحة السجلات | نظام موكّل</title>
+    <meta name="theme-color" content="#0B132B">
+    <meta name="description" content="بوابة التحقق الرسمية المعتمدة لنظام موكّل لإدارة المحاماة - التحقق الفوري من صحة السندات المالية والهويات المهنية">
+    <title>التحقق من صحة السجلات | نظام موكّل V5.6</title>
     
+    <!-- PWA Integration -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    
+    <!-- Fonts & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 2.1 المتغيرات اللونية والوضع الليلي (Dark/Light Themes) --- */
+        /* ==========================================================================
+           [1] المتغيرات اللونية وهوية V5.6 الملكية (Tokens & Themes)
+           ========================================================================== */
         :root {
-            --success-color: #01B574;
-            --success-bg: rgba(1, 181, 116, 0.1);
-            --danger-color: #EE5D50;
-            --danger-bg: rgba(238, 93, 80, 0.1);
+            /* V5.6 Brand Tokens */
+            --primary-navy: #0B132B;
+            --secondary-navy: #1C2541;
+            --royal-gold: #D4AF37;
+            --dark-gold: #8A6A12;
+            --emerald: #1F7A5C;
+            --emerald-bg: rgba(31, 122, 92, 0.12);
+            --ruby: #B3372F;
+            --ruby-bg: rgba(179, 55, 47, 0.12);
             
-            /* Light Theme Variables */
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #0a192f;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-            --data-row-bg: #f8fafc;
-            --navy-dark: #0a192f;
-            --body-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            /* Light Theme Defaults */
+            --bg-color: #FAF8F3;
+            --card-bg: #FFFFFF;
+            --text-main: #0B132B;
+            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --data-row-bg: #F8FAFC;
+            --seal-border: rgba(212, 175, 55, 0.35);
+            --body-gradient: radial-gradient(circle at 50% 0%, #FFFFFF 0%, #FAF8F3 100%);
         }
 
         [data-theme="dark"] {
-            /* Dark Theme Variables */
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-            --data-row-bg: #0f172a;
-            --navy-dark: #38bdf8; /* لون أزرق فاتح يناسب الوضع الليلي */
-            --body-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            /* WCAG AAA High-Contrast Dark Theme */
+            --bg-color: #070C1B;
+            --card-bg: #111A33;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border-color: #1E293B;
+            --data-row-bg: #0C1427;
+            --seal-border: rgba(212, 175, 55, 0.45);
+            --body-gradient: radial-gradient(circle at 50% 0%, #111A33 0%, #070C1B 100%);
         }
 
-        /* --- 2.2 إعدادات الهيكل العام والتجاوب --- */
+        /* ==========================================================================
+           [2] الهيكل العام والتجاوب (Layout & Global Styles)
+           ========================================================================== */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body { 
-            font-family: 'Cairo', sans-serif; 
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif; 
             background: var(--body-gradient);
+            background-color: var(--bg-color);
             color: var(--text-main);
             display: flex; 
             align-items: center; 
             justify-content: center; 
             min-height: 100dvh; 
-            padding: 20px; 
+            padding: 24px 16px; 
             margin: 0;
             transition: background 0.3s ease, color 0.3s ease;
         }
 
-        /* --- 2.3 بطاقة التحقق المدمجة (Compact Verification Card) --- */
+        /* ==========================================================================
+           [3] بطاقة التحقق الملكية المدمجة (V5.6 Verification Card)
+           ========================================================================== */
         .verify-card { 
             background: var(--card-bg); 
-            border-radius: 24px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.06); 
+            border-radius: 28px; 
+            box-shadow: 0 20px 45px rgba(11, 19, 43, 0.08); 
             width: 100%; 
-            max-width: 450px; 
-            padding: 35px 30px; 
+            max-width: 460px; 
+            padding: 36px 28px; 
             border: 1px solid var(--border-color);
-            border-top: 8px solid var(--success-color); 
+            border-top: 6px solid var(--emerald); 
             text-align: center; 
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .verify-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--emerald) 0%, var(--royal-gold) 100%);
+            opacity: 0.9;
         }
         
         .verify-card.status-invalid-card { 
-            border-top-color: var(--danger-color); 
+            border-top-color: var(--ruby); 
         }
 
-        /* تعديلات النصوص للوضع الليلي */
-        h3, h4 { color: var(--text-main) !important; }
-        .text-navy { color: var(--navy-dark) !important; }
-        .text-muted { color: var(--text-muted) !important; }
+        .verify-card.status-invalid-card::before {
+            background: var(--ruby);
+        }
 
-        /* --- 2.4 الأيقونات والحالات الدائرية --- */
+        h3, h4 { color: var(--text-main) !important; letter-spacing: -0.3px; }
+        .text-navy { color: var(--primary-navy) !important; }
+        [data-theme="dark"] .text-navy { color: #38BDF8 !important; }
+        .text-muted { color: var(--text-muted) !important; }
+        .text-gold { color: var(--royal-gold) !important; }
+
+        /* ==========================================================================
+           [4] أختام التحقق والأيقونات (Verification Seals & Icons)
+           ========================================================================== */
         .status-icon { 
-            width: 85px; 
-            height: 85px; 
+            width: 90px; 
+            height: 90px; 
             border-radius: 50%; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            margin: 0 auto 25px auto; 
-            font-size: 40px; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.04);
-            transition: transform 0.3s ease;
+            margin: 0 auto 24px auto; 
+            font-size: 42px; 
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .status-icon::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            border: 2px dashed currentColor;
+            opacity: 0.35;
         }
         
-        .status-valid { background-color: var(--success-bg); color: var(--success-color); }
-        .status-invalid { background-color: var(--danger-bg); color: var(--danger-color); }
+        .status-valid { 
+            background-color: var(--emerald-bg); 
+            color: var(--emerald); 
+        }
+
+        .status-invalid { 
+            background-color: var(--ruby-bg); 
+            color: var(--ruby); 
+        }
         
-        /* الصورة الشخصية (Avatars) لـ vCard */
+        /* الصورة الشخصية وشعار الهوية (vCard Avatar) */
         .vcard-avatar {
-            width: 90px;
-            height: 90px;
+            width: 96px;
+            height: 96px;
             object-fit: cover;
             border-radius: 50%;
-            margin: 0 auto 20px auto;
+            margin: 0 auto 22px auto;
             border: 4px solid var(--card-bg);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-            background-color: var(--navy-dark);
+            box-shadow: 0 12px 28px rgba(11, 19, 43, 0.12);
+            background: linear-gradient(135deg, var(--primary-navy) 0%, var(--secondary-navy) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #ffffff;
-            font-size: 2.5rem;
-            font-weight: bold;
+            color: var(--royal-gold);
+            font-size: 2.6rem;
+            font-weight: 800;
+            position: relative;
         }
 
-        /* --- 2.5 صفوف عرض البيانات (Data Rows) --- */
+        .vcard-avatar-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .verified-badge-pill {
+            position: absolute;
+            bottom: 18px;
+            right: 0;
+            background: var(--emerald);
+            color: #FFFFFF;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border: 3px solid var(--card-bg);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        /* ==========================================================================
+           [5] أسطر عرض البيانات المشفرة (Data Rows & Fields)
+           ========================================================================== */
         .data-container {
             text-align: right;
             background-color: var(--data-row-bg);
-            padding: 20px;
+            padding: 22px 20px;
             border-radius: 20px;
             border: 1px solid var(--border-color);
             transition: background 0.3s ease, border-color 0.3s ease;
@@ -132,59 +217,86 @@
             font-size: 0.95rem;
         }
         
-        .data-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .data-row span { color: var(--text-muted); font-weight: 600; font-size: 0.9rem;}
-        
-        .btn-vcard {
-            background-color: var(--navy-dark);
-            color: #ffffff;
-            transition: all 0.3s ease;
-            border: none;
-        }
-        .btn-vcard:hover {
-            opacity: 0.9;
-            color: #ffffff;
-            transform: translateY(-2px);
+        .data-row:last-child { 
+            border-bottom: none; 
+            padding-bottom: 0; 
         }
 
-        /* تأثير الظهور السلس */
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .data-row span.label-text { 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            font-size: 0.9rem;
+        }
+        
+        /* زر تصدير بطاقة المحامي (vCard Button) */
+        .btn-vcard {
+            background: linear-gradient(135deg, var(--primary-navy) 0%, var(--secondary-navy) 100%);
+            color: #FFFFFF;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .btn-vcard:hover, .btn-vcard:focus {
+            opacity: 0.94;
+            color: #FFFFFF;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(11, 19, 43, 0.2);
+            border-color: var(--royal-gold);
+        }
+
+        /* الرسوم المتحركة الناعمة */
+        .fade-in { 
+            animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(12px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
     </style>
 </head>
 <body>
 
     <div id="verify-content" class="verify-card fade-in">
         
+        <!-- حالة التحميل الأولية (Loading State) -->
         <div id="loading-state">
-            <div class="spinner-border text-success mb-4" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.25em;"></div>
+            <div class="spinner-border mb-4" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.25em; color: var(--royal-gold);"></div>
             <h4 class="fw-bold">جاري التحقق من السجلات...</h4>
-            <p class="text-muted small px-3 mt-2">يرجى الانتظار لحين مطابقة البيانات المشفرة مع الخادم السحابي الآمن لنظام موكّل.</p>
+            <p class="text-muted small px-3 mt-2">يرجى الانتظار بينما تتم مطابقة البيانات التشفيرية مع السحابة المركزية الموثقة لنظام موكّل.</p>
         </div>
 
+        <!-- حالة النتيجة المعتمدة (Result State) -->
         <div id="result-state" class="d-none fade-in">
             <div id="header-visual-element"></div>
             
             <h3 id="status-title" class="fw-bold mb-1">نتيجة التحقق</h3>
-            <p id="status-desc" class="text-muted small mb-4">تفاصيل السجل المستخرجة من النظام</p>
+            <p id="status-desc" class="text-muted small mb-4">تفاصيل السجل المعتمدة والمستخرجة من النظام</p>
             
             <div id="data-container" class="data-container shadow-sm">
-                </div>
+                <!-- يتم حقن البيانات ديناميكياً -->
+            </div>
 
-            <div class="mt-4 pt-4 border-top border-opacity-25" style="border-color: var(--border-color) !important;">
-                <img src="./icons/icon-192.png" width="35" class="mb-2 opacity-75" alt="Moakkil Logo" onerror="this.style.display='none'">
-                <p class="small text-muted mb-0 fw-bold">مدعوم ومحمي بواسطة نظام <span class="text-navy">موكّل ERP</span></p>
+            <!-- الختم السفلي للمنصة -->
+            <div class="mt-4 pt-4 border-top" style="border-color: var(--border-color) !important;">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                    <img src="./icons/icon-192.png" width="28" height="28" class="rounded-circle shadow-sm" alt="شعار موكّل" onerror="this.style.display='none'">
+                    <span class="fw-bold" style="color: var(--royal-gold); font-size: 0.95rem;">نظام موكّل لإدارة المحاماة</span>
+                </div>
+                <p class="small text-muted mb-0" style="font-size: 0.78rem;">بوابة التحقق السحابية الآمنة | إصدار 2026 V5.6</p>
             </div>
         </div>
     </div>
 
+    <!-- المحركات الأساسية -->
     <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     
     <script>
         /**
-         * --- التهيئة التلقائية للوضع الليلي (Auto Dark Mode) ---
-         * يتحقق من تفضيلات النظام أو الذاكرة المحلية
+         * ==========================================================================
+         * [1] التهيئة التلقائية للوضع الليلي (Auto Dark Mode)
+         * ==========================================================================
          */
         (function initTheme() {
             const savedTheme = localStorage.getItem('moakkil_theme');
@@ -195,7 +307,9 @@
         })();
 
         /**
-         * --- 4.1 دوال مساعدة أمنية (Security Helpers) ---
+         * ==========================================================================
+         * [2] دوال الحماية والتعقيم (Security & Sanitization)
+         * ==========================================================================
          */
         const escapeHTML = (str) => {
             if (!str && str !== 0) return '';
@@ -205,32 +319,36 @@
         };
 
         /**
-         * --- 4.2 محرك تصدير جهات الاتصال (vCard Generator Engine) ---
+         * ==========================================================================
+         * [3] محرك إنشاء وتصدير بطاقة جهة الاتصال (vCard Generator V5.6)
+         * ==========================================================================
          */
         const downloadVCard = (user) => {
-            const firmName = user.mo_firms ? user.mo_firms.firm_name : 'مكتب محاماة';
+            const firmName = user.mo_firms ? user.mo_firms.firm_name : 'مكتب محاماة معتمد';
             let roleAr = user.role;
             if (user.role === 'admin' || user.role === 'super_admin') roleAr = 'مدير / محامي شريك';
             else if (user.role === 'lawyer') roleAr = 'محامي مزاول';
             else if (user.role === 'secretary') roleAr = 'سكرتاريا وإدارة';
 
-            // بناء هيكل الـ vCard الاحترافي
-            const vcardContent = `BEGIN:VCARD
-VERSION:3.0
-FN:${user.full_name || ''}
-ORG:${firmName}
-TITLE:${roleAr}
-TEL;TYPE=WORK,VOICE:${user.phone || ''}
-NOTE:تم التحقق والتصدير من نظام موكّل الآمن لإدارة المكاتب.
-END:VCARD`;
+            // بناء ملف vCard 3.0 وفق المعايير العالمية
+            const vcardContent = [
+                'BEGIN:VCARD',
+                'VERSION:3.0',
+                `FN:${user.full_name || ''}`,
+                `ORG:${firmName}`,
+                `TITLE:${roleAr}`,
+                `TEL;TYPE=WORK,VOICE:${user.phone || ''}`,
+                'NOTE:تم التحقق والتصدير رسمياً من منصة موكّل ERP لإدارة مكاتب المحاماة.',
+                'END:VCARD'
+            ].join('\r\n');
 
-            // تحويل النص إلى ملف قابل للتنزيل
+            // إنشاء الرابط وتنزيل الملف
             const blob = new Blob([vcardContent], { type: 'text/vcard;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = `${user.full_name || 'contact'}.vcf`;
+            a.download = `${(user.full_name || 'lawyer-card').trim().replace(/\s+/g, '_')}.vcf`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -238,7 +356,9 @@ END:VCARD`;
         };
 
         /**
-         * --- 4.3 تهيئة الصفحة وموزع الطلبات (Router) ---
+         * ==========================================================================
+         * [4] موجه الطلبات وبدء التحقق عند فتح الصفحة (Router & Boot)
+         * ==========================================================================
          */
         window.onload = async () => {
             const params = new URLSearchParams(window.location.search);
@@ -257,36 +377,53 @@ END:VCARD`;
                 } else if (oldToken && oldInvId) {
                     await verifyLegacyReceipt(oldToken, oldInvId);
                 } else {
-                    showError("رابط التحقق غير مكتمل أو تالف. يرجى مسح رمز الـ QR الأصلي مجدداً لتجنب التلاعب.");
+                    showError("رابط التحقق غير مكتمل أو تالف. يرجى مسح رمز الـ QR الأصلي مجدداً من السند المعتمد لتجنب التلاعب.");
                 }
             } catch (error) {
                 console.error("Verification Error:", error);
-                showError("حدث خطأ غير متوقع أثناء الاتصال بالخادم. يرجى المحاولة لاحقاً.");
+                showError("حدث خطأ غير متوقع أثناء الاتصال بالخادم المركزي. يرجى إعادة المحاولة لاحقاً.");
             }
         };
 
         /**
-         * --- 4.4 وحدات التحكم لمعالجة البيانات (Controllers) ---
+         * ==========================================================================
+         * [5] وحدات معالجة البيانات والتحقق السحابي (Verification Controllers)
+         * ==========================================================================
          */
         async function verifyReceiptData(id) {
+            if (typeof API === 'undefined' || typeof API.verifyReceipt !== 'function') {
+                showError("تعذر تحميل محرك فحص السندات.");
+                return;
+            }
+
             const res = await API.verifyReceipt(id);
             if (res && res.success && res.data) {
                 showReceiptSuccess(res.data);
             } else {
-                showError("لم يتم العثور على هذا السند في سجلات المكتب المعتمدة، أو أنه مسجل كدفعة غير مسددة (ملغاة).");
+                showError("لم يتم العثور على هذا السند في سجلات المكتب المعتمدة، أو أنه مسجل كدفعة ملغاة أو غير مسددة.");
             }
         }
 
         async function verifyCVData(id) {
+            if (typeof API === 'undefined' || typeof API.verifyCV !== 'function') {
+                showError("تعذر تحميل محرك فحص الهويات المهنية.");
+                return;
+            }
+
             const res = await API.verifyCV(id);
             if (res && res.success && res.data) {
                 showCVSuccess(res.data);
             } else {
-                showError("تعذر العثور على ملف هذا الموظف/المحامي في السجلات المعتمدة. قد يكون الحساب موقوفاً.");
+                showError("تعذر العثور على سجل هذا العضو في الهيئات والمكاتب المعتمدة، أو أن حسابه موقوف إدارياً.");
             }
         }
 
         async function verifyLegacyReceipt(token, invId) {
+            if (typeof API === 'undefined' || typeof API.getPublicPortalData !== 'function') {
+                showError("تعذر تحميل محرك الفحص القديم.");
+                return;
+            }
+
             const res = await API.getPublicPortalData(token);
             if (res && !res.error && res.installments) {
                 const invoice = res.installments.find(i => i.id === invId);
@@ -296,20 +433,26 @@ END:VCARD`;
                 if (invoice && invoice.status === 'مدفوعة') {
                     const assembledData = {
                         ...invoice,
-                        mo_cases: { case_internal_id: caseData.case_internal_id, mo_clients: { full_name: res.client?.full_name } },
+                        currency: firmData.currency || res.currency || 'د.أ',
+                        mo_cases: { 
+                            case_internal_id: caseData.case_internal_id, 
+                            mo_clients: { full_name: res.client?.full_name } 
+                        },
                         mo_firms: { firm_name: firmData.firm_name }
                     };
                     showReceiptSuccess(assembledData);
                 } else {
-                    showError("لم يتم العثور على هذا السند المالي، أو أنه مسجل كدفعة قيد الانتظار وغير مسددة.");
+                    showError("لم يتم العثور على هذا السند المالي، أو أنه مسجل كدفعة قيد الانتظار ولم يتم تحصيلها.");
                 }
             } else {
-                showError("فشل الوصول لقاعدة البيانات أو أن ملف القضية المرتبط بالسند لم يعد متاحاً للعامة.");
+                showError("تعذر الوصول لسجلات القضية، أو أن رابط الملف العام قد انتهت صلاحيته.");
             }
         }
 
         /**
-         * --- 4.5 دوال عرض واجهة المستخدم (Views) ---
+         * ==========================================================================
+         * [6] عرض نتائج التحقق الإيجابية والسلبية (Views)
+         * ==========================================================================
          */
         function showReceiptSuccess(inv) {
             document.getElementById('loading-state').classList.add('d-none');
@@ -321,24 +464,28 @@ END:VCARD`;
                 </div>
             `;
 
-            document.getElementById('status-title').innerText = "سند أصلي ومعتمد";
-            document.getElementById('status-title').className = "fw-bold mb-1 text-success";
-            document.getElementById('status-desc').innerText = "تم التحقق من صحة السند المالي ومطابقته للسجلات.";
+            document.getElementById('status-title').innerText = "سند رسمي أصلي ومعتمد";
+            document.getElementById('status-title').className = "fw-bold mb-1";
+            document.getElementById('status-title').style.color = "var(--emerald)";
+            document.getElementById('status-desc').innerText = "تمت مطابقة التوقيع التشفيري للسند مع السجلات المركزية بنجاح.";
 
             const firmName = inv.mo_firms ? inv.mo_firms.firm_name : 'مكتب محاماة معتمد';
             const caseNum = inv.mo_cases ? inv.mo_cases.case_internal_id : 'غير محدد';
             const clientName = (inv.mo_cases && inv.mo_cases.mo_clients) ? inv.mo_cases.mo_clients.full_name : 'غير محدد';
-            const formattedAmount = Number(inv.amount).toLocaleString();
+            const formattedAmount = Number(inv.amount || 0).toLocaleString();
             const dateStr = inv.due_date || (inv.created_at ? inv.created_at.split('T')[0] : 'غير محدد');
+            
+            // العملة الديناميكية المعتمدة V5.6
+            const currencySymbol = inv.currency || (typeof CONFIG !== 'undefined' && CONFIG.DEFAULT_CURRENCY) || 'د.أ';
 
             document.getElementById('data-container').innerHTML = `
-                <div class="data-row"><span>جهة الإصدار:</span> <b class="text-navy text-end">${escapeHTML(firmName)}</b></div>
-                <div class="data-row"><span>رقم الملف:</span> <b class="text-end font-monospace">${escapeHTML(caseNum)}</b></div>
-                <div class="data-row"><span>اسم الموكل:</span> <b class="text-end text-truncate" style="max-width: 170px;" title="${escapeHTML(clientName)}">${escapeHTML(clientName)}</b></div>
-                <div class="data-row"><span>قيمة السند:</span> <b class="text-success fs-5 text-end font-monospace">${formattedAmount} <small class="fs-6 text-muted">د.أ</small></b></div>
-                <div class="data-row"><span>تاريخ السداد:</span> <b dir="ltr" class="text-end font-monospace">${escapeHTML(dateStr)}</b></div>
-                <div class="data-row"><span>حالة السند:</span> <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-1 rounded-pill"><i class="fas fa-check-circle me-1"></i> مقبوض ومسجل</span></div>
-                <div class="data-row pb-0"><span>الرقم المرجعي:</span> <b style="font-size: 0.65rem; color: #94a3b8; user-select: all;" class="text-end font-monospace">${escapeHTML(inv.id)}</b></div>
+                <div class="data-row"><span class="label-text">الجهة المصدِرة:</span> <b class="text-navy text-end">${escapeHTML(firmName)}</b></div>
+                <div class="data-row"><span class="label-text">رقم ملف القضية:</span> <b class="text-end font-monospace" style="color: var(--royal-gold);">${escapeHTML(caseNum)}</b></div>
+                <div class="data-row"><span class="label-text">اسم الموكل:</span> <b class="text-end text-truncate" style="max-width: 170px;" title="${escapeHTML(clientName)}">${escapeHTML(clientName)}</b></div>
+                <div class="data-row"><span class="label-text">قيمة السند:</span> <b class="fs-5 text-end font-monospace" style="color: var(--emerald);">${formattedAmount} <small class="fs-6 text-muted">${escapeHTML(currencySymbol)}</small></b></div>
+                <div class="data-row"><span class="label-text">تاريخ السداد:</span> <b dir="ltr" class="text-end font-monospace">${escapeHTML(dateStr)}</b></div>
+                <div class="data-row"><span class="label-text">حالة السند:</span> <span class="badge px-3 py-1 rounded-pill" style="background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(31, 122, 92, 0.25);"><i class="fas fa-check-circle me-1"></i> مقبوض ومسجل نظامياً</span></div>
+                <div class="data-row pb-0"><span class="label-text">الرقم المرجعي (UUID):</span> <b style="font-size: 0.68rem; color: #94A3B8; user-select: all;" class="text-end font-monospace">${escapeHTML(inv.id)}</b></div>
             `;
         }
 
@@ -346,36 +493,53 @@ END:VCARD`;
             document.getElementById('loading-state').classList.add('d-none');
             document.getElementById('result-state').classList.remove('d-none');
 
-            let avatarHtml = `<div class="vcard-avatar mx-auto">${escapeHTML(user.full_name).charAt(0)}</div>`;
+            let avatarHtml = `
+                <div class="vcard-avatar-wrapper">
+                    <div class="vcard-avatar mx-auto">${escapeHTML(user.full_name).charAt(0)}</div>
+                    <div class="verified-badge-pill" title="حساب موثق"><i class="fas fa-check"></i></div>
+                </div>
+            `;
             
             if (user.avatar_url) {
                 if (!user.avatar_url.startsWith('http')) {
-                    const baseUrl = window.API_BASE_URL || CONFIG.API_URL || '';
-                    avatarHtml = `<img src="" data-r2-key="${escapeHTML(user.avatar_url)}" class="vcard-avatar mx-auto" onerror="this.onerror=null; this.outerHTML='<div class=\\'vcard-avatar mx-auto\\'>${escapeHTML(user.full_name).charAt(0)}</div>';">`;
+                    const baseUrl = window.API_BASE_URL || (typeof CONFIG !== 'undefined' ? CONFIG.API_URL : '') || '';
+                    avatarHtml = `
+                        <div class="vcard-avatar-wrapper">
+                            <img src="" data-r2-key="${escapeHTML(user.avatar_url)}" class="vcard-avatar mx-auto" alt="Lawyer Avatar" onerror="this.onerror=null; this.outerHTML='<div class=\\'vcard-avatar mx-auto\\'>${escapeHTML(user.full_name).charAt(0)}</div>';">
+                            <div class="verified-badge-pill" title="حساب موثق"><i class="fas fa-check"></i></div>
+                        </div>
+                    `;
                     
                     setTimeout(async () => {
                         const img = document.querySelector('img[data-r2-key]');
-                        if(img) {
+                        if (img) {
                             try {
                                 const res = await fetch(`${baseUrl}/api/public/r2/download?key=${encodeURIComponent(user.avatar_url)}&client_token=public_bypass`);
-                                if(res.ok) {
+                                if (res.ok) {
                                     const blob = await res.blob();
                                     img.src = URL.createObjectURL(blob);
                                     img.removeAttribute('data-r2-key');
                                 }
-                            } catch(e) { console.error("Avatar fetch error", e); }
+                            } catch(e) { 
+                                console.error("Avatar fetch error", e); 
+                            }
                         }
                     }, 50);
                 } else {
-                    avatarHtml = `<img src="${escapeHTML(user.avatar_url)}" class="vcard-avatar mx-auto" onerror="this.onerror=null; this.outerHTML='<div class=\\'vcard-avatar mx-auto\\'>${escapeHTML(user.full_name).charAt(0)}</div>';">`;
+                    avatarHtml = `
+                        <div class="vcard-avatar-wrapper">
+                            <img src="${escapeHTML(user.avatar_url)}" class="vcard-avatar mx-auto" alt="Lawyer Avatar" onerror="this.onerror=null; this.outerHTML='<div class=\\'vcard-avatar mx-auto\\'>${escapeHTML(user.full_name).charAt(0)}</div>';">
+                            <div class="verified-badge-pill" title="حساب موثق"><i class="fas fa-check"></i></div>
+                        </div>
+                    `;
                 }
             }
 
             document.getElementById('header-visual-element').innerHTML = avatarHtml;
 
-            document.getElementById('status-title').innerText = "هوية مهنية موثقة";
+            document.getElementById('status-title').innerText = "هوية مهنية موثقة ومعتمدة";
             document.getElementById('status-title').className = "fw-bold mb-1 text-navy";
-            document.getElementById('status-desc').innerText = "تم التحقق من انتماء الموظف للمكتب المعتمد في السجلات.";
+            document.getElementById('status-desc').innerText = "تم التحقق من انتماء العضو للكادر القانوني للمكتب المعتمد في السجلات.";
 
             const firmName = user.mo_firms ? user.mo_firms.firm_name : 'مكتب محاماة معتمد';
             
@@ -385,26 +549,28 @@ END:VCARD`;
             else if (user.role === 'secretary') roleAr = 'سكرتاريا وإدارة';
 
             document.getElementById('data-container').innerHTML = `
-                <div class="data-row"><span>الاسم الكامل:</span> <b class="text-navy text-end">${escapeHTML(user.full_name)}</b></div>
-                <div class="data-row"><span>الصفة المهنية:</span> <b class="text-end">${escapeHTML(roleAr)}</b></div>
-                <div class="data-row"><span>المكتب التابع له:</span> <b class="text-end text-truncate" style="max-width: 150px;">${escapeHTML(firmName)}</b></div>
-                <div class="data-row"><span>رقم النقابة:</span> <b class="text-end font-monospace text-primary" dir="ltr">${escapeHTML(user.syndicate_number || 'غير متوفر')}</b></div>
-                <div class="data-row"><span>رقم التواصل:</span> <b class="text-end font-monospace text-success" dir="ltr">${escapeHTML(user.phone || 'غير متوفر')}</b></div>
+                <div class="data-row"><span class="label-text">الاسم الكامل:</span> <b class="text-navy text-end">${escapeHTML(user.full_name)}</b></div>
+                <div class="data-row"><span class="label-text">الصفة المهنية:</span> <b class="text-end" style="color: var(--royal-gold);">${escapeHTML(roleAr)}</b></div>
+                <div class="data-row"><span class="label-text">الكيان التابع له:</span> <b class="text-end text-truncate" style="max-width: 160px;">${escapeHTML(firmName)}</b></div>
+                <div class="data-row"><span class="label-text">رقم القيد / النقابة:</span> <b class="text-end font-monospace" dir="ltr" style="color: #38BDF8;">${escapeHTML(user.syndicate_number || 'غير مدخل')}</b></div>
+                <div class="data-row"><span class="label-text">هاتف التواصل:</span> <b class="text-end font-monospace" dir="ltr" style="color: var(--emerald);">${escapeHTML(user.phone || 'غير متوفر')}</b></div>
                 
                 <div class="mt-4 mb-2">
                     <button id="btn-download-vcard" class="btn btn-vcard w-100 rounded-pill fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
-                        <i class="fas fa-address-book"></i> حفظ جهة الاتصال (vCard)
+                        <i class="fas fa-address-book"></i> حفظ جهة الاتصال في الهاتف (vCard)
                     </button>
                 </div>
                 
                 <div class="data-row pb-0 border-0 mt-2 text-center w-100">
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-4 py-2 w-100 rounded-pill fs-6"><i class="fas fa-shield-check me-1"></i> حساب موثق ونشط أمنياً</span>
+                    <span class="badge px-4 py-2 w-100 rounded-pill fs-6" style="background: var(--emerald-bg); color: var(--emerald); border: 1px solid rgba(31, 122, 92, 0.25);">
+                        <i class="fas fa-shield-check me-1"></i> حساب موثق ونشط أمنياً
+                    </span>
                 </div>
             `;
 
-            // ربط زر التنزيل بالدالة
+            // ربط زر تحميل جهة الاتصال
             const vcardBtn = document.getElementById('btn-download-vcard');
-            if(vcardBtn) {
+            if (vcardBtn) {
                 vcardBtn.addEventListener('click', () => downloadVCard(user));
             }
         }
@@ -414,7 +580,7 @@ END:VCARD`;
             document.getElementById('result-state').classList.remove('d-none');
             
             const card = document.getElementById('verify-content');
-            card.classList.add('status-invalid-card');
+            if (card) card.classList.add('status-invalid-card');
 
             document.getElementById('header-visual-element').innerHTML = `
                 <div id="status-icon-div" class="status-icon status-invalid mx-auto">
@@ -423,15 +589,16 @@ END:VCARD`;
             `;
 
             document.getElementById('status-title').innerText = "تحذير: سجل غير موثق";
-            document.getElementById('status-title').className = "fw-bold mb-1 text-danger";
-            document.getElementById('status-desc').innerText = "العملية مرفوضة أمنياً";
+            document.getElementById('status-title').className = "fw-bold mb-1";
+            document.getElementById('status-title').style.color = "var(--ruby)";
+            document.getElementById('status-desc').innerText = "العملية مرفوضة أمنياً أو غير مسجلة في السحابة المركزية.";
             
             document.getElementById('data-container').innerHTML = `
-                <div class="alert bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 mb-0 small text-center fw-bold shadow-sm rounded-4 lh-lg">
-                    <i class="fas fa-ban fs-5 d-block mb-2 text-danger"></i>
+                <div class="alert mb-0 small text-center fw-bold shadow-sm rounded-4 lh-lg" style="background: var(--ruby-bg); color: var(--ruby); border: 1px solid rgba(179, 55, 47, 0.25);">
+                    <i class="fas fa-ban fs-5 d-block mb-2"></i>
                     ${escapeHTML(msg)}
-                    <hr class="my-2 border-danger border-opacity-50">
-                    <span class="text-danger opacity-75" style="font-size: 0.8rem;">في حال كنت تعتقد أن هذا خطأ، يرجى مراجعة إدارة المكتب المصدّر فوراً.</span>
+                    <hr class="my-2" style="border-color: rgba(179, 55, 47, 0.3);">
+                    <span class="opacity-75" style="font-size: 0.8rem;">في حال كنت تعتقد أن هذا خطأ، يرجى مراجعة إدارة المكتب المصدِر للسند فوراً.</span>
                 </div>
             `;
         }
